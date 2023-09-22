@@ -1,0 +1,43 @@
+# SPDX-FileCopyrightText: : 2017-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+
+configfile: "workflow/submodules/pypsa-eur/config/config.default.yaml"
+configfile: "config/config.yaml"
+
+
+module pypsaeur:
+    snakefile:
+        "submodules/pypsa-eur/Snakefile"
+    config:
+        config
+
+
+use rule * from pypsaeur
+
+
+from pathlib import Path
+
+data_dir = Path("workflow/submodules/pypsa-eur/data")
+rule get_data:
+    output:
+        [
+            str(Path("data") / p.relative_to(data_dir))
+            for p in data_dir.rglob("*")
+            if p.is_file()
+        ],
+    shell:
+        """
+        mkdir -p data
+        cp -nR {data_dir}/. data/
+        """
+
+
+rule clean:
+    message: "Remove all build results but keep downloaded data."
+    run:
+         import shutil
+
+         shutil.rmtree("resources")
+         shutil.rmtree("results")
+         print("Data downloaded to data/ has not been cleaned.")

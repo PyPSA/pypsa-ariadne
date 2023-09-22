@@ -1,0 +1,95 @@
+# SPDX-FileCopyrightText: : 2017-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: CC0-1.0
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
+run:
+  name: "test-365H"
+  scenarios:
+    enable: true
+  shared_resources: true
+  disable_progressbar: true
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
+foresight: myopic
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#scenario
+# Wildcard docs in https://pypsa-eur.readthedocs.io/en/latest/wildcards.html
+scenario:
+  simpl:
+  - ''
+  ll:
+  - v1.2
+  clusters:
+  - 22
+  opts:
+  - ''
+  sector_opts:
+    - Co2L0-365H-T-H-B-I-A-solar+p3-linemaxext15
+  planning_horizons:
+  # - 2020
+  # - 2030
+  # - 2040
+  - 2050
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
+# Germany plus 12 "Stromnachbarn"
+countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'PL', 'SE']
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
+enable:
+  retrieve: false # set to false once initial data is retrieved
+  retrieve_cutout: false # set to false once initial data is retrieved
+
+focus_weights:
+# 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
+  'DE': 0.3636 # 8/22
+  'AT': 0.0455 # 1/22
+  'BE': 0.0455
+  'CH': 0.0455
+  'CZ': 0.0455
+  'DK': 0.0909 # 2/22
+  'FR': 0.0454
+  'GB': 0.0909
+  'LU': 0.0454
+  'NL': 0.0454
+  'NO': 0.0454
+  'PL': 0.0454
+  'SE': 0.0454
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
+co2_budget:
+  2020: 0.701
+  2025: 0.524
+  2030: 0.297
+  2035: 0.150
+  2040: 0.071
+  2045: 0.032
+  2050: 0.000
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
+sector:
+  district_heating:
+    potential: 0.6
+    progress:
+      2020: 0.0
+      2030: 0.3
+      2040: 0.6
+      2050: 1.0
+  #TBD what to include in config
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#industry
+industry:
+  St_primary_fraction:
+    2020: 0.6
+    2025: 0.55
+    2030: 0.5
+    2035: 0.45
+    2040: 0.4
+    2045: 0.35
+    2050: 0.3
+  #TBD what to include in config
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
+solving:
+  walltime: "12:00:00"
