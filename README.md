@@ -30,6 +30,14 @@ You need [mamba](https://mamba.readthedocs.io/en/latest/) to run the analysis. U
 
 ## Run the analysis
 
+For the first run open config.yaml and set
+
+    enable:
+        retrieve: true # set to false once initial data is retrieved
+        retrieve_cutout: true # set to false once initial data is retrieved
+
+and then run from main repository
+
     snakemake -call
 
 This will run all analysis steps to reproduce results.
