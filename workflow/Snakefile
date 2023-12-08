@@ -4,6 +4,7 @@
 
 configfile: "workflow/submodules/pypsa-eur/config/config.default.yaml"
 configfile: "config/config.yaml"
+configfile: "config/config.personal.yaml"
 
 
 module pypsaeur:
@@ -41,3 +42,16 @@ rule clean:
          shutil.rmtree("resources")
          shutil.rmtree("results")
          print("Data downloaded to data/ has not been cleaned.")
+
+
+rule retrieve_ariadne_scenario_data:
+    params:
+        iiasa=config["iiasa_database"]
+    output:
+        data="resources/ariadne_scenario_data.csv"
+    log:
+        "logs/retrieve_ariadne_scenario_data.log"
+    resources:
+        mem_mb=1000
+    script:
+        "scripts/retrieve_ariadne_scenario_data.py"

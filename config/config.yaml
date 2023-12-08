@@ -4,11 +4,18 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "231208-fixprocessemissions-365H"
+  name: "231208-fixlvinfeasibility-365H"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
   disable_progressbar: true
+
+
+iiasa_database:
+  db_name: ariadne_intern
+  model_name: Hybrid
+  scenario: 8Gt_EnSec
+  region: Deutschland
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
 foresight: myopic
@@ -19,7 +26,7 @@ scenario:
   simpl:
   - ''
   ll:
-  - vopt
+  - v1.2
   clusters:
   - 22
   opts:
@@ -139,7 +146,7 @@ sector:
   co2_budget_national: true
   #TBD what to include in config
   #relax so no infeasibility in 2050 with no land transport demand
-  min_part_load_fischer_tropsch: 0.7
+  min_part_load_fischer_tropsch: 0.
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#industry
 industry:
