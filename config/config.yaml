@@ -4,10 +4,10 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "test-365H"
+  name: "231208-fixprocessemissions-365H"
   scenarios:
     enable: true
-  shared_resources: true
+  shared_resources: true #stops recalculating
   disable_progressbar: true
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
@@ -19,7 +19,7 @@ scenario:
   simpl:
   - ''
   ll:
-  - v1.2
+  - vopt
   clusters:
   - 22
   opts:
@@ -27,10 +27,10 @@ scenario:
   sector_opts:
     - 365H-T-H-B-I-A-solar+p3-linemaxext15
   planning_horizons:
-  # - 2020
+  - 2020
   - 2030
-  # - 2040
-  # - 2050
+  - 2040
+  - 2050
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
 # Germany plus 12 "Stromnachbarn"
@@ -38,7 +38,7 @@ countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'P
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
-  retrieve: false # set to false once initial data is retrieved
+  retrieve: true # set to false once initial data is retrieved
   retrieve_cutout: false # set to false once initial data is retrieved
 
 focus_weights:
@@ -70,6 +70,20 @@ co2_budget:
 co2_budget_national:
   select_unselect_all: true # if true, add national constraints for all countries; if all, add national constraints for none
   exclude_include: [] # if all_countries is true, add countries to exclude; if all_countries is false, add countries to include
+  2020:
+    'DE': 0.6
+    'AT': 0.8
+    'BE': 0.8
+    'CH': 0.8
+    'CZ': 0.8
+    'DK': 0.8
+    'FR': 0.8
+    'GB': 0.8
+    'LU': 0.8
+    'NL': 0.8
+    'NO': 0.8
+    'PL': 0.8
+    'SE': 0.8
   2030:
     'DE': 0.350
     'AT': 0.450
@@ -84,6 +98,20 @@ co2_budget_national:
     'NO': 0.450
     'PL': 0.450
     'SE': 0.450
+  2040:
+    'DE': 0.120
+    'AT': 0.200
+    'BE': 0.200
+    'CH': 0.200
+    'CZ': 0.200
+    'DK': 0.200
+    'FR': 0.200
+    'GB': 0.200
+    'LU': 0.200
+    'NL': 0.200
+    'NO': 0.200
+    'PL': 0.200
+    'SE': 0.200
   2050:
     'DE': 0.000
     'AT': 0.000
@@ -110,6 +138,8 @@ sector:
       2050: 1.0
   co2_budget_national: true
   #TBD what to include in config
+  #relax so no infeasibility in 2050 with no land transport demand
+  min_part_load_fischer_tropsch: 0.7
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#industry
 industry:
@@ -126,3 +156,9 @@ industry:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
 solving:
   walltime: "12:00:00"
+  options:
+    load_shedding: false
+
+plotting:
+  tech_colors:
+    load: "#111100"
