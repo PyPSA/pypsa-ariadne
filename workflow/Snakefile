@@ -55,3 +55,8 @@ rule retrieve_ariadne_scenario_data:
         mem_mb=1000
     script:
         "scripts/retrieve_ariadne_scenario_data.py"
+
+use rule modify_cost_data from pypsaeur with:
+    input:
+        costs="data/costs_{year}.csv",
+	modifications="ariadne-data/costs_{year}-modifications.csv"
