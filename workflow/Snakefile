@@ -6,6 +6,13 @@ configfile: "workflow/submodules/pypsa-eur/config/config.default.yaml"
 configfile: "config/config.yaml"
 configfile: "config/config.personal.yaml"
 
+run = config.get("run", {})
+RDIR = run["name"] + "/" if run.get("name") else ""
+RESOURCES = "resources/" + RDIR if not run.get("shared_resources") else "resources/"
+RESULTS = "results/" + RDIR
+
+
+
 
 module pypsaeur:
     snakefile:
@@ -60,3 +67,13 @@ use rule modify_cost_data from pypsaeur with:
     input:
         costs="data/costs_{year}.csv",
 	modifications="ariadne-data/costs_{year}-modifications.csv"
+
+
+use rule solve_sector_network_myopic from pypsaeur with:
+    input:
+        network=RESULTS
+        + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
+        costs="data/costs_{planning_horizons}.csv",
+        config=RESULTS + "config.yaml",
+        additional_functionality="ariadne-data/additional_functionality.py",
+        co2_totals_name=RESOURCES + "co2_totals.csv",
