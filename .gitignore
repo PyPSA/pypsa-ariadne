@@ -260,3 +260,9 @@ TSWLatexianTemp*
 
 # standalone packages
 *.sta
+
+logs
+
+benchmarks
+
+cidportal.jrc.ec.europa.eu

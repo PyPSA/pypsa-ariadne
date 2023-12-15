@@ -1,35 +1,38 @@
 
-electrolyser_targets = {2020: 0,
-                        2030: 10,
-                        2040: 50,
-                        2050: 80}
+def add_min_limits(n, snapshots, investment_year, config):
+
+    print(config["limits_min"])
+
+    for c in n.iterate_components(config["limits_min"]):
+        print(f"Adding minimum constraints for {c.list_name}")
+
+        for carrier in config["limits_min"][c.name]:
+
+            for ct in config["limits_min"][c.name][carrier]:
+                limit = 1e3*config["limits_min"][c.name][carrier][ct][investment_year]
+
+                print(f"Adding constraint on {c.name} {carrier} capacity in {ct} to be greater than {limit} MW")
+
+                existing_index = c.df.index[(c.df.index.str[:2] == ct) & (c.df.carrier.str[:len(carrier)] == carrier) & ~c.df.p_nom_extendable]
+                extendable_index = c.df.index[(c.df.index.str[:2] == ct) & (c.df.carrier.str[:len(carrier)] == carrier) & c.df.p_nom_extendable]
+
+                existing_capacity = c.df.loc[existing_index, "p_nom"].sum()
+
+                print(f"Existing {c.name} {carrier} capacity in {ct}: {existing_capacity} MW")
+
+                p_nom = n.model[c.name + "-p_nom"].loc[extendable_index]
+
+                lhs = p_nom.sum()
+
+                n.model.add_constraints(
+                    lhs >= limit - existing_capacity, name=f"GlobalConstraint-{c.name}-{carrier.replace(' ','-')}-capacity"
+                )
 
 
 
-def add_electrolysers_for_de(n, snapshots, investment_year):
-
-    print(f"Adding constraint on electrolyser capacity to be greater than {electrolyser_targets[investment_year]} GW")
-
-    electrolyser_existing_index = n.links.index[(n.links.index.str[:2] == "DE") & (n.links.carrier == "H2 Electrolysis") & ~n.links.p_nom_extendable]
-    electrolyser_extendable_index = n.links.index[(n.links.index.str[:2] == "DE") & (n.links.carrier == "H2 Electrolysis") & n.links.p_nom_extendable]
-
-    existing_electrolyser_capacity = n.links.loc[electrolyser_existing_index, "p_nom"].sum()
-
-    print(f"Existing electrolyser capacity: {existing_electrolyser_capacity} MW")
-
-    electrolyser_pnom = n.model["Link-p_nom"].loc[electrolyser_extendable_index]
-
-    lhs = electrolyser_pnom.sum()
-
-    c = n.model.add_constraints(
-        lhs >= 1e3*electrolyser_targets[investment_year] - existing_electrolyser_capacity, name=f"GlobalConstraint-electrolyser_capacity"
-    )
-
-
-
-def additional_functionality(n, snapshots, planning_horizons):
+def additional_functionality(n, snapshots, wildcards, config):
     print("Adding Ariadne-specific functionality")
 
-    investment_year = int(planning_horizons[-4:])
+    investment_year = int(wildcards.planning_horizons[-4:])
 
-    add_electrolysers_for_de(n, snapshots, investment_year)
+    add_min_limits(n, snapshots, investment_year, config)

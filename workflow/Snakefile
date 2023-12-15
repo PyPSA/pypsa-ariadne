@@ -75,5 +75,5 @@ use rule solve_sector_network_myopic from pypsaeur with:
         + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
         costs="data/costs_{planning_horizons}.csv",
         config=RESULTS + "config.yaml",
-        additional_functionality="ariadne-data/additional_functionality.py",
+        additional_functionality="workflow/scripts/additional_functionality.py",
         co2_totals_name=RESOURCES + "co2_totals.csv",
