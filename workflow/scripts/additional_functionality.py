@@ -28,7 +28,29 @@ def add_min_limits(n, snapshots, investment_year, config):
                     lhs >= limit - existing_capacity, name=f"GlobalConstraint-{c.name}-{carrier.replace(' ','-')}-capacity"
                 )
 
+def h2_import_limits(n, snapshots, investment_year, config):
 
+    for ct in config["h2_import_max"]:
+        limit = config["h2_import_max"][ct][investment_year]*1e6
+
+        print(f"limiting H2 imports in {ct} to {limit/1e6} TWh/a")
+
+        incoming = n.links.index[(n.links.carrier == "H2 pipeline") & (n.links.bus0.str[:2] != ct) & (n.links.bus1.str[:2] == ct)]
+        outgoing = n.links.index[(n.links.carrier == "H2 pipeline") & (n.links.bus0.str[:2] == ct) & (n.links.bus1.str[:2] != ct)]
+
+        incoming_p = (n.model["Link-p"].loc[:, incoming]*n.snapshot_weightings.generators).sum()
+        outgoing_p = (n.model["Link-p"].loc[:, outgoing]*n.snapshot_weightings.generators).sum()
+
+        print(incoming_p)
+        print(outgoing_p)
+
+        lhs = incoming_p - outgoing_p
+
+        print(lhs)
+
+        n.model.add_constraints(
+            lhs <= limit, name=f"GlobalConstraint-H2_import_limit-{ct}"
+        )
 
 def additional_functionality(n, snapshots, wildcards, config):
     print("Adding Ariadne-specific functionality")
@@ -36,3 +58,5 @@ def additional_functionality(n, snapshots, wildcards, config):
     investment_year = int(wildcards.planning_horizons[-4:])
 
     add_min_limits(n, snapshots, investment_year, config)
+
+    h2_import_limits(n, snapshots, investment_year, config)

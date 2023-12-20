@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "231215-3H-minlimits"
+  name: "231218-3H-maximportH2"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -162,6 +162,12 @@ limits_min:
         2040: 50
         2050: 80
 
+h2_import_max:
+  DE:
+    2020: 0
+    2030: 20
+    2040: 100
+    2050: 200
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
