@@ -63,10 +63,22 @@ rule retrieve_ariadne_scenario_data:
     script:
         "scripts/retrieve_ariadne_scenario_data.py"
 
-use rule modify_cost_data from pypsaeur with:
+if config["enable"]["retrieve"] and config["enable"].get("retrieve_cost_data", True):
+
+    use rule retrieve_cost_data from pypsaeur with:
+        output:
+            "data/costs_{year}-original.csv",
+
+rule modify_cost_data:
     input:
-        costs="data/costs_{year}.csv",
-	modifications="ariadne-data/costs_{year}-modifications.csv"
+        costs="data/costs_{year}-original.csv",
+	modifications="ariadne-data/costs_{year}-modifications.csv",
+    output:
+       "data/costs_{year}.csv",
+    resources:
+        mem_mb=1000
+    script:
+        "scripts/modify_cost_data.py"
 
 
 use rule solve_sector_network_myopic from pypsaeur with:
