@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "231218-3H-maximportH2"
+  name: "231221-365H-testoilregional"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -32,7 +32,7 @@ scenario:
   opts:
   - ''
   sector_opts:
-    - 3H-T-H-B-I-A-solar+p3-linemaxext15
+    - 365H-T-H-B-I-A-solar+p3-linemaxext15
   planning_horizons:
   - 2020
   - 2030
@@ -45,7 +45,7 @@ countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'P
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
-  retrieve: false # set to false once initial data is retrieved
+  retrieve: true # set to false once initial data is retrieved
   retrieve_cutout: false # set to false once initial data is retrieved
 
 focus_weights:
@@ -182,6 +182,8 @@ sector:
   #TBD what to include in config
   #relax so no infeasibility in 2050 with no land transport demand
   min_part_load_fischer_tropsch: 0.
+  regional_methanol_demand: true  #set to true if regional CO2 constraints needed
+  regional_oil_demand: true  #set to true if regional CO2 constraints needed
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#industry
 industry:
