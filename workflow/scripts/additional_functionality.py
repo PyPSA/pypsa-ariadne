@@ -8,8 +8,6 @@ logger = logging.getLogger(__name__)
 
 def add_min_limits(n, snapshots, investment_year, config):
 
-    logger.info(config["limits_min"])
-
     for c in n.iterate_components(config["limits_min"]):
         logger.info(f"Adding minimum constraints for {c.list_name}")
 
@@ -31,9 +29,20 @@ def add_min_limits(n, snapshots, investment_year, config):
 
                 lhs = p_nom.sum()
 
+                cname = f"capacity_minimum-{ct}-{c.name}-{carrier.replace(' ','-')}"
+
                 n.model.add_constraints(
-                    lhs >= limit - existing_capacity, name=f"GlobalConstraint-{c.name}-{carrier.replace(' ','-')}-capacity"
+                    lhs >= limit - existing_capacity, name=f"GlobalConstraint-{cname}"
                 )
+                n.add(
+                    "GlobalConstraint",
+                    cname,
+                    constant=limit,
+                    sense=">=",
+                    type="",
+                    carrier_attribute="",
+                )
+
 
 def h2_import_limits(n, snapshots, investment_year, config):
 
@@ -48,15 +57,20 @@ def h2_import_limits(n, snapshots, investment_year, config):
         incoming_p = (n.model["Link-p"].loc[:, incoming]*n.snapshot_weightings.generators).sum()
         outgoing_p = (n.model["Link-p"].loc[:, outgoing]*n.snapshot_weightings.generators).sum()
 
-        logger.info(incoming_p)
-        logger.info(outgoing_p)
-
         lhs = incoming_p - outgoing_p
 
-        logger.info(lhs)
+        cname = f"H2_import_limit-{ct}"
 
         n.model.add_constraints(
-            lhs <= limit, name=f"GlobalConstraint-H2_import_limit-{ct}"
+            lhs <= limit, name=f"GlobalConstraint-{cname}"
+        )
+        n.add(
+            "GlobalConstraint",
+            cname,
+            constant=limit,
+            sense="<=",
+            type="",
+            carrier_attribute="",
         )
 
 
@@ -110,16 +124,19 @@ def add_co2limit_country(n, limit_countries, snakemake):
 
         lhs = sum(lhs)
 
+        cname = f"co2_limit-{ct}"
+
         n.model.add_constraints(
             lhs <= limit,
-            name=f"GlobalConstraint-co2_limit-{ct}",
+            name=f"GlobalConstraint-{cname}",
         )
         n.add(
             "GlobalConstraint",
-            f"co2_limit-{ct}",
+            cname,
             constant=limit,
             sense="<=",
             type="",
+            carrier_attribute="",
         )
 
 
@@ -134,8 +151,5 @@ def additional_functionality(n, snapshots, snakemake):
     h2_import_limits(n, snapshots, investment_year, snakemake.config)
 
     if snakemake.config["sector"]["co2_budget_national"]:
-        logger.info(f"Add CO2 limit for each country")
-
         limit_countries = snakemake.config["co2_budget_national"][investment_year]
-
         add_co2limit_country(n, limit_countries, snakemake)

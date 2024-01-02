@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "240102-365H-tidyCO2"
+  name: "240102-365H-GCduals"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
