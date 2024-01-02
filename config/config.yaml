@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "240102-365H-moveco2"
+  name: "240102-365H-tidyCO2"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -75,64 +75,14 @@ co2_budget:
   2050: 0.000 # climate-neutral by 2050
 
 co2_budget_national:
-  select_unselect_all: true # if true, add national constraints for all countries; if all, add national constraints for none
-  exclude_include: [] # if all_countries is true, add countries to exclude; if all_countries is false, add countries to include
   2020:
-    'DE': 0.6
-    'AT': 0.9
-    'BE': 0.9
-    'CH': 0.9
-    'CZ': 0.9
-    'DK': 0.9
-    'FR': 0.9
-    'GB': 0.9
-    'LU': 0.9
-    'NL': 0.9
-    'NO': 0.9
-    'PL': 0.9
-    'SE': 0.9
+    DE: 0.6
   2030:
-    'DE': 0.350
-    'AT': 0.850
-    'BE': 0.850
-    'CH': 0.850
-    'CZ': 0.850
-    'DK': 0.850
-    'FR': 0.850
-    'GB': 0.850
-    'LU': 0.850
-    'NL': 0.850
-    'NO': 0.850
-    'PL': 0.850
-    'SE': 0.850
+    DE: 0.35
   2040:
-    'DE': 0.120
-    'AT': 0.700
-    'BE': 0.700
-    'CH': 0.700
-    'CZ': 0.700
-    'DK': 0.700
-    'FR': 0.700
-    'GB': 0.700
-    'LU': 0.700
-    'NL': 0.700
-    'NO': 0.700
-    'PL': 0.700
-    'SE': 0.700
+    DE: 0.12
   2050:
-    'DE': 0.000
-    'AT': 0.500
-    'BE': 0.500
-    'CH': 0.500
-    'CZ': 0.500
-    'DK': 0.500
-    'FR': 0.500
-    'GB': 0.500
-    'LU': 0.500
-    'NL': 0.500
-    'NO': 0.500
-    'PL': 0.500
-    'SE': 0.500
+    DE: 0.
 
 limits_min:
   Generator:
