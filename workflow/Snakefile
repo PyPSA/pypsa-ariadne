@@ -82,10 +82,9 @@ rule modify_cost_data:
 
 
 use rule solve_sector_network_myopic from pypsaeur with:
+    params:
+        **{k: v for k, v in rules.solve_sector_network_myopic.params.items() if k != "custom_extra_functionality"},
+        custom_extra_functionality=workflow.source_path("scripts/additional_functionality.py"),
     input:
-        network=RESULTS
-        + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
-        costs="data/costs_{planning_horizons}.csv",
-        config=RESULTS + "config.yaml",
-        additional_functionality="workflow/scripts/additional_functionality.py",
+        **rules.solve_sector_network_myopic.input,
         co2_totals_name=RESOURCES + "co2_totals.csv",
