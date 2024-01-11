@@ -1,6 +1,7 @@
 
-import logging, pandas as pd
+import logging
 
+import pandas as pd
 from prepare_sector_network import emission_sectors_from_opts
 
 logger = logging.getLogger(__name__)
