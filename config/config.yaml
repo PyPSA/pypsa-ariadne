@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "240112-365H-forceboilersconstraint2"
+  name: "240112-365H-adaptexistingheat"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -122,7 +122,7 @@ h2_import_max:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
   district_heating:
-    potential: 0.6
+    potential: 0.4
     progress:
       2020: 0.0
       2030: 0.3
@@ -146,7 +146,16 @@ industry:
     2040: 0.4
     2045: 0.35
     2050: 0.3
-  #TBD what to include in config
+
+  # this needs to be taken from ariadne database
+  reduce_space_heat_exogenously_factor:
+    2020: 0.0
+    2025: 0.05
+    2030: 0.10
+    2035: 0.16
+    2040: 0.22
+    2045: 0.25
+    2050: 0.35
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
 solving:

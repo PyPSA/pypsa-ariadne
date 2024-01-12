@@ -55,7 +55,7 @@ rule retrieve_ariadne_scenario_data:
     params:
         iiasa=config["iiasa_database"]
     output:
-        data="resources/ariadne_scenario_data.csv"
+        data=RESOURCES + "ariadne_scenario_data.csv"
     log:
         "logs/retrieve_ariadne_scenario_data.log"
     resources:
@@ -88,3 +88,22 @@ use rule solve_sector_network_myopic from pypsaeur with:
     input:
         **rules.solve_sector_network_myopic.input,
         co2_totals_name=RESOURCES + "co2_totals.csv",
+
+
+rule modify_existing_heating:
+    input:
+        ariadne=RESOURCES + "ariadne_scenario_data.csv",
+        existing_heating="data/existing_infrastructure/existing_heating_raw.csv",
+    output:
+        existing_heating=RESOURCES + "existing_heating.csv",
+    resources:
+        mem_mb=1000
+    script:
+        "scripts/modify_existing_heating.py"
+
+
+
+use rule add_existing_baseyear from pypsaeur with:
+    input:
+        **{k: v for k, v in rules.add_existing_baseyear.input.items() if k != "existing_heating"},
+	existing_heating=RESOURCES + "existing_heating.csv",
