@@ -48,6 +48,10 @@ dependencies:
 - tabula-py
 - pyxlsb
 - graphviz
+- tsam>=1.1.0
+- pypsa>=0.25.1
+- highs
+
 
   # Keep in conda environment when calling ipython
 - ipython
@@ -58,7 +62,4 @@ dependencies:
 - rasterio!=1.2.10
 
 
-- pip:
-  - tsam>=1.1.0
-  - pypsa>=0.25.1
-  - highspy
+
