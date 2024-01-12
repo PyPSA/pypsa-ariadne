@@ -4,7 +4,11 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
+<<<<<<< HEAD
   name: "240112-365H-adaptexistingheat"
+=======
+  name: "h2_kernnetz"
+>>>>>>> 101f3c8 (added wasserstoff kernnetz)
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -118,6 +122,10 @@ h2_import_max:
     2030: 20
     2040: 100
     2050: 200
+
+wasserstoff_kernnetz:
+  enable: true
+  reload_locations: false
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
