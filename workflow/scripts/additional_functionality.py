@@ -4,6 +4,8 @@ import logging
 import pandas as pd
 from prepare_sector_network import emission_sectors_from_opts
 
+from xarray import DataArray
+
 logger = logging.getLogger(__name__)
 
 
@@ -140,6 +142,63 @@ def add_co2limit_country(n, limit_countries, snakemake):
             carrier_attribute="",
         )
 
+def force_boiler_profiles_existing(n):
+    """this scales the boiler dispatch to the load profile with a factor common to all boilers at load"""
+
+    logger.info("Forcing boiler profiles for existing ones")
+
+    decentral_boilers = n.links.index[n.links.carrier.str.contains("boiler")
+                                      & ~n.links.carrier.str.contains("urban central")
+                                      & ~n.links.p_nom_extendable]
+
+    if decentral_boilers.empty:
+        return
+
+    boiler_loads = n.links.loc[decentral_boilers,"bus1"]
+    boiler_profiles_pu = n.loads_t.p_set[boiler_loads].div(n.loads_t.p_set[boiler_loads].max(),axis=1)
+    boiler_profiles_pu.columns = decentral_boilers
+    boiler_profiles = DataArray(boiler_profiles_pu.multiply(n.links.loc[decentral_boilers,"p_nom"],axis=1))
+
+    boiler_load_index = pd.Index(boiler_loads.unique())
+    boiler_load_index.name = "Load"
+
+    # per load scaling factor
+    n.model.add_variables(coords=[boiler_load_index], name="Load-profile_factor")
+
+    # clumsy indicator matrix to map boilers to loads
+    df = pd.DataFrame(index=boiler_load_index,columns=decentral_boilers,data=0.)
+    for k,v in boiler_loads.items():
+        df.loc[v,k] = 1.
+
+    lhs = n.model["Link-p"].loc[:,decentral_boilers] - (boiler_profiles*DataArray(df)*n.model["Load-profile_factor"]).sum("Load")
+
+    n.model.add_constraints(lhs, "=", 0, "Link-fixed_profile")
+
+    # hack so that PyPSA doesn't complain there is nowhere to store the variable
+    n.loads["profile_factor_opt"] = 0.
+
+
+def force_boiler_profiles_new(n):
+    """this is equivalent to setting p_min_pu = p_max_pu = load_profile_pu"""
+
+    logger.info("Forcing boiler profiles for new ones")
+
+    decentral_boilers = n.links.index[n.links.carrier.str.contains("boiler")
+                                      & ~n.links.carrier.str.contains("urban central")
+                                      & n.links.p_nom_extendable]
+
+    if decentral_boilers.empty:
+        return
+
+    boiler_loads = n.links.loc[decentral_boilers,"bus1"]
+    boiler_profiles_pu = n.loads_t.p_set[boiler_loads].div(n.loads_t.p_set[boiler_loads].max(),axis=1)
+    boiler_profiles_pu.columns = decentral_boilers
+    boiler_profiles_pu = DataArray(boiler_profiles_pu)
+
+    lhs = n.model["Link-p"].loc[:,decentral_boilers] - boiler_profiles_pu*n.model["Link-p_nom"].loc[decentral_boilers]
+
+    n.model.add_constraints(lhs, "=", 0, "Link-fixed_profile_ext")
+
 
 def additional_functionality(n, snapshots, snakemake):
 
@@ -150,6 +209,10 @@ def additional_functionality(n, snapshots, snakemake):
     add_min_limits(n, snapshots, investment_year, snakemake.config)
 
     h2_import_limits(n, snapshots, investment_year, snakemake.config)
+
+    force_boiler_profiles_existing(n)
+
+    force_boiler_profiles_new(n)
 
     if snakemake.config["sector"]["co2_budget_national"]:
         limit_countries = snakemake.config["co2_budget_national"][investment_year]
