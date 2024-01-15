@@ -139,6 +139,7 @@ def aggregate_parallel_pipes(df):
     return df.groupby(df.index).agg(strategies)
 
 
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os

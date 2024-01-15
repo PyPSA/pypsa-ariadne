@@ -123,6 +123,8 @@ h2_import_max:
 wasserstoff_kernnetz:
   enable: true
   reload_locations: false
+  divide_pipes: false
+  pipes_segment_length: 10
 
 new_decentral_fossil_boiler_ban:
   DE: 2029
