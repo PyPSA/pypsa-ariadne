@@ -126,6 +126,8 @@ h2_import_max:
 wasserstoff_kernnetz:
   enable: true
   reload_locations: false
+  divide_pipes: false
+  pipes_segment_length: 10
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:

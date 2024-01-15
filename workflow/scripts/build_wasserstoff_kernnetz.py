@@ -254,7 +254,7 @@ def extract_locations(df, fn="", reload=False):
     df["point1"] = pd.merge(df, locations, left_on=['Endpunkt(Ort)', 'BL2'], right_on=['location', 'state'], how='left')["point"]
 
     # calc length of points
-    length_factor = 1.5
+    length_factor = 1.0
     df["length_haversine"] = df.apply(
             lambda p: length_factor
             * haversine_pts([p.point0.x, p.point0.y], [p.point1.x, p.point1.y]),
@@ -265,7 +265,7 @@ def extract_locations(df, fn="", reload=False):
     df["length_ratio"] = df.apply(lambda row: max(row.length, row.length_haversine) / (min(row.length, row.length_haversine) + 1), axis=1)
 
     # drop all unrealistic ratio lines
-    df.drop(df[(df.retrofitted == False) & (df.length_ratio > 3)].index, inplace=True)
+    df.drop(df[(df.retrofitted == False) & (df.length_ratio > 2)].index, inplace=True)
 
     # calc LineString
     df["geometry"] = df.apply(lambda x: LineString([x["point0"], x["point1"]]), axis=1)
@@ -295,8 +295,10 @@ man_map = {
 'Rückersdorf' : (12.21941992347776, 50.822251899358236), 
 'Bissingen' : (10.6158383, 48.7177493),
 'Rehden' : (8.476178919627396, 52.60675277527164),
+'Eynatten' : (6.083339457526605, 50.69260916361823),
+'Vlieghuis' : (6.8382504272201095, 52.66036497820981),
+'Kalle' : (6.921180663621839, 52.573992586428425),
 }
-
 
 
 if __name__ == "__main__":
