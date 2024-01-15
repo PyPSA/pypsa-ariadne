@@ -52,7 +52,7 @@ dependencies:
 - pypsa>=0.25.1
 - highs
 - linopy<=0.2.6
-
+- pyam
 
   # Keep in conda environment when calling ipython
 - ipython
