@@ -75,14 +75,15 @@ co2_budget:
   2050: 0.000 # climate-neutral by 2050
 
 co2_budget_national:
+  # Corrected for non-CO2 GHGs via the ariadne database
   2020:
-    DE: 0.6
+    DE: 0.58 # 0.6
   2030:
-    DE: 0.35
+    DE: 0.30 # 0.35
   2040:
-    DE: 0.12
+    DE: 0.09 # 0.12
   2050:
-    DE: 0.
+    DE: -0.04 # 0.
 
 limits_min:
   Generator:
