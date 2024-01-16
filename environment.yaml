@@ -51,7 +51,6 @@ dependencies:
 - tsam>=1.1.0
 - pypsa>=0.25.1
 - highs
-- linopy
 - pyam
 
   # Keep in conda environment when calling ipython
