@@ -223,13 +223,12 @@ if __name__ == "__main__":
     )
 
     if snakemake.config["wasserstoff_kernnetz"]["divide_pipes"]:
-        print("PIPES ARE DIVIDED")
         df = divide_pipes(df, segment_length=snakemake.config["wasserstoff_kernnetz"]["pipes_segment_length"])
 
     wasserstoff_kernnetz = build_clustered_h2_network(df, bus_regions)
 
     reindex_pipes(wasserstoff_kernnetz)
-    
+
     wasserstoff_kernnetz = aggregate_parallel_pipes(wasserstoff_kernnetz)
 
     wasserstoff_kernnetz.to_csv(snakemake.output.clustered_h2_network)

@@ -106,6 +106,8 @@ rule build_wasserstoff_kernnetz:
 
 
 rule cluster_wasserstoff_kernnetz:
+    params: 
+        divide_pipes=config["wasserstoff_kernnetz"]["divide_pipes"]
     input:
         cleaned_h2_network="resources/wasserstoff_kernnetz.csv",
         regions_onshore="resources/regions_onshore_elec_s{simpl}_{clusters}.geojson",
