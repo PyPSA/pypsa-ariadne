@@ -229,6 +229,7 @@ if __name__ == "__main__":
     wasserstoff_kernnetz = build_clustered_h2_network(df, bus_regions)
 
     reindex_pipes(wasserstoff_kernnetz)
-    gas_network = aggregate_parallel_pipes(wasserstoff_kernnetz)
+    
+    wasserstoff_kernnetz = aggregate_parallel_pipes(wasserstoff_kernnetz)
 
     wasserstoff_kernnetz.to_csv(snakemake.output.clustered_h2_network)
