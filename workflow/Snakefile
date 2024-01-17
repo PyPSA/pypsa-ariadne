@@ -16,6 +16,8 @@ RESOURCES = "resources/" + RDIR if not run.get("shared_resources") else "resourc
 RESULTS = "results/" + RDIR
 
 
+
+
 module pypsaeur:
     snakefile:
         "submodules/pypsa-eur/Snakefile"
@@ -25,9 +27,6 @@ module pypsaeur:
 
 use rule * from pypsaeur
 
-wildcard_constraints:
-    simpl="[a-zA-Z0-9]*",
-    clusters="[0-9]+(m|c)?|all",
 
 from pathlib import Path
 
@@ -86,6 +85,33 @@ rule modify_cost_data:
         "scripts/modify_cost_data.py"
 
 
+use rule solve_sector_network_myopic from pypsaeur with:
+    params:
+        **{k: v for k, v in rules.solve_sector_network_myopic.params.items() if k != "custom_extra_functionality"},
+        custom_extra_functionality=workflow.source_path("scripts/additional_functionality.py"),
+    input:
+        **rules.solve_sector_network_myopic.input,
+        co2_totals_name=RESOURCES + "co2_totals.csv",
+
+
+rule modify_existing_heating:
+    input:
+        ariadne=RESOURCES + "ariadne_scenario_data.csv",
+        existing_heating="data/existing_infrastructure/existing_heating_raw.csv",
+    output:
+        existing_heating=RESOURCES + "existing_heating.csv",
+    resources:
+        mem_mb=1000
+    script:
+        "scripts/modify_existing_heating.py"
+
+
+
+use rule add_existing_baseyear from pypsaeur with:
+    input:
+        **{k: v for k, v in rules.add_existing_baseyear.input.items() if k != "existing_heating"},
+	existing_heating=RESOURCES + "existing_heating.csv",
+
 rule build_wasserstoff_kernnetz:
     input:
         wasserstoff_kernnetz_1=HTTP.remote(
@@ -121,30 +147,3 @@ use rule prepare_sector_network from pypsaeur with:
     input:
         **rules.prepare_sector_network.input,
         custom_h2_pipelines="resources/wasserstoff_kernnetz_elec_s{simpl}_{clusters}.csv" if config["wasserstoff_kernnetz"]["enable"] else [],
-
-
-use rule solve_sector_network_myopic from pypsaeur with:
-    params:
-        **{k: v for k, v in rules.solve_sector_network_myopic.params.items() if k != "custom_extra_functionality"},
-        custom_extra_functionality=workflow.source_path("scripts/additional_functionality.py"),
-    input:
-        **rules.solve_sector_network_myopic.input,
-        co2_totals_name=RESOURCES + "co2_totals.csv",
-
-
-rule modify_existing_heating:
-    input:
-        ariadne=RESOURCES + "ariadne_scenario_data.csv",
-        existing_heating="data/existing_infrastructure/existing_heating_raw.csv",
-    output:
-        existing_heating=RESOURCES + "existing_heating.csv",
-    resources:
-        mem_mb=1000
-    script:
-        "scripts/modify_existing_heating.py"
-
-
-use rule add_existing_baseyear from pypsaeur with:
-    input:
-        **{k: v for k, v in rules.add_existing_baseyear.input.items() if k != "existing_heating"},
-	existing_heating=RESOURCES + "existing_heating.csv",
