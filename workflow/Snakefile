@@ -147,7 +147,6 @@ use rule solve_sector_network_myopic from pypsaeur with:
         **{k: v for k, v in rules.solve_sector_network_myopic.params.items() if k != "custom_extra_functionality"},
         custom_extra_functionality=workflow.source_path("scripts/additional_functionality.py"),
     input:
-<<<<<<< HEAD
         **rules.solve_sector_network_myopic.input,
         co2_totals_name=RESOURCES + "co2_totals.csv",
 
@@ -164,10 +163,9 @@ rule modify_existing_heating:
         "scripts/modify_existing_heating.py"
 
 
-
-use rule build_existing_heating_distribution from pypsaeur with:
+use rule add_existing_baseyear from pypsaeur with:
     input:
-        **{k: v for k, v in rules.build_existing_heating_distribution.input.items() if k != "existing_heating"},
+        **{k: v for k, v in rules.add_existing_baseyear.input.items() if k != "existing_heating"},
 	existing_heating=RESOURCES + "existing_heating.csv",
 
 
