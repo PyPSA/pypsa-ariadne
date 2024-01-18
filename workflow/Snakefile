@@ -15,8 +15,9 @@ RDIR = run["name"] + "/" if run.get("name") else ""
 RESOURCES = "resources/" + RDIR if not run.get("shared_resources") else "resources/"
 RESULTS = "results/" + RDIR
 
-
-
+wildcard_constraints:
+    simpl="[a-zA-Z0-9]*",
+    clusters="[0-9]+(m|c)?|all",
 
 module pypsaeur:
     snakefile:
@@ -106,11 +107,11 @@ rule modify_existing_heating:
         "scripts/modify_existing_heating.py"
 
 
-
 use rule add_existing_baseyear from pypsaeur with:
     input:
         **{k: v for k, v in rules.add_existing_baseyear.input.items() if k != "existing_heating"},
 	existing_heating=RESOURCES + "existing_heating.csv",
+
 
 rule build_wasserstoff_kernnetz:
     input:
@@ -142,6 +143,7 @@ rule cluster_wasserstoff_kernnetz:
         clustered_h2_network="resources/wasserstoff_kernnetz_elec_s{simpl}_{clusters}.csv",
     script:
         "scripts/cluster_wasserstoff_kernnetz.py"
+
 
 use rule prepare_sector_network from pypsaeur with:
     input:
