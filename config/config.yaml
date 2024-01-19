@@ -47,22 +47,22 @@ countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'P
 enable:
   retrieve: false # set to false once initial data is retrieved
   retrieve_cutout: false # set to false once initial data is retrieved
-
-focus_weights:
-# 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
-  'DE': 0.3636 # 8/22
-  'AT': 0.0455 # 1/22
-  'BE': 0.0455
-  'CH': 0.0455
-  'CZ': 0.0455
-  'DK': 0.0909 # 2/22
-  'FR': 0.0454
-  'GB': 0.0909 # 2/22
-  'LU': 0.0454
-  'NL': 0.0454
-  'NO': 0.0454
-  'PL': 0.0454
-  'SE': 0.0454
+clustering:
+  focus_weights:
+  # 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
+    'DE': 0.3636 # 8/22
+    'AT': 0.0455 # 1/22
+    'BE': 0.0455
+    'CH': 0.0455
+    'CZ': 0.0455
+    'DK': 0.0909 # 2/22
+    'FR': 0.0454
+    'GB': 0.0909 # 2/22
+    'LU': 0.0454
+    'NL': 0.0454
+    'NO': 0.0454
+    'PL': 0.0454
+    'SE': 0.0454
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:
