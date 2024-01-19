@@ -124,9 +124,9 @@ rule modify_existing_heating:
 
 
 
-use rule add_existing_baseyear from pypsaeur with:
+use rule build_existing_heating_distribution from pypsaeur with:
     input:
-        **{k: v for k, v in rules.add_existing_baseyear.input.items() if k != "existing_heating"},
+        **{k: v for k, v in rules.build_existing_heating_distribution.input.items() if k != "existing_heating"},
 	existing_heating=RESOURCES + "existing_heating.csv",
 
 
