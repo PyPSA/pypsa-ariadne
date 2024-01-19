@@ -107,3 +107,22 @@ use rule add_existing_baseyear from pypsaeur with:
     input:
         **{k: v for k, v in rules.add_existing_baseyear.input.items() if k != "existing_heating"},
 	existing_heating=RESOURCES + "existing_heating.csv",
+
+
+
+rule modify_energy_totals:
+    input:
+        ariadne=RESOURCES + "ariadne_scenario_data.csv",
+        energy_totals=RESOURCES + "energy_totals.csv",
+    output:
+        energy_totals=RESOURCES + "energy_totals-modified.csv",
+    resources:
+        mem_mb=1000
+    script:
+        "scripts/modify_energy_totals.py"
+
+
+use rule build_population_weighted_energy_totals from pypsaeur with:
+    input:
+        **{k: v for k, v in rules.build_population_weighted_energy_totals.input.items() if k != "energy_totals"},
+        energy_totals=RESOURCES + "energy_totals-modified.csv",
