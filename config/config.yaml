@@ -33,12 +33,12 @@ scenario:
   opts:
   - ''
   sector_opts:
-    - 365H-T-H-B-I-A-solar+p3-linemaxext15
+    - 3H-T-H-B-I-A-solar+p3-linemaxext15
   planning_horizons:
   - 2020
-  - 2030
-  - 2040
-  - 2050
+  #  - 2030
+  #- 2040
+  #- 2050
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
 # Germany plus 12 "Stromnachbarn"
@@ -167,7 +167,7 @@ industry:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
 solving:
   walltime: "12:00:00"
-  mem: 200000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
+  mem: 140000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
   options:
     load_shedding: false
 
