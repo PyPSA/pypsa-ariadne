@@ -20,10 +20,6 @@ wildcard_constraints:
     clusters="[0-9]+(m|c)?|all",
 
 
-wildcard_constraints:
-    simpl="[a-zA-Z0-9]*",
-    clusters="[0-9]+(m|c)?|all",
-
 module pypsaeur:
     snakefile:
         "submodules/pypsa-eur/Snakefile"
@@ -117,60 +113,6 @@ use rule add_existing_baseyear from pypsaeur with:
         **{k: v for k, v in rules.add_existing_baseyear.input.items() if k != "existing_heating"},
 	existing_heating=RESOURCES + "existing_heating.csv",
 
-
-use rule solve_sector_network_myopic from pypsaeur with:
-    params:
-        **{k: v for k, v in rules.solve_sector_network_myopic.params.items() if k != "custom_extra_functionality"},
-        custom_extra_functionality=workflow.source_path("scripts/additional_functionality.py"),
-    input:
-        **rules.solve_sector_network_myopic.input,
-        co2_totals_name=RESOURCES + "co2_totals.csv",
-
-
-rule modify_existing_heating:
-    input:
-        ariadne=RESOURCES + "ariadne_scenario_data.csv",
-        existing_heating="data/existing_infrastructure/existing_heating_raw.csv",
-    output:
-        existing_heating=RESOURCES + "existing_heating.csv",
-    resources:
-        mem_mb=1000
-    script:
-        "scripts/modify_existing_heating.py"
-
-
-use rule add_existing_baseyear from pypsaeur with:
-    input:
-        **{k: v for k, v in rules.add_existing_baseyear.input.items() if k != "existing_heating"},
-	existing_heating=RESOURCES + "existing_heating.csv",
-
-
-use rule solve_sector_network_myopic from pypsaeur with:
-    params:
-        **{k: v for k, v in rules.solve_sector_network_myopic.params.items() if k != "custom_extra_functionality"},
-        custom_extra_functionality=workflow.source_path("scripts/additional_functionality.py"),
-    input:
-        **rules.solve_sector_network_myopic.input,
-        co2_totals_name=RESOURCES + "co2_totals.csv",
-
-
-rule modify_existing_heating:
-    input:
-        ariadne=RESOURCES + "ariadne_scenario_data.csv",
-        existing_heating="data/existing_infrastructure/existing_heating_raw.csv",
-    output:
-        existing_heating=RESOURCES + "existing_heating.csv",
-    resources:
-        mem_mb=1000
-    script:
-        "scripts/modify_existing_heating.py"
-
-
-
-use rule add_existing_baseyear from pypsaeur with:
-    input:
-        **{k: v for k, v in rules.add_existing_baseyear.input.items() if k != "existing_heating"},
-	existing_heating=RESOURCES + "existing_heating.csv",
 
 rule build_wasserstoff_kernnetz:
     input:
