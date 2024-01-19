@@ -178,28 +178,6 @@ def force_boiler_profiles_existing(n):
     n.loads["profile_factor_opt"] = 0.
 
 
-def force_boiler_profiles_new(n):
-    """this is equivalent to setting p_min_pu = p_max_pu = load_profile_pu"""
-
-    logger.info("Forcing boiler profiles for new ones")
-
-    decentral_boilers = n.links.index[n.links.carrier.str.contains("boiler")
-                                      & ~n.links.carrier.str.contains("urban central")
-                                      & n.links.p_nom_extendable]
-
-    if decentral_boilers.empty:
-        return
-
-    boiler_loads = n.links.loc[decentral_boilers,"bus1"]
-    boiler_profiles_pu = n.loads_t.p_set[boiler_loads].div(n.loads_t.p_set[boiler_loads].max(),axis=1)
-    boiler_profiles_pu.columns = decentral_boilers
-    boiler_profiles_pu = DataArray(boiler_profiles_pu)
-
-    lhs = n.model["Link-p"].loc[:,decentral_boilers] - boiler_profiles_pu*n.model["Link-p_nom"].loc[decentral_boilers]
-
-    n.model.add_constraints(lhs, "=", 0, "Link-fixed_profile_ext")
-
-
 def additional_functionality(n, snapshots, snakemake):
 
     logger.info("Adding Ariadne-specific functionality")
@@ -211,8 +189,6 @@ def additional_functionality(n, snapshots, snakemake):
     h2_import_limits(n, snapshots, investment_year, snakemake.config)
 
     force_boiler_profiles_existing(n)
-
-    force_boiler_profiles_new(n)
 
     if snakemake.config["sector"]["co2_budget_national"]:
         limit_countries = snakemake.config["co2_budget_national"][investment_year]
