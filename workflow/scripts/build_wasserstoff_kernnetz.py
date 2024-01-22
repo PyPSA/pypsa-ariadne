@@ -176,7 +176,6 @@ def prepare_dataset(df):
         .squeeze()
         .str.replace(",", ".")
         .astype(float)
-        .clip(lower=30)
     )
 
     # clean build_year
@@ -184,8 +183,7 @@ def prepare_dataset(df):
         df.build_year.astype(str)
         .str.extract(r"(\b\d{4}\b)")
         .astype(float)
-        .fillna(2030)
-        .clip(lower=2030)
+        .fillna(2032)
     )
 
     # create bidirectional and set true
