@@ -126,6 +126,11 @@ rule build_wasserstoff_kernnetz:
             keep_local=True,
             static=True,
         ),
+        gadm=HTTP.remote(
+            "https://geodata.ucdavis.edu/gadm/gadm4.1/json/gadm41_DEU_1.json.zip",
+            keep_local=True,
+            static=True
+        ),
         locations="data/wasserstoff_kernnetz/locations_wasserstoff_kernnetz.csv",
     output:
         cleaned_wasserstoff_kernnetz="resources/wasserstoff_kernnetz.csv",
