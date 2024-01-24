@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "240124-365H-fixedboilers"
+  name: "240124-365H-fossilboilerban"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -118,6 +118,9 @@ h2_import_max:
     2030: 20
     2040: 100
     2050: 200
+
+new_decentral_fossil_boiler_ban:
+  DE: 2029
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
