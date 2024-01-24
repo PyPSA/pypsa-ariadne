@@ -27,8 +27,27 @@ def fix_new_boiler_profiles(n):
     boiler_profiles_pu.columns = decentral_boilers
 
     for attr in ["p_min_pu","p_max_pu"]:
-        n.links_t[attr][decentral_boilers] = boiler_profiles_pu
-        print(n.links_t[attr][decentral_boilers])
+        n.links_t[attr] = pd.concat([n.links_t[attr], boiler_profiles_pu],axis=1)
+        logger.info(f"new boiler profiles:\n{n.links_t[attr][decentral_boilers]}")
+
+
+def remove_old_boiler_profiles(n):
+    """Removed because this is handled in additional_functionality.
+    This removes p_min/max_pu constraints added in previous years
+    and carried over by add_brownfield.
+    """
+
+    logger.info("Removing p_min/max_pu constraints on old boiler profiles")
+
+
+    decentral_boilers = n.links.index[n.links.carrier.str.contains("boiler")
+                                      & ~n.links.carrier.str.contains("urban central")
+                                      & ~n.links.p_nom_extendable]
+
+    for attr in ["p_min_pu","p_max_pu"]:
+        to_drop = decentral_boilers.intersection(n.links_t[attr].columns)
+        logger.info(f"Dropping {to_drop} from n.links_t.{attr}")
+        n.links_t[attr].drop(to_drop, axis=1, inplace=True)
 
 
 if __name__ == "__main__":
@@ -39,5 +58,7 @@ if __name__ == "__main__":
     n = pypsa.Network(snakemake.input.network)
 
     fix_new_boiler_profiles(n)
+
+    remove_old_boiler_profiles(n)
 
     n.export_to_netcdf(snakemake.output.network)
