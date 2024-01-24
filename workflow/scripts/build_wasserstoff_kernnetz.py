@@ -20,6 +20,15 @@ from pypsa.geo import haversine_pts
 from shapely import wkt
 from shapely.geometry import LineString, Point
 
+import os
+import sys
+
+paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
+for path in paths:
+    sys.path.insert(0, os.path.abspath(path))
+from build_gas_network import (
+    diameter_to_capacity
+)
 
 MANUAL_ADDRESSES = {
     "Oude Statenzijl": (7.205108658430258, 53.20183834422634),
@@ -45,6 +54,12 @@ MANUAL_ADDRESSES = {
     "Eynatten": (6.083339457526605, 50.69260916361823),
     "Vlieghuis": (6.8382504272201095, 52.66036497820981),
     "Kalle": (6.921180663621839, 52.573992586428425),
+    'Carling': (6.713267207127634, 49.16738919353264),
+    'Legden': (7.099754098013676, 52.03269789265483),
+    'Ledgen': (7.099754098013676, 52.03269789265483),
+    'Reiningen': (8.374879149975513, 52.50849502371421),
+    'Buchholz': (12.929212986885771, 52.15737808332214),
+    'Sandkrug': (8.257391972093515, 53.05387937393471),
 }
 
 
@@ -104,6 +119,7 @@ def load_and_merge_raw(fn1, fn2):
         "Druckstufe (DP)[mind. 30 barg]",
         "Bundesland",
         "Umstellung/ Neubau",
+        "IPCEI-Projekt(ja/ nein)",
     ]
 
     to_rename = {
@@ -113,6 +129,7 @@ def load_and_merge_raw(fn1, fn2):
         "Länge (km)": "length",
         "Druckstufe (DP)[mind. 30 barg]": "max_pressure_bar",
         "Umstellung/ Neubau": "retrofitted",
+        "IPCEI-Projekt(ja/ nein)": "ipcei",
     }
 
     df_fn1 = df_fn1[to_keep].rename(columns=to_rename)
@@ -134,6 +151,7 @@ def load_and_merge_raw(fn1, fn2):
         "Druckstufe (DP)[mind. 30 barg]",
         "Bundesland",
         "retrofitted",
+        "IPCEI-Projekt(Name/ nein)",
     ]
 
     to_rename = {
@@ -142,6 +160,7 @@ def load_and_merge_raw(fn1, fn2):
         "Nenndurchmesser (DN)": "diameter_mm",
         "Länge (km)": "length",
         "Druckstufe (DP)[mind. 30 barg]": "max_pressure_bar",
+        "IPCEI-Projekt(Name/ nein)" : "ipcei",
     }
 
     df_fn2_new["retrofitted"] = False
@@ -197,6 +216,9 @@ def prepare_dataset(df):
 
     # calc capa
     df["p_nom"] = df.diameter_mm.apply(diameter_to_capacity_h2)
+
+    # eliminated gas capa from retrofitted pipes
+    df["gas_cap"] = df.diameter_mm.apply(diameter_to_capacity)
 
     # eliminate leading and trailing spaces
     df["Anfangspunkt(Ort)"] = df["Anfangspunkt(Ort)"].str.strip()

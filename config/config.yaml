@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "wasserstoff_kernnetz_test"
+  name: "wkn_refine_1"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating

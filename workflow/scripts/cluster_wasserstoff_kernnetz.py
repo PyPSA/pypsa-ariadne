@@ -25,7 +25,6 @@ for path in paths:
 from cluster_gas_network import (
     load_bus_regions,
     reindex_pipes,
-    aggregate_parallel_pipes,
     build_clustered_gas_network,
 )
 
@@ -122,6 +121,22 @@ def divide_pipes(df, segment_length=10):
             result.loc[f"{index}-{i}"] = res_row
 
     return result
+
+def aggregate_parallel_pipes(df):
+    strategies = {
+        "bus0": "first",
+        "bus1": "first",
+        "p_nom": "sum",
+        "p_nom_diameter": "sum",
+        "max_pressure_bar": "mean",
+        "build_year": "mean",
+        "diameter_mm": "mean",
+        "length": "mean",
+        "name": " ".join,
+        "p_min_pu": "min",
+        "gas_cap": "sum",
+    }
+    return df.groupby(df.index).agg(strategies)
 
 
 if __name__ == "__main__":
