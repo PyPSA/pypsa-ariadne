@@ -52,21 +52,30 @@ def remove_old_boiler_profiles(n):
 
 def new_boiler_ban(n):
 
-    logger.info(f"Implementing ban on new decentral gas & oil boilers (if there are any)")
-
     year = int(snakemake.wildcards.planning_horizons)
-
-    logger.info(f"Current year is {year}")
 
     for ct in snakemake.config["new_decentral_fossil_boiler_ban"]:
         ban_year = int(snakemake.config["new_decentral_fossil_boiler_ban"][ct])
-        logger.info(f"{ct} has a new gas/oil boiler ban from {ban_year}")
         if ban_year < year:
-            logger.info(f"Implementing ban in this network")
+            logger.info(f"For year {year} in {ct} implementing ban on new decentral oil & gas boilers from {ban_year}")
             links = n.links.index[(n.links.index.str[:2] == ct) & (n.links.index.str.contains("gas boiler") ^ n.links.index.str.contains("oil boiler")) & n.links.p_nom_extendable & ~n.links.index.str.contains("urban central")]
             logger.info(f"Dropping {links}")
             n.links.drop(links,
                          inplace=True)
+
+def coal_generation_ban(n):
+
+    year = int(snakemake.wildcards.planning_horizons)
+
+    for ct in snakemake.config["coal_generation_ban"]:
+        ban_year = int(snakemake.config["coal_generation_ban"][ct])
+        if ban_year < year:
+            logger.info(f"For year {year} in {ct} implementing coal and lignite ban from {ban_year}")
+            links = n.links.index[(n.links.index.str[:2] == ct) & n.links.carrier.isin(["coal","lignite"])]
+            logger.info(f"Dropping {links}")
+            n.links.drop(links,
+                         inplace=True)
+
 
 if __name__ == "__main__":
 
@@ -80,5 +89,7 @@ if __name__ == "__main__":
     fix_new_boiler_profiles(n)
 
     remove_old_boiler_profiles(n)
+
+    coal_generation_ban(n)
 
     n.export_to_netcdf(snakemake.output.network)

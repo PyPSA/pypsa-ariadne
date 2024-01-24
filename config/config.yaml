@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "240124-365H-fossilboilerban"
+  name: "240124-365H-coalexit"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -121,6 +121,10 @@ h2_import_max:
 
 new_decentral_fossil_boiler_ban:
   DE: 2029
+
+coal_generation_ban:
+  DE: 2038
+
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
