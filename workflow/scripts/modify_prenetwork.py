@@ -50,12 +50,32 @@ def remove_old_boiler_profiles(n):
         n.links_t[attr].drop(to_drop, axis=1, inplace=True)
 
 
+def new_boiler_ban(n):
+
+    logger.info(f"Implementing ban on new decentral gas & oil boilers (if there are any)")
+
+    year = int(snakemake.wildcards.planning_horizons)
+
+    logger.info(f"Current year is {year}")
+
+    for ct in snakemake.config["new_decentral_fossil_boiler_ban"]:
+        ban_year = int(snakemake.config["new_decentral_fossil_boiler_ban"][ct])
+        logger.info(f"{ct} has a new gas/oil boiler ban from {ban_year}")
+        if ban_year < year:
+            logger.info(f"Implementing ban in this network")
+            links = n.links.index[(n.links.index.str[:2] == ct) & (n.links.index.str.contains("gas boiler") ^ n.links.index.str.contains("oil boiler")) & n.links.p_nom_extendable & ~n.links.index.str.contains("urban central")]
+            logger.info(f"Dropping {links}")
+            n.links.drop(links,
+                         inplace=True)
+
 if __name__ == "__main__":
 
     logger.info("Adding Ariadne-specific functionality")
 
 
     n = pypsa.Network(snakemake.input.network)
+
+    new_boiler_ban(n)
 
     fix_new_boiler_profiles(n)
 
