@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "240124-365H-coalexit"
+  name: "240129-365H-moreexisting"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
