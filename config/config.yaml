@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "240129-365H-moreexisting"
+  name: "240129-365H-clusterheatbuses"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -142,6 +142,7 @@ sector:
   regional_methanol_demand: true  #set to true if regional CO2 constraints needed
   regional_oil_demand: true  #set to true if regional CO2 constraints needed
   biogas_upgrading_cc: true
+  cluster_heat_buses: true
   # this needs to be taken from ariadne database
   reduce_space_heat_exogenously_factor:
     2020: 0.0
