@@ -109,7 +109,13 @@ def add_co2limit_country(n, limit_countries, snakemake):
 
         for port in [col[3:] for col in n.links if col.startswith("bus")]:
 
-            links = n.links.index[(n.links.index.str[:2] == ct) & (n.links[f"bus{port}"] == "co2 atmosphere")]
+            # todo need to include domestic shipping by only excluding international shipping
+            links = n.links.index[(n.links.index.str[:2] == ct)
+                                  & (n.links[f"bus{port}"] == "co2 atmosphere")
+                                  & ~(n.links.carrier == "kerosene for aviation international")
+                                  & ~(n.links.carrier.str.contains("shipping"))]
+
+            logger.info(f"For {ct} adding following link carriers to port {port} CO2 constraint: {n.links.loc[links,'carrier'].unique()}")
 
             if port == "0":
                 efficiency = -1.
@@ -118,12 +124,7 @@ def add_co2limit_country(n, limit_countries, snakemake):
             else:
                 efficiency = n.links.loc[links, f"efficiency{port}"]
 
-            international_factor = pd.Series(1., index=links)
-            # TODO: move to config
-            international_factor[links.str.contains("shipping oil")] = 0.4
-            international_factor[links.str.contains("kerosene for aviation")] = 0.4
-
-            lhs.append((n.model["Link-p"].loc[:, links]*efficiency*international_factor*n.snapshot_weightings.generators).sum())
+            lhs.append((n.model["Link-p"].loc[:, links]*efficiency*n.snapshot_weightings.generators).sum())
 
         lhs = sum(lhs)
 
