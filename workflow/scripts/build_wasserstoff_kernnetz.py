@@ -222,7 +222,8 @@ def prepare_dataset(df):
     df["p_nom"] = df.diameter_mm.apply(diameter_to_capacity_h2)
 
     # eliminated gas capa from retrofitted pipes
-    df["gas_cap"] = df.diameter_mm.apply(diameter_to_capacity)
+    df["removed_gas_cap"] = df.diameter_mm.apply(diameter_to_capacity)
+    df[df.retrofitted == False]["removed_gas_cap"] == 0
 
     # eliminate leading and trailing spaces
     df["Anfangspunkt(Ort)"] = df["Anfangspunkt(Ort)"].str.strip()

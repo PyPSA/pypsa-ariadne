@@ -134,7 +134,7 @@ def aggregate_parallel_pipes(df):
         "length": "mean",
         "name": " ".join,
         "p_min_pu": "min",
-        "gas_cap": "sum",
+        "removed_gas_cap": "sum",
     }
     return df.groupby(df.index).agg(strategies)
 
@@ -177,7 +177,7 @@ if __name__ == "__main__":
         wasserstoff_kernnetz[["bus0", "bus1"]].apply(sorted, axis=1).apply(pd.Series)
     )
 
-    reindex_pipes(wasserstoff_kernnetz, prefix="h2 pipeline")
+    reindex_pipes(wasserstoff_kernnetz, prefix="H2 pipeline")
 
     wasserstoff_kernnetz["p_min_pu"] = 0
     wasserstoff_kernnetz["p_nom_diameter"] = 0
