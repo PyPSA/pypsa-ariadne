@@ -16,8 +16,6 @@ iiasa_database:
   model_name: Hybrid
   scenario: 8Gt_EnSec
   region: Deutschland
-  username: ensys.tu-berlin
-  password: _R.MnTUCU(HnCpK849PXjJ4Gh
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
 foresight: myopic
