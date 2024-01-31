@@ -102,9 +102,9 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
     else:
         last_investment_year = 2015
 
+    wkn_all = wkn.copy()
     # use only pipes which are present between the current year and the last investment period
     wkn.query("build_year > @last_investment_year & build_year <= @investment_year", inplace=True)
-    gas_pipes = n.links[(n.links.carrier == "gas pipeline")][["bus0", "bus1", "p_nom"]]
 
     if not wkn.empty:
 
@@ -135,28 +135,76 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
             n.links.loc[(n.links.carrier == "H2 pipeline") & n.links.p_nom_extendable,"p_nom_extendable"] = n.links.loc[(n.links.carrier == "H2 pipeline") & n.links.p_nom_extendable,:].apply(lambda row: False if (row.bus0[:2] == "DE") & (row.bus1[:2] == "DE") else True, axis=1)
 
         # from 2030 onwards  all pipes are extendable (except from the ones the model build up before and the kernnetz lines)
+            
+        # add reversed pipes
+        def add_reversed_pipes(df):
+            df_rev = df.copy()
+            df_rev.index = df_rev.index + "_rev"
+            df_rev["bus0"] = df.bus1.values
+            df_rev["bus1"] = df.bus0.values
+            result = pd.concat([df,df_rev])
+            return result
+            
+        def reduce_capacity(df, pipes, carrier, origin="removed_gas_cap", target="p_nom", efficiency=1):
+            """
+            Reduce the capacity of pipes in a dataframe based on specified criteria.
 
-        # reduce the gas network capacity of retrofitted lines
-        for i, pipe in wkn.iterrows():
-            cut = pipe.removed_gas_cap
-            match_i = 0
-            while cut > 0:
-                match = gas_pipes[(gas_pipes.bus0 == pipe.bus0 + " gas") & (gas_pipes.bus1 == pipe.bus1 + " gas")]
-                if (match.empty) | (match_i >= len(match)):
-                    break
+            Args:
+                df (DataFrame): The input dataframe containing the pipe data to be modified.
+                pipes (DataFrame): The dataframe containing the data how to midify.
+                carrier (str): The carrier of the pipes.
+                origin (str, optional): The column name in `df` representing the original capacity of the pipes. Defaults to "removed_gas_cap".
+                target (str, optional): The column name in `df` representing the target capacity to be modified. Defaults to "p_nom".
+                efficiency (float, optional): The efficiency factor to reduce the capacity. Defaults to 1.
 
-                p_nom = match.iloc[match_i]['p_nom']
-                if p_nom <= cut:
-                    gas_pipes.loc[match.index[match_i], 'p_nom'] -= p_nom
-                    cut -= p_nom
-                    match_i += 1
-                else:
-                    gas_pipes.loc[match.index[match_i], 'p_nom'] -= cut
-                    cut = 0
-                    match_i += 1
+            Returns:
+                DataFrame: The modified dataframe with reduced pipe capacities.
+            """
 
-        # assign reduced p_nom for gas pipelines
-        n.links.loc[(n.links.carrier == "gas pipeline"),"p_nom"] = gas_pipes["p_nom"]
+            result = df.copy()
+
+            for i, pipe in pipes.iterrows():
+                cut = pipe[origin] * efficiency
+                match_i = 0
+                while cut > 0:
+                    match = result[(result.bus0 == pipe.bus0 + " " + carrier) & (result.bus1 == pipe.bus1 + " " + carrier)]
+                    if (match.empty) | (match_i >= len(match)):
+                        break
+                    target_value = match.iloc[match_i][target]
+                    if target_value <= cut:
+                        result.loc[match.index[match_i], target] -= target_value
+                        cut -= target_value
+                        match_i += 1
+                    else:
+                        result.loc[match.index[match_i], target] -= cut
+                        cut = 0
+                        match_i += 1
+            return result
+
+        # reduce the gas network capacity of retrofitted lines from kernnetz which is build in the current period
+        if snakemake.config["sector"]["gas_network"]:
+
+            gas_pipes = n.links[(n.links.carrier == "gas pipeline")][["bus0", "bus1", "p_nom"]].copy()
+            res_gas_pipes = reduce_capacity(gas_pipes, 
+                                            add_reversed_pipes(wkn), 
+                                            carrier="gas", 
+                                            origin="removed_gas_cap", 
+                                            target="p_nom", 
+                                            efficiency=1)
+            n.links.loc[(n.links.carrier == "gas pipeline"),"p_nom"] = res_gas_pipes["p_nom"]
+
+        # reduce H2 retrofitting potential from gas network for all kernnetz pipelines which are being build in total (more conservative approach)
+        if snakemake.config["sector"]["H2_retrofit"]:
+
+            h2_pipes_retrofitted = n.links[(n.links.carrier == "H2 pipeline retrofitted") & (n.links.index.str.contains(str(investment_year)))][["bus0", "bus1", "p_nom_max"]].copy()
+            res_h2_pipes_retrofitted = reduce_capacity(h2_pipes_retrofitted, 
+                                                       add_reversed_pipes(wkn_all), 
+                                                       carrier="H2", 
+                                                       origin="removed_gas_cap", 
+                                                       target="p_nom_max", 
+                                                       efficiency=snakemake.config["sector"]["H2_retrofit_capacity_per_CH4"])
+            n.links.loc[(n.links.carrier == "H2 pipeline retrofitted") & (n.links.index.str.contains(str(investment_year))), "p_nom_max"] = res_h2_pipes_retrofitted["p_nom_max"]
+
 
 if __name__ == "__main__":
 
