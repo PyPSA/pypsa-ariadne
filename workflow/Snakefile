@@ -1,6 +1,10 @@
-# SPDX-FileCopyrightText: : 2017-2023 The PyPSA-Eur Authors
+# SPDX-FileCopyrightText: : 2017-2024 The PyPSA-Eur Authors
 #
 # SPDX-License-Identifier: MIT
+
+from snakemake.remote.HTTP import RemoteProvider as HTTPRemoteProvider
+
+HTTP = HTTPRemoteProvider()
 
 configfile: "workflow/submodules/pypsa-eur/config/config.default.yaml"
 configfile: "config/config.yaml"
@@ -122,6 +126,23 @@ rule modify_existing_heating:
     script:
         "scripts/modify_existing_heating.py"
 
+
+rule build_existing_chp_de:
+    input:
+        mastr=HTTP.remote(
+            "https://zenodo.org/records/8225106/files/bnetza_open_mastr_2023-08-08_B.zip?download=1",
+            keep_local=True,
+            static=True,
+        ),
+        plz_mapping=HTTP.remote(
+            "https://files.pythonhosted.org/packages/df/70/275ba06974a03080f15536860e4a576cf43bf2c7262367e8e6e08d26c1c2/pyGeoDb-1.3.tar.gz",
+            keep_local=True,
+            static=True,
+        )
+    output:
+        german_chp=RESOURCES + "german_chp.csv",
+    script:
+        "scripts/build_existing_chp_de.py"
 
 
 use rule build_existing_heating_distribution from pypsaeur with:
