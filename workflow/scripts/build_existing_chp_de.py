@@ -124,7 +124,7 @@ def clean_data(combustion, biomass, geodata):
     CHP_sel.loc[CHP_sel["DateOut"].notnull(), "DateOut"] = CHP_sel.loc[CHP_sel["DateOut"].notnull(), "DateOut"].str[:4].astype(int)
 
     # get location from PLZ
-    CHP_sel.loc[:, 'lat'], CHP_sel.loc[:, 'lon'] = zip(*CHP_sel['Postleitzahl'].map(lambda x: geodata.get('DE', {}).get(x, (None, None))))
+    CHP_sel.loc[:, 'lon'], CHP_sel.loc[:, 'lat'] = zip(*CHP_sel['Postleitzahl'].map(lambda x: geodata.get('DE', {}).get(x, (None, None))))
 
     fueltype = {
         "Erdgas": "Natural Gas",
@@ -173,12 +173,12 @@ def clean_data(combustion, biomass, geodata):
         return [0, 0, 0]
     
     CHP_sel_empty_lat = CHP_sel[CHP_sel['lat'].isnull()]
-    CHP_sel_empty_lat.loc[:, 'lat'] = CHP_sel_empty_lat['Postleitzahl'].apply(lambda plz: lookup_geodata(plz, geodata)[0])
-    CHP_sel_empty_lat.loc[:, 'lon'] = CHP_sel_empty_lat['Postleitzahl'].apply(lambda plz: lookup_geodata(plz, geodata)[1])
+    CHP_sel_empty_lat.loc[:, 'lon'] = CHP_sel_empty_lat['Postleitzahl'].apply(lambda plz: lookup_geodata(plz, geodata)[0])
+    CHP_sel_empty_lat.loc[:, 'lat'] = CHP_sel_empty_lat['Postleitzahl'].apply(lambda plz: lookup_geodata(plz, geodata)[1])
     CHP_sel.update(CHP_sel_empty_lat)
-
+    
     CHP_sel = CHP_sel.drop(columns=['Postleitzahl'])
-
+    CHP_sel = CHP_sel[['Name', 'Fueltype', 'Technology', 'Set', 'Country', 'Capacity', 'Efficiency', 'DateIn', 'DateOut', 'lat', 'lon', 'Capacity_thermal']]
     return CHP_sel
 
 def calculate_efficiency(CHP_de):
