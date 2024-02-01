@@ -111,6 +111,8 @@ def add_co2limit_country(n, limit_countries, snakemake):
 
             links = n.links.index[(n.links.index.str[:2] == ct) & (n.links[f"bus{port}"] == "co2 atmosphere")]
 
+            logger.info(f"For {ct} adding following link carriers to port {port} CO2 constraint: {n.links.loc[links,'carrier'].unique()}")
+
             if port == "0":
                 efficiency = -1.
             elif port == "1":
@@ -118,12 +120,7 @@ def add_co2limit_country(n, limit_countries, snakemake):
             else:
                 efficiency = n.links.loc[links, f"efficiency{port}"]
 
-            international_factor = pd.Series(1., index=links)
-            # TODO: move to config
-            international_factor[links.str.contains("shipping oil")] = 0.4
-            international_factor[links.str.contains("kerosene for aviation")] = 0.4
-
-            lhs.append((n.model["Link-p"].loc[:, links]*efficiency*international_factor*n.snapshot_weightings.generators).sum())
+            lhs.append((n.model["Link-p"].loc[:, links]*efficiency*n.snapshot_weightings.generators).sum())
 
         lhs = sum(lhs)
 
