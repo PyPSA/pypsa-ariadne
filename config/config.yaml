@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "240129-365H-aviationsep"
+  name: "240129-365H-clusterheatbuses"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
