@@ -109,7 +109,13 @@ def add_co2limit_country(n, limit_countries, snakemake):
 
         for port in [col[3:] for col in n.links if col.startswith("bus")]:
 
-            links = n.links.index[(n.links.index.str[:2] == ct) & (n.links[f"bus{port}"] == "co2 atmosphere")]
+            # todo need to include domestic shipping by only excluding international shipping
+            links = n.links.index[(n.links.index.str[:2] == ct)
+                                  & (n.links[f"bus{port}"] == "co2 atmosphere")
+                                  & ~(n.links.carrier == "kerosene for aviation international")
+                                  & ~(n.links.carrier.str.contains("shipping"))]
+
+            logger.info(f"For {ct} adding following link carriers to port {port} CO2 constraint: {n.links.loc[links,'carrier'].unique()}")
 
             if port == "0":
                 efficiency = -1.
@@ -118,12 +124,7 @@ def add_co2limit_country(n, limit_countries, snakemake):
             else:
                 efficiency = n.links.loc[links, f"efficiency{port}"]
 
-            international_factor = pd.Series(1., index=links)
-            # TODO: move to config
-            international_factor[links.str.contains("shipping oil")] = 0.4
-            international_factor[links.str.contains("kerosene for aviation")] = 0.4
-
-            lhs.append((n.model["Link-p"].loc[:, links]*efficiency*international_factor*n.snapshot_weightings.generators).sum())
+            lhs.append((n.model["Link-p"].loc[:, links]*efficiency*n.snapshot_weightings.generators).sum())
 
         lhs = sum(lhs)
 
@@ -142,7 +143,7 @@ def add_co2limit_country(n, limit_countries, snakemake):
             carrier_attribute="",
         )
 
-def force_boiler_profiles_existing(n):
+def force_boiler_profiles_existing_per_load(n):
     """this scales the boiler dispatch to the load profile with a factor common to all boilers at load"""
 
     logger.info("Forcing boiler profiles for existing ones")
@@ -178,6 +179,36 @@ def force_boiler_profiles_existing(n):
     n.loads["profile_factor_opt"] = 0.
 
 
+def force_boiler_profiles_existing_per_boiler(n):
+    """this scales each boiler dispatch to be proportional to the load profile"""
+
+    logger.info("Forcing each existing boiler dispatch to be proportional to the load profile")
+
+    decentral_boilers = n.links.index[n.links.carrier.str.contains("boiler")
+                                      & ~n.links.carrier.str.contains("urban central")
+                                      & ~n.links.p_nom_extendable]
+
+    if decentral_boilers.empty:
+        return
+
+    boiler_loads = n.links.loc[decentral_boilers,"bus1"]
+    boiler_profiles_pu = n.loads_t.p_set[boiler_loads].div(n.loads_t.p_set[boiler_loads].max(),axis=1)
+    boiler_profiles_pu.columns = decentral_boilers
+    boiler_profiles = DataArray(boiler_profiles_pu.multiply(n.links.loc[decentral_boilers,"p_nom"],axis=1))
+
+    #will be per unit
+    n.model.add_variables(coords=[decentral_boilers], name="Link-fixed_profile_scaling")
+
+    lhs = (1, n.model["Link-p"].loc[:,decentral_boilers]), (-boiler_profiles, n.model["Link-fixed_profile_scaling"])
+
+    n.model.add_constraints(lhs, "=", 0, "Link-fixed_profile_scaling")
+
+    # hack so that PyPSA doesn't complain there is nowhere to store the variable
+    n.links["fixed_profile_scaling_opt"] = 0.
+
+
+
+
 def additional_functionality(n, snapshots, snakemake):
 
     logger.info("Adding Ariadne-specific functionality")
@@ -188,7 +219,8 @@ def additional_functionality(n, snapshots, snakemake):
 
     h2_import_limits(n, snapshots, investment_year, snakemake.config)
 
-    force_boiler_profiles_existing(n)
+    #force_boiler_profiles_existing_per_load(n)
+    force_boiler_profiles_existing_per_boiler(n)
 
     if snakemake.config["sector"]["co2_budget_national"]:
         limit_countries = snakemake.config["co2_budget_national"][investment_year]

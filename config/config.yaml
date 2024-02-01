@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "wkn_refine_gas_retrofit"
+  name: "240129-365H-aviationsep"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -48,22 +48,6 @@ countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'P
 enable:
   retrieve: false # set to false once initial data is retrieved
   retrieve_cutout: false # set to false once initial data is retrieved
-clustering:
-  focus_weights:
-  # 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
-    'DE': 0.3636 # 8/22
-    'AT': 0.0455 # 1/22
-    'BE': 0.0455
-    'CH': 0.0455
-    'CZ': 0.0455
-    'DK': 0.0909 # 2/22
-    'FR': 0.0454
-    'GB': 0.0909 # 2/22
-    'LU': 0.0454
-    'NL': 0.0454
-    'NO': 0.0454
-    'PL': 0.0454
-    'SE': 0.0454
 clustering:
   focus_weights:
   # 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
@@ -164,6 +148,7 @@ sector:
   regional_methanol_demand: true  #set to true if regional CO2 constraints needed
   regional_oil_demand: true  #set to true if regional CO2 constraints needed
   biogas_upgrading_cc: true
+  cluster_heat_buses: true
   # this needs to be taken from ariadne database
   reduce_space_heat_exogenously_factor:
     2020: 0.0
@@ -173,8 +158,6 @@ sector:
     2040: 0.22
     2045: 0.25
     2050: 0.35
-  gas_network: true
-  H2_retrofit: true
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#industry
 industry:
