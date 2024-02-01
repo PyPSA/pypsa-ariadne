@@ -88,6 +88,51 @@ def coal_generation_ban(n):
                          inplace=True)
 
 def add_wasserstoff_kernnetz(n, wkn, costs):
+           
+    # add reversed pipes
+    def add_reversed_pipes(df):
+        df_rev = df.copy()
+        df_rev.index = df_rev.index + "_rev"
+        df_rev["bus0"] = df.bus1.values
+        df_rev["bus1"] = df.bus0.values
+        result = pd.concat([df,df_rev])
+        return result
+        
+    def reduce_capacity(df, pipes, carrier, origin="removed_gas_cap", target="p_nom", efficiency=1):
+        """
+        Reduce the capacity of pipes in a dataframe based on specified criteria.
+
+        Args:
+            df (DataFrame): The input dataframe containing the pipe data to be modified.
+            pipes (DataFrame): The dataframe containing the data how to midify.
+            carrier (str): The carrier of the pipes.
+            origin (str, optional): The column name in `df` representing the original capacity of the pipes. Defaults to "removed_gas_cap".
+            target (str, optional): The column name in `df` representing the target capacity to be modified. Defaults to "p_nom".
+            efficiency (float, optional): The efficiency factor to reduce the capacity. Defaults to 1.
+
+        Returns:
+            DataFrame: The modified dataframe with reduced pipe capacities.
+        """
+
+        result = df.copy()
+
+        for i, pipe in pipes.iterrows():
+            cut = pipe[origin] * efficiency
+            match_i = 0
+            while cut > 0:
+                match = result[(result.bus0 == pipe.bus0 + " " + carrier) & (result.bus1 == pipe.bus1 + " " + carrier)]
+                if (match.empty) | (match_i >= len(match)):
+                    break
+                target_value = match.iloc[match_i][target]
+                if target_value <= cut:
+                    result.loc[match.index[match_i], target] -= target_value
+                    cut -= target_value
+                    match_i += 1
+                else:
+                    result.loc[match.index[match_i], target] -= cut
+                    cut = 0
+                    match_i += 1
+        return result
 
     logger.info("adding wasserstoff kernnetz")
 
@@ -130,57 +175,6 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
         # reverte carrier change
         n.links.loc[n.links.carrier == "H2 pipeline (kernnetz)", "carrier"] = "H2 pipeline"
 
-        if investment_year <= 2030:
-            # assume that only pipelines from kernnetz are build (within Germany): make pipes within Germany not extendable and all others extendable (but only from current year)
-            n.links.loc[(n.links.carrier == "H2 pipeline") & n.links.p_nom_extendable,"p_nom_extendable"] = n.links.loc[(n.links.carrier == "H2 pipeline") & n.links.p_nom_extendable,:].apply(lambda row: False if (row.bus0[:2] == "DE") & (row.bus1[:2] == "DE") else True, axis=1)
-
-        # from 2030 onwards  all pipes are extendable (except from the ones the model build up before and the kernnetz lines)
-            
-        # add reversed pipes
-        def add_reversed_pipes(df):
-            df_rev = df.copy()
-            df_rev.index = df_rev.index + "_rev"
-            df_rev["bus0"] = df.bus1.values
-            df_rev["bus1"] = df.bus0.values
-            result = pd.concat([df,df_rev])
-            return result
-            
-        def reduce_capacity(df, pipes, carrier, origin="removed_gas_cap", target="p_nom", efficiency=1):
-            """
-            Reduce the capacity of pipes in a dataframe based on specified criteria.
-
-            Args:
-                df (DataFrame): The input dataframe containing the pipe data to be modified.
-                pipes (DataFrame): The dataframe containing the data how to midify.
-                carrier (str): The carrier of the pipes.
-                origin (str, optional): The column name in `df` representing the original capacity of the pipes. Defaults to "removed_gas_cap".
-                target (str, optional): The column name in `df` representing the target capacity to be modified. Defaults to "p_nom".
-                efficiency (float, optional): The efficiency factor to reduce the capacity. Defaults to 1.
-
-            Returns:
-                DataFrame: The modified dataframe with reduced pipe capacities.
-            """
-
-            result = df.copy()
-
-            for i, pipe in pipes.iterrows():
-                cut = pipe[origin] * efficiency
-                match_i = 0
-                while cut > 0:
-                    match = result[(result.bus0 == pipe.bus0 + " " + carrier) & (result.bus1 == pipe.bus1 + " " + carrier)]
-                    if (match.empty) | (match_i >= len(match)):
-                        break
-                    target_value = match.iloc[match_i][target]
-                    if target_value <= cut:
-                        result.loc[match.index[match_i], target] -= target_value
-                        cut -= target_value
-                        match_i += 1
-                    else:
-                        result.loc[match.index[match_i], target] -= cut
-                        cut = 0
-                        match_i += 1
-            return result
-
         # reduce the gas network capacity of retrofitted lines from kernnetz which is build in the current period
         if snakemake.config["sector"]["gas_network"]:
 
@@ -193,6 +187,8 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
                                             efficiency=1)
             n.links.loc[(n.links.carrier == "gas pipeline"),"p_nom"] = res_gas_pipes["p_nom"]
 
+    if not wkn_all.empty:
+        
         # reduce H2 retrofitting potential from gas network for all kernnetz pipelines which are being build in total (more conservative approach)
         if snakemake.config["sector"]["H2_retrofit"]:
 
@@ -204,6 +200,12 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
                                                        target="p_nom_max", 
                                                        efficiency=snakemake.config["sector"]["H2_retrofit_capacity_per_CH4"])
             n.links.loc[(n.links.carrier == "H2 pipeline retrofitted") & (n.links.index.str.contains(str(investment_year))), "p_nom_max"] = res_h2_pipes_retrofitted["p_nom_max"]
+
+    if investment_year <= 2030:
+        # assume that only pipelines from kernnetz are build (within Germany): make pipes within Germany not extendable and all others extendable (but only from current year)
+        n.links.loc[(n.links.carrier == "H2 pipeline") & n.links.p_nom_extendable,"p_nom_extendable"] = n.links.loc[(n.links.carrier == "H2 pipeline") & n.links.p_nom_extendable,:].apply(lambda row: False if (row.bus0[:2] == "DE") & (row.bus1[:2] == "DE") else True, axis=1)
+    
+    # from 2030 onwards  all pipes are extendable (except from the ones the model build up before and the kernnetz lines)
 
 
 if __name__ == "__main__":

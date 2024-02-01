@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "wkn_refine_1"
+  name: "wkn_refine_gas_retrofit"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -148,13 +148,6 @@ new_decentral_fossil_boiler_ban:
 coal_generation_ban:
   DE: 2038
 
-
-wasserstoff_kernnetz:
-  enable: true
-  reload_locations: false
-  divide_pipes: false
-  pipes_segment_length: 10
-
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
   district_heating:
@@ -180,6 +173,8 @@ sector:
     2040: 0.22
     2045: 0.25
     2050: 0.35
+  gas_network: true
+  H2_retrofit: true
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#industry
 industry:
