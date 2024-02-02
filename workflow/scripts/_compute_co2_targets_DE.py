@@ -46,7 +46,7 @@ ghg_ksg = (
 
 nonco2 = ghg_ksg - co2_ksg
 
-## PyPSA disregards nonco2 GHG emissions
+## PyPSA disregards nonco2 GHG emissions, but includes bunkers
 
 targets_pypsa = (
     targets_ksg - nonco2 
