@@ -55,10 +55,10 @@ targets_pypsa = (
 
 target_fractions_pypsa = (
     targets_pypsa.loc[targets_ksg.index] / baseline_pypsa
-)
+).round(2)
 
-print(
-    "PyPSA emission pathway for DE:\n", 
-    target_fractions_pypsa.round(2), 
-    sep="",
-)
+print("co2_budget_national:")
+
+for year in target_fractions_pypsa.index:
+    print("  ", year, ":", sep="")
+    print("    DE:", target_fractions_pypsa[year] )
