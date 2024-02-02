@@ -54,7 +54,7 @@ targets_pypsa = (
 )
 
 target_fractions_pypsa = (
-    targets_pypsa.loc[[2020, 2030, 2040, 2050]] / baseline_pypsa
+    targets_pypsa.loc[targets_ksg.index] / baseline_pypsa
 )
 
 print(
