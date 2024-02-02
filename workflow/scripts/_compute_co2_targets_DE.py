@@ -16,7 +16,7 @@ baseline_ksg = 1251
 baseline_pypsa = 1052
 
 ## GHG target according to KSG
-initial_years2030_ksg = pd.Series(
+initial_years_ksg = pd.Series(
     index = [2020, 2025, 2030],
     data = [813, 643, 438],
 )
@@ -27,7 +27,7 @@ later_years_ksg = pd.Series(
 )
 
 targets_ksg = pd.concat(
-    [initial_years2030_ksg, (1 - later_years_ksg) * baseline_ksg],
+    [initial_years_ksg, (1 - later_years_ksg) * baseline_ksg],
 )
 
 ## Compute nonco2 from Ariadne-Hybrid model
