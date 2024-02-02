@@ -76,19 +76,19 @@ co2_budget:
 
 co2_budget_national:
   2020:
-    DE: 0.73
+    DE: 0.728
   2025:
-    DE: 0.57
+    DE: 0.571
   2030:
-    DE: 0.4
+    DE: 0.396
   2035:
-    DE: 0.26
+    DE: 0.258
   2040:
-    DE: 0.12
+    DE: 0.118
   2045:
-    DE: -0.03
+    DE: -0.028
   2050:
-    DE: -0.02
+    DE: -0.024
 
 limits_min:
   Generator:
