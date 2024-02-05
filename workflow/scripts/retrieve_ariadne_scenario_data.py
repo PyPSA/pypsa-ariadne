@@ -2,8 +2,7 @@
 
 import pyam
 
-pyam.iiasa.set_config(snakemake.config["iiasa_database"]["username"],
-                      snakemake.config["iiasa_database"]["password"])
+pyam.iiasa.set_config(snakemake.params.iiasa_usr, snakemake.params.iiasa_pwd)
 
 
 model_raw = pyam.read_iiasa(snakemake.config["iiasa_database"]["db_name"],
