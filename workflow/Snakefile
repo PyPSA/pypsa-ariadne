@@ -11,6 +11,9 @@ RDIR = run["name"] + "/" if run.get("name") else ""
 RESOURCES = "resources/" + RDIR if not run.get("shared_resources") else "resources/"
 RESULTS = "results/" + RDIR
 
+envvars:
+    "IIASA_USERNAME",
+    "IIASA_PASSWORD"
 
 wildcard_constraints:
     simpl="[a-zA-Z0-9]*",
@@ -59,7 +62,8 @@ rule clean:
 
 rule retrieve_ariadne_scenario_data:
     params:
-        iiasa=config["iiasa_database"]
+        iiasa_usr=os.environ["IIASA_USERNAME"],
+        iiasa_pwd=os.environ["IIASA_PASSWORD"]
     output:
         data=RESOURCES + "ariadne_scenario_data.csv"
     log:
