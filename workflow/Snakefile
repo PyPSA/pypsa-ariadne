@@ -11,6 +11,9 @@ RDIR = run["name"] + "/" if run.get("name") else ""
 RESOURCES = "resources/" + RDIR if not run.get("shared_resources") else "resources/"
 RESULTS = "results/" + RDIR
 
+envvars:
+    "IIASA_USERNAME",
+    "IIASA_PASSWORD"
 
 wildcard_constraints:
     simpl="[a-zA-Z0-9]*",
@@ -59,7 +62,8 @@ rule clean:
 
 rule retrieve_ariadne_scenario_data:
     params:
-        iiasa=config["iiasa_database"]
+        iiasa_usr=os.environ["IIASA_USERNAME"],
+        iiasa_pwd=os.environ["IIASA_PASSWORD"]
     output:
         data=RESOURCES + "ariadne_scenario_data.csv"
     log:
@@ -78,7 +82,7 @@ if config["enable"]["retrieve"] and config["enable"].get("retrieve_cost_data", T
 rule modify_cost_data:
     input:
         costs="data/costs_{year}-original.csv",
-	modifications="ariadne-data/costs_{year}-modifications.csv",
+        modifications="ariadne-data/costs_{year}-modifications.csv",
     output:
        "data/costs_{year}.csv",
     resources:
@@ -127,7 +131,7 @@ rule modify_existing_heating:
 use rule build_existing_heating_distribution from pypsaeur with:
     input:
         **{k: v for k, v in rules.build_existing_heating_distribution.input.items() if k != "existing_heating"},
-	existing_heating=RESOURCES + "existing_heating.csv",
+        existing_heating=RESOURCES + "existing_heating.csv",
 
 
 
