@@ -221,7 +221,7 @@ def prepare_dataset(df):
     # calc capa
     df["p_nom"] = df.diameter_mm.apply(diameter_to_capacity_h2)
 
-    # eliminated gas capa from retrofitted pipes
+    # eliminated gas capacity from retrofitted pipes
     df["removed_gas_cap"] = df.diameter_mm.apply(diameter_to_capacity)
     df[df.retrofitted == False]["removed_gas_cap"] == 0
 

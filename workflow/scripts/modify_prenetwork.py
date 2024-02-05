@@ -1,6 +1,3 @@
-
-
-
 import logging
 
 import pandas as pd
@@ -19,7 +16,6 @@ from prepare_sector_network import (
     prepare_costs,
     lossy_bidirectional_links,
 )
-
 
 
 def fix_new_boiler_profiles(n):
@@ -87,128 +83,150 @@ def coal_generation_ban(n):
             n.links.drop(links,
                          inplace=True)
 
+
+def add_reversed_pipes(df):
+    df_rev = df.copy().rename({"bus0": "bus1", "bus1": "bus0"}, axis=1)
+    df_rev.index = df_rev.index + "-reversed"
+    return pd.concat([df, df_rev], sort=False)
+
+
+def reduce_capacity(targets, origins, carrier, origin_attr="removed_gas_cap", target_attr="p_nom", conversion_rate=1):
+    """
+    Reduce the capacity of pipes in a dataframe based on specified criteria.
+
+    Args:
+        target (DataFrame): The dataframe containing pipelines from which to reduce capacitiy.
+        origin (DataFrame): The dataframe containing data about added pipelines.
+        carrier (str): The carrier of the pipelines.
+        origin_attr (str, optional): The column name in `origin` representing the original capacity of the pipelines. Defaults to "removed_gas_cap".
+        target_attr (str, optional): The column name in `target` representing the target capacity to be modified. Defaults to "p_nom".
+        conversion_rate (float, optional): The conversion rate to reduce the capacity. Defaults to 1.
+
+    Returns:
+        DataFrame: The modified dataframe with reduced pipe capacities.
+    """
+
+    targets = targets.copy()
+
+    def apply_cut(row):
+        match = targets[
+            (targets.bus0 == row.bus0 + " " + carrier) & 
+            (targets.bus1 == row.bus1 + " " + carrier)
+        ].sort_index()
+        cut = row[origin_attr] * conversion_rate
+        for idx, target_row in match.iterrows():
+            if cut <= 0:
+                break
+            target_value = target_row[target_attr]
+            reduction = min(target_value, cut)
+            targets.at[idx, target_attr] -= reduction
+            cut -= reduction
+
+    origins.apply(apply_cut, axis=1)
+    return targets
+
+
 def add_wasserstoff_kernnetz(n, wkn, costs):
-           
-    # add reversed pipes
-    def add_reversed_pipes(df):
-        df_rev = df.copy()
-        df_rev.index = df_rev.index + "_rev"
-        df_rev["bus0"] = df.bus1.values
-        df_rev["bus1"] = df.bus0.values
-        result = pd.concat([df,df_rev])
-        return result
-        
-    def reduce_capacity(df, pipes, carrier, origin="removed_gas_cap", target="p_nom", efficiency=1):
-        """
-        Reduce the capacity of pipes in a dataframe based on specified criteria.
-
-        Args:
-            df (DataFrame): The input dataframe containing the pipe data to be modified.
-            pipes (DataFrame): The dataframe containing the data how to midify.
-            carrier (str): The carrier of the pipes.
-            origin (str, optional): The column name in `df` representing the original capacity of the pipes. Defaults to "removed_gas_cap".
-            target (str, optional): The column name in `df` representing the target capacity to be modified. Defaults to "p_nom".
-            efficiency (float, optional): The efficiency factor to reduce the capacity. Defaults to 1.
-
-        Returns:
-            DataFrame: The modified dataframe with reduced pipe capacities.
-        """
-
-        result = df.copy()
-
-        for i, pipe in pipes.iterrows():
-            cut = pipe[origin] * efficiency
-            match_i = 0
-            while cut > 0:
-                match = result[(result.bus0 == pipe.bus0 + " " + carrier) & (result.bus1 == pipe.bus1 + " " + carrier)]
-                if (match.empty) | (match_i >= len(match)):
-                    break
-                target_value = match.iloc[match_i][target]
-                if target_value <= cut:
-                    result.loc[match.index[match_i], target] -= target_value
-                    cut -= target_value
-                    match_i += 1
-                else:
-                    result.loc[match.index[match_i], target] -= cut
-                    cut = 0
-                    match_i += 1
-        return result
 
     logger.info("adding wasserstoff kernnetz")
 
     investment_year = int(snakemake.wildcards.planning_horizons)
 
-    # get last planning horizon
+    # get previous planning horizon
     planning_horizons = snakemake.config["scenario"]["planning_horizons"]
     i = planning_horizons.index(int(snakemake.wildcards.planning_horizons))
-    
-    if i != 0:
-        last_investment_year = int(planning_horizons[i - 1])
-    else:
-        last_investment_year = 2015
+    previous_investment_year = int(planning_horizons[i - 1]) if i != 0 else 2015
 
-    wkn_all = wkn.copy()
-    # use only pipes which are present between the current year and the last investment period
-    wkn.query("build_year > @last_investment_year & build_year <= @investment_year", inplace=True)
+    # use only pipes added since the previous investment period
+    wkn_new = wkn.query("build_year > @previous_investment_year & build_year <= @investment_year")
 
-    if not wkn.empty:
+    if not wkn_new.empty:
+
+        names = wkn_new.index + f"-kernnetz-{investment_year}"
 
         # add kernnetz to network
         n.madd(
             "Link",
-            wkn.index + f"-{investment_year}-kernnetz",
-            bus0=wkn.bus0.values + " H2",
-            bus1=wkn.bus1.values + " H2",
+            names,
+            bus0=wkn_new.bus0.values + " H2",
+            bus1=wkn_new.bus1.values + " H2",
             p_min_pu=-1,
             p_nom_extendable=False,
-            p_nom=wkn.p_nom.values,
-            build_year=wkn.build_year.values,
-            length=wkn.length.values,
-            capital_cost=costs.at["H2 (g) pipeline", "fixed"] * wkn.length.values,
-            carrier="H2 pipeline (kernnetz)",
+            p_nom=wkn_new.p_nom.values,
+            build_year=wkn_new.build_year.values,
+            length=wkn_new.length.values,
+            capital_cost=costs.at["H2 (g) pipeline", "fixed"] * wkn_new.length.values,
+            carrier="H2 pipeline (Kernnetz)",
             lifetime=costs.at["H2 (g) pipeline", "lifetime"],
         )
 
         # add reversed pipes and losses
-        lossy_bidirectional_links(n, "H2 pipeline (kernnetz)", snakemake.config["sector"]["transmission_efficiency"]["H2 pipeline"])
+        losses = snakemake.config["sector"]["transmission_efficiency"]["H2 pipeline"]
+        lossy_bidirectional_links(n, "H2 pipeline (Kernnetz)", losses, subset=names)
 
-        # reverte carrier change
-        n.links.loc[n.links.carrier == "H2 pipeline (kernnetz)", "carrier"] = "H2 pipeline"
+        # reduce the gas network capacity of retrofitted lines from kernnetz
+        # which is build in the current period
+        gas_pipes = n.links.query("carrier == 'gas pipeline'")
+        if not gas_pipes.empty:
+            res_gas_pipes = reduce_capacity(
+                gas_pipes,
+                add_reversed_pipes(wkn_new),
+                carrier="gas",
+            )
+            n.links.loc[n.links.carrier == "gas pipeline", "p_nom"] = res_gas_pipes["p_nom"]
 
-        # reduce the gas network capacity of retrofitted lines from kernnetz which is build in the current period
-        if snakemake.config["sector"]["gas_network"]:
+    # reduce H2 retrofitting potential from gas network for all kernnetz
+    # pipelines which are being build in total (more conservative approach)
+    if not wkn.empty and snakemake.config["sector"]["H2_retrofit"]:
 
-            gas_pipes = n.links[(n.links.carrier == "gas pipeline")][["bus0", "bus1", "p_nom"]].copy()
-            res_gas_pipes = reduce_capacity(gas_pipes, 
-                                            add_reversed_pipes(wkn), 
-                                            carrier="gas", 
-                                            origin="removed_gas_cap", 
-                                            target="p_nom", 
-                                            efficiency=1)
-            n.links.loc[(n.links.carrier == "gas pipeline"),"p_nom"] = res_gas_pipes["p_nom"]
+        conversion_rate = snakemake.config["sector"]["H2_retrofit_capacity_per_CH4"]
 
-    if not wkn_all.empty:
-        
-        # reduce H2 retrofitting potential from gas network for all kernnetz pipelines which are being build in total (more conservative approach)
-        if snakemake.config["sector"]["H2_retrofit"]:
+        retrofitted_b = (
+            n.links.carrier == "H2 pipeline retrofitted"
+        ) & n.links.index.str.contains(str(investment_year))
+        h2_pipes_retrofitted = n.links.loc[retrofitted_b]
 
-            h2_pipes_retrofitted = n.links[(n.links.carrier == "H2 pipeline retrofitted") & (n.links.index.str.contains(str(investment_year)))][["bus0", "bus1", "p_nom_max"]].copy()
-            res_h2_pipes_retrofitted = reduce_capacity(h2_pipes_retrofitted, 
-                                                       add_reversed_pipes(wkn_all), 
-                                                       carrier="H2", 
-                                                       origin="removed_gas_cap", 
-                                                       target="p_nom_max", 
-                                                       efficiency=snakemake.config["sector"]["H2_retrofit_capacity_per_CH4"])
-            n.links.loc[(n.links.carrier == "H2 pipeline retrofitted") & (n.links.index.str.contains(str(investment_year))), "p_nom_max"] = res_h2_pipes_retrofitted["p_nom_max"]
+        if not h2_pipes_retrofitted.empty:
+            res_h2_pipes_retrofitted = reduce_capacity(
+                h2_pipes_retrofitted,
+                add_reversed_pipes(wkn),
+                carrier="H2",
+                target_attr="p_nom_max",
+                conversion_rate=conversion_rate,
+            )
+            n.links.loc[retrofitted_b, "p_nom_max"] = res_h2_pipes_retrofitted["p_nom_max"]
 
     if investment_year <= 2030:
-        # assume that only pipelines from kernnetz are build (within Germany): make pipes within Germany not extendable and all others extendable (but only from current year)
-        n.links.loc[(n.links.carrier == "H2 pipeline") & n.links.p_nom_extendable,"p_nom_extendable"] = n.links.loc[(n.links.carrier == "H2 pipeline") & n.links.p_nom_extendable,:].apply(lambda row: False if (row.bus0[:2] == "DE") & (row.bus1[:2] == "DE") else True, axis=1)
-    
-    # from 2030 onwards  all pipes are extendable (except from the ones the model build up before and the kernnetz lines)
+        # assume that only pipelines from kernnetz are built (within Germany):
+        # make pipes within Germany not extendable and all others extendable (but only from current year)
+        to_fix = (
+            n.links.bus0.str.startswith("DE")
+            & n.links.bus1.str.startswith("DE")
+            & n.links.carrier.isin(["H2 pipeline", "H2 pipeline retrofitted"])
+        )
+        n.links.loc[to_fix, "p_nom_extendable"] = False
+
+    # from 2030 onwards all pipes are extendable (except from the ones the model build up before and the kernnetz lines)
 
 
 if __name__ == "__main__":
+    if "snakemake" not in globals():
+        import os
+        import sys
+
+        path = "../submodules/pypsa-eur/scripts"
+        sys.path.insert(0, os.path.abspath(path))
+        from _helpers import mock_snakemake
+
+        snakemake = mock_snakemake(
+            "modify_prenetwork",
+            simpl="",
+            clusters=22,
+            opts="",
+            ll="v1.2",
+            sector_opts="365H-T-H-B-I-A-solar+p3-linemaxext15",
+            planning_horizons="2040",
+        )
 
     logger.info("Adding Ariadne-specific functionality")
 

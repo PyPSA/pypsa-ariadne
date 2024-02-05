@@ -220,3 +220,4 @@ solving:
 plotting:
   tech_colors:
     load: "#111100"
+    H2 pipeline (Kernnetz): '#6b3161'
