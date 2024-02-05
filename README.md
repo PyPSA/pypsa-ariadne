@@ -28,6 +28,24 @@ You need [mamba](https://mamba.readthedocs.io/en/latest/) to run the analysis. U
 
     mamba env create -f environment.yaml
 
+## Provide login details
+
+The snakemake rule `retrieve_ariadne_scenario_data` logs into the IIASA Database. It requires a USERNAME and a PASSWORD which should be set as environment variables in your local shell configuration. To do that on Linux open your `.bashrc` with a text editor, e.g., with
+
+```
+vim ~/.bashrc
+```
+
+and then add the following two lines to the end of that file:
+
+```
+export IIASA_USERNAME='USERNAME'
+export IIASA_PASSWORD='PASSWORD'
+```
+
+Fill in the correct login details and don't forget the quotation marks. You might have to restart your terminal session / vscode window for the new variables to become available.
+
+
 ## Run the analysis
 
 For the first run open config.yaml and set
