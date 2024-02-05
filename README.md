@@ -43,7 +43,14 @@ export IIASA_USERNAME='USERNAME'
 export IIASA_PASSWORD='PASSWORD'
 ```
 
-Fill in the correct login details and don't forget the quotation marks. You might have to restart your terminal session / vscode window for the new variables to become available.
+Fill in the correct login details and don't forget the quotation marks. You might have to restart your terminal session / vscode window for the new variables to become available. 
+
+**Caution for vscode users**: If you want to use the environment variables in an Interactive Python Session, another step is required. Create a file `.env` in the working directory and add the lines:
+```
+IIASA_USERNAME='USERNAME'
+IIASA_PASSWORD='PASSWORD'
+```
+Details on Python environment variables in VSCode can be found here: https://code.visualstudio.com/docs/python/environments#_environment-variables
 
 
 ## Run the analysis
