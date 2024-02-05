@@ -109,11 +109,7 @@ def add_co2limit_country(n, limit_countries, snakemake):
 
         for port in [col[3:] for col in n.links if col.startswith("bus")]:
 
-            # todo need to include domestic shipping by only excluding international shipping
-            links = n.links.index[(n.links.index.str[:2] == ct)
-                                  & (n.links[f"bus{port}"] == "co2 atmosphere")
-                                  & ~(n.links.carrier == "kerosene for aviation international")
-                                  & ~(n.links.carrier.str.contains("shipping"))]
+            links = n.links.index[(n.links.index.str[:2] == ct) & (n.links[f"bus{port}"] == "co2 atmosphere")]
 
             logger.info(f"For {ct} adding following link carriers to port {port} CO2 constraint: {n.links.loc[links,'carrier'].unique()}")
 
