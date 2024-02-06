@@ -87,10 +87,9 @@ co2_budget_national:
     DE: 0.
 
 electricity:
-  powerplants_filter: (DateOut >= 2020 or DateOut != DateOut)
-  chp_filter: not (Country == "DE" and Set == "CHP")
-  custom_powerplants: true
-  custom_chps: true
+  powerplants_filter: (DateOut >= 2020 or DateOut != DateOut) and (Country != "DE" or Set != "CHP")
+  custom_powerplants: True
+  custom_file: resources/german_chp.csv
 
 limits_min:
   Generator:
