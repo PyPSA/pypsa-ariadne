@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "240201-365H-revertaviationsep"
+  name: "fixing_nuclear_biomass_2"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -124,6 +124,9 @@ new_decentral_fossil_boiler_ban:
 
 coal_generation_ban:
   DE: 2038
+
+nuclear_generation_ban:
+  DE: 2022
 
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
