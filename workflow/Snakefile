@@ -144,7 +144,7 @@ rule retrieve_mastr:
         "data/mastr",
     output:
         "data/mastr/bnetza_open_mastr_2023-08-08_B_biomass.csv",
-        "bnetza_open_mastr_2023-08-08_B_combustion.csv",
+        "data/mastr/bnetza_open_mastr_2023-08-08_B_combustion.csv",
     run:
         unpack_archive(input[0], params[0])
 
