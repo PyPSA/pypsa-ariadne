@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "fixing_nuclear_biomass_2"
+  name: "240202-365H-wprocess"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -74,15 +74,25 @@ co2_budget:
   2045: 0.050
   2050: 0.000 # climate-neutral by 2050
 
+# calculated in workflow/scripts/_compute_co2_targets_DE.py; are
+# relative to the DE emissions in 1990 *including bunkers*; also
+# account for non-CO2 GHG and allow extra room for international
+# bunkers which are excluded from the national targets
 co2_budget_national:
   2020:
-    DE: 0.6
+    DE: 0.728
+  2025:
+    DE: 0.571
   2030:
-    DE: 0.35
+    DE: 0.396
+  2035:
+    DE: 0.258
   2040:
-    DE: 0.12
+    DE: 0.118
+  2045:
+    DE: -0.028
   2050:
-    DE: 0.
+    DE: -0.024
 
 limits_min:
   Generator:
@@ -139,6 +149,7 @@ sector:
       2040: 0.6
       2050: 1.0
   co2_budget_national: true
+  co2_spatial: true
   #TBD what to include in config
   #relax so no infeasibility in 2050 with no land transport demand
   min_part_load_fischer_tropsch: 0.
@@ -166,6 +177,35 @@ industry:
     2040: 0.4
     2045: 0.35
     2050: 0.3
+#HVC primary/recycling based on values used in Neumann et al https://doi.org/10.1016/j.joule.2023.06.016, linearly interpolated between 2020 and 2050
+#2020 recycling rates based on Agora https://static.agora-energiewende.de/fileadmin/Projekte/2021/2021_02_EU_CEAP/A-EW_254_Mobilising-circular-economy_study_WEB.pdf
+#fractions refer to the total primary HVC production in 2020
+#assumes 6.7 Mtplastics produced from recycling in 2020
+  HVC_primary_fraction:
+    2020: 1.0
+    2025: 0.9
+    2030: 0.8
+    2035: 0.7
+    2040: 0.6
+    2045: 0.5
+    2050: 0.4
+  HVC_mechanical_recycling_fraction:
+    2020: 0.12
+    2025: 0.15
+    2030: 0.18
+    2035: 0.21
+    2040: 0.24
+    2045: 0.27
+    2050: 0.30
+  HVC_chemical_recycling_fraction:
+    2020: 0.0
+    2025: 0.0
+    2030: 0.04
+    2035: 0.08
+    2040: 0.12
+    2045: 0.16
+    2050: 0.20
+
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
 solving:
