@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "240202-365H-wprocess"
+  name: "240202-365H-nuclearban"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
