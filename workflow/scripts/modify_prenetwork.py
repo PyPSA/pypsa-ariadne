@@ -75,6 +75,19 @@ def coal_generation_ban(n):
             logger.info(f"Dropping {links}")
             n.links.drop(links,
                          inplace=True)
+            
+def nuclear_generation_ban(n):
+
+    year = int(snakemake.wildcards.planning_horizons)
+
+    for ct in snakemake.config["nuclear_generation_ban"]:
+        ban_year = int(snakemake.config["nuclear_generation_ban"][ct])
+        if ban_year < year:
+            logger.info(f"For year {year} in {ct} implementing nuclear ban from {ban_year}")
+            links = n.links.index[(n.links.index.str[:2] == ct) & n.links.carrier.isin(["nuclear"])]
+            logger.info(f"Dropping {links}")
+            n.links.drop(links,
+                         inplace=True)            
 
 
 if __name__ == "__main__":
@@ -91,5 +104,7 @@ if __name__ == "__main__":
     remove_old_boiler_profiles(n)
 
     coal_generation_ban(n)
+    
+    nuclear_generation_ban(n)
 
     n.export_to_netcdf(snakemake.output.network)
