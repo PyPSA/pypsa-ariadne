@@ -163,6 +163,11 @@ coal_generation_ban:
 nuclear_generation_ban:
   DE: 2022
 
+first_technology_occurrence:
+  Link:
+    H2 pipeline: 2025
+    H2 Electrolysis: 2025
+    H2 pipeline retrofitted: 2025
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:

@@ -18,6 +18,19 @@ from prepare_sector_network import (
 )
 
 
+def first_technology_occurrence(n):
+    """
+    Sets p_nom_extendable to false for carriers with configured first occurrence
+    if investment year is before configured year.
+    """
+
+    for c, carriers in snakemake.config["first_technology_occurrence"].items():
+        for carrier, first_year in carriers.items():
+            if int(snakemake.wildcards.planning_horizons) < first_year:
+                logger.info(f"{carrier} not extendable before {first_year}.")
+                n.df(c).loc[n.df(c).carrier == carrier, "p_nom_extendable"] = False
+  
+
 def fix_new_boiler_profiles(n):
 
     logger.info("Forcing boiler profiles for new ones")
@@ -263,6 +276,8 @@ if __name__ == "__main__":
     coal_generation_ban(n)
     
     nuclear_generation_ban(n)
+
+    first_technology_occurrence(n)
 
     if snakemake.config["wasserstoff_kernnetz"]["enable"]:
         fn = snakemake.input.wkn
