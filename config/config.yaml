@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "240202-365H-nuclearban"
+  name: "240209-365H-fixcoalco2"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -156,6 +156,7 @@ sector:
   min_part_load_fischer_tropsch: 0.
   regional_methanol_demand: true  #set to true if regional CO2 constraints needed
   regional_oil_demand: true  #set to true if regional CO2 constraints needed
+  regional_coal_demand: true  #set to true if regional CO2 constraints needed
   biogas_upgrading_cc: true
   cluster_heat_buses: true
   # this needs to be taken from ariadne database
