@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "240202-365H-wprocess"
+  name: "240202-365H-nuclearban"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -142,6 +142,10 @@ new_decentral_fossil_boiler_ban:
 coal_generation_ban:
   DE: 2038
 
+nuclear_generation_ban:
+  DE: 2022
+
+
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
   district_heating:
@@ -153,6 +157,7 @@ sector:
       2050: 1.0
   co2_budget_national: true
   co2_spatial: true
+  biomass_spatial: true
   #TBD what to include in config
   #relax so no infeasibility in 2050 with no land transport demand
   min_part_load_fischer_tropsch: 0.
