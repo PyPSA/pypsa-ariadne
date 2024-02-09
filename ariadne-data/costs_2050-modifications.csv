@@ -1,4 +1,4 @@
 technology,parameter,value,unit,source,further description
 gas,fuel,22.9,EUR/MWh_th,Ariadne,
-oil,fuel,37.8918,EUR2020/Mwh,Ariadne,"$2020 = 0.8775 EUR, 1bbl = 1.6998MWh"
-coal,fuel,6.4016,EUR2020/Mwh,Ariadne,"$2020 = 0.8775 EUR, 1t = 8.06 Mwh"
+oil,fuel,37.8918,EUR2020/MWh,Ariadne,"$2020 = 0.8775 EUR2020, 1bbl = 1.6998MWh"
+coal,fuel,6.4016,EUR2020/MWh,Ariadne,"$2020 = 0.8775 EUR2020, 1t = 8.06 MWh"
