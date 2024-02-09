@@ -33,7 +33,7 @@ scenario:
   opts:
   - ''
   sector_opts:
-    - 365H-T-H-B-I-A-solar+p3-linemaxext15
+    - 365H-T-H-B-I-A
   planning_horizons:
   - 2020
   - 2030
