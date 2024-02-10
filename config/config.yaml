@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "240202-365H-wprocess"
+  name: "240202-365H-first-occurrence"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -97,7 +97,7 @@ co2_budget_national:
     DE: -0.024
 
 electricity:
-  powerplants_filter: (DateOut >= 2020 or DateOut != DateOut) and (Country != "DE" or Set != "CHP")
+  powerplants_filter: (DateOut >= 2020 or DateOut != DateOut) and not (Country == "DE" and Set == "CHP")
   custom_powerplants: True
   custom_file: resources/german_chp.csv
 

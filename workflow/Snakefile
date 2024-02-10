@@ -163,6 +163,10 @@ rule build_existing_chp_de:
     script:
         "scripts/build_existing_chp_de.py"
 
+use rule add_existing_baseyear from pypsaeur with:
+    input:
+        **rules.add_existing_baseyear.input,
+        custom_powerplants=RESOURCES + "german_chp.csv",
 
 use rule build_existing_heating_distribution from pypsaeur with:
     input:

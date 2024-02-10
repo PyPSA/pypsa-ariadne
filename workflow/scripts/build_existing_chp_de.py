@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 import pandas as pd
 import os
 import sys
-    
+
 
 def clean_data(combustion, biomass, geodata):
     """
@@ -62,6 +62,7 @@ def clean_data(combustion, biomass, geodata):
         "Braunkohle": "Lignite",
         "andere Gase": "Natural Gas",
         "nicht biogenere Abfälle": "Waste",
+        "nicht biogener Abfall": "Waste",
         "Wärme": "Other",
         "Biomasse": "Bioenergy",
         "Wasserstoff": "Hydrogen",
@@ -71,6 +72,7 @@ def clean_data(combustion, biomass, geodata):
         "Gasturbinen mit Abhitzekessel": "CCGT",
         "Brennstoffzelle": "Fuel Cell",
         "Strilingmotor": "",
+        "Stirlingmotor": "",
         'Kondensationsmaschine mit Entnahme': "Steam Turbine", 
         'Sonstige': "",
         'Gasturbinen ohne Abhitzekessel': "OCGT",
@@ -115,6 +117,9 @@ def clean_data(combustion, biomass, geodata):
         'Capacity_thermal'
     ]
 
+    # convert unit of capacities from kW to MW
+    CHP_sel.loc[:, ["Capacity", "Capacity_thermal"]] /= 1e3
+
     return CHP_sel[cols].copy()
 
 
@@ -132,9 +137,9 @@ def calculate_efficiency(CHP_de):
         return ((5e-3) * cap + 0.325 * year - 611.75) / 100
     # TODO: differentiate between extraction condensing turbine and back pressure turbine
     CHP_de['Efficiency'] = CHP_de.apply(lambda row: BP(row['Capacity'], row['DateIn']), axis=1)
-        
+  
     return CHP_de
-    
+
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -142,12 +147,12 @@ if __name__ == "__main__":
         sys.path.insert(0, os.path.abspath(path))
         from _helpers import mock_snakemake
         snakemake = mock_snakemake("build_existing_chp_de")
-    
+
     logging.basicConfig(level=snakemake.config["logging"]["level"])
 
     biomass = pd.read_csv(snakemake.input.mastr_biomass, dtype={"Postleitzahl": str})
     combustion = pd.read_csv(snakemake.input.mastr_combustion, dtype={"Postleitzahl": str})
-    
+
     geodata = pd.read_csv(
         snakemake.input.plz_mapping[0],
         index_col="plz",
@@ -159,5 +164,5 @@ if __name__ == "__main__":
     CHP_de = clean_data(combustion, biomass, geodata)
 
     CHP_de = calculate_efficiency(CHP_de)
-    
+
     CHP_de.to_csv(snakemake.output.german_chp, index=False)
