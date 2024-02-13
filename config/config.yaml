@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "240209-365H-fixcoalco2"
+  name: "test_nuclear"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -227,3 +227,23 @@ plotting:
   tech_colors:
     load: "#111100"
     H2 pipeline (Kernnetz): '#6b3161'
+
+# overwrite in config.default.yaml
+powerplants_filter: (DateOut >= 2020 or DateOut != DateOut)
+
+pypsa_eur:
+  Bus:
+  - AC
+  Link:
+  - DC
+  Generator:
+  - onwind
+  - offwind-ac
+  - offwind-dc
+  - solar
+  - ror
+  - nuclear
+  StorageUnit:
+  - PHS
+  - hydro
+  Store: []
