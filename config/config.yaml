@@ -33,7 +33,7 @@ scenario:
   opts:
   - ''
   sector_opts:
-    - 3H-T-H-B-I-A
+    - 365H-T-H-B-I-A
   planning_horizons:
   - 2020
   - 2030
@@ -47,7 +47,7 @@ countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'P
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
   retrieve: false # set to false once initial data is retrieved
-  retrieve_cutout: true # set to false once initial data is retrieved
+  retrieve_cutout: false # set to false once initial data is retrieved
 clustering:
   focus_weights:
   # 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
