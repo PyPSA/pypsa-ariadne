@@ -16,7 +16,7 @@ import os
 import sys
 
 
-def clean_data(combustion, biomass, geodata):
+def clean_data(combustion, biomass, geodata, opts):
     """
     Clean the data and return a dataframe with the relevant information.
     PLZ is translated to longitude and latitude using the pyGeoDb data.
@@ -24,11 +24,21 @@ def clean_data(combustion, biomass, geodata):
     biomass.dropna(subset="Postleitzahl", inplace=True)
     biomass.rename(columns={'NameStromerzeugungseinheit': 'NameKraftwerk'}, inplace=True)
 
+    if 'I' not in opts:
+        # filter out industrial CHPs if industry is not included
+        industry = combustion.dropna(subset='Einsatzort')
+        to_drop = industry[industry.Einsatzort.str.contains('Industrie')].index
+        combustion.drop(index=to_drop, inplace=True)
+
     data = pd.concat([biomass, combustion], join='inner', ignore_index=True)
 
     # Get only CHP plants
     CHP_raw = data.query("ThermischeNutzleistung > 0").copy()
     CHP_raw.NameKraftwerk = CHP_raw.NameKraftwerk.fillna(CHP_raw.EinheitMastrNummer)
+
+    # delete duplicates - compromise only when KwkMastrNummer and Bruttoleistung is the same
+    CHP_raw = CHP_raw.sort_values(by=['KwkMastrNummer', 'Bruttoleistung'])
+    CHP_raw = CHP_raw.drop_duplicates(subset=['KwkMastrNummer', 'Bruttoleistung'], keep='last')
 
     rename_columns = {
         "NameKraftwerk": "Name",
@@ -120,6 +130,31 @@ def clean_data(combustion, biomass, geodata):
     # convert unit of capacities from kW to MW
     CHP_sel.loc[:, ["Capacity", "Capacity_thermal"]] /= 1e3
 
+    # add missing Fueltype for plants > 100 MW
+    fuelmap = {
+        'GuD Mitte': 'Natural Gas',
+        'HKW Mitte': 'Natural Gas',
+        'GuD Süd': 'Natural Gas',
+        'HKW Lichterfelde': 'Natural Gas',
+        'GuD Niehl 2 RheinEnergie': 'Natural Gas',
+        'HKW Marzahn': 'Natural Gas',
+        'Gasturbinen Heizkraftwerk Nossener Brücke': 'Natural Gas',
+        'SEE916495905242': 'Natural Gas',
+        'HKW Leipzig Nord': 'Natural Gas',
+        'HKW Reuter': 'Waste',
+        'Solvay Rb Kraftwerk': 'Lignite',
+        'GuD Süd Wolfsburg': 'Natural Gas',
+        'GuD Erfurt Ost': 'Natural Gas',
+        'KW Nord': 'Natural Gas',
+        'SEE904887370686': 'Oil',
+        'GuD2': 'Natural Gas',
+        'Heizkrafwerk Hafen der Stadtwerke Münster GmbH': 'Waste',
+        'Kraftwerk Ha': 'Natural Gas',
+        'Kraftwerk HA': 'Natural Gas',
+        'PKV Dampfsammelschienen-KWK-Anlage': 'Natural Gas',
+    }
+    CHP_sel.loc[CHP_sel['Name'].isin(fuelmap.keys()), 'Fueltype'] = CHP_sel.loc[CHP_sel['Name'].isin(fuelmap.keys()), 'Name'].map(fuelmap)
+    
     return CHP_sel[cols].copy()
 
 
@@ -146,9 +181,13 @@ if __name__ == "__main__":
         path = "../submodules/pypsa-eur/scripts"
         sys.path.insert(0, os.path.abspath(path))
         from _helpers import mock_snakemake
+
         snakemake = mock_snakemake("build_existing_chp_de")
 
     logging.basicConfig(level=snakemake.config["logging"]["level"])
+
+    options = snakemake.params.sector
+    opts = options[0].split("-")
 
     biomass = pd.read_csv(snakemake.input.mastr_biomass, dtype={"Postleitzahl": str})
     combustion = pd.read_csv(snakemake.input.mastr_combustion, dtype={"Postleitzahl": str})
@@ -161,7 +200,7 @@ if __name__ == "__main__":
         skiprows=1
     )
 
-    CHP_de = clean_data(combustion, biomass, geodata)
+    CHP_de = clean_data(combustion, biomass, geodata, opts)
 
     CHP_de = calculate_efficiency(CHP_de)
 
