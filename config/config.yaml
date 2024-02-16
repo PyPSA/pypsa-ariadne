@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "240216-365H-kernnetz"
+  name: "240216-365H-higherelectrolysis"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -155,6 +155,7 @@ sector:
       2030: 0.3
       2040: 0.6
       2050: 1.0
+  central_heat_vent: true
   co2_budget_national: true
   co2_spatial: true
   biomass_spatial: true
