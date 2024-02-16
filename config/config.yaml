@@ -168,15 +168,16 @@ sector:
   gas_network: true
   biogas_upgrading_cc: true
   cluster_heat_buses: true
-  # this needs to be taken from ariadne database
+  # calculated based on ariadne "Stock|Space Heating"
+  # and then 2% of buildings renovated per year to reduce their demand by 80%
   reduce_space_heat_exogenously_factor:
     2020: 0.0
-    2025: 0.05
-    2030: 0.10
-    2035: 0.16
-    2040: 0.22
-    2045: 0.25
-    2050: 0.35
+    2025: 0.07
+    2030: 0.14
+    2035: 0.21
+    2040: 0.29
+    2045: 0.36
+    2050: 0.43
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#industry
 industry:
@@ -237,6 +238,8 @@ plotting:
   - heat
   - H2
   - urban central heat
+  - urban decentral heat
+  - rural heat
   carrier_groups:
     electricity: [AC, low_voltage]
 
