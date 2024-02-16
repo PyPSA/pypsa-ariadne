@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "240215-365H-DEoutput"
+  name: "240216-365H-kernnetz"
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -235,6 +235,7 @@ plotting:
   - electricity
   - heat
   - H2
+  - urban central heat
   carrier_groups:
     electricity: [AC, low_voltage]
 
