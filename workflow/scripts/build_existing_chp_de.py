@@ -16,31 +16,25 @@ import os
 import sys
 
 
-def clean_data(combustion, biomass, geodata, opts):
+def clean_data(combustion, biomass, geodata):
     """
     Clean the data and return a dataframe with the relevant information.
     PLZ is translated to longitude and latitude using the pyGeoDb data.
     """
     biomass.dropna(subset="Postleitzahl", inplace=True)
     biomass.rename(columns={'NameStromerzeugungseinheit': 'NameKraftwerk'}, inplace=True)
-
-    if 'I' not in opts:
-        # filter out industrial CHPs if industry is not included
-        industry = combustion.dropna(subset='Einsatzort')
-        to_drop = industry[industry.Einsatzort.str.contains('Industrie')].index
-        combustion.drop(index=to_drop, inplace=True)
+    biomass['Einsatzort'] = ''
 
     data = pd.concat([biomass, combustion], join='inner', ignore_index=True)
-
+    
+    data['IndustryStatus'] = data['Einsatzort'].str.contains('Industrie')
+    data['IndustryStatus'] = data['IndustryStatus'].fillna(False)
     # Get only CHP plants
     CHP_raw = data.query("ThermischeNutzleistung > 0").copy()
     CHP_raw.NameKraftwerk = CHP_raw.NameKraftwerk.fillna(CHP_raw.EinheitMastrNummer)
 
-    # delete duplicates - compromise only when KwkMastrNummer and Bruttoleistung is the same
-    CHP_raw = CHP_raw.sort_values(by=['KwkMastrNummer', 'Bruttoleistung'])
-    CHP_raw = CHP_raw.drop_duplicates(subset=['KwkMastrNummer', 'Bruttoleistung'], keep='last')
-
     rename_columns = {
+        "KwkMastrNummer": "ID",
         "NameKraftwerk": "Name",
         "Energietraeger": "Fueltype",
         "Technologie": "Technology",
@@ -49,17 +43,31 @@ def clean_data(combustion, biomass, geodata, opts):
         "Inbetriebnahmedatum": "DateIn",
         "DatumEndgueltigeStilllegung": "DateOut",
         "Postleitzahl": "Postleitzahl",
-        "Breitengrad": "lat",
-        "Laengengrad": "lon",
+        "IndustryStatus": "Industry",
     }
     CHP_sel = CHP_raw[rename_columns.keys()].rename(columns=rename_columns)
-
-    # set missing information to match the powerplant data format
-    CHP_sel[["Set", "Country", "Efficiency"]] = ["CHP", "DE", ""]
-
+    
     # change date format
     CHP_sel.DateIn = CHP_sel.DateIn.str[:4].astype(float)
     CHP_sel.DateOut = CHP_sel.DateOut.str[:4].astype(float)
+
+    # delete duplicates - compromise only when KwkMastrNummer and Bruttoleistung is the same
+    strategies = {
+        "Name": "first",
+        "Fueltype": "first",
+        "Technology": "first",
+        "Capacity": "mean",
+        "Capacity_thermal": "mean",        
+        "DateIn": "mean",
+        "DateOut": "mean",
+        "Postleitzahl": "first",
+        "Industry": "first",
+        }
+    CHP_sel = CHP_sel.groupby("ID").agg(strategies).reset_index()
+
+    # set missing information to match the powerplant data format
+    CHP_sel[["Set", "Country", "Efficiency"]] = ["CHP", "DE", ""]
+    CHP_sel[["lat", "lon"]] = ["", ""]
 
     # get location from PLZ
     CHP_sel.fillna({"lat": CHP_sel.Postleitzahl.map(geodata.lat)}, inplace=True)
@@ -124,7 +132,8 @@ def clean_data(combustion, biomass, geodata, opts):
         'DateOut',
         'lat',
         'lon',
-        'Capacity_thermal'
+        'Capacity_thermal',
+        'Industry',
     ]
 
     # convert unit of capacities from kW to MW
@@ -153,8 +162,8 @@ def clean_data(combustion, biomass, geodata, opts):
         'Kraftwerk HA': 'Natural Gas',
         'PKV Dampfsammelschienen-KWK-Anlage': 'Natural Gas',
     }
-    CHP_sel.loc[CHP_sel['Name'].isin(fuelmap.keys()), 'Fueltype'] = CHP_sel.loc[CHP_sel['Name'].isin(fuelmap.keys()), 'Name'].map(fuelmap)
-    
+    CHP_sel['Fueltype'] = CHP_sel['Name'].map(fuelmap).combine_first(CHP_sel['Fueltype'])
+
     return CHP_sel[cols].copy()
 
 
@@ -186,9 +195,6 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=snakemake.config["logging"]["level"])
 
-    options = snakemake.params.sector
-    opts = options[0].split("-")
-
     biomass = pd.read_csv(snakemake.input.mastr_biomass, dtype={"Postleitzahl": str})
     combustion = pd.read_csv(snakemake.input.mastr_combustion, dtype={"Postleitzahl": str})
 
@@ -200,7 +206,7 @@ if __name__ == "__main__":
         skiprows=1
     )
 
-    CHP_de = clean_data(combustion, biomass, geodata, opts)
+    CHP_de = clean_data(combustion, biomass, geodata)
 
     CHP_de = calculate_efficiency(CHP_de)
 

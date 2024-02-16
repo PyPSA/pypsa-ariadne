@@ -154,8 +154,6 @@ rule retrieve_mastr:
 
 
 rule build_existing_chp_de:
-    params:
-        sector=config["scenario"]["sector_opts"],
     input:
         mastr_biomass="data/mastr/bnetza_open_mastr_2023-08-08_B_biomass.csv",
         mastr_combustion="data/mastr/bnetza_open_mastr_2023-08-08_B_combustion.csv",
