@@ -1,8 +1,11 @@
 import pyam
 import pandas as pd
-
+import os
 # Set USERNAME and PASSWORD for the Ariadne DB
-pyam.iiasa.set_config(USERNAME, PASSWORD)
+pyam.iiasa.set_config(
+    os.environ["IIASA_USERNAME"], 
+    os.environ["IIASA_PASSWORD"],
+)
 
 model_df= pyam.read_iiasa(
     "ariadne_intern",
