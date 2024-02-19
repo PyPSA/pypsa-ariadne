@@ -4,7 +4,8 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "240216-3H-5A"
+  name:
+  - normal
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -33,14 +34,14 @@ scenario:
   opts:
   - ''
   sector_opts:
-    - 3H-T-H-B-I-A
+    - 365H-T-H-B-I-A
   planning_horizons:
   - 2020
-  - 2025
+  #- 2025
   - 2030
-  - 2035
+  #- 2035
   - 2040
-  - 2045
+  #- 2045
   - 2050
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
