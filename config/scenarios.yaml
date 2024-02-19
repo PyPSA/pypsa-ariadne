@@ -11,16 +11,15 @@
 #   electricity:
 #       renewable_carriers: [wind, solar] # override the list of renewable carriers
 
-normal:
-  electricity:
-    renewable_carriers:
-    - solar
-    - onwind
-    - offwind-ac
-    - offwind-dc
-    - hydro
+240219-test/normal:
+  clustering:
+    temporal:
+      resolution_sector: 365H
 
 hydrogen:
+  clustering:
+    temporal:
+      resolution_sector: 365H
   limits_min:
     Link:
       H2 Electrolysis:

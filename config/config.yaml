@@ -5,7 +5,7 @@
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   name:
-  - normal
+  - 240219-test/normal
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -34,15 +34,15 @@ scenario:
   opts:
   - ''
   sector_opts:
-    - 365H-T-H-B-I-A
+    - none
   planning_horizons:
   - 2020
   #- 2025
   - 2030
   #- 2035
-  - 2040
+  #- 2040
   #- 2045
-  - 2050
+  #- 2050
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
 # Germany plus 12 "Stromnachbarn"
@@ -68,6 +68,8 @@ clustering:
     'NO': 0.0454
     'PL': 0.0454
     'SE': 0.0454
+  temporal:
+    resolution_sector: 3H
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:
