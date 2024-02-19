@@ -50,7 +50,7 @@ countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'P
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
-  retrieve: true # set to false once initial data is retrieved
+  retrieve: false # set to false once initial data is retrieved
   retrieve_cutout: false # set to false once initial data is retrieved
 clustering:
   focus_weights:
@@ -164,6 +164,11 @@ coal_generation_ban:
 nuclear_generation_ban:
   DE: 2022
 
+first_technology_occurrence:
+  Link:
+    H2 pipeline: 2025
+    H2 Electrolysis: 2025
+    H2 pipeline retrofitted: 2025
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
