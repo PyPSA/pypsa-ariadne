@@ -161,7 +161,8 @@ rule build_existing_chp_de:
             "https://raw.githubusercontent.com/WZBSocialScienceCenter/plz_geocoord/master/plz_geocoord.csv",
             keep_local=True,
             static=True,
-        )
+        ),
+        busmap=RESOURCES + "networks/base.nc",
     output:
         german_chp=RESOURCES + "german_chp.csv",
     script:

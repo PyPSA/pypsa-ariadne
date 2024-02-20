@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 import pandas as pd
 import os
 import sys
+import pypsa
+from powerplantmatching.export import map_country_bus
 
 
 def clean_data(combustion, biomass, geodata):
@@ -67,11 +69,12 @@ def clean_data(combustion, biomass, geodata):
 
     # set missing information to match the powerplant data format
     CHP_sel[["Set", "Country", "Efficiency"]] = ["CHP", "DE", ""]
-    CHP_sel[["lat", "lon"]] = ["", ""]
+    CHP_sel[["lat", "lon"]] = [float("nan"), float("nan")]
+    
 
     # get location from PLZ
     CHP_sel.fillna({"lat": CHP_sel.Postleitzahl.map(geodata.lat)}, inplace=True)
-    CHP_sel.fillna({"lon": CHP_sel.Postleitzahl.map(geodata.lng)}, inplace=True)
+    CHP_sel.fillna({"lon": CHP_sel.Postleitzahl.map(geodata.lon)}, inplace=True)
 
     fueltype = {
         "Erdgas": "Natural Gas",
@@ -202,12 +205,15 @@ if __name__ == "__main__":
         snakemake.input.plz_mapping[0],
         index_col="plz",
         dtype={"plz": str},
-        names=["plz", "lat", "lng"],
+        names=["plz", "lat", "lon"],
         skiprows=1
     )
 
     CHP_de = clean_data(combustion, biomass, geodata)
 
     CHP_de = calculate_efficiency(CHP_de)
+    bn = pypsa.Network(snakemake.input.busmap)
+    substations = bn.buses.query("substation_lv")
+    CHP_de = map_country_bus(CHP_de, substations)
 
     CHP_de.to_csv(snakemake.output.german_chp, index=False)
