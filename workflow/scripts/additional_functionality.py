@@ -103,7 +103,10 @@ def add_co2limit_country(n, limit_countries, snakemake):
 
     for ct in limit_countries:
         limit = co2_total_totals[ct]*limit_countries[ct]
-        logger.info(f"Limiting emissions in country {ct} to {limit_countries[ct]} of 1990 levels, i.e. {limit} tCO2/a")
+        logger.info(
+            f"Limiting emissions in country {ct} to {limit_countries[ct]:.1%} of "
+            f"1990 levels, i.e. {limit:,.2f} tCO2/a",
+        )
 
         lhs = []
 
