@@ -4,10 +4,10 @@
 
 from snakemake.remote.HTTP import RemoteProvider as HTTPRemoteProvider
 import yaml, sys
-
+from shutil import  move
 sys.path.append("workflow/submodules/pypsa-eur/scripts")
 
-from _helpers import path_provider
+from _helpers import path_provider, validate_checksum
 
 HTTP = HTTPRemoteProvider()
 
@@ -223,15 +223,30 @@ if config["wasserstoff_kernnetz"]["enable"]:
             "scripts/cluster_wasserstoff_kernnetz.py"
 
 
+rule download_ariadne_template:
+    input:
+        HTTP.remote("https://github.com/iiasa/ariadne-intern-workflow/raw/master/attachments/2024-02-23_template_Ariadne.xlsx")
+    output:
+        resources("template_ariadne_database.xlsx")
+    run:
+        move(input[0], output[0])
+        #validate_checksum(output[0], input[0])
 
 rule export_ariadne_variables:
     input:
+        template=resources("template_ariadne_database.xlsx"),
+        industry_demands=expand(
+            resources("industrial_energy_demand_elec_s{simpl}_{clusters}_{planning_horizons}.csv"),
+            **config["scenario"]
+        ),
         networks=expand(
-            RESULTS
-            + "postnetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
+            #RESULTS + 
+            RESULTS + "postnetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
             **config["scenario"],
             allow_missing=True,
-        )
+        ),
+
+        energy_totals=resources("energy_totals.csv"),
 
     output:
         ariadne_variables=RESULTS + "ariadne/ariadne_variables.csv"
