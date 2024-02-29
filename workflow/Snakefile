@@ -270,3 +270,6 @@ rule plot_ariadne_variables:
     script:
         "scripts/plot_ariadne_variables.py"
 
+rule ariadne_all:
+    input:
+        expand(RESULTS + "ariadne/capacity_detailed.png", run=config["run"]["name"])
