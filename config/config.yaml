@@ -40,9 +40,9 @@ scenario:
   #- 2025
   - 2030
   #- 2035
-  #- 2040
+  - 2040
   #- 2045
-  #- 2050
+  - 2050
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
 # Germany plus 12 "Stromnachbarn"
