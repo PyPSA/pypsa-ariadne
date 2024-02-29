@@ -240,7 +240,6 @@ rule export_ariadne_variables:
             **config["scenario"]
         ),
         networks=expand(
-            #RESULTS + 
             RESULTS + "postnetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
             **config["scenario"],
             allow_missing=True,
@@ -255,6 +254,19 @@ rule export_ariadne_variables:
     script:
         "scripts/export_ariadne_variables.py"
 
-rule ariadne:
+
+rule plot_ariadne_variables:
     input:
         ariadne_variables=RESULTS + "ariadne/ariadne_variables.csv"
+    output:
+        primary_energy=RESULTS + "ariadne/primary_energy.png",
+        primary_energy_detailed=RESULTS + "ariadne/primary_energy_detailed.png",
+        secondary_energy=RESULTS + "ariadne/secondary_energy.png",
+        secondary_energy_detailed=RESULTS + "ariadne/secondary_energy_detailed.png",
+        final_energy=RESULTS + "ariadne/final_energy.png",
+        final_energy_detailed=RESULTS + "ariadne/final_energy_detailed.png",
+        capacity=RESULTS + "ariadne/capacity.png",
+        capacity_detailed=RESULTS + "ariadne/capacity_detailed.png",
+    script:
+        "scripts/plot_ariadne_variables.py"
+
