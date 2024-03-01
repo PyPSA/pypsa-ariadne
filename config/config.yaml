@@ -5,7 +5,7 @@
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   name:
-  - 240219-test/normal
+  - 240301-synfuelimports/365H
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -28,7 +28,7 @@ scenario:
   simpl:
   - ''
   ll:
-  - v1.2
+  - v1.3
   clusters:
   - 22
   opts:
@@ -40,9 +40,9 @@ scenario:
   #- 2025
   - 2030
   #- 2035
-  #- 2040
+  - 2040
   #- 2045
-  #- 2050
+  - 2050
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
 # Germany plus 12 "Stromnachbarn"
@@ -150,6 +150,14 @@ h2_import_max:
     2040: 100
     2045: 150
     2050: 200
+
+# in TWh/a
+synfuel_import_force:
+  DE:
+    2040: 50
+    2045: 75
+    2050: 100
+
 
 wasserstoff_kernnetz:
   enable: true

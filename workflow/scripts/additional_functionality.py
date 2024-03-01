@@ -77,7 +77,7 @@ def h2_import_limits(n, snapshots, investment_year, config):
         )
 
 
-def add_co2limit_country(n, limit_countries, snakemake):
+def add_co2limit_country(n, limit_countries, snakemake, investment_year):
     """
     Add a set of emissions limit constraints for specified countries.
 
@@ -103,6 +103,12 @@ def add_co2limit_country(n, limit_countries, snakemake):
 
     for ct in limit_countries:
         limit = co2_total_totals[ct]*limit_countries[ct]
+
+        if ct in n.config["synfuel_import_force"]:
+            synfuel_imports = n.config["synfuel_import_force"][ct].get(investment_year,0)*1e6
+            logger.info(f"Subtracting synfuel imports of {synfuel_imports} from {ct} CO2 target")
+            limit += 0.27*synfuel_imports
+
         logger.info(f"Limiting emissions in country {ct} to {limit_countries[ct]} of 1990 levels, i.e. {limit} tCO2/a")
 
         lhs = []
@@ -203,6 +209,35 @@ def force_boiler_profiles_existing_per_boiler(n):
     n.links["fixed_profile_scaling_opt"] = 0.
 
 
+def force_synfuel_import_demand(n, snakemake, investment_year):
+
+    for ct in n.config["synfuel_import_force"]:
+        synfuel_imports = n.config["synfuel_import_force"][ct].get(investment_year,0)*1e6
+        logger.info(f"Accounting for synfuel imports of {synfuel_imports} in {ct}")
+
+
+        demand = n.links.index[(n.links.bus0 == "EU oil") & (n.links.index.str[:2] == ct)]
+        local_synproduction = n.links.index[(n.links.bus1 == "EU oil") & (n.links.index.str[:2] == ct)]
+
+        demand_p = (n.model["Link-p"].loc[:, demand]*n.snapshot_weightings.generators).sum()
+        local_synproduction_p = (n.model["Link-p"].loc[:, local_synproduction]*n.snapshot_weightings.generators).sum()
+
+        lhs = demand_p - local_synproduction_p
+
+        cname = f"force_synfuel_import-{ct}"
+
+        n.model.add_constraints(
+            lhs >= synfuel_imports, name=f"GlobalConstraint-{cname}"
+        )
+        n.add(
+            "GlobalConstraint",
+            cname,
+            constant=synfuel_imports,
+            sense=">=",
+            type="",
+            carrier_attribute="",
+        )
+
 
 
 def additional_functionality(n, snapshots, snakemake):
@@ -218,6 +253,8 @@ def additional_functionality(n, snapshots, snakemake):
     #force_boiler_profiles_existing_per_load(n)
     force_boiler_profiles_existing_per_boiler(n)
 
+    force_synfuel_import_demand(n, snakemake, investment_year)
+
     if snakemake.config["sector"]["co2_budget_national"]:
         limit_countries = snakemake.config["co2_budget_national"][investment_year]
-        add_co2limit_country(n, limit_countries, snakemake)
+        add_co2limit_country(n, limit_countries, snakemake, investment_year)
