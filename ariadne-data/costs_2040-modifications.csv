@@ -3,3 +3,5 @@ gas,fuel,22.6,EUR/MWh_th,Ariadne,
 oil,fuel,38.3564,EUR2020/MWh,Ariadne,"$2020 = 0.8775 EUR2020, 1bbl = 1.6998MWh"
 coal,fuel,6.3036,EUR2020/MWh,Ariadne,"$2020 = 0.8775 EUR2020, 1t = 8.06 MWh"
 electrolysis,investment,717,EUR2020/kW_e,DEA,"linear interpolation of AEC 100 MW upper limit 2020 to 2050"
+HVAC overhead,investment,1324,EUR/MW/km,"NEP2023 https://www.netzentwicklungsplan.de/sites/default/files/2023-03/230321_NEP_Kostenschaetzung_NEP2037_2045_V2023_1.Entwurf.pdf, 4.5 Mio EUR/km for new double circuit divided by 3400 MW",
+HVDC overhead,investment,3800,EUR/MW/km,"NEP2023 https://www.netzentwicklungsplan.de/sites/default/files/2023-03/230321_NEP_Kostenschaetzung_NEP2037_2045_V2023_1.Entwurf.pdf based on underground DC 525 kV at 7.6 Mio EUR/km for 2000 MW",

@@ -16,6 +16,7 @@ from prepare_sector_network import (
     prepare_costs,
     lossy_bidirectional_links,
 )
+from add_electricity import load_costs, update_transmission_costs
 
 
 def first_technology_occurrence(n):
@@ -29,7 +30,7 @@ def first_technology_occurrence(n):
             if int(snakemake.wildcards.planning_horizons) < first_year:
                 logger.info(f"{carrier} not extendable before {first_year}.")
                 n.df(c).loc[n.df(c).carrier == carrier, "p_nom_extendable"] = False
-  
+
 
 def fix_new_boiler_profiles(n):
 
@@ -95,7 +96,7 @@ def coal_generation_ban(n):
             logger.info(f"Dropping {links}")
             n.links.drop(links,
                          inplace=True)
-            
+
 def nuclear_generation_ban(n):
 
     year = int(snakemake.wildcards.planning_horizons)
@@ -107,7 +108,7 @@ def nuclear_generation_ban(n):
             links = n.links.index[(n.links.index.str[:2] == ct) & n.links.carrier.isin(["nuclear"])]
             logger.info(f"Dropping {links}")
             n.links.drop(links,
-                         inplace=True)            
+                         inplace=True)
 
 
 def add_reversed_pipes(df):
@@ -136,7 +137,7 @@ def reduce_capacity(targets, origins, carrier, origin_attr="removed_gas_cap", ta
 
     def apply_cut(row):
         match = targets[
-            (targets.bus0 == row.bus0 + " " + carrier) & 
+            (targets.bus0 == row.bus0 + " " + carrier) &
             (targets.bus1 == row.bus1 + " " + carrier)
         ].sort_index()
         cut = row[origin_attr] * conversion_rate
@@ -274,7 +275,7 @@ if __name__ == "__main__":
     remove_old_boiler_profiles(n)
 
     coal_generation_ban(n)
-    
+
     nuclear_generation_ban(n)
 
     first_technology_occurrence(n)
@@ -283,5 +284,15 @@ if __name__ == "__main__":
         fn = snakemake.input.wkn
         wkn = pd.read_csv(fn, index_col=0)
         add_wasserstoff_kernnetz(n, wkn, costs)
+
+
+    costs_loaded = load_costs(
+        snakemake.input.costs,
+        snakemake.params.costs,
+        snakemake.params.max_hours,
+        nyears,
+    )
+
+    update_transmission_costs(n, costs_loaded)
 
     n.export_to_netcdf(snakemake.output.network)

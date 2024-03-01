@@ -11,10 +11,15 @@
 #   electricity:
 #       renewable_carriers: [wind, solar] # override the list of renewable carriers
 
-240219-test/normal:
+240301-highergridcosts-lvopt/n365:
   clustering:
     temporal:
       resolution_sector: 365H
+
+240301-highergridcosts-lvopt/3H:
+  clustering:
+    temporal:
+      resolution_sector: 3H
 
 hydrogen:
   clustering:
