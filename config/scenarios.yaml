@@ -11,7 +11,7 @@
 #   electricity:
 #       renewable_carriers: [wind, solar] # override the list of renewable carriers
 
-240219-test/normal:
+240301-w2e/365H:
   clustering:
     temporal:
       resolution_sector: 365H
