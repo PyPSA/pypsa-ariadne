@@ -42,6 +42,45 @@ def sum_load(n, carrier, region):
         "p",
     )   
 
+def sum_co2(n, carrier, region):
+    if type(carrier) == list:
+        return sum([sum_co2(n, car, region) for car in carrier])
+    try:
+        port = n.links.groupby(
+            "carrier"
+        ).first().loc[
+            carrier
+        ].filter(
+            like="bus"
+        ).tolist().index("co2 atmosphere")
+    except KeyError:
+        print(
+            "Warning: carrier `", carrier, "` not found in network.links.carrier!",
+            sep="")
+        return 0
+
+    return -1 * t2Mt * _get_t_sum(
+        n.links,
+        n.links_t,
+        carrier,
+        region,
+        n.snapshot_weightings.generators,
+        f"p{port}",
+    )
+
+
+def get_total_co2(n, region):
+    # including international bunker fuels and negative emissions 
+    df = n.links.filter(like=region, axis=0)
+    co2 = 0
+    for port in [col[3:] for col in df if col.startswith("bus")]:
+        links = df.index[df[f"bus{port}"] == "co2 atmosphere"]
+        co2 -= n.links_t[f"p{port}"][links].multiply(
+            n.snapshot_weightings.generators,
+            axis=0,
+        ).values.sum()
+    return t2Mt * co2
+
 def get_capacities_electricity(n, region):
 
     kwargs = {
@@ -1389,6 +1428,189 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
 
     return var
 
+
+def get_emissions(n, region):
+    
+    
+    kwargs = {
+        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
+        'nice_names': False,
+    }
+
+
+    var = pd.Series()
+
+    co2_emissions = n.statistics.supply(
+        bus_carrier="co2",**kwargs
+    ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)  
+    
+    co2_negative_emissions = n.statistics.withdrawal(
+        bus_carrier="co2",**kwargs
+    ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)
+
+    co2_storage = n.statistics.supply(
+        bus_carrier ="co2 stored",**kwargs
+    ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)    
+    ## Emissions
+
+    var["Carbon Sequestration"] = \
+        n.statistics.supply(
+            bus_carrier="co2 sequestered",**kwargs
+        ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)     
+
+    var["Carbon Sequestration|DACCS"] = \
+        var["Carbon Sequestration"] * (
+            co2_storage.filter(like="DAC").sum()
+            / co2_storage.sum()
+        )
+    
+    var["Carbon Sequestration|BECCS"] = \
+        var["Carbon Sequestration"] * (
+            co2_storage.filter(like="bio").sum()
+            / co2_storage.sum()
+        )
+    
+    var["Carbon Sequestration|Other"] = (
+        var["Carbon Sequestration"] 
+        - var["Carbon Sequestration|DACCS"]
+        - var["Carbon Sequestration|BECCS"]
+    )
+
+
+    var["Emissions|CO2"] = \
+        co2_emissions.sum() - co2_negative_emissions.sum()
+
+    # ! LULUCF should also be subtracted, we get from REMIND, 
+    # TODO how to add it here?
+    
+    # Make sure these values are about right
+    # var["Emissions|CO2|Energy and Industrial Processes"] = \  
+    # var["Emissions|CO2|Industrial Processes"] = \ 
+    # var["Emissions|CO2|Energy"] = \   
+    # var["Emissions|CO2|Energy incl Bunkers"] = \  
+    # var["Emissions|CO2|Energy|Demand"] = \    
+    # var["Emissions|CO2|Energy incl Bunkers|Demand"] = \
+       
+    # var["Emissions|CO2|Energy|Demand|Industry"] = \
+    #     sum_co2(
+    #         n,
+    #         "naphtha for industry",
+    #         region,
+    #     )
+    # Q: these are emissions through burning of plastic waste!!! 
+
+
+    var["Emissions|CO2|Energy|Demand|Residential and Commercial"] = \
+        sum_co2(
+            n,
+            [
+                *n.links.carrier.filter(like="oil boiler").unique(),
+                *n.links.carrier.filter(like="gas boiler").unique(),
+                # matches "gas CHP CC" as well
+                *n.links.carrier.filter(like="gas CHP").unique(),
+            ],
+            region
+        )
+    # Q: are the gas CHPs for Residential and Commercial demand??
+    # Q: Also residential elec demand!
+
+    var["Emissions|CO2|Energy|Demand|Transportation"] = \
+        sum_co2(n, "land transport oil", region)
+  
+    var["Emissions|CO2|Energy|Demand|Bunkers|Aviation"] = \
+        sum_co2(n, "kerosene for aviation", region)
+    
+    var["Emissions|CO2|Energy|Demand|Bunkers|Navigation"] = \
+        sum_co2(n, ["shipping oil", "shipping methanol"], region)
+    
+    var["Emissions|CO2|Energy|Demand|Bunkers"] = \
+        var["Emissions|CO2|Energy|Demand|Bunkers|Aviation"] + \
+        var["Emissions|CO2|Energy|Demand|Bunkers|Navigation"]
+    
+    var["Emissions|CO2|Energy|Demand|Other Sector"] = \
+        sum_co2(n, "agriculture machinery oil", region)
+    
+    
+    var["Emissions|Gross Fossil CO2|Energy|Supply|Electricity"] = \
+        sum_co2(n,
+            [
+                "OCGT",
+                "CCGT",
+                "coal",
+                "lignite",
+                "oil",
+                "urban central gas CHP",
+                "urban central gas CHP CC",
+            ], 
+            region,
+        )
+    
+    var["Emissions|CO2|Energy|Supply|Electricity"] = (
+        var["Emissions|Gross Fossil CO2|Energy|Supply|Electricity"]
+        + sum_co2(n, "urban central solid biomass CHP CC", region)
+    )
+
+    # Q: Where should I add the CHPs?
+    # ! According to Ariadne Database in the Electricity
+
+    var["Emissions|CO2|Energy|Supply|Heat"] = \
+        sum_co2(n,
+            [
+                *n.links.carrier.filter(like="oil boiler").unique(),
+                *n.links.carrier.filter(like="gas boiler").unique(),
+            ], 
+            region,
+        )
+
+    var["Emissions|CO2|Energy|Supply|Electricity and Heat"] = \
+        var["Emissions|CO2|Energy|Supply|Heat"] + \
+        var["Emissions|CO2|Energy|Supply|Electricity"]
+
+    # var["Emissions|CO2|Supply|Non-Renewable Waste"] = \   
+    var["Emissions|CO2|Energy|Supply|Hydrogen"] = \
+        sum_co2(n,
+            [
+                "SMR",
+                "SMR CC",
+            ], 
+            region,
+        )
+    
+    #var["Emissions|CO2|Energy|Supply|Gases"] = \
+    var["Emissions|CO2|Supply|Non-Renewable Waste"] = \
+        sum_co2(n, "naphtha for industry", region)
+    # Q: These are plastic combustino emissions, not Gases. 
+    # What then are gases?
+
+    var["Emissions|CO2|Energy|Supply|Liquids"] = \
+        sum_co2(
+            n,
+            [
+                "agriculture machinery oil",
+                "kerosene for aviation",
+                "shipping oil",
+                "shipping methanol",
+                "land transport oil"
+            ],
+            region
+        )
+    # Q: Some things show up on Demand as well as Supply side
+
+    var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = \
+        var["Emissions|CO2|Energy|Supply|Liquids"]
+        # var["Emissions|CO2|Energy|Supply|Gases"] + \
+    
+    var["Emissions|CO2|Energy|Supply"] = \
+        var["Emissions|CO2|Energy|Supply|Liquids and Gases"] + \
+        var["Emissions|CO2|Energy|Supply|Hydrogen"] + \
+        var["Emissions|CO2|Energy|Supply|Electricity and Heat"]
+    # var["Emissions|CO2|Energy|Supply|Other Sector"] = \   
+    # var["Emissions|CO2|Energy|Supply|Solids"] = \ 
+    # TODO Add (negative) BECCS emissions! (Use "co2 stored" and "co2 sequestered")
+
+
+    return var 
+
 def get_ariadne_var(n, industry_demand, energy_totals, region):
 
     var = pd.concat([
@@ -1498,7 +1720,12 @@ if __name__ == "__main__":
             on=["Model", "Scenario", "Region", "Variable", "Unit"]), 
         yearly_dfs
     )
-    df.to_csv(
-        snakemake.output.ariadne_variables,
-        index=False
-    )
+    debug = True
+    if debug:
+        n = networks[0]
+        region="DE"
+    if not debug:
+        df.to_csv(
+            snakemake.output.ariadne_variables,
+            index=False
+        )
