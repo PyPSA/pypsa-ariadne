@@ -1423,15 +1423,17 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
     # var["Final Energy|Heat"] = \
     # var["Final Energy|Solar"] = \
     # var["Final Energy|Hydrogen"] = \
+
     # var["Final Energy|Geothermal"] = \
     # ! Not implemented
 
     return var
 
 
-def get_emissions(n, region):
+def get_emissions(n, region, _energy_totals):
     
-    
+    energy_totals = _energy_totals.loc[region[0:2]]
+
     kwargs = {
         'groupby': n.statistics.groupers.get_name_bus_and_carrier,
         'nice_names': False,
@@ -1456,7 +1458,7 @@ def get_emissions(n, region):
     var["Carbon Sequestration"] = \
         n.statistics.supply(
             bus_carrier="co2 sequestered",**kwargs
-        ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)     
+        ).filter(like=region).groupby("carrier").sum().multiply(t2Mt).sum()     
 
     var["Carbon Sequestration|DACCS"] = \
         var["Carbon Sequestration"] * (
@@ -1480,59 +1482,85 @@ def get_emissions(n, region):
     var["Emissions|CO2"] = \
         co2_emissions.sum() - co2_negative_emissions.sum()
 
-    # ! LULUCF should also be subtracted, we get from REMIND, 
+    # ! LULUCF should also be subtracted (or added??), we get from REMIND, 
     # TODO how to add it here?
     
     # Make sure these values are about right
-    # var["Emissions|CO2|Energy and Industrial Processes"] = \  
-    # var["Emissions|CO2|Industrial Processes"] = \ 
-    # var["Emissions|CO2|Energy"] = \   
-    # var["Emissions|CO2|Energy incl Bunkers"] = \  
-    # var["Emissions|CO2|Energy|Demand"] = \    
-    # var["Emissions|CO2|Energy incl Bunkers|Demand"] = \
+    var["Emissions|CO2|Industrial Processes"] = \
+        co2_emissions.reindex([
+            "process emissions",
+            "process emissions CC",
+        ]).sum()
+    # !!! We do not strictly separate fuel combustion emissions from
+    # process emissions in industry, so some should go to:
+    var["Emissions|CO2|Energy|Demand|Industry"] = \
+        co2_emissions.reindex([
+            "gas for industry",
+            "gas for industry CC",
+            "coal for industry"
+        ]).sum() - co2_negative_emissions.get(
+            "solid biomass for industry CC", 
+            0,
+        ) 
        
-    # var["Emissions|CO2|Energy|Demand|Industry"] = \
-    #     sum_co2(
-    #         n,
-    #         "naphtha for industry",
-    #         region,
-    #     )
-    # Q: these are emissions through burning of plastic waste!!! 
 
 
-    var["Emissions|CO2|Energy|Demand|Residential and Commercial"] = \
-        sum_co2(
-            n,
-            [
-                *n.links.carrier.filter(like="oil boiler").unique(),
-                *n.links.carrier.filter(like="gas boiler").unique(),
-                # matches "gas CHP CC" as well
-                *n.links.carrier.filter(like="gas CHP").unique(),
-            ],
-            region
+    var["Emissions|CO2|Energy|Demand|Residential and Commercial"] = (
+        co2_emissions.filter(like="urban decentral").sum() 
+        + co2_emissions.filter(like="rural" ).sum()
+    )
+
+    international_aviation_fraction = \
+        energy_totals["total international aviation"] / (
+            energy_totals["total domestic aviation"]
+            + energy_totals["total international aviation"]
         )
-    # Q: are the gas CHPs for Residential and Commercial demand??
-    # Q: Also residential elec demand!
+    international_navigation_fraction = \
+    energy_totals["total international navigation"] / (
+        energy_totals["total domestic navigation"]
+        + energy_totals["total international navigation"]
+    )
 
-    var["Emissions|CO2|Energy|Demand|Transportation"] = \
-        sum_co2(n, "land transport oil", region)
+    var["Emissions|CO2|Energy|Demand|Transportation"] = (
+        co2_emissions.get("land transport oil", 0) + (
+            co2_emissions.get("kerosene for aviation") 
+            * (1 - international_aviation_fraction)
+        ) + (
+            co2_emissions.filter(like="shipping").sum()
+            * (1 - international_navigation_fraction)
+        )
+    )
   
-    var["Emissions|CO2|Energy|Demand|Bunkers|Aviation"] = \
-        sum_co2(n, "kerosene for aviation", region)
-    
-    var["Emissions|CO2|Energy|Demand|Bunkers|Navigation"] = \
-        sum_co2(n, ["shipping oil", "shipping methanol"], region)
+    var["Emissions|CO2|Energy|Demand|Bunkers|Aviation"] = (
+        co2_emissions.get("kerosene for aviation") 
+        * international_aviation_fraction
+    )
+
+    var["Emissions|CO2|Energy|Demand|Bunkers|Navigation"] = (
+        co2_emissions.filter(like="shipping").sum()
+        * international_navigation_fraction
+    )
     
     var["Emissions|CO2|Energy|Demand|Bunkers"] = \
         var["Emissions|CO2|Energy|Demand|Bunkers|Aviation"] + \
         var["Emissions|CO2|Energy|Demand|Bunkers|Navigation"]
     
     var["Emissions|CO2|Energy|Demand|Other Sector"] = \
-        sum_co2(n, "agriculture machinery oil", region)
+        co2_emissions.get("agriculture machinery oil")
     
+    var["Emissions|CO2|Energy|Demand"] = \
+        var.get([
+            "Emissions|CO2|Energy|Demand|Industry",
+            "Emissions|CO2|Energy|Demand|Transportation",
+            "Emissions|CO2|Energy|Demand|Residential and Commercial",
+            "Emissions|CO2|Energy|Demand|Other Sector"
+        ]).sum()
+    var["Emissions|CO2|Energy incl Bunkers|Demand"] = \
+        var["Emissions|CO2|Energy|Demand"] + \
+        var["Emissions|CO2|Energy|Demand|Bunkers"]
     
     var["Emissions|Gross Fossil CO2|Energy|Supply|Electricity"] = \
-        sum_co2(n,
+        co2_emissions.reindex(
             [
                 "OCGT",
                 "CCGT",
@@ -1542,90 +1570,95 @@ def get_emissions(n, region):
                 "urban central gas CHP",
                 "urban central gas CHP CC",
             ], 
-            region,
-        )
+        ).sum()
+    # !!! Once again: Should we split CHPs??? -> see mattemost
     
     var["Emissions|CO2|Energy|Supply|Electricity"] = (
         var["Emissions|Gross Fossil CO2|Energy|Supply|Electricity"]
-        + sum_co2(n, "urban central solid biomass CHP CC", region)
+        - co2_negative_emissions.get("urban central solid biomass CHP CC")
     )
 
-    # Q: Where should I add the CHPs?
-    # ! According to Ariadne Database in the Electricity
-
     var["Emissions|CO2|Energy|Supply|Heat"] = \
-        sum_co2(n,
-            [
-                *n.links.carrier.filter(like="oil boiler").unique(),
-                *n.links.carrier.filter(like="gas boiler").unique(),
-            ], 
-            region,
-        )
+        co2_emissions.filter(
+            like="urban central"
+        ).filter(like="boiler").sum() 
+    # in 2020 there might be central oil boilers???
 
     var["Emissions|CO2|Energy|Supply|Electricity and Heat"] = \
         var["Emissions|CO2|Energy|Supply|Heat"] + \
         var["Emissions|CO2|Energy|Supply|Electricity"]
 
-    # var["Emissions|CO2|Supply|Non-Renewable Waste"] = \   
+
     var["Emissions|CO2|Energy|Supply|Hydrogen"] = \
-        sum_co2(n,
-            [
-                "SMR",
-                "SMR CC",
-            ], 
-            region,
-        )
+        co2_emissions.filter(like="SMR").sum()
     
-    #var["Emissions|CO2|Energy|Supply|Gases"] = \
+    var["Emissions|CO2|Energy|Supply|Gases"] = \
+        (-1) * co2_negative_emissions.filter(
+            like="biogas to gas"
+        ).sum()
+    
     var["Emissions|CO2|Supply|Non-Renewable Waste"] = \
-        sum_co2(n, "naphtha for industry", region)
-    # Q: These are plastic combustino emissions, not Gases. 
-    # What then are gases?
+        co2_emissions.get("naphtha for industry")
 
-    var["Emissions|CO2|Energy|Supply|Liquids"] = \
-        sum_co2(
-            n,
-            [
-                "agriculture machinery oil",
-                "kerosene for aviation",
-                "shipping oil",
-                "shipping methanol",
-                "land transport oil"
-            ],
-            region
-        )
-    # Q: Some things show up on Demand as well as Supply side
+    # var["Emissions|CO2|Energy|Supply|Liquids"] = \
+    # Our only Liquid production is Fischer-Tropsch
+    # -> no emissions in this category
 
-    var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = \
-        var["Emissions|CO2|Energy|Supply|Liquids"]
+    # var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = \
+        # var["Emissions|CO2|Energy|Supply|Liquids"]
         # var["Emissions|CO2|Energy|Supply|Gases"] + \
     
     var["Emissions|CO2|Energy|Supply"] = \
-        var["Emissions|CO2|Energy|Supply|Liquids and Gases"] + \
+        var["Emissions|CO2|Energy|Supply|Gases"] + \
         var["Emissions|CO2|Energy|Supply|Hydrogen"] + \
         var["Emissions|CO2|Energy|Supply|Electricity and Heat"]
+    
     # var["Emissions|CO2|Energy|Supply|Other Sector"] = \   
     # var["Emissions|CO2|Energy|Supply|Solids"] = \ 
-    # TODO Add (negative) BECCS emissions! (Use "co2 stored" and "co2 sequestered")
 
 
+    # TODO check that supply + demand = TOTAL
+
+
+    var["Emissions|CO2|Energy"] = \
+        var["Emissions|CO2|Energy|Demand"] + \
+        var["Emissions|CO2|Energy|Supply"]  
+         
+    var["Emissions|CO2|Energy incl Bunkers"] = \
+        var["Emissions|CO2|Energy incl Bunkers|Demand"] + \
+        var["Emissions|CO2|Energy|Supply"]  
+
+    var["Emissions|CO2|Energy and Industrial Processes"] = \
+        var["Emissions|CO2|Energy"] + \
+        var["Emissions|CO2|Industrial Processes"]
+    # For 2050 something goes wrong
+    assert isclose(
+        var["Emissions|CO2"],
+        (
+            var["Emissions|CO2|Energy and Industrial Processes"] 
+            + var["Emissions|CO2|Energy|Demand|Bunkers"]
+            + var["Emissions|CO2|Supply|Non-Renewable Waste"]
+            - co2_negative_emissions.get("DAC", 0)
+        )
+    )
     return var 
 
 def get_ariadne_var(n, industry_demand, energy_totals, region):
 
     var = pd.concat([
-        get_capacities_electricity(n,region),
-        get_capacities_heat(n,region),
-        get_capacities_other(n,region),
+        get_capacities_electricity(n, region),
+        get_capacities_heat(n, region),
+        get_capacities_other(n, region),
         get_primary_energy(n, region),
         get_secondary_energy(n, region),
         get_final_energy(n, region, industry_demand, energy_totals),
         #get_prices(n,region), 
-        #get_emissions
+        get_emissions(n, region, energy_totals)
     ])
 
-
     return var
+
+
 
 
 # uses the global variables model, scenario and var2unit. For now.
@@ -1722,7 +1755,7 @@ if __name__ == "__main__":
     )
     debug = True
     if debug:
-        n = networks[0]
+        n = networks[3]
         region="DE"
     if not debug:
         df.to_csv(
