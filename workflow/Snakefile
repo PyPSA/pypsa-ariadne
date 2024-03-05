@@ -267,6 +267,10 @@ rule plot_ariadne_variables:
         final_energy_detailed=RESULTS + "ariadne/final_energy_detailed.png",
         capacity=RESULTS + "ariadne/capacity.png",
         capacity_detailed=RESULTS + "ariadne/capacity_detailed.png",
+        energy_demand_emissions=RESULTS + "ariadne/energy_demand_emissions.png",
+        energy_supply_emissions=RESULTS + "ariadne/energy_supply_emissions.png",
+        co2_emissions=RESULTS + "ariadne/co2_emissions.png",
+
     script:
         "scripts/plot_ariadne_variables.py"
 

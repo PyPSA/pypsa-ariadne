@@ -3,7 +3,10 @@ import matplotlib.pyplot as plt
 import pyam
 import os
 
-def ariadne_subplot(df, ax, title, select_regex="", drop_regex=""):
+def ariadne_subplot(
+    df, ax, title, 
+    select_regex="", drop_regex="", stacked=True,
+):
     df = df.T.copy()
     if select_regex:
         df = df.filter(
@@ -25,7 +28,7 @@ def ariadne_subplot(df, ax, title, select_regex="", drop_regex=""):
         name=df.columns.names[0],
     )
 
-    return df.plot.area(ax=ax, title=title, legend=False)
+    return df.plot.area(ax=ax, title=title, legend=False, stacked=stacked)
 
 
 
@@ -171,4 +174,33 @@ if __name__ == "__main__":
         savepath=snakemake.output.capacity_detailed,
         select_regex="Capacity\|[^|]*\|[^|]*$",
         drop_regex="^(?!.*(Reservoir|Converter)).+"
+    )
+
+    side_by_side_plot(
+        df,
+        dfhybrid,
+        "Detailed Demand Emissions in Mt",
+        savepath=snakemake.output.energy_demand_emissions,
+        select_regex="Emissions\|CO2\|Energy\|Demand\|[^|]*$",
+        stacked=False,
+    )
+
+    side_by_side_plot(
+        df,
+        dfhybrid,
+        "Detailed Supply Emissions in Mt",
+        savepath=snakemake.output.energy_supply_emissions,
+        select_regex="Emissions\|CO2\|Energy\|Supply\|[^|]*$",
+        stacked=False,
+        drop_regex="^(?!.*(and)).+"
+    )
+
+    side_by_side_plot(
+        df,
+        dfhybrid,
+        "Detailed Supply Emissions in Mt",
+        savepath=snakemake.output.co2_emissions,
+        select_regex="Emissions\|CO2\|[^|]*$",
+        stacked=False,
+        #drop_regex="^(?!.*(and)).+"
     )

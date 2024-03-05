@@ -1791,12 +1791,12 @@ if __name__ == "__main__":
             on=["Model", "Scenario", "Region", "Variable", "Unit"]), 
         yearly_dfs
     )
-    debug = True
-    if debug:
-        n = networks[3]
-        region="DE"
-    if not debug:
-        df.to_csv(
-            snakemake.output.ariadne_variables,
-            index=False
-        )
+
+    df.to_csv(
+        snakemake.output.ariadne_variables,
+        index=False
+    )
+
+    # For debugging
+    n = networks[3]
+    region="DE"
