@@ -630,20 +630,37 @@ def get_primary_energy(n, region):
         "carrier"
     ).sum().multiply(gas_fossil_fraction).multiply(MWh2PJ)
 
+
+    gas_CHP_usage = n.statistics.withdrawal(
+        bus_carrier="gas", 
+        **kwargs,
+    ).filter(
+        like=region
+    ).filter(
+        like="gas CHP"
+    ).multiply(MWh2PJ)
+
+    gas_CHP_E_to_H =  (
+        n.links.loc[gas_CHP_usage.index.get_level_values("name")].efficiency 
+        / n.links.loc[gas_CHP_usage.index.get_level_values("name")].efficiency2
+    )
+
+    gas_CHP_E_fraction =  gas_CHP_E_to_H * (1 / (gas_CHP_E_to_H + 1))
+
     var["Primary Energy|Gas|Heat"] = \
-        gas_usage.filter(like="gas boiler").sum()
+        gas_usage.filter(like="gas boiler").sum() + gas_CHP_usage.multiply(
+            1 - gas_CHP_E_fraction
+        ).values.sum()
     
     var["Primary Energy|Gas|Electricity"] = \
         gas_usage.reindex(
             [
                 'CCGT',
                 'OCGT',
-                'urban central gas CHP',
-                'urban central gas CHP CC',
             ],
-        ).sum()
-    # Adding the CHPs to electricity, see also Capacity|Electricity|Gas
-    # Q: pypsa to iamc SPLITS the CHPS. TODO Should we do the same?
+        ).sum() + gas_CHP_usage.multiply(
+            gas_CHP_E_fraction
+        ).values.sum()
 
     var["Primary Energy|Gas|Hydrogen"] = \
         gas_usage.filter(like="SMR").sum()
@@ -702,6 +719,21 @@ def get_primary_energy(n, region):
         "carrier"
     ).sum().multiply(MWh2PJ)
 
+    biomass_CHP_usage = n.statistics.withdrawal(
+        bus_carrier="solid biomass", 
+        **kwargs,
+    ).filter(
+        like=region
+    ).filter(
+        like="CHP"
+    ).multiply(MWh2PJ)
+
+    biomass_CHP_E_to_H =  (
+        n.links.loc[biomass_CHP_usage.index.get_level_values("name")].efficiency 
+        / n.links.loc[biomass_CHP_usage.index.get_level_values("name")].efficiency2
+    )
+
+    biomass_CHP_E_fraction =  biomass_CHP_E_to_H * (1 / (biomass_CHP_E_to_H + 1))
     
     var["Primary Energy|Biomass|w/ CCS"] = \
         biomass_usage[biomass_usage.index.str.contains("CC")].sum()
@@ -710,10 +742,13 @@ def get_primary_energy(n, region):
         biomass_usage[~biomass_usage.index.str.contains("CC")].sum()
     
     var["Primary Energy|Biomass|Electricity"] = \
-        biomass_usage.filter(like="CHP").sum()
-    # !!! ADDING CHP ONLY TO ELECTRICITY INSTEAD OF SPLITTING, CORRECT?
+        biomass_CHP_usage.multiply(
+            biomass_CHP_E_fraction
+        ).values.sum()
     var["Primary Energy|Biomass|Heat"] = \
-        biomass_usage.filter(like="boiler").sum()
+        biomass_usage.filter(like="boiler").sum() + biomass_CHP_usage.multiply(
+            1 - biomass_CHP_E_fraction
+        ).values.sum()
     
     # var["Primary Energy|Biomass|Gases"] = \
     # Gases are only E-Fuels in AriadneDB
@@ -959,9 +994,6 @@ def get_secondary_energy(n, region):
 
     var["Secondary Energy|Heat|Gas"] = \
         heat_supply.filter(like="gas").sum()
-    # !!! Again, keep the CHPs in mind! 
-    # Here the heat output is considered, but not for primary input
-    
 
     var["Secondary Energy|Heat|Biomass"] = \
         heat_supply.filter(like="biomass").sum()
@@ -1800,3 +1832,7 @@ if __name__ == "__main__":
     # For debugging
     n = networks[3]
     region="DE"
+    kwargs = {
+        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
+        'nice_names': False,
+    }
