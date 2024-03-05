@@ -1439,13 +1439,41 @@ def get_emissions(n, region, _energy_totals):
         'nice_names': False,
     }
 
-
     var = pd.Series()
 
     co2_emissions = n.statistics.supply(
         bus_carrier="co2",**kwargs
     ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)  
     
+
+    CHP_emissions = n.statistics.supply(
+        bus_carrier="co2",**kwargs
+    ).filter(like=region).filter(like="CHP").multiply(t2Mt)
+
+    CHP_E_to_H =  (
+        n.links.loc[CHP_emissions.index.get_level_values("name")].efficiency 
+        / n.links.loc[CHP_emissions.index.get_level_values("name")].efficiency2
+    )
+
+    CHP_E_fraction =  CHP_E_to_H * (1 / (CHP_E_to_H + 1))
+
+    negative_CHP_emissions = n.statistics.withdrawal(
+        bus_carrier="co2",**kwargs
+    ).filter(like=region).filter(like="CHP").multiply(t2Mt)
+
+    negative_CHP_E_to_H =  (
+        n.links.loc[
+            negative_CHP_emissions.index.get_level_values("name")
+        ].efficiency 
+        / n.links.loc[
+            negative_CHP_emissions.index.get_level_values("name")
+        ].efficiency2
+    )
+
+    negative_CHP_E_fraction =  negative_CHP_E_to_H * (
+        1 / (negative_CHP_E_to_H + 1)
+    )
+
     co2_negative_emissions = n.statistics.withdrawal(
         bus_carrier="co2",**kwargs
     ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)
@@ -1453,7 +1481,6 @@ def get_emissions(n, region, _energy_totals):
     co2_storage = n.statistics.supply(
         bus_carrier ="co2 stored",**kwargs
     ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)    
-    ## Emissions
 
     var["Carbon Sequestration"] = \
         n.statistics.supply(
@@ -1483,7 +1510,7 @@ def get_emissions(n, region, _energy_totals):
         co2_emissions.sum() - co2_negative_emissions.sum()
 
     # ! LULUCF should also be subtracted (or added??), we get from REMIND, 
-    # TODO how to add it here?
+    # TODO how to consider it here?
     
     # Make sure these values are about right
     var["Emissions|CO2|Industrial Processes"] = \
@@ -1491,6 +1518,7 @@ def get_emissions(n, region, _energy_totals):
             "process emissions",
             "process emissions CC",
         ]).sum()
+    
     # !!! We do not strictly separate fuel combustion emissions from
     # process emissions in industry, so some should go to:
     var["Emissions|CO2|Energy|Demand|Industry"] = \
@@ -1567,22 +1595,36 @@ def get_emissions(n, region, _energy_totals):
                 "coal",
                 "lignite",
                 "oil",
-                "urban central gas CHP",
-                "urban central gas CHP CC",
             ], 
-        ).sum()
-    # !!! Once again: Should we split CHPs??? -> see mattemost
-    
+        ).sum() + CHP_emissions.multiply(
+            CHP_E_fraction
+        ).values.sum()
+
+
+
     var["Emissions|CO2|Energy|Supply|Electricity"] = (
         var["Emissions|Gross Fossil CO2|Energy|Supply|Electricity"]
-        - co2_negative_emissions.get("urban central solid biomass CHP CC")
+        - negative_CHP_emissions.multiply(
+            negative_CHP_E_fraction
+        ).values.sum()
     )
 
-    var["Emissions|CO2|Energy|Supply|Heat"] = \
+    var["Emissions|Gross Fossil CO2|Energy|Supply|Heat"] = \
         co2_emissions.filter(
             like="urban central"
-        ).filter(like="boiler").sum() 
-    # in 2020 there might be central oil boilers???
+        ).filter(
+            like="boiler" # in 2020 there might be central oil boilers?!
+        ).sum() + CHP_emissions.multiply(
+            1 - CHP_E_fraction
+        ).values.sum()
+    
+
+    var["Emissions|CO2|Energy|Supply|Heat"] = (
+        var["Emissions|Gross Fossil CO2|Energy|Supply|Heat"]
+        - negative_CHP_emissions.multiply(
+            1 - negative_CHP_E_fraction
+        ).values.sum()
+    )
 
     var["Emissions|CO2|Energy|Supply|Electricity and Heat"] = \
         var["Emissions|CO2|Energy|Supply|Heat"] + \
@@ -1616,10 +1658,6 @@ def get_emissions(n, region, _energy_totals):
     # var["Emissions|CO2|Energy|Supply|Other Sector"] = \   
     # var["Emissions|CO2|Energy|Supply|Solids"] = \ 
 
-
-    # TODO check that supply + demand = TOTAL
-
-
     var["Emissions|CO2|Energy"] = \
         var["Emissions|CO2|Energy|Demand"] + \
         var["Emissions|CO2|Energy|Supply"]  
@@ -1631,7 +1669,7 @@ def get_emissions(n, region, _energy_totals):
     var["Emissions|CO2|Energy and Industrial Processes"] = \
         var["Emissions|CO2|Energy"] + \
         var["Emissions|CO2|Industrial Processes"]
-    # For 2050 something goes wrong
+
     assert isclose(
         var["Emissions|CO2"],
         (
