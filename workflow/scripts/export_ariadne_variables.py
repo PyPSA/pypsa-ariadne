@@ -413,13 +413,6 @@ def get_capacities_heat(n, region):
     var["Capacity|Heat|Storage Reservoir"] = \
         storage_capacities.filter(like="water tanks").sum()
 
-    # Q: New technologies get added as we develop the model.
-    # It would be helpful to have some double-checking, e.g.,
-    # by asserting that every technology gets added,
-    # or by computing the total independtly of the subtotals, 
-    # and summing the subcategories to compare to the total
-    # !: For now, check the totals by summing in two different ways
-    
     var["Capacity|Heat"] = (
         var["Capacity|Heat|Solar thermal"] +
         var["Capacity|Heat|Resistive heater"] +
@@ -751,7 +744,7 @@ def get_primary_energy(n, region):
         ).values.sum()
     
     # var["Primary Energy|Biomass|Gases"] = \
-    # Gases are only E-Fuels in AriadneDB
+    # In this case Gases are only E-Fuels in AriadneDB
     # Not possibly in an easy way because biogas to gas goes to the
     # gas bus, where it mixes with fossil imports
     
@@ -986,7 +979,6 @@ def get_secondary_energy(n, region):
         bus_carrier=[
             "urban central heat",
             # rural and urban decentral heat do not produce secondary energy
-            # "urban decentral heat", "rural heat"
         ], **kwargs
     ).filter(like=region).groupby(
         ["carrier"]
@@ -997,6 +989,7 @@ def get_secondary_energy(n, region):
 
     var["Secondary Energy|Heat|Biomass"] = \
         heat_supply.filter(like="biomass").sum()
+    
     # var["Secondary Energy|Heat|Coal"] = \
     # var["Secondary Energy|Heat|Geothermal"] = \
     # var["Secondary Energy|Heat|Nuclear"] = \
@@ -1115,7 +1108,6 @@ def get_secondary_energy(n, region):
     # var["Production|Chemicals|Methanol"] = \ # here units are Mt/year
     var["Secondary Energy|Other Carrier"] = \
         methanol_production.get("methanolisation", 0)
-    # Methanol should probably not be in Liquids
     # Remeber to specify that Other Carrier == Methanol in Comments Tab
 
 
@@ -1187,47 +1179,44 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
         like=region, axis=0,
     ).sum()
 
-    # Q: Pypsa-eur does not strictly distinguish between energy and
-    # non-energy use??
+    # !: Pypsa-eur does not strictly distinguish between energy and
+    # non-energy use
 
-    var["Final Energy|Industry excl Non-Energy Use|Electricity"] = \
+    var["Final Energy|Industry|Electricity"] = \
         industry_demand.get("electricity")
         # or use: sum_load(n, "industry electricity", region)
 
-    var["Final Energy|Industry excl Non-Energy Use|Heat"] = \
+    var["Final Energy|Industry|Heat"] = \
         industry_demand.get("low-temperature heat")
-        #sum_load(n, "low-temperature heat for industry", region)
     
-    # var["Final Energy|Industry excl Non-Energy Use|Solar"] = \
+    # var["Final Energy|Industry|Solar"] = \
     # !: Included in |Heat
 
-    # var["Final Energy|Industry excl Non-Energy Use|Geothermal"] = \
+    # var["Final Energy|Industry|Geothermal"] = \
     # Not implemented
 
-    var["Final Energy|Industry excl Non-Energy Use|Gases"] = \
+    var["Final Energy|Industry|Gases"] = \
         industry_demand.get("methane")
     # "gas for industry" is now regionally resolved and could be used here
 
-    # var["Final Energy|Industry excl Non-Energy Use|Power2Heat"] = \
+    # var["Final Energy|Industry|Power2Heat"] = \
     # Q: misleading description
 
-    var["Final Energy|Industry excl Non-Energy Use|Hydrogen"] = \
+    var["Final Energy|Industry|Hydrogen"] = \
         industry_demand.get("hydrogen")
-        # or "H2 for industry" load 
-    # TODO Is this really all energy-use? Or feedstock as well?
     
 
-    #var["Final Energy|Industry excl Non-Energy Use|Liquids"] = \
-    #   sum_load(n, "naphtha for industry", region)
+    var["Final Energy|Industry|Liquids"] = \
+       sum_load(n, "naphtha for industry", region)
     #TODO This is plastics not liquids for industry! Look in industry demand!
     
 
-    # var["Final Energy|Industry excl Non-Energy Use|Other"] = \
+    # var["Final Energy|Industry|Other"] = \
 
-    var["Final Energy|Industry excl Non-Energy Use|Solids"] = \
+    var["Final Energy|Industry|Solids"] = \
         industry_demand.get(["coal", "coke", "solid biomass"]).sum()
     
-    # Why is AMMONIA zero? Is all naphtha just plastic?
+    # Why is AMMONIA zero?
         
     # var["Final Energy|Industry excl Non-Energy Use|Non-Metallic Minerals"] = \
     # var["Final Energy|Industry excl Non-Energy Use|Chemicals"] = \
@@ -1432,9 +1421,10 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
     # var["Final Energy"] = \
     # var["Final Energy incl Non-Energy Use incl Bunkers"] = \
 
-    # var["Final Energy|Non-Energy Use|Liquids"] = \
-    var["Final Energy|Non-Energy Use"] = \
-        industry_demand.get("naphtha") # This is essentially plastics
+    #var["Final Energy|Non-Energy Use|Liquids"] = \
+    #var["Final Energy|Non-Energy Use"] = \
+    #    industry_demand.get("naphtha") # This is essentially plastics
+    # Not sure if this is correct here
 
     # var["Final Energy|Non-Energy Use|Gases"] = \
     # var["Final Energy|Non-Energy Use|Solids"] = \
@@ -1445,19 +1435,37 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
         var["Final Energy|Agriculture|Electricity"]
         + var["Final Energy|Residential and Commercial|Electricity"]
         + var["Final Energy|Transportation|Electricity"]
-        + var["Final Energy|Industry excl Non-Energy Use|Electricity"]
+        + var["Final Energy|Industry|Electricity"]
     )
     
     # var["Final Energy|Solids"] = \
     # var["Final Energy|Solids|Biomass"] = \
     # var["Final Energy|Gases"] = \
     # var["Final Energy|Liquids"] = \
-    # var["Final Energy|Heat"] = \
+    var["Final Energy|Heat"] = (
+        var["Final Energy|Agriculture|Heat"]
+        + var["Final Energy|Residential and Commercial|Heat"]
+        + var["Final Energy|Industry|Heat"]
+    )
     # var["Final Energy|Solar"] = \
     # var["Final Energy|Hydrogen"] = \
 
     # var["Final Energy|Geothermal"] = \
     # ! Not implemented
+
+    var["Final Energy incl Non-Energy Use incl Bunkers"] = (
+        var["Final Energy|Industry"]
+        + var["Final Energy|Residential and Commercial"]
+        + var["Final Energy|Agriculture"]
+        + var["Final Energy|Transportation"]
+        + var["Final Energy|Bunkers"]
+    )
+        
+
+    # The general problem with final energy is that for most of these categories
+    # feedstocks shouls be excluded (i.e., non-energy use)
+    # However this is hard to do in PyPSA.
+    # TODO nevertheless it would be nice to do exactly that
 
     return var
 
@@ -1563,8 +1571,6 @@ def get_emissions(n, region, _energy_totals):
             0,
         ) 
        
-
-
     var["Emissions|CO2|Energy|Demand|Residential and Commercial"] = (
         co2_emissions.filter(like="urban decentral").sum() 
         + co2_emissions.filter(like="rural" ).sum()
