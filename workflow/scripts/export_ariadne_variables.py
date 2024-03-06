@@ -1758,7 +1758,7 @@ def price_load(n, load_carrier, region):
     """
 
     load = n.loads[(n.loads.carrier == load_carrier) & (n.loads.bus.str.contains(region))]
-    if n.loads_t.p[load.index].sum().sum() == 0:
+    if n.loads_t.p[load.index].sum().sum() < 1:
         return np.nan, 0
     result = (n.loads_t.p[load.index] * n.buses_t.marginal_price[load.bus].values).sum().sum()
     result /= n.loads_t.p[load.index].sum().sum()
@@ -1785,7 +1785,7 @@ def costs_gen_generators(n, region, carrier):
 
     # OPEX
     gen = n.generators_t.p[gens.index].multiply(n.snapshot_weightings.generators, axis="index").sum()
-    if gen.empty or gen.sum() == 0:
+    if gen.empty or gen.sum() < 1:
         return np.nan, 0
     opex = (gen * n.generators.marginal_cost[gen.index]).sum()
               
@@ -1814,7 +1814,7 @@ def costs_gen_links(n, region, carrier, gen_bus="p1"):
 
     # OPEX
     gen = abs(n.links_t[gen_bus][links.index].multiply(n.snapshot_weightings.generators, axis="index")).sum()
-    if gen.empty or gen.sum() == 0:
+    if gen.empty or gen.sum() < 1:
         return np.nan, 0
     opex = (gen * n.links.marginal_cost[gen.index]).sum()
 
