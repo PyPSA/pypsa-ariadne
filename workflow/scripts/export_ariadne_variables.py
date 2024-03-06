@@ -631,7 +631,7 @@ def get_primary_energy(n, region):
         like=region
     ).filter(
         like="gas CHP"
-    ).multiply(MWh2PJ)
+    ).multiply(gas_fossil_fraction).multiply(MWh2PJ)
 
     gas_CHP_E_to_H =  (
         n.links.loc[gas_CHP_usage.index.get_level_values("name")].efficiency 
@@ -1170,6 +1170,10 @@ def get_secondary_energy(n, region):
 
 def get_final_energy(n, region, _industry_demand, _energy_totals):
 
+    kwargs = {
+        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
+        'nice_names': False,
+    }
 
     var = pd.Series()
 
@@ -1230,12 +1234,15 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
     # var["Final Energy|Industry excl Non-Energy Use|Vehicle Construction"] = \
     # Q: Most of these could be found somewhere, but are model inputs!
 
-
-
-    kwargs = {
-        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
-        'nice_names': False,
-    }
+    var["Final Energy|Industry"] = \
+        var.get([
+            "Final Energy|Industry|Electricity",
+            "Final Energy|Industry|Heat",
+            "Final Energy|Industry|Gases",
+            "Final Energy|Industry|Hydrogen",
+            "Final Energy|Industry|Liquids",
+            "Final Energy|Industry|Solids",
+        ])
 
     # Final energy is delivered to the consumers
     low_voltage_electricity = n.statistics.withdrawal(
