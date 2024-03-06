@@ -634,6 +634,7 @@ def get_primary_energy(n, region):
     ).filter(
         like="gas CHP"
     ).multiply(gas_fossil_fraction).multiply(MWh2PJ)
+    ).multiply(gas_fossil_fraction).multiply(MWh2PJ)
 
     gas_CHP_E_to_H =  (
         n.links.loc[gas_CHP_usage.index.get_level_values("name")].efficiency 
@@ -1176,6 +1177,10 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
         'groupby': n.statistics.groupers.get_name_bus_and_carrier,
         'nice_names': False,
     }
+    kwargs = {
+        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
+        'nice_names': False,
+    }
 
     var = pd.Series()
 
@@ -1244,7 +1249,7 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
             "Final Energy|Industry|Hydrogen",
             "Final Energy|Industry|Liquids",
             "Final Energy|Industry|Solids",
-        ]).sum()
+        ])
 
     # Final energy is delivered to the consumers
     low_voltage_electricity = n.statistics.withdrawal(
