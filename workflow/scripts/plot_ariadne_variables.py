@@ -103,6 +103,14 @@ if __name__ == "__main__":
     ][pd.to_numeric(df.keys())]
     dfhybrid.index.names = df.index.names
 
+    idx = df.index.intersection(dfhybrid.index)
+    print(
+        "Dropping variables missing in `Hybrid`:", 
+        df.index.difference(dfhybrid.index),
+    )
+    df = df.loc[idx]
+    dfhybrid = dfhybrid.loc[idx]
+
     side_by_side_plot(
         df,
         dfhybrid,

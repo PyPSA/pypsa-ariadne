@@ -1242,7 +1242,7 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
             "Final Energy|Industry|Hydrogen",
             "Final Energy|Industry|Liquids",
             "Final Energy|Industry|Solids",
-        ])
+        ]).sum()
 
     # Final energy is delivered to the consumers
     low_voltage_electricity = n.statistics.withdrawal(
