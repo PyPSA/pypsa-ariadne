@@ -144,6 +144,14 @@ if __name__ == "__main__":
     ][pd.to_numeric(df.keys())]
     dfhybrid.index.names = df.index.names
 
+    idx = df.index.intersection(dfhybrid.index)
+    print(
+        "Dropping variables missing in `Hybrid`:", 
+        df.index.difference(dfhybrid.index),
+    )
+    df = df.loc[idx]
+    dfhybrid = dfhybrid.loc[idx]
+
     dfremind = model_df.loc[
         "REMIND-EU v1.1", "8Gt_Bal_v3", "Deutschland"
     ][pd.to_numeric(df.keys())]
