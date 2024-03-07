@@ -82,8 +82,8 @@ def within_plot(df, df2,
     for i, var in enumerate(df.columns.get_level_values("Variable")):
 
         axes[i].plot(df.xs(var, axis=1, level=0), label="PyPSA-Eur")
-        if var in df2.index.get_level_values("variable"):
-            axes[i].plot(df2.T.xs(var, axis=1, level=0), label="Remind")   
+        if var in df2.index.get_level_values("Variable"):
+            axes[i].plot(df2.T.xs(var, axis=1, level=0), label="REMIND-EU")   
         axes[i].set_title(var)
         axes[i].legend()
 
@@ -132,23 +132,22 @@ if __name__ == "__main__":
         os.environ["IIASA_PASSWORD"],
     )
 
-    model_df= pyam.read_iiasa(
+    model_df = pyam.read_iiasa(
         "ariadne_intern",
-
         model="REMIND-EU v1.1",
         scenario="8Gt_Bal_v3",
         region="Deutschland",
     ).timeseries()
-
+    leitmodell="REMIND-EU v1.1"
     dfremind = model_df.loc[
-        "REMIND-EU v1.1", "8Gt_Bal_v3", "Deutschland"
+        leitmodell, "8Gt_Bal_v3", "Deutschland"
     ][pd.to_numeric(df.keys())]
     dfremind.index.names = df.index.names
 
 
     idx = df.index.intersection(dfremind.index)
     print(
-        "Dropping variables missing in `Hybrid`:", 
+        f"Dropping variables missing in {leitmodell}:", 
         df.index.difference(dfremind.index),
     )
     df = df.loc[idx]
@@ -160,7 +159,7 @@ if __name__ == "__main__":
         "Primary Energy in PJ_yr",
         savepath=snakemake.output.primary_energy,
         select_regex="Primary Energy\|[^|]*$",
-        drop_regex="^(?!.*(Fossil)).+"
+        drop_regex="^(?!.*(Fossil|Price)).+"
     )
 
     side_by_side_plot(
@@ -169,7 +168,7 @@ if __name__ == "__main__":
         "Detailed Primary Energy in PJ_yr",
         savepath=snakemake.output.primary_energy_detailed,
         select_regex="Primary Energy\|[^|]*\|[^|]*$",
-        drop_regex="^(?!.*(CCS)).+"
+        drop_regex="^(?!.*(CCS|Price)).+"
     )
 
     side_by_side_plot(
@@ -178,6 +177,8 @@ if __name__ == "__main__":
         "Secondary Energy in PJ_yr",
         savepath=snakemake.output.secondary_energy,
         select_regex="Secondary Energy\|[^|]*$",
+        drop_regex="^(?!.*(Price)).+"
+
     )
 
     side_by_side_plot(
@@ -188,7 +189,7 @@ if __name__ == "__main__":
         # Secondary Energy|Something|Something (exactly two pipes)
         select_regex="Secondary Energy\|[^|]*\|[^|]*$",
         # Not ending in Fossil or Renewables (i.e., categories)
-        drop_regex="^(?!.*(Fossil|Renewables|Losses)).+"
+        drop_regex="^(?!.*(Fossil|Renewables|Losses|Price)).+"
     )
 
     side_by_side_plot(
@@ -197,7 +198,7 @@ if __name__ == "__main__":
         "Final Energy in PJ_yr",
         savepath=snakemake.output.final_energy,
         select_regex="Final Energy\|[^|]*$",
-        drop_regex="^(?!.*(Electricity)).+"
+        drop_regex="^(?!.*(Electricity|Price)).+"
     )
 
     side_by_side_plot(
@@ -207,7 +208,7 @@ if __name__ == "__main__":
         savepath=snakemake.output.final_energy_detailed,
         select_regex="Final Energy\|[^|]*\|[^|]*$",
         rshift = 1.45,
-        #drop_regex="^(?!.*(Electricity)).+"
+        drop_regex="^(?!.*(Price)).+"
     )
 
     side_by_side_plot(
