@@ -270,7 +270,13 @@ rule plot_ariadne_variables:
         energy_demand_emissions=RESULTS + "ariadne/energy_demand_emissions.png",
         energy_supply_emissions=RESULTS + "ariadne/energy_supply_emissions.png",
         co2_emissions=RESULTS + "ariadne/co2_emissions.png",
-
+        primary_energy_price = RESULTS + "ariadne/prices/primary_energy_price.png",
+        secondary_energy_price = RESULTS + "ariadne/prices/secondary_energy_price.png",
+        final_energy_residential_price = RESULTS + "ariadne/prices/final_energy_residential_price.png",
+        final_energy_industry_price = RESULTS + "ariadne/prices/final_energy_industry_price.png",
+        final_energy_transportation_price = RESULTS + "ariadne/prices/final_energy_transportation_price.png",
+        final_energy_residential_commercial_price = RESULTS + "ariadne/prices/final_energy_residential_commercial_price.png",
+        all_prices = RESULTS + "ariadne/prices/all_prices.png",
     script:
         "scripts/plot_ariadne_variables.py"
 

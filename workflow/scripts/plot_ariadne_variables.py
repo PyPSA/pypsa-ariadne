@@ -91,7 +91,7 @@ def within_plot(df, df2,
     if n % 2 != 0:
         fig.delaxes(axes[-1])
 
-    plt.suptitle(title, fontsize="xx-large")
+    plt.suptitle(title, fontsize="xx-large", y=1.0)
     plt.tight_layout()
     plt.close()
     fig.savefig(savepath, bbox_inches="tight")
@@ -261,33 +261,48 @@ if __name__ == "__main__":
     )
     
     within_plot(
-        df, 
+        df[df.index.get_level_values("Variable").str.startswith("Price|Secondary Energy")], 
         dfremind, 
         title = "Price|Secondary Energy", 
-        savepath="",
-        select_regex="Price\|Secondary Energy\|[^|]*$"
+        savepath=snakemake.output.secondary_energy_price,
     )
 
     within_plot(
-        df, 
+        df[df.index.get_level_values("Variable").str.startswith("Price|Final Energy|Residential")], 
         dfremind, 
         title = "Price|Final Energy|Residential", 
-        savepath="",
-        select_regex="Price\|Final Energy\|Residential\|[^|]*$"
+        savepath=snakemake.output.final_energy_residential_price,
+        #select_regex="Price\|Final Energy\|Residential\|[^|]*$"
     )
 
     within_plot(
-        df, 
+        df[df.index.get_level_values("Variable").str.startswith("Price|Final Energy|Industry")], 
         dfremind, 
         title = "Price|Final Energy|Industry", 
-        savepath="",
-        select_regex="Price\|Final Energy\|Industry\|[^|]*$"
+        savepath=snakemake.output.final_energy_industry_price,
+        #select_regex="Price\|Final Energy\|Industry\|[^|]*$"
+    )
+
+    within_plot(
+        df[df.index.get_level_values("Variable").str.startswith("Price|Final Energy|Transportation")], 
+        dfremind, 
+        title = "Price|Final Energy|Transportation", 
+        savepath=snakemake.output.final_energy_transportation_price,
+        #select_regex="Price\|Final Energy\|Industry\|[^|]*$"
+    )
+
+    within_plot(
+        df[df.index.get_level_values("Variable").str.startswith("Price|Final Energy|Residential and Commercial")], 
+        dfremind, 
+        title = "Price|Final Energy|Residential and Commercial", 
+        savepath=snakemake.output.final_energy_residential_commercial_price,
+        #select_regex="Price\|Final Energy\|Industry\|[^|]*$"
     )
 
     within_plot(
         df[df.index.get_level_values("Variable").str.startswith('Price')], 
         dfremind, 
         title = "All prices", 
-        savepath="",
+        savepath=snakemake.output.all_prices,
     )
 
