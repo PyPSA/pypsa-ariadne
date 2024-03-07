@@ -634,7 +634,6 @@ def get_primary_energy(n, region):
     ).filter(
         like="gas CHP"
     ).multiply(gas_fossil_fraction).multiply(MWh2PJ)
-    ).multiply(gas_fossil_fraction).multiply(MWh2PJ)
 
     gas_CHP_E_to_H =  (
         n.links.loc[gas_CHP_usage.index.get_level_values("name")].efficiency 

@@ -43,7 +43,6 @@ def side_by_side_plot(
     fig, axes = plt.subplots(ncols=2, sharey=True)
     ax = ariadne_subplot(df, axes[0], "PyPSA-Eur", **kwargs)
     ax2 = ariadne_subplot(dfhybrid, axes[1], "REMIND-EU v1.1", **kwargs)
-    ax2 = ariadne_subplot(dfhybrid, axes[1], "REMIND-EU v1.1", **kwargs)
     
     handles, labels = ax.get_legend_handles_labels()
     labels2 = ax2.get_legend_handles_labels()[1]
@@ -83,7 +82,7 @@ def within_plot(df, df2,
     for i, var in enumerate(df.columns.get_level_values("Variable")):
 
         axes[i].plot(df.xs(var, axis=1, level=0), label="PyPSA-Eur")
-        if var in dfremind.index.get_level_values("variable"):
+        if var in df2.index.get_level_values("variable"):
             axes[i].plot(df2.T.xs(var, axis=1, level=0), label="Remind")   
         axes[i].set_title(var)
         axes[i].legend()
@@ -141,18 +140,9 @@ if __name__ == "__main__":
     ).timeseries()
 
     dfhybrid = model_df.loc[
-        "REMIND-EU v1.1", "8Gt_Bal_v3", "Deutschland"
-        "REMIND-EU v1.1", "8Gt_Bal_v3", "Deutschland"
+        "Hybrid", "8Gt_Bal_v3", "Deutschland"
     ][pd.to_numeric(df.keys())]
     dfhybrid.index.names = df.index.names
-
-    idx = df.index.intersection(dfhybrid.index)
-    print(
-        "Dropping variables missing in `Hybrid`:", 
-        df.index.difference(dfhybrid.index),
-    )
-    df = df.loc[idx]
-    dfhybrid = dfhybrid.loc[idx]
 
     dfremind = model_df.loc[
         "REMIND-EU v1.1", "8Gt_Bal_v3", "Deutschland"
