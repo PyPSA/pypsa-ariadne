@@ -43,6 +43,7 @@ def side_by_side_plot(
     fig, axes = plt.subplots(ncols=2, sharey=True)
     ax = ariadne_subplot(df, axes[0], "PyPSA-Eur", **kwargs)
     ax2 = ariadne_subplot(dfhybrid, axes[1], "REMIND-EU v1.1", **kwargs)
+    ax2 = ariadne_subplot(dfhybrid, axes[1], "REMIND-EU v1.1", **kwargs)
     
     handles, labels = ax.get_legend_handles_labels()
     labels2 = ax2.get_legend_handles_labels()[1]
@@ -140,6 +141,7 @@ if __name__ == "__main__":
     ).timeseries()
 
     dfhybrid = model_df.loc[
+        "REMIND-EU v1.1", "8Gt_Bal_v3", "Deutschland"
         "REMIND-EU v1.1", "8Gt_Bal_v3", "Deutschland"
     ][pd.to_numeric(df.keys())]
     dfhybrid.index.names = df.index.names
