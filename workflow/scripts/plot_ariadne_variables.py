@@ -134,25 +134,29 @@ if __name__ == "__main__":
 
     model_df= pyam.read_iiasa(
         "ariadne_intern",
-        model=["Hybrid", "REMIND-EU v1.1"],
+
+        model="REMIND-EU v1.1",
         scenario="8Gt_Bal_v3",
         region="Deutschland",
     ).timeseries()
 
-    dfhybrid = model_df.loc[
-        "Hybrid", "8Gt_Bal_v3", "Deutschland"
-    ][pd.to_numeric(df.keys())]
-    dfhybrid.index.names = df.index.names
-
     dfremind = model_df.loc[
         "REMIND-EU v1.1", "8Gt_Bal_v3", "Deutschland"
     ][pd.to_numeric(df.keys())]
-    dfhybrid.index.names = df.index.names
+    dfremind.index.names = df.index.names
 
+
+    idx = df.index.intersection(dfremind.index)
+    print(
+        "Dropping variables missing in `Hybrid`:", 
+        df.index.difference(dfremind.index),
+    )
+    df = df.loc[idx]
+    dfremind = dfremind.loc[idx]
 
     side_by_side_plot(
         df,
-        dfhybrid,
+        dfremind,
         "Primary Energy in PJ_yr",
         savepath=snakemake.output.primary_energy,
         select_regex="Primary Energy\|[^|]*$",
@@ -161,7 +165,7 @@ if __name__ == "__main__":
 
     side_by_side_plot(
         df,
-        dfhybrid,
+        dfremind,
         "Detailed Primary Energy in PJ_yr",
         savepath=snakemake.output.primary_energy_detailed,
         select_regex="Primary Energy\|[^|]*\|[^|]*$",
@@ -170,7 +174,7 @@ if __name__ == "__main__":
 
     side_by_side_plot(
         df,
-        dfhybrid,
+        dfremind,
         "Secondary Energy in PJ_yr",
         savepath=snakemake.output.secondary_energy,
         select_regex="Secondary Energy\|[^|]*$",
@@ -178,7 +182,7 @@ if __name__ == "__main__":
 
     side_by_side_plot(
         df,
-        dfhybrid,
+        dfremind,
         "Detailed Secondary Energy in PJ_yr",
         savepath=snakemake.output.secondary_energy_detailed,
         # Secondary Energy|Something|Something (exactly two pipes)
@@ -189,7 +193,7 @@ if __name__ == "__main__":
 
     side_by_side_plot(
         df,
-        dfhybrid,
+        dfremind,
         "Final Energy in PJ_yr",
         savepath=snakemake.output.final_energy,
         select_regex="Final Energy\|[^|]*$",
@@ -198,7 +202,7 @@ if __name__ == "__main__":
 
     side_by_side_plot(
         df,
-        dfhybrid,
+        dfremind,
         "Detailed Final Energy in PJ_yr",
         savepath=snakemake.output.final_energy_detailed,
         select_regex="Final Energy\|[^|]*\|[^|]*$",
@@ -208,7 +212,7 @@ if __name__ == "__main__":
 
     side_by_side_plot(
         df,
-        dfhybrid,
+        dfremind,
         "Capacity in GW",
         savepath=snakemake.output.capacity,
         select_regex="Capacity\|[^|]*$",
@@ -216,7 +220,7 @@ if __name__ == "__main__":
 
     side_by_side_plot(
         df,
-        dfhybrid,
+        dfremind,
         "Detailed Capacity in GW",
         savepath=snakemake.output.capacity_detailed,
         select_regex="Capacity\|[^|]*\|[^|]*$",
@@ -225,7 +229,7 @@ if __name__ == "__main__":
 
     side_by_side_plot(
         df,
-        dfhybrid,
+        dfremind,
         "Detailed Demand Emissions in Mt",
         savepath=snakemake.output.energy_demand_emissions,
         select_regex="Emissions\|CO2\|Energy\|Demand\|[^|]*$",
@@ -234,7 +238,7 @@ if __name__ == "__main__":
 
     side_by_side_plot(
         df,
-        dfhybrid,
+        dfremind,
         "Detailed Supply Emissions in Mt",
         savepath=snakemake.output.energy_supply_emissions,
         select_regex="Emissions\|CO2\|Energy\|Supply\|[^|]*$",
@@ -244,7 +248,7 @@ if __name__ == "__main__":
 
     side_by_side_plot(
         df,
-        dfhybrid,
+        dfremind,
         "Detailed Emissions in Mt",
         savepath=snakemake.output.co2_emissions,
         select_regex="Emissions\|CO2\|[^|]*$",

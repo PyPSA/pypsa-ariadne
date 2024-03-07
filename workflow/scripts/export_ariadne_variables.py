@@ -1176,10 +1176,6 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
         'groupby': n.statistics.groupers.get_name_bus_and_carrier,
         'nice_names': False,
     }
-    kwargs = {
-        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
-        'nice_names': False,
-    }
 
     var = pd.Series()
 
