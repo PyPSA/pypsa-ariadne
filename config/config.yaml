@@ -18,10 +18,10 @@ run:
   disable_progressbar: true
 
 iiasa_database:
-  db_name: ariadne_intern
-  model_name: Hybrid
-  scenario: 8Gt_EnSec
-  region: Deutschland
+  # db_name: ariadne_intern
+  # model_name: Hybrid
+  scenario: 8Gt_Bal_v3
+  # region: Deutschland
 
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
