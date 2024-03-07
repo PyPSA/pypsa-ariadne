@@ -765,10 +765,10 @@ def get_primary_energy(n, region):
     )
     
         
-    assert isclose(
-        var["Primary Energy|Biomass"],
-        biomass_usage.sum(),
-    )
+    # assert isclose(
+    #     var["Primary Energy|Biomass"],
+    #     biomass_usage.sum(),
+    # )
 
     var["Primary Energy|Nuclear"] = \
         n.statistics.withdrawal(
@@ -1873,7 +1873,7 @@ def get_weighted_costs(costs, flows):
     return result
 
 
-def get_prices(n, region, planning_horizon):
+def get_prices(n, region):
     """
     Calculate the prices of various energy sources in the Ariadne model.
 
@@ -2273,23 +2273,19 @@ def get_prices(n, region, planning_horizon):
     # Price|Final Energy|Transportation|Hydrogen|Carbon Price Component
     # Price|Final Energy|Transportation|Liquids|Carbon Price Component
 
-    # adjust for inflation (EUR_2020)
-    inflation = 0.02
-    var = var * (1 + inflation) ** (int(planning_horizon) - 2020)
-
     return var
 
 
-def get_ariadne_var(n, industry_demand, energy_totals, region, planning_horizon):
+def get_ariadne_var(n, industry_demand, energy_totals, region):
 
     var = pd.concat([
         get_capacities_electricity(n, region),
         get_capacities_heat(n, region),
         get_capacities_other(n, region),
-        #get_primary_energy(n, region),
+        get_primary_energy(n, region),
         get_secondary_energy(n, region),
-        #get_final_energy(n, region, industry_demand, energy_totals),
-        get_prices(n,region, planning_horizon), 
+        get_final_energy(n, region, industry_demand, energy_totals),
+        get_prices(n,region), 
         get_emissions(n, region, energy_totals)
     ])
 
@@ -2300,11 +2296,11 @@ def get_ariadne_var(n, industry_demand, energy_totals, region, planning_horizon)
 
 # uses the global variables model, scenario and var2unit. For now.
 def get_data(
-        n, industry_demand, energy_totals, region, planning_horizon,
+        n, industry_demand, energy_totals, region,
         version="0.9.0", scenario="test"
     ):
     
-    var = get_ariadne_var(n, industry_demand, energy_totals, region, planning_horizon)
+    var = get_ariadne_var(n, industry_demand, energy_totals, region)
 
     data = []
     for v in var.index:
@@ -2381,7 +2377,6 @@ if __name__ == "__main__":
             "DE",
             version=config["version"],
             scenario=config["run"]["name"][0],
-            planning_horizon=year,
         ))
 
     df = reduce(

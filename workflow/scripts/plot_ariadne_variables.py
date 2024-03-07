@@ -58,6 +58,46 @@ def side_by_side_plot(
     fig.savefig(savepath, bbox_inches="tight")
     return fig 
 
+def within_plot(df, df2, 
+                title, savepath, 
+                select_regex="", drop_regex="",**kwargs
+                ):
+
+    df = df.T.copy()
+    if select_regex:
+        df = df.filter(
+            regex=select_regex,
+        )
+    if drop_regex:
+        df = df.filter(
+            regex=drop_regex,
+        )
+    
+    n = df.shape[1]
+    rows = n // 2 + n % 2 
+
+    fig, axes = plt.subplots(rows, 2, figsize=(10, 5 * rows))
+    axes = axes.flatten()
+
+    for i, var in enumerate(df.columns.get_level_values("Variable")):
+
+        axes[i].plot(df.xs(var, axis=1, level=0), label="PyPSA-Eur")
+        if var in dfremind.index.get_level_values("variable"):
+            axes[i].plot(df2.T.xs(var, axis=1, level=0), label="Remind")   
+        axes[i].set_title(var)
+        axes[i].legend()
+
+    # Remove the last subplot if there's an odd number of plots
+    if n % 2 != 0:
+        fig.delaxes(axes[-1])
+
+    plt.suptitle(title, fontsize="xx-large")
+    plt.tight_layout()
+    plt.close()
+    fig.savefig(savepath, bbox_inches="tight")
+
+    return fig 
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
@@ -94,14 +134,21 @@ if __name__ == "__main__":
 
     model_df= pyam.read_iiasa(
         "ariadne_intern",
-        model="Hybrid",
+        model=["Hybrid", "REMIND-EU v1.1"],
         scenario="8Gt_Bal_v3",
+        region="Deutschland",
     ).timeseries()
 
     dfhybrid = model_df.loc[
         "Hybrid", "8Gt_Bal_v3", "Deutschland"
     ][pd.to_numeric(df.keys())]
     dfhybrid.index.names = df.index.names
+
+    dfremind = model_df.loc[
+        "REMIND-EU v1.1", "8Gt_Bal_v3", "Deutschland"
+    ][pd.to_numeric(df.keys())]
+    dfhybrid.index.names = df.index.names
+
 
     side_by_side_plot(
         df,
@@ -204,3 +251,43 @@ if __name__ == "__main__":
         stacked=False,
         #drop_regex="^(?!.*(and)).+"
     )
+
+    within_plot(
+        df, 
+        dfremind, 
+        title = "Price|Primary Energy", 
+        savepath=snakemake.output.primary_energy_price,
+        select_regex="Price\|Primary Energy\|[^|]*$"
+    )
+    
+    within_plot(
+        df, 
+        dfremind, 
+        title = "Price|Secondary Energy", 
+        savepath="",
+        select_regex="Price\|Secondary Energy\|[^|]*$"
+    )
+
+    within_plot(
+        df, 
+        dfremind, 
+        title = "Price|Final Energy|Residential", 
+        savepath="",
+        select_regex="Price\|Final Energy\|Residential\|[^|]*$"
+    )
+
+    within_plot(
+        df, 
+        dfremind, 
+        title = "Price|Final Energy|Industry", 
+        savepath="",
+        select_regex="Price\|Final Energy\|Industry\|[^|]*$"
+    )
+
+    within_plot(
+        df[df.index.get_level_values("Variable").str.startswith('Price')], 
+        dfremind, 
+        title = "All prices", 
+        savepath="",
+    )
+
