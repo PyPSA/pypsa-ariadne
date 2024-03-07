@@ -206,7 +206,7 @@ if __name__ == "__main__":
     side_by_side_plot(
         df,
         dfhybrid,
-        "Detailed Supply Emissions in Mt",
+        "Detailed Emissions in Mt",
         savepath=snakemake.output.co2_emissions,
         select_regex="Emissions\|CO2\|[^|]*$",
         stacked=False,
