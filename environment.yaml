@@ -23,7 +23,7 @@ dependencies:
 - yaml
 - pytables
 - lxml
-- powerplantmatching>=0.5.5
+- powerplantmatching>=0.5.11
 - numpy
 - pandas>=1.4
 - geopandas>=0.11.0
@@ -49,7 +49,7 @@ dependencies:
 - pyxlsb
 - graphviz
 - tsam>=1.1.0
-- pypsa>=0.25.1
+- pypsa>=0.27.0
 - highs
 - pyam
 

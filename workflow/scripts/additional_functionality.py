@@ -2,7 +2,7 @@
 import logging
 
 import pandas as pd
-from prepare_sector_network import emission_sectors_from_opts
+from prepare_sector_network import determine_emission_sectors
 
 from xarray import DataArray
 
@@ -94,7 +94,7 @@ def add_co2limit_country(n, limit_countries, snakemake):
     nhours = n.snapshot_weightings.generators.sum()
     nyears = nhours / 8760
 
-    sectors = emission_sectors_from_opts(n.opts)
+    sectors = determine_emission_sectors(n.config['sector'])
 
     # convert MtCO2 to tCO2
     co2_totals = 1e6 * pd.read_csv(snakemake.input.co2_totals_name, index_col=0)
@@ -103,7 +103,10 @@ def add_co2limit_country(n, limit_countries, snakemake):
 
     for ct in limit_countries:
         limit = co2_total_totals[ct]*limit_countries[ct]
-        logger.info(f"Limiting emissions in country {ct} to {limit_countries[ct]} of 1990 levels, i.e. {limit} tCO2/a")
+        logger.info(
+            f"Limiting emissions in country {ct} to {limit_countries[ct]:.1%} of "
+            f"1990 levels, i.e. {limit:,.2f} tCO2/a",
+        )
 
         lhs = []
 

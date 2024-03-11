@@ -3,6 +3,11 @@
 # SPDX-License-Identifier: MIT
 
 from snakemake.utils import min_version
+import yaml, sys
+
+sys.path.append("workflow/submodules/pypsa-eur/scripts")
+
+from _helpers import path_provider
 
 min_version("8.5")
 
@@ -10,9 +15,23 @@ configfile: "workflow/submodules/pypsa-eur/config/config.default.yaml"
 configfile: "config/config.yaml"
 configfile: "config/config.personal.yaml"
 
-run = config.get("run", {})
-RDIR = run["name"] + "/" if run.get("name") else ""
-RESOURCES = "resources/" + RDIR if not run.get("shared_resources") else "resources/"
+run = config["run"]
+scenarios = run.get("scenarios", {})
+if run["name"] and scenarios.get("enable"):
+    fn = Path(scenarios["file"])
+    scenarios = yaml.safe_load(fn.read_text())
+    RDIR = "{run}/"
+    if run["name"] == "all":
+        config["run"]["name"] = list(scenarios.keys())
+elif run["name"]:
+    RDIR = run["name"] + "/"
+else:
+    RDIR = ""
+
+logs = path_provider("logs/", RDIR, run["shared_resources"])
+benchmarks = path_provider("benchmarks/", RDIR, run["shared_resources"])
+resources = path_provider("resources/", RDIR, run["shared_resources"])
+
 RESULTS = "results/" + RDIR
 
 envvars:
@@ -25,6 +44,8 @@ wildcard_constraints:
     ll="(v|c)([0-9\.]+|opt)",
     opts="[-+a-zA-Z0-9\.]*",
     sector_opts="[-+a-zA-Z0-9\.\s]*",
+    planning_horizons="[0-9]*",
+    year="[0-9]*",
 
 module pypsaeur:
     snakefile:
@@ -68,7 +89,7 @@ rule retrieve_ariadne_scenario_data:
         iiasa_usr=os.environ["IIASA_USERNAME"],
         iiasa_pwd=os.environ["IIASA_PASSWORD"]
     output:
-        data=RESOURCES + "ariadne_scenario_data.csv"
+        data=resources("ariadne_scenario_data.csv")
     log:
         "logs/retrieve_ariadne_scenario_data.log"
     resources:
@@ -76,18 +97,23 @@ rule retrieve_ariadne_scenario_data:
     script:
         "scripts/retrieve_ariadne_scenario_data.py"
 
-if config["enable"]["retrieve"] and config["enable"].get("retrieve_cost_data", True):
+#if config["enable"]["retrieve"] and config["enable"].get("retrieve_cost_data", True):
+#
+#    use rule retrieve_cost_data from pypsaeur with:
+#        output:
+#            resources("costs_{year}-original.csv"),
 
-    use rule retrieve_cost_data from pypsaeur with:
-        output:
-            "data/costs_{year}-original.csv",
+use rule prepare_sector_network from pypsaeur with:
+    input:
+        **{k: v for k, v in rules.prepare_sector_network.input.items() if k != "costs"},
+	costs=resources("modified-costs_{planning_horizons}.csv"),
 
 rule modify_cost_data:
     input:
-        costs="data/costs_{year}-original.csv",
-        modifications="ariadne-data/costs_{year}-modifications.csv",
+        costs=resources("costs_{planning_horizons}.csv"),
+        modifications="ariadne-data/costs_{planning_horizons}-modifications.csv",
     output:
-       "data/costs_{year}.csv",
+        resources("modified-costs_{planning_horizons}.csv"),
     resources:
         mem_mb=1000
     script:
@@ -102,7 +128,7 @@ rule modify_prenetwork:
         network=RESULTS
         + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
         wkn="resources/wasserstoff_kernnetz_elec_s{simpl}_{clusters}.csv",
-        costs="data/costs_{planning_horizons}.csv",
+        costs=resources("costs_{planning_horizons}.csv"),
     output:
         network=RESULTS
         + "prenetworks-final/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc"
@@ -115,20 +141,20 @@ rule modify_prenetwork:
 use rule solve_sector_network_myopic from pypsaeur with:
     params:
         **{k: v for k, v in rules.solve_sector_network_myopic.params.items() if k != "custom_extra_functionality"},
-        custom_extra_functionality=workflow.source_path("scripts/additional_functionality.py"),
+        custom_extra_functionality=os.path.join(os.path.dirname(workflow.snakefile), "scripts/additional_functionality.py"),
     input:
         **{k: v for k, v in rules.solve_sector_network_myopic.input.items() if k != "network"},
         network=RESULTS
         + "prenetworks-final/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
-        co2_totals_name=RESOURCES + "co2_totals.csv",
+        co2_totals_name=resources("co2_totals.csv"),
 
 
 rule modify_existing_heating:
     input:
-        ariadne=RESOURCES + "ariadne_scenario_data.csv",
+        ariadne=resources("ariadne_scenario_data.csv"),
         existing_heating="data/existing_infrastructure/existing_heating_raw.csv",
     output:
-        existing_heating=RESOURCES + "existing_heating.csv",
+        existing_heating=resources("existing_heating.csv"),
     resources:
         mem_mb=1000
     script:
@@ -139,16 +165,16 @@ rule modify_existing_heating:
 use rule build_existing_heating_distribution from pypsaeur with:
     input:
         **{k: v for k, v in rules.build_existing_heating_distribution.input.items() if k != "existing_heating"},
-        existing_heating=RESOURCES + "existing_heating.csv",
+        existing_heating=resources("existing_heating.csv"),
 
 
 
 rule modify_energy_totals:
     input:
-        ariadne=RESOURCES + "ariadne_scenario_data.csv",
-        energy_totals=RESOURCES + "energy_totals.csv",
+        ariadne=resources("ariadne_scenario_data.csv"),
+        energy_totals=resources("energy_totals.csv"),
     output:
-        energy_totals=RESOURCES + "energy_totals-modified.csv",
+        energy_totals=resources("energy_totals-modified.csv"),
     resources:
         mem_mb=1000
     script:
@@ -158,7 +184,7 @@ rule modify_energy_totals:
 use rule build_population_weighted_energy_totals from pypsaeur with:
     input:
         **{k: v for k, v in rules.build_population_weighted_energy_totals.input.items() if k != "energy_totals"},
-        energy_totals=RESOURCES + "energy_totals-modified.csv",
+        energy_totals=resources("energy_totals-modified.csv"),
 
 if config["wasserstoff_kernnetz"]["enable"]:
 
@@ -176,7 +202,7 @@ if config["wasserstoff_kernnetz"]["enable"]:
                 "https://geodata.ucdavis.edu/gadm/gadm4.1/json/gadm41_DEU_1.json.zip",
                 keep_local=True,
             ),
-            locations="data/wasserstoff_kernnetz/locations_wasserstoff_kernnetz.csv",
+            locations="ariadne-data/wasserstoff_kernnetz/locations_wasserstoff_kernnetz.csv",
         output:
             cleaned_wasserstoff_kernnetz="resources/wasserstoff_kernnetz.csv",
         script:

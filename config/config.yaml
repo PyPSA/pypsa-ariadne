@@ -4,7 +4,8 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  name: "240209-365H-fixcoalco2"
+  name:
+  - 240219-test/normal
   scenarios:
     enable: true
   shared_resources: true #stops recalculating
@@ -33,12 +34,15 @@ scenario:
   opts:
   - ''
   sector_opts:
-    - 365H-T-H-B-I-A
+    - none
   planning_horizons:
   - 2020
+  #- 2025
   - 2030
-  - 2040
-  - 2050
+  #- 2035
+  #- 2040
+  #- 2045
+  #- 2050
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
 # Germany plus 12 "Stromnachbarn"
@@ -64,6 +68,8 @@ clustering:
     'NO': 0.0454
     'PL': 0.0454
     'SE': 0.0454
+  temporal:
+    resolution_sector: 3H
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:
@@ -100,34 +106,49 @@ limits_min:
     onwind:
       DE:
         2020: 50
+        2025: 60
         2030: 100
+        2035: 120
         2040: 160
-        2050: 200
+        2045: 170
+        2050: 180
     offwind:
       DE:
         2020: 1
+        2025: 7
         2030: 20
+        2035: 25
         2040: 25
+        2045: 25
         2050: 25
     solar:
       DE:
         2020: 50
+        2025: 80
         2030: 215
+        2035: 250
         2040: 300
+        2045: 350
         2050: 400
   Link:
     H2 Electrolysis:
       DE:
         2020: 0
+        2025: 1
         2030: 10
+        2035: 20
         2040: 50
+        2045: 60
         2050: 80
 
 h2_import_max:
   DE:
     2020: 0
+    2025: 5
     2030: 20
+    2035: 50
     2040: 100
+    2045: 150
     2050: 200
 
 wasserstoff_kernnetz:
@@ -145,6 +166,11 @@ coal_generation_ban:
 nuclear_generation_ban:
   DE: 2022
 
+first_technology_occurrence:
+  Link:
+    H2 pipeline: 2025
+    H2 Electrolysis: 2025
+    H2 pipeline retrofitted: 2025
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
@@ -152,9 +178,13 @@ sector:
     potential: 0.4
     progress:
       2020: 0.0
+      2025: 0.15
       2030: 0.3
+      2036: 0.45
       2040: 0.6
+      2045: 0.8
       2050: 1.0
+  central_heat_vent: true
   co2_budget_national: true
   co2_spatial: true
   biomass_spatial: true
@@ -164,17 +194,19 @@ sector:
   regional_methanol_demand: true  #set to true if regional CO2 constraints needed
   regional_oil_demand: true  #set to true if regional CO2 constraints needed
   regional_coal_demand: true  #set to true if regional CO2 constraints needed
+  gas_network: true
   biogas_upgrading_cc: true
   cluster_heat_buses: true
-  # this needs to be taken from ariadne database
+  # calculated based on ariadne "Stock|Space Heating"
+  # and then 2% of buildings renovated per year to reduce their demand by 80%
   reduce_space_heat_exogenously_factor:
     2020: 0.0
-    2025: 0.05
-    2030: 0.10
-    2035: 0.16
-    2040: 0.22
-    2045: 0.25
-    2050: 0.35
+    2025: 0.07
+    2030: 0.14
+    2035: 0.21
+    2040: 0.29
+    2045: 0.36
+    2050: 0.43
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#industry
 industry:
@@ -227,3 +259,34 @@ plotting:
   tech_colors:
     load: "#111100"
     H2 pipeline (Kernnetz): '#6b3161'
+  countries:
+  - all
+  - DE
+  carriers:
+  - electricity
+  - heat
+  - H2
+  - urban central heat
+  - urban decentral heat
+  - rural heat
+  carrier_groups:
+    electricity: [AC, low_voltage]
+
+# overwrite in config.default.yaml
+powerplants_filter: (DateOut >= 2019 or DateOut != DateOut)
+
+pypsa_eur:
+  Bus:
+  - AC
+  Link:
+  - DC
+  Generator:
+  - onwind
+  - offwind-ac
+  - offwind-dc
+  - solar
+  - ror
+  StorageUnit:
+  - PHS
+  - hydro
+  Store: []
