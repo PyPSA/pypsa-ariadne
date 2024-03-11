@@ -1790,17 +1790,17 @@ def costs_gen_generators(n, region, carrier):
     Returns:
     - tuple: A tuple containing cost and total generation of the generators.
     """
-
-    # CAPEX
+    
     gens = n.generators[(n.generators.carrier == carrier) & (n.generators.bus.str.contains(region))]
-    capacity_expansion = gens.p_nom_opt - gens.p_nom
-    capex = (capacity_expansion * n.generators.capital_cost[capacity_expansion.index]).sum()
-
-    # OPEX
     gen = n.generators_t.p[gens.index].multiply(n.snapshot_weightings.generators, axis="index").sum()
     if gen.empty or gen.sum() < 1:
         return np.nan, 0
-    opex = (gen * n.generators.marginal_cost[gen.index]).sum()
+
+    # CAPEX
+    capex = (gens.p_nom_opt * gens.capital_cost).sum()
+
+    # OPEX
+    opex = (gen * gens.marginal_cost).sum()
               
     result = (capex + opex) / gen.sum()
     return result, gen.sum()
@@ -1820,20 +1820,21 @@ def costs_gen_links(n, region, carrier, gen_bus="p1"):
         tuple: A tuple containing the costs per unit of generetad energy and the total generation of the specified generator bus.
     """
 
-    # CAPEX
     links = n.links[(n.links.carrier == carrier) & (n.links.index.str.contains(region))]
-    capacity_expansion = links.p_nom_opt - links.p_nom
-    capex = (capacity_expansion * n.links.capital_cost[capacity_expansion.index]).sum()
-
-    # OPEX
     gen = abs(n.links_t[gen_bus][links.index].multiply(n.snapshot_weightings.generators, axis="index")).sum()
     if gen.empty or gen.sum() < 1:
         return np.nan, 0
-    opex = (gen * n.links.marginal_cost[gen.index]).sum()
+    
+    # CAPEX
+    capex = (links.p_nom_opt * links.capital_cost).sum()
+
+    # OPEX
+    input = abs(n.links_t["p0"][links.index].multiply(n.snapshot_weightings.generators, axis="index")).sum()
+    opex = (input * links.marginal_cost).sum()
 
     # input costs and output revenues other than main generation @ gen_bus
     sum = 0
-    for i in range(0,4):
+    for i in range(0,5):
         if f"p{i}" == gen_bus:
             continue
         elif links.empty:
@@ -1841,14 +1842,12 @@ def costs_gen_links(n, region, carrier, gen_bus="p1"):
         elif n.links.loc[links.index][f"bus{i}"].iloc[0] == "":
             break
         else:
-            if links[f"bus{i}"].str.contains("co2").iloc[0]:
-                sum -= (n.links_t[f"p{i}"][links.index] * n.buses_t.marginal_price[links[f"bus{i}"]].values
-                    ).multiply(n.snapshot_weightings.generators, axis="index"
-                               ).sum().sum()
-            else:
-                sum += (n.links_t[f"p{i}"][links.index] * n.buses_t.marginal_price[links[f"bus{i}"]].values
-                    ).multiply(n.snapshot_weightings.generators, axis="index"
-                               ).sum().sum()
+            update_cost = \
+                (n.links_t[f"p{i}"][links.index] * \
+                 n.buses_t.marginal_price[links[f"bus{i}"]].values
+                ).multiply(n.snapshot_weightings.generators, axis="index"
+                            ).sum().sum()
+            sum = sum + update_cost
               
     result = (capex + opex + sum) / gen.sum()
     return result, gen.sum()
