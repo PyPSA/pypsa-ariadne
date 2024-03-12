@@ -1791,8 +1791,10 @@ def costs_gen_generators(n, region, carrier):
     - tuple: A tuple containing cost and total generation of the generators.
     """
     
-    gens = n.generators[(n.generators.carrier == carrier) & (n.generators.bus.str.contains(region))]
-    gen = n.generators_t.p[gens.index].multiply(n.snapshot_weightings.generators, axis="index").sum()
+    gens = n.generators[(n.generators.carrier == carrier) 
+                        & (n.generators.bus.str.contains(region))]
+    gen = n.generators_t.p[gens.index].multiply(
+        n.snapshot_weightings.generators, axis="index").sum()
     if gen.empty or gen.sum() < 1:
         return np.nan, 0
 
@@ -1820,8 +1822,10 @@ def costs_gen_links(n, region, carrier, gen_bus="p1"):
         tuple: A tuple containing the costs per unit of generetad energy and the total generation of the specified generator bus.
     """
 
-    links = n.links[(n.links.carrier == carrier) & (n.links.index.str.contains(region))]
-    gen = abs(n.links_t[gen_bus][links.index].multiply(n.snapshot_weightings.generators, axis="index")).sum()
+    links = n.links[(n.links.carrier == carrier) 
+                    & (n.links.index.str.contains(region))]
+    gen = abs(n.links_t[gen_bus][links.index].multiply(
+        n.snapshot_weightings.generators, axis="index")).sum()
     if gen.empty or gen.sum() < 1:
         return np.nan, 0
     
@@ -1829,7 +1833,8 @@ def costs_gen_links(n, region, carrier, gen_bus="p1"):
     capex = (links.p_nom_opt * links.capital_cost).sum()
 
     # OPEX
-    input = abs(n.links_t["p0"][links.index].multiply(n.snapshot_weightings.generators, axis="index")).sum()
+    input = abs(n.links_t["p0"][links.index].multiply(
+        n.snapshot_weightings.generators, axis="index")).sum()
     opex = (input * links.marginal_cost).sum()
 
     # input costs and output revenues other than main generation @ gen_bus
@@ -1842,11 +1847,12 @@ def costs_gen_links(n, region, carrier, gen_bus="p1"):
         elif n.links.loc[links.index][f"bus{i}"].iloc[0] == "":
             break
         else:
-            update_cost = \
-                (n.links_t[f"p{i}"][links.index] * \
-                 n.buses_t.marginal_price[links[f"bus{i}"]].values
-                ).multiply(n.snapshot_weightings.generators, axis="index"
-                            ).values.sum()
+            update_cost = (
+                    n.links_t[f"p{i}"][links.index] 
+                    * n.buses_t.marginal_price[links[f"bus{i}"]].values
+                ).multiply(
+                    n.snapshot_weightings.generators, axis="index"
+                ).values.sum()
             sum = sum + update_cost
               
     result = (capex + opex + sum) / gen.sum()
@@ -1904,22 +1910,22 @@ def get_prices(n, region):
 
     var = pd.Series()
 
-    nodal_flows_lw = get_nodal_flows(
-        n, "low voltage", "DE",
+    nodal_flows_lv = get_nodal_flows(
+        n, "low voltage", region,
         query = "not carrier.str.contains('agriculture')"
                 "& not carrier.str.contains('industry')"
                 "& not carrier.str.contains('urban central')"
             )
 
-    nodal_prices_lw = n.buses_t.marginal_price[nodal_flows_lw.columns] 
+    nodal_prices_lv = n.buses_t.marginal_price[nodal_flows_lv.columns] 
 
     # electricity price at the final level in the residential sector. Prices should include the effect of carbon prices.
     var["Price|Final Energy|Residential|Electricity"] = \
-        nodal_flows_lw.mul(nodal_prices_lw).values.sum() / nodal_flows_lw.values.sum() / MWh2GJ
+        nodal_flows_lv.mul(nodal_prices_lv).values.sum() / nodal_flows_lv.values.sum() / MWh2GJ
     
     # vars: Tier 1, Category: energy(price)
 
-    nodal_flows_bm = get_nodal_flows(n, "solid biomass", "DE")
+    nodal_flows_bm = get_nodal_flows(n, "solid biomass", region)
     nodal_prices_bm = n.buses_t.marginal_price[nodal_flows_bm.columns]
 
     # primary energy consumption of purpose-grown bioenergy crops, crop and forestry residue bioenergy, municipal solid waste bioenergy, traditional biomass, including renewable waste
@@ -1928,11 +1934,11 @@ def get_prices(n, region):
     
     # Price|Primary Energy|Coal
     # is coal also lignite? -> yes according to michas code (coal for industry is already included as it withdraws from coal bus)
-    nf_coal = get_nodal_flows(n, "coal", "DE")
+    nf_coal = get_nodal_flows(n, "coal", region)
     nodal_prices_coal = n.buses_t.marginal_price[nf_coal.columns]
     coal_price = nf_coal.mul(nodal_prices_coal).values.sum() / nf_coal.values.sum() if nf_coal.values.sum() > 0 else np.nan
 
-    nf_lignite = get_nodal_flows(n, "lignite", "DE")
+    nf_lignite = get_nodal_flows(n, "lignite", region)
     nodal_prices_lignite = n.buses_t.marginal_price[nf_lignite.columns]
     lignite_price = nf_lignite.mul(nodal_prices_lignite).values.sum() / nf_lignite.values.sum() if nf_lignite.values.sum() > 0 else np.nan
 
@@ -1940,14 +1946,14 @@ def get_prices(n, region):
         get_weighted_costs([coal_price, lignite_price], [nf_coal.values.sum(), nf_lignite.values.sum()])/ MWh2GJ
     
     # Price|Primary Energy|Gas
-    nodal_flows_gas = get_nodal_flows(n, "gas", "DE")
+    nodal_flows_gas = get_nodal_flows(n, "gas", region)
     nodal_prices_gas = n.buses_t.marginal_price[nodal_flows_gas.columns]
 
     var["Price|Primary Energy|Gas"] = \
         nodal_flows_gas.mul(nodal_prices_gas).values.sum()  / nodal_flows_gas.values.sum() / MWh2GJ
     
     # Price|Primary Energy|Oil
-    nodal_flows_oil = get_nodal_flows(n, "oil", "DE")
+    nodal_flows_oil = get_nodal_flows(n, "oil", region)
     nodal_prices_oil = n.buses_t.marginal_price[nodal_flows_oil.columns]
 
     var["Price|Primary Energy|Oil"] = \
@@ -1957,7 +1963,7 @@ def get_prices(n, region):
     # electricity price at the secondary level, i.e. for large scale consumers (e.g. aluminum production). Prices should include the effect of carbon prices.
 
     nodal_flows_ac = get_nodal_flows(
-        n, "AC", "DE",
+        n, "AC", region,
         query = "not carrier.str.contains('gas')"
             )
     nodal_prices_ac = n.buses_t.marginal_price[nodal_flows_ac.columns]
@@ -1980,7 +1986,7 @@ def get_prices(n, region):
     
     # Price|Secondary Energy|Hydrogen
     nodal_flows_h2 = get_nodal_flows(
-        n, "H2", "DE"
+        n, "H2", region
         )
     nodal_prices_h2 = n.buses_t.marginal_price[nodal_flows_h2.columns]
 
@@ -1992,7 +1998,7 @@ def get_prices(n, region):
     # do we have residential applications for hydrogen?
 
     nf_gas_residential = get_nodal_flows(
-        n, "gas", "DE",
+        n, "gas", region,
         query = "carrier.str.contains('rural')"
                 "or carrier.str.contains('urban decentral')"
         )
@@ -2008,7 +2014,7 @@ def get_prices(n, region):
     var["Price|Final Energy|Residential|Liquids|Oil"] = \
         get_weighted_costs_links(
             ['rural oil boiler', 'urban decentral oil boiler'], 
-            n, "DE") / MWh2GJ
+            n, region) / MWh2GJ
 
     var["Price|Final Energy|Residential|Liquids"] = \
         var["Price|Final Energy|Residential|Liquids|Oil"]
@@ -2016,7 +2022,7 @@ def get_prices(n, region):
     var["Price|Final Energy|Residential|Solids|Biomass"] = \
         get_weighted_costs_links(
             ['rural biomass boiler', 'urban decentral biomass boiler'],
-            n, "DE") / MWh2GJ
+            n, region) / MWh2GJ
     
     var["Price|Final Energy|Residential|Solids"] = \
         var["Price|Final Energy|Residential|Solids|Biomass"]
@@ -2026,7 +2032,7 @@ def get_prices(n, region):
     var["Price|Final Energy|Industry|Gases"] = \
         get_weighted_costs_links(
             ['gas for industry','gas for industry CC'],
-            n, "DE") / MWh2GJ
+            n, region) / MWh2GJ
 
     # "Price|Final Energy|Industry|Heat"✓
 
@@ -2038,7 +2044,7 @@ def get_prices(n, region):
     var["Price|Final Energy|Industry|Solids"] = \
         get_weighted_costs_links(
             [ 'solid biomass for industry', 'solid biomass for industry CC', 'coal for industry'],
-            n, "DE") / MWh2GJ
+            n, region) / MWh2GJ
 
     # Rest Tier 2
     # x
@@ -2070,7 +2076,7 @@ def get_prices(n, region):
 
     # Price|Final Energy|Transportation|Liquids|Efuel
 
-    df = pd.DataFrame({c: price_load(n, c, "DE") for c in \
+    df = pd.DataFrame({c: price_load(n, c, region) for c in \
                        ["kerosene for aviation", "shipping methanol", "shipping oil"]})
     
     var["Price|Final Energy|Transportation|Liquids|Efuel"]  = \
@@ -2104,7 +2110,7 @@ def get_prices(n, region):
     var["Price|Final Energy|Residential and Commercial|Liquids|Oil"] = \
         get_weighted_costs_links(
             ['rural oil boiler', 'urban decentral oil boiler'],
-            n, "DE") / MWh2GJ
+            n, region) / MWh2GJ
 
     # Price|Final Energy|Residential and Commercial|Liquids|Oil|Sales Margin
     # Price|Final Energy|Residential and Commercial|Liquids|Oil|Transport and Distribution
@@ -2120,7 +2126,7 @@ def get_prices(n, region):
 
     # Price|Final Energy|Residential and Commercial|Heat
     nf_rc_heat = get_nodal_flows(
-        n, ['urban central heat', 'rural heat', 'urban decentral heat'], "DE",
+        n, ['urban central heat', 'rural heat', 'urban decentral heat'], region,
         query = "not carrier.str.contains('agriculture')"
                 "& not carrier.str.contains('industry')"
                 "& not carrier.str.contains('DAC')"
@@ -2144,7 +2150,7 @@ def get_prices(n, region):
     var["Price|Final Energy|Residential and Commercial|Solids|Biomass"] = \
         get_weighted_costs_links(
             ['rural biomass boiler', 'urban decentral biomass boiler'],
-            n, "DE") / MWh2GJ
+            n, region) / MWh2GJ
     
     # Price|Final Energy|Residential and Commercial|Solids|Biomass|Sales Margin
     # Price|Final Energy|Residential and Commercial|Solids|Biomass|Transport and Distribution
@@ -2243,7 +2249,7 @@ def get_prices(n, region):
 
     # Rest Tier3
     nodal_flows_gas = get_nodal_flows(
-        n, "gas", "DE",
+        n, "gas", region,
         query = "not carrier.str.contains('pipeline')"
                 "& not carrier == 'gas'"
                 "& not carrier.str.contains('rural')"
@@ -2255,7 +2261,7 @@ def get_prices(n, region):
     nodal_flows_gas.mul(nodal_prices_gas).values.sum() / nodal_flows_gas.values.sum() /MWh2GJ
 
     nodal_flows_oil = get_nodal_flows(
-        n, "oil", "DE",
+        n, "oil", region,
         query = "not carrier.str.contains('rural')"
                 "& not carrier == 'oil'"
                 "& not carrier.str.contains('urban decentral')"
