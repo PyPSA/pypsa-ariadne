@@ -83,7 +83,7 @@ def get_total_co2(n, region):
         ).values.sum()
     return t2Mt * co2
 
-def get_capacities_electricity(n, region):
+def get_capacities(n, region):
 
     kwargs = {
         'groupby': n.statistics.groupers.get_name_bus_and_carrier,
@@ -329,17 +329,6 @@ def get_capacities_electricity(n, region):
         var["Capacity|Electricity"],
         capacities_electricity.drop(_drop_idx).sum(),
     )
-    
-    return var
-
-def get_capacities_heat(n, region):
-
-    kwargs = {
-        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
-        'nice_names': False,
-    }
-
-    var = pd.Series()
 
     capacities_heat = n.statistics.optimal_capacity(
         bus_carrier=[
@@ -433,17 +422,6 @@ def get_capacities_heat(n, region):
             ~capacities_heat.index.str.contains("discharger")
         ].sum()
     )
-
-    return var
-
-
-def get_capacities_other(n, region):
-    kwargs = {
-        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
-        'nice_names': False,
-    }
-
-    var = pd.Series()
 
     capacities_h2 = n.statistics.optimal_capacity(
         bus_carrier="H2",
@@ -2305,9 +2283,7 @@ def get_prices(n, region):
 def get_ariadne_var(n, industry_demand, energy_totals, region):
 
     var = pd.concat([
-        get_capacities_electricity(n, region),
-        get_capacities_heat(n, region),
-        get_capacities_other(n, region),
+        get_capacities(n, region),
         get_primary_energy(n, region),
         get_secondary_energy(n, region),
         get_final_energy(n, region, industry_demand, energy_totals),
