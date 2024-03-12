@@ -1771,11 +1771,11 @@ def price_load(n, load_carrier, region):
     """
 
     load = n.loads[(n.loads.carrier == load_carrier) & (n.loads.bus.str.contains(region))]
-    if n.loads_t.p[load.index].sum().sum() < 1:
+    if n.loads_t.p[load.index].values.sum() < 1:
         return np.nan, 0
-    result = (n.loads_t.p[load.index] * n.buses_t.marginal_price[load.bus].values).sum().sum()
-    result /= n.loads_t.p[load.index].sum().sum()
-    return result, n.loads_t.p[load.index].sum().sum()
+    result = (n.loads_t.p[load.index] * n.buses_t.marginal_price[load.bus].values).values.sum()
+    result /= n.loads_t.p[load.index].values.sum()
+    return result, n.loads_t.p[load.index].values.sum()
 
 
 def costs_gen_generators(n, region, carrier):
@@ -1846,7 +1846,7 @@ def costs_gen_links(n, region, carrier, gen_bus="p1"):
                 (n.links_t[f"p{i}"][links.index] * \
                  n.buses_t.marginal_price[links[f"bus{i}"]].values
                 ).multiply(n.snapshot_weightings.generators, axis="index"
-                            ).sum().sum()
+                            ).values.sum()
             sum = sum + update_cost
               
     result = (capex + opex + sum) / gen.sum()
@@ -1857,10 +1857,11 @@ def get_weighted_costs_links(carriers, n, region):
     numerator = 0
     denominator = 0
     
-    for c in carriers:    
-        if not math.isnan(costs_gen_links(n, region, c)[0]):
-            numerator += costs_gen_links(n, region, c)[0] * costs_gen_links(n, region, c)[1]
-            denominator += costs_gen_links(n, region, c)[1]
+    for c in carriers:   
+        cost_gen = costs_gen_links(n, region, c)
+        if not math.isnan(cost_gen[0]):
+            numerator += cost_gen[0] * cost_gen[1]
+            denominator += cost_gen[1]
         
     if denominator == 0:
         return np.nan
@@ -1914,7 +1915,7 @@ def get_prices(n, region):
 
     # electricity price at the final level in the residential sector. Prices should include the effect of carbon prices.
     var["Price|Final Energy|Residential|Electricity"] = \
-        nodal_flows_lw.mul(nodal_prices_lw).sum().sum() / nodal_flows_lw.sum().sum() / MWh2GJ
+        nodal_flows_lw.mul(nodal_prices_lw).values.sum() / nodal_flows_lw.values.sum() / MWh2GJ
     
     # vars: Tier 1, Category: energy(price)
 
@@ -1923,34 +1924,34 @@ def get_prices(n, region):
 
     # primary energy consumption of purpose-grown bioenergy crops, crop and forestry residue bioenergy, municipal solid waste bioenergy, traditional biomass, including renewable waste
     var["Price|Primary Energy|Biomass"] = \
-        nodal_flows_bm.mul(nodal_prices_bm).sum().sum() / nodal_flows_bm.sum().sum() / MWh2GJ
+        nodal_flows_bm.mul(nodal_prices_bm).values.sum() / nodal_flows_bm.values.sum() / MWh2GJ
     
     # Price|Primary Energy|Coal
     # is coal also lignite? -> yes according to michas code (coal for industry is already included as it withdraws from coal bus)
     nf_coal = get_nodal_flows(n, "coal", "DE")
     nodal_prices_coal = n.buses_t.marginal_price[nf_coal.columns]
-    coal_price = nf_coal.mul(nodal_prices_coal).sum().sum() / nf_coal.sum().sum() if nf_coal.sum().sum() > 0 else np.nan
+    coal_price = nf_coal.mul(nodal_prices_coal).values.sum() / nf_coal.values.sum() if nf_coal.values.sum() > 0 else np.nan
 
     nf_lignite = get_nodal_flows(n, "lignite", "DE")
     nodal_prices_lignite = n.buses_t.marginal_price[nf_lignite.columns]
-    lignite_price = nf_lignite.mul(nodal_prices_lignite).sum().sum() / nf_lignite.sum().sum() if nf_lignite.sum().sum() > 0 else np.nan
+    lignite_price = nf_lignite.mul(nodal_prices_lignite).values.sum() / nf_lignite.values.sum() if nf_lignite.values.sum() > 0 else np.nan
 
     var["Price|Primary Energy|Coal"] = \
-        get_weighted_costs([coal_price, lignite_price], [nf_coal.sum().sum(), nf_lignite.sum().sum()])/ MWh2GJ
+        get_weighted_costs([coal_price, lignite_price], [nf_coal.values.sum(), nf_lignite.values.sum()])/ MWh2GJ
     
     # Price|Primary Energy|Gas
     nodal_flows_gas = get_nodal_flows(n, "gas", "DE")
     nodal_prices_gas = n.buses_t.marginal_price[nodal_flows_gas.columns]
 
     var["Price|Primary Energy|Gas"] = \
-        nodal_flows_gas.mul(nodal_prices_gas).sum().sum()  / nodal_flows_gas.sum().sum() / MWh2GJ
+        nodal_flows_gas.mul(nodal_prices_gas).values.sum()  / nodal_flows_gas.values.sum() / MWh2GJ
     
     # Price|Primary Energy|Oil
     nodal_flows_oil = get_nodal_flows(n, "oil", "DE")
     nodal_prices_oil = n.buses_t.marginal_price[nodal_flows_oil.columns]
 
     var["Price|Primary Energy|Oil"] = \
-        nodal_flows_oil.mul(nodal_prices_oil).sum().sum() / nodal_flows_oil.sum().sum() /MWh2GJ
+        nodal_flows_oil.mul(nodal_prices_oil).values.sum() / nodal_flows_oil.values.sum() /MWh2GJ
 
     # Price|Secondary Energy|Electricity
     # electricity price at the secondary level, i.e. for large scale consumers (e.g. aluminum production). Prices should include the effect of carbon prices.
@@ -1962,7 +1963,7 @@ def get_prices(n, region):
     nodal_prices_ac = n.buses_t.marginal_price[nodal_flows_ac.columns]
 
     var["Price|Secondary Energy|Electricity"] = \
-    nodal_flows_ac.mul(nodal_prices_ac).sum().sum() / nodal_flows_ac.sum().sum() /MWh2GJ
+    nodal_flows_ac.mul(nodal_prices_ac).values.sum() / nodal_flows_ac.values.sum() /MWh2GJ
 
     var["Price|Secondary Energy|Gases|Natural Gas"] = \
         costs_gen_generators(n, region ,"gas")[0] / MWh2GJ
@@ -1984,7 +1985,7 @@ def get_prices(n, region):
     nodal_prices_h2 = n.buses_t.marginal_price[nodal_flows_h2.columns]
 
     var["Price|Secondary Energy|Hydrogen"] = \
-        nodal_flows_h2.mul(nodal_prices_h2).sum().sum() / nodal_flows_h2.sum().sum() /MWh2GJ  
+        nodal_flows_h2.mul(nodal_prices_h2).values.sum() / nodal_flows_h2.values.sum() /MWh2GJ  
 
     # From PIK plots
     # "Price|Final Energy|Residential|Hydrogen" = final energy consumption by the residential sector of hydrogen
@@ -1999,30 +2000,33 @@ def get_prices(n, region):
 
     # !!! mv much higher: check carbon effect!
     var["Price|Final Energy|Residential|Gases"] = \
-        nf_gas_residential.mul(nodal_prices_gas).sum().sum() / nf_gas_residential.sum().sum() / MWh2GJ  if nf_gas_residential.sum().sum() > 0 else np.nan
+        nf_gas_residential.mul(nodal_prices_gas).values.sum() / nf_gas_residential.values.sum() / MWh2GJ  if nf_gas_residential.values.sum() > 0 else np.nan
 
     # "Price|Final Energy|Residential|Gases|Natural Gas" ?
     # "Price|Final Energy|Residential|Liquids|Biomass" x
     
-    carriers = ['rural oil boiler', 'urban decentral oil boiler']
     var["Price|Final Energy|Residential|Liquids|Oil"] = \
-        get_weighted_costs_links(carriers, n, "DE") / MWh2GJ
+        get_weighted_costs_links(
+            ['rural oil boiler', 'urban decentral oil boiler'], 
+            n, "DE") / MWh2GJ
 
     var["Price|Final Energy|Residential|Liquids"] = \
         var["Price|Final Energy|Residential|Liquids|Oil"]
 
-    carriers = ['rural biomass boiler', 'urban decentral biomass boiler']
     var["Price|Final Energy|Residential|Solids|Biomass"] = \
-        get_weighted_costs_links(carriers, n, "DE") / MWh2GJ
+        get_weighted_costs_links(
+            ['rural biomass boiler', 'urban decentral biomass boiler'],
+            n, "DE") / MWh2GJ
     
     var["Price|Final Energy|Residential|Solids"] = \
         var["Price|Final Energy|Residential|Solids|Biomass"]
 
     # "Price|Final Energy|Industry|Electricity"✓
 
-    carriers = ['gas for industry','gas for industry CC',] 
     var["Price|Final Energy|Industry|Gases"] = \
-        get_weighted_costs_links(carriers, n, "DE") / MWh2GJ
+        get_weighted_costs_links(
+            ['gas for industry','gas for industry CC'],
+            n, "DE") / MWh2GJ
 
     # "Price|Final Energy|Industry|Heat"✓
 
@@ -2031,9 +2035,10 @@ def get_prices(n, region):
     
     # "Price|Final Energy|Industry|Hydrogen"✓
 
-    carriers = [ 'solid biomass for industry', 'solid biomass for industry CC', 'coal for industry']
     var["Price|Final Energy|Industry|Solids"] = \
-        get_weighted_costs_links(carriers, n, "DE") / MWh2GJ
+        get_weighted_costs_links(
+            [ 'solid biomass for industry', 'solid biomass for industry CC', 'coal for industry'],
+            n, "DE") / MWh2GJ
 
     # Rest Tier 2
     # x
@@ -2065,8 +2070,8 @@ def get_prices(n, region):
 
     # Price|Final Energy|Transportation|Liquids|Efuel
 
-    carriers = ["kerosene for aviation", "shipping methanol", "shipping oil"]
-    df = pd.DataFrame({c: price_load(n, c, "DE") for c in carriers})
+    df = pd.DataFrame({c: price_load(n, c, "DE") for c in \
+                       ["kerosene for aviation", "shipping methanol", "shipping oil"]})
     
     var["Price|Final Energy|Transportation|Liquids|Efuel"]  = \
         (df.iloc[0]*df.iloc[1]).sum() / df.iloc[1].sum() / MWh2GJ
@@ -2096,9 +2101,10 @@ def get_prices(n, region):
 
     # Price|Final Energy|Residential and Commercial|Liquids|Oil
 
-    carriers = ['rural oil boiler', 'urban decentral oil boiler']
     var["Price|Final Energy|Residential and Commercial|Liquids|Oil"] = \
-        get_weighted_costs_links(carriers, n, "DE") / MWh2GJ
+        get_weighted_costs_links(
+            ['rural oil boiler', 'urban decentral oil boiler'],
+            n, "DE") / MWh2GJ
 
     # Price|Final Energy|Residential and Commercial|Liquids|Oil|Sales Margin
     # Price|Final Energy|Residential and Commercial|Liquids|Oil|Transport and Distribution
@@ -2122,7 +2128,7 @@ def get_prices(n, region):
 
     np_rc_heat = n.buses_t.marginal_price[nf_rc_heat.columns]
     var["Price|Final Energy|Residential and Commercial|Heat"] = \
-        nf_rc_heat.mul(np_rc_heat).sum().sum() / nf_rc_heat.sum().sum() / MWh2GJ
+        nf_rc_heat.mul(np_rc_heat).values.sum() / nf_rc_heat.values.sum() / MWh2GJ
 
     # Price|Final Energy|Residential and Commercial|Heat|Sales Margin
     # Price|Final Energy|Residential and Commercial|Heat|Transport and Distribution
@@ -2134,9 +2140,11 @@ def get_prices(n, region):
     # Price|Final Energy|Residential and Commercial|Liquids|Biomass|Other Taxes
 
     # Price|Final Energy|Residential and Commercial|Solids|Biomass
-    carriers = ['rural biomass boiler', 'urban decentral biomass boiler']
+
     var["Price|Final Energy|Residential and Commercial|Solids|Biomass"] = \
-        get_weighted_costs_links(carriers, n, "DE") / MWh2GJ
+        get_weighted_costs_links(
+            ['rural biomass boiler', 'urban decentral biomass boiler'],
+            n, "DE") / MWh2GJ
     
     # Price|Final Energy|Residential and Commercial|Solids|Biomass|Sales Margin
     # Price|Final Energy|Residential and Commercial|Solids|Biomass|Transport and Distribution
@@ -2244,7 +2252,7 @@ def get_prices(n, region):
     nodal_prices_gas = n.buses_t.marginal_price[nodal_flows_gas.columns]
 
     var["Price|Secondary Energy|Gases"] = \
-    nodal_flows_gas.mul(nodal_prices_gas).sum().sum() / nodal_flows_gas.sum().sum() /MWh2GJ
+    nodal_flows_gas.mul(nodal_prices_gas).values.sum() / nodal_flows_gas.values.sum() /MWh2GJ
 
     nodal_flows_oil = get_nodal_flows(
         n, "oil", "DE",
@@ -2255,7 +2263,7 @@ def get_prices(n, region):
     nodal_prices_oil = n.buses_t.marginal_price[nodal_flows_oil.columns]
 
     var["Price|Secondary Energy|Liquids"] = \
-    nodal_flows_oil.mul(nodal_prices_oil).sum().sum() / nodal_flows_oil.sum().sum() /MWh2GJ
+    nodal_flows_oil.mul(nodal_prices_oil).values.sum() / nodal_flows_oil.values.sum() /MWh2GJ
 
     # Price|Final Energy|Transportation|Freight|Electricity x
     # Price|Final Energy|Transportation|Freight|Gases

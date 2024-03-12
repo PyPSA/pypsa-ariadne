@@ -91,7 +91,7 @@ def within_plot(df, df2,
     if n % 2 != 0:
         fig.delaxes(axes[-1])
 
-    plt.suptitle(title, fontsize="xx-large", y=1.0)
+    plt.suptitle(title + " in EUR_2020/GJ", fontsize="xx-large", y=1.0)
     plt.tight_layout()
     plt.close()
     fig.savefig(savepath, bbox_inches="tight")
