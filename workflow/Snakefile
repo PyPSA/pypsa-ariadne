@@ -221,3 +221,25 @@ if config["wasserstoff_kernnetz"]["enable"]:
             clustered_h2_network="resources/wasserstoff_kernnetz_elec_s{simpl}_{clusters}.csv",
         script:
             "scripts/cluster_wasserstoff_kernnetz.py"
+
+rule build_scenarios:
+    params:
+        iiasa_usr=os.environ["IIASA_USERNAME"],
+        iiasa_pwd=os.environ["IIASA_PASSWORD"],
+        iiasa_model=config["iiasa_database"]["model_name"],
+        iiasa_scenario=config["iiasa_database"]["scenario"],
+        scenario_name=config["run"]["name"],
+    input:
+        "config/scenarios.yaml"
+    log:
+        "logs/build_scenarios.log"
+    script:
+        "scripts/build_scenarios.py"
+
+rule check_sector_ratios:
+    input:
+        network=RESULTS + "postnetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
+    log:
+        "logs/check_sector_ratios.log"
+    script:
+        "scripts/check_sector_ratios.py"

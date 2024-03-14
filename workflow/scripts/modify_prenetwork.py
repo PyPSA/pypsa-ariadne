@@ -234,6 +234,57 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
 
     # from 2030 onwards all pipes are extendable (except from the ones the model build up before and the kernnetz lines)
 
+def unravel_oilbus(n):
+    """
+    Unravel European oil bus to enable energy balances for import of oil products.
+
+    """
+    logger.info("Unraveling oil bus")
+    # add buses
+    n.add("Bus", "DE oil")
+    n.add("Bus", "DE renewable oil")
+    n.add("Bus", "EU renewable oil")
+
+    # add one generator for DE oil
+    n.add("Generator",
+          name="DE oil",
+          bus="DE oil",
+          carrier="oil",
+          p_nom_extendable=True,
+          marginal_cost=n.generators.loc["EU oil"].marginal_cost,
+          )
+    
+    # change links from EU oil to DE oil
+    german_oil_links = n.links[(n.links.bus0=="EU oil") & (n.links.index.str.contains("DE"))].index
+    german_FT_links = n.links[(n.links.bus1=="EU oil") & (n.links.index.str.contains("DE"))].index
+    n.links.loc[german_oil_links, "bus0"] = "DE oil"
+    n.links.loc[german_FT_links, "bus1"] = "DE renewable oil"
+
+    # change FT links in rest of Europe
+    europ_FT_links = n.links[n.links.bus1=="EU oil"].index
+    n.links.loc[europ_FT_links, "bus1"] = "EU renewable oil"
+
+    # add links between oil buses
+    n.madd(
+        "Link",
+        ["EU renewable oil -> DE renewable oil", "EU renewable oil -> EU oil", "DE renewable oil -> DE oil"],
+        bus0=["EU renewable oil", "EU renewable oil", "DE renewable oil"],
+        bus1=["DE renewable oil", "EU oil", "DE oil"],
+        carrier="oil",
+        p_nom=1e9,
+        p_min_pu=0,
+    )
+
+    # add stores
+    n.madd(
+        "Store",
+        ["DE oil Store", "DE renewable oil Store", "EU renewable oil Store"],
+        bus=["DE oil", "DE renewable oil", "EU renewable oil"],
+        carrier="oil",
+        e_nom_extendable=True,
+        e_cyclic=True,
+        capital_cost=0.02,
+    )
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -279,9 +330,11 @@ if __name__ == "__main__":
 
     first_technology_occurrence(n)
 
+    unravel_oilbus(n)
+
     if snakemake.config["wasserstoff_kernnetz"]["enable"]:
         fn = snakemake.input.wkn
         wkn = pd.read_csv(fn, index_col=0)
         add_wasserstoff_kernnetz(n, wkn, costs)
-
+        n.links.reversed = n.links.reversed.astype(float)
     n.export_to_netcdf(snakemake.output.network)
