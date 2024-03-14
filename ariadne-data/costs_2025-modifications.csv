@@ -2,3 +2,4 @@ technology,parameter,value,unit,source,further description
 gas,fuel,40,EUR/MWh_th,Ariadne,
 oil,fuel,32.9876,EUR2020/MWh,Ariadne,"$2020 = 0.8775 EUR2020, 1bbl = 1.6998MWh"
 coal,fuel,10.6694,EUR2020/MWh,Ariadne,"$2020 = 0.8775 EUR2020, 1t = 8.06 MWh"
+electrolysis,investment,1267,EUR2020/kW_e,DEA,"linear interpolation of AEC 100 MW upper limit 2020 to 2050"
