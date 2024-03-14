@@ -53,6 +53,8 @@ enable:
   retrieve: false # set to false once initial data is retrieved
   retrieve_cutout: false # set to false once initial data is retrieved
 clustering:
+  # simplify_network:
+  #   to_substations: true
   focus_weights:
   # 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
     'DE': 0.3636 # 8/22
@@ -100,6 +102,11 @@ co2_budget_national:
     DE: -0.028
   2050:
     DE: -0.024
+
+electricity:
+  powerplants_filter: (DateOut >= 2020 or DateOut != DateOut) and not (Country == "DE" and Set == "CHP")
+  custom_powerplants: True
+  custom_file: resources/german_chp.csv
 
 limits_min:
   Generator:
