@@ -29,8 +29,8 @@ def clean_data(combustion, biomass, geodata):
 
     data = pd.concat([biomass, combustion], join='inner', ignore_index=True)
     
-    data['IndustryStatus'] = data['Einsatzort'].str.contains('Industrie')
-    data['IndustryStatus'] = data['IndustryStatus'].fillna(False)
+    data['IndustryStatus'] = data['Einsatzort'].str.contains('Industrie').fillna(False)
+    
     # Get only CHP plants
     CHP_raw = data.query("ThermischeNutzleistung > 0").copy()
     CHP_raw.NameKraftwerk = CHP_raw.NameKraftwerk.fillna(CHP_raw.EinheitMastrNummer)
@@ -53,13 +53,13 @@ def clean_data(combustion, biomass, geodata):
     CHP_sel.DateIn = CHP_sel.DateIn.str[:4].astype(float)
     CHP_sel.DateOut = CHP_sel.DateOut.str[:4].astype(float)
 
-    # delete duplicates - compromise only when KwkMastrNummer and Bruttoleistung is the same
+    # delete duplicates identified by KwkMastrNummer
     strategies = {
         "Name": "first",
         "Fueltype": "first",
         "Technology": "first",
-        "Capacity": "mean",
-        "Capacity_thermal": "mean",        
+        "Capacity": "mean", # dataset duplicates full KWK capacity for each block
+        "Capacity_thermal": "mean", # dataset duplicates full KWK capacity for each block 
         "DateIn": "mean",
         "DateOut": "mean",
         "Postleitzahl": "first",
