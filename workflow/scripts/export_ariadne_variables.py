@@ -81,97 +81,127 @@ def get_total_co2(n, region):
         ).values.sum()
     return t2Mt * co2
 
-def get_capacities_electricity(n, region):
+
+def get_capacities(n, region):
+    return _get_capacities(n, region, n.statistics.optimal_capacity)
+
+def get_installed_capacities(n, region):
+    return _get_capacities(n, region, 
+        n.statistics.installed_capacity, cap_string="Installed Capacity|")
+
+def get_capacity_additions_simple(n, region):
+    caps = get_capacities(n, region)
+    incaps = get_installed_capacities(n, region)
+    return pd.Series(data = caps.values - incaps.values,
+                     index = "Capacity Additions" + caps.index.str[8:])
+
+
+
+def get_capacity_additions(n, region):
+    def _f(*args, **kwargs):
+        return n.statistics.optimal_capacity(*args, **kwargs).sub(
+            n.statistics.installed_capacity(*args, **kwargs), fill_value=0)
+    return _get_capacities(n, region, _f, cap_string="Capacity Additions Sub|")
+
+def get_capacity_additions_nstat(n, region):
+    def _f(*args, **kwargs):
+        kwargs.pop("storage", None)
+        return n.statistics.expanded_capacity(*args, **kwargs)
+    return _get_capacities(n, region, _f, cap_string="Capacity Additions Nstat|")
+
+def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
 
     kwargs = {
         'groupby': n.statistics.groupers.get_name_bus_and_carrier,
         'nice_names': False,
     }
 
+
     var = pd.Series()
 
-    capacities_electricity = n.statistics.optimal_capacity(
+    capacities_electricity = cap_func(
         bus_carrier=["AC", "low voltage"],
         **kwargs,
     ).filter(like=region).groupby("carrier").sum().drop( 
         # transmission capacities
         ["AC", "DC", "electricity distribution grid"],
+        errors="ignore",
     ).multiply(MW2GW)
 
-    var["Capacity|Electricity|Biomass|w/ CCS"] = \
-        capacities_electricity.get('urban central solid biomass CHP CC')
+    var[cap_string + "Electricity|Biomass|w/ CCS"] = \
+        capacities_electricity.get('urban central solid biomass CHP CC', 0)
     
-    var["Capacity|Electricity|Biomass|w/o CCS"] = \
-        capacities_electricity.get('urban central solid biomass CHP')
+    var[cap_string + "Electricity|Biomass|w/o CCS"] = \
+        capacities_electricity.get('urban central solid biomass CHP', 0)
 
-    var["Capacity|Electricity|Biomass|Solids"] = \
+    var[cap_string + "Electricity|Biomass|Solids"] = \
         var[[
-            "Capacity|Electricity|Biomass|w/ CCS",
-            "Capacity|Electricity|Biomass|w/o CCS",
+            cap_string + "Electricity|Biomass|w/ CCS",
+            cap_string + "Electricity|Biomass|w/o CCS",
         ]].sum()
 
     # Ariadne does no checks, so we implement our own?
-    assert var["Capacity|Electricity|Biomass|Solids"] == \
+    assert var[cap_string + "Electricity|Biomass|Solids"] == \
         capacities_electricity.filter(like="solid biomass").sum()
 
-    var["Capacity|Electricity|Biomass"] = \
-        var["Capacity|Electricity|Biomass|Solids"]
+    var[cap_string + "Electricity|Biomass"] = \
+        var[cap_string + "Electricity|Biomass|Solids"]
 
 
-    var["Capacity|Electricity|Coal|Hard Coal"] = \
+    var[cap_string + "Electricity|Coal|Hard Coal"] = \
         capacities_electricity.get('coal', 0)                                              
 
-    var["Capacity|Electricity|Coal|Lignite"] = \
+    var[cap_string + "Electricity|Coal|Lignite"] = \
         capacities_electricity.get('lignite', 0)
     
-    # var["Capacity|Electricity|Coal|Hard Coal|w/ CCS"] = 
-    # var["Capacity|Electricity|Coal|Hard Coal|w/o CCS"] = 
-    # var["Capacity|Electricity|Coal|Lignite|w/ CCS"] = 
-    # var["Capacity|Electricity|Coal|Lignite|w/o CCS"] = 
-    # var["Capacity|Electricity|Coal|w/ CCS"] = 
-    # var["Capacity|Electricity|Coal|w/o CCS"] = 
+    # var[cap_string + "Electricity|Coal|Hard Coal|w/ CCS"] = 
+    # var[cap_string + "Electricity|Coal|Hard Coal|w/o CCS"] = 
+    # var[cap_string + "Electricity|Coal|Lignite|w/ CCS"] = 
+    # var[cap_string + "Electricity|Coal|Lignite|w/o CCS"] = 
+    # var[cap_string + "Electricity|Coal|w/ CCS"] = 
+    # var[cap_string + "Electricity|Coal|w/o CCS"] = 
     # Q: CCS for coal Implemented, but not activated, should we use it?
     # !: No, because of Kohleausstieg
     # > config: coal_cc
 
 
-    var["Capacity|Electricity|Coal"] = \
+    var[cap_string + "Electricity|Coal"] = \
         var[[
-            "Capacity|Electricity|Coal|Lignite",
-            "Capacity|Electricity|Coal|Hard Coal",
+            cap_string + "Electricity|Coal|Lignite",
+            cap_string + "Electricity|Coal|Hard Coal",
         ]].sum()
 
-    # var["Capacity|Electricity|Gas|CC|w/ CCS"] =
-    # var["Capacity|Electricity|Gas|CC|w/o CCS"] =  
+    # var[cap_string + "Electricity|Gas|CC|w/ CCS"] =
+    # var[cap_string + "Electricity|Gas|CC|w/o CCS"] =  
     # ! Not implemented, rarely used   
 
-    var["Capacity|Electricity|Gas|CC"] = \
+    var[cap_string + "Electricity|Gas|CC"] = \
         capacities_electricity.get('CCGT')
     
-    var["Capacity|Electricity|Gas|OC"] = \
+    var[cap_string + "Electricity|Gas|OC"] = \
         capacities_electricity.get('OCGT')
     
-    var["Capacity|Electricity|Gas|w/ CCS"] =  \
-        capacities_electricity.get('urban central gas CHP CC')  
+    var[cap_string + "Electricity|Gas|w/ CCS"] =  \
+        capacities_electricity.get('urban central gas CHP CC',0)  
     
-    var["Capacity|Electricity|Gas|w/o CCS"] =  \
-        capacities_electricity.get('urban central gas CHP') + \
+    var[cap_string + "Electricity|Gas|w/o CCS"] =  \
+        capacities_electricity.get('urban central gas CHP',0) + \
         var[[
-            "Capacity|Electricity|Gas|CC",
-            "Capacity|Electricity|Gas|OC",
+            cap_string + "Electricity|Gas|CC",
+            cap_string + "Electricity|Gas|OC",
         ]].sum()
     
 
-    var["Capacity|Electricity|Gas"] = \
+    var[cap_string + "Electricity|Gas"] = \
         var[[
-            "Capacity|Electricity|Gas|w/ CCS",
-            "Capacity|Electricity|Gas|w/o CCS",
+            cap_string + "Electricity|Gas|w/ CCS",
+            cap_string + "Electricity|Gas|w/o CCS",
         ]].sum()
 
-    # var["Capacity|Electricity|Geothermal"] = 
+    # var[cap_string + "Electricity|Geothermal"] = 
     # ! Not implemented
 
-    var["Capacity|Electricity|Hydro"] = \
+    var[cap_string + "Electricity|Hydro"] = \
         pd.Series({
             c: capacities_electricity.get(c) 
             for c in ["ror", "hydro"]
@@ -179,139 +209,139 @@ def get_capacities_electricity(n, region):
     # Q!: Not counting PHS here, because it is a true storage,
     # as opposed to hydro
      
-    # var["Capacity|Electricity|Hydrogen|CC"] = 
+    # var[cap_string + "Electricity|Hydrogen|CC"] = 
     # ! Not implemented
-    # var["Capacity|Electricity|Hydrogen|OC"] = 
+    # var[cap_string + "Electricity|Hydrogen|OC"] = 
     # Q: "H2-turbine"
     # Q: What about retrofitted gas power plants? -> Lisa
 
-    var["Capacity|Electricity|Hydrogen|FC"] = \
+    var[cap_string + "Electricity|Hydrogen|FC"] = \
         capacities_electricity.get("H2 Fuel Cell")
 
-    var["Capacity|Electricity|Hydrogen"] = \
-        var["Capacity|Electricity|Hydrogen|FC"]
+    var[cap_string + "Electricity|Hydrogen"] = \
+        var[cap_string + "Electricity|Hydrogen|FC"]
 
-    # var["Capacity|Electricity|Non-Renewable Waste"] = 
+    # var[cap_string + "Electricity|Non-Renewable Waste"] = 
     # ! Not implemented
 
-    var["Capacity|Electricity|Nuclear"] = \
+    var[cap_string + "Electricity|Nuclear"] = \
         capacities_electricity.get("nuclear", 0)
 
-    # var["Capacity|Electricity|Ocean"] = 
+    # var[cap_string + "Electricity|Ocean"] = 
     # ! Not implemented
 
-    # var["Capacity|Electricity|Oil|w/ CCS"] = 
-    # var["Capacity|Electricity|Oil|w/o CCS"] = 
+    # var[cap_string + "Electricity|Oil|w/ CCS"] = 
+    # var[cap_string + "Electricity|Oil|w/o CCS"] = 
     # ! Not implemented
 
-    var["Capacity|Electricity|Oil"] = \
+    var[cap_string + "Electricity|Oil"] = \
         capacities_electricity.get("oil")
 
 
-    var["Capacity|Electricity|Solar|PV|Rooftop"] = \
-        capacities_electricity.get("solar rooftop")
+    var[cap_string + "Electricity|Solar|PV|Rooftop"] = \
+        capacities_electricity.get("solar rooftop", 0)
     
-    var["Capacity|Electricity|Solar|PV|Open Field"] = \
+    var[cap_string + "Electricity|Solar|PV|Open Field"] = \
         capacities_electricity.get("solar") 
 
-    var["Capacity|Electricity|Solar|PV"] = \
+    var[cap_string + "Electricity|Solar|PV"] = \
         var[[
-            "Capacity|Electricity|Solar|PV|Open Field",
-            "Capacity|Electricity|Solar|PV|Rooftop",
+            cap_string + "Electricity|Solar|PV|Open Field",
+            cap_string + "Electricity|Solar|PV|Rooftop",
         ]].sum()
     
-    # var["Capacity|Electricity|Solar|CSP"] = 
+    # var[cap_string + "Electricity|Solar|CSP"] = 
     # ! not implemented
 
-    var["Capacity|Electricity|Solar"] = \
-        var["Capacity|Electricity|Solar|PV"]
+    var[cap_string + "Electricity|Solar"] = \
+        var[cap_string + "Electricity|Solar|PV"]
     
-    var["Capacity|Electricity|Wind|Offshore"] = \
+    var[cap_string + "Electricity|Wind|Offshore"] = \
         capacities_electricity.get(
             ["offwind", "offwind-ac", "offwind-dc"]
         ).sum()
     # !: take care of "offwind" -> "offwind-ac"/"offwind-dc"
 
-    var["Capacity|Electricity|Wind|Onshore"] = \
+    var[cap_string + "Electricity|Wind|Onshore"] = \
         capacities_electricity.get("onwind")
     
-    var["Capacity|Electricity|Wind"] = \
+    var[cap_string + "Electricity|Wind"] = \
         capacities_electricity.filter(like="wind").sum()
     
-    assert var["Capacity|Electricity|Wind"] == \
+    assert var[cap_string + "Electricity|Wind"] == \
         var[[
-            "Capacity|Electricity|Wind|Offshore",
-            "Capacity|Electricity|Wind|Onshore",
+            cap_string + "Electricity|Wind|Offshore",
+            cap_string + "Electricity|Wind|Onshore",
         ]].sum()
 
 
-    # var["Capacity|Electricity|Storage Converter|CAES"] = 
+    # var[cap_string + "Electricity|Storage Converter|CAES"] = 
     # ! Not implemented
 
-    var["Capacity|Electricity|Storage Converter|Hydro Dam Reservoir"] = \
-        capacities_electricity.get('hydro')
+    var[cap_string + "Electricity|Storage Converter|Hydro Dam Reservoir"] = \
+        capacities_electricity.get('hydro',0)
     
-    var["Capacity|Electricity|Storage Converter|Pump Hydro"] = \
-        capacities_electricity.get('PHS')
+    var[cap_string + "Electricity|Storage Converter|Pump Hydro"] = \
+        capacities_electricity.get('PHS',0)
 
-    var["Capacity|Electricity|Storage Converter|Stationary Batteries"] = \
-        capacities_electricity.get("battery discharger") + \
-        capacities_electricity.get("home battery discharger")
+    var[cap_string + "Electricity|Storage Converter|Stationary Batteries"] = \
+        capacities_electricity.get("battery discharger",0) + \
+        capacities_electricity.get("home battery discharger",0)
 
-    var["Capacity|Electricity|Storage Converter|Vehicles"] = \
+    var[cap_string + "Electricity|Storage Converter|Vehicles"] = \
         capacities_electricity.get("V2G", 0)
     
-    var["Capacity|Electricity|Storage Converter"] = \
+    var[cap_string + "Electricity|Storage Converter"] = \
         var[[
-            "Capacity|Electricity|Storage Converter|Hydro Dam Reservoir",
-            "Capacity|Electricity|Storage Converter|Pump Hydro",
-            "Capacity|Electricity|Storage Converter|Stationary Batteries",
-            "Capacity|Electricity|Storage Converter|Vehicles",
+            cap_string + "Electricity|Storage Converter|Hydro Dam Reservoir",
+            cap_string + "Electricity|Storage Converter|Pump Hydro",
+            cap_string + "Electricity|Storage Converter|Stationary Batteries",
+            cap_string + "Electricity|Storage Converter|Vehicles",
         ]].sum()
     
 
-    storage_capacities = n.statistics.optimal_capacity(
+    storage_capacities = cap_func(
         storage=True,
         **kwargs,
     ).filter(like=region).groupby("carrier").sum().multiply(MW2GW)
-    # var["Capacity|Electricity|Storage Reservoir|CAES"] =
+    # var[cap_string + "Electricity|Storage Reservoir|CAES"] =
     # ! Not implemented
      
-    var["Capacity|Electricity|Storage Reservoir|Hydro Dam Reservoir"] = \
+    var[cap_string + "Electricity|Storage Reservoir|Hydro Dam Reservoir"] = \
         storage_capacities.get("hydro")
 
-    var["Capacity|Electricity|Storage Reservoir|Pump Hydro"] = \
+    var[cap_string + "Electricity|Storage Reservoir|Pump Hydro"] = \
         storage_capacities.get("PHS")
     
-    var["Capacity|Electricity|Storage Reservoir|Stationary Batteries"] = \
+    var[cap_string + "Electricity|Storage Reservoir|Stationary Batteries"] = \
         pd.Series({
             c: storage_capacities.get(c) 
             for c in ["battery", "home battery"]
         }).sum()
     
-    var["Capacity|Electricity|Storage Reservoir|Vehicles"] = \
+    var[cap_string + "Electricity|Storage Reservoir|Vehicles"] = \
         storage_capacities.get("Li ion", 0) 
 
-    var["Capacity|Electricity|Storage Reservoir"] = \
+    var[cap_string + "Electricity|Storage Reservoir"] = \
         var[[
-            "Capacity|Electricity|Storage Reservoir|Hydro Dam Reservoir",
-            "Capacity|Electricity|Storage Reservoir|Pump Hydro",
-            "Capacity|Electricity|Storage Reservoir|Stationary Batteries",
-            "Capacity|Electricity|Storage Reservoir|Vehicles",
+            cap_string + "Electricity|Storage Reservoir|Hydro Dam Reservoir",
+            cap_string + "Electricity|Storage Reservoir|Pump Hydro",
+            cap_string + "Electricity|Storage Reservoir|Stationary Batteries",
+            cap_string + "Electricity|Storage Reservoir|Vehicles",
         ]].sum()
 
 
-    var["Capacity|Electricity"] = \
+    var[cap_string + "Electricity"] = \
             var[[
-            "Capacity|Electricity|Wind",
-            "Capacity|Electricity|Solar",
-            "Capacity|Electricity|Oil",
-            "Capacity|Electricity|Coal",
-            "Capacity|Electricity|Gas",
-            "Capacity|Electricity|Biomass",
-            "Capacity|Electricity|Hydro",
-            "Capacity|Electricity|Hydrogen",
-            "Capacity|Electricity|Nuclear",
+            cap_string + "Electricity|Wind",
+            cap_string + "Electricity|Solar",
+            cap_string + "Electricity|Oil",
+            cap_string + "Electricity|Coal",
+            cap_string + "Electricity|Gas",
+            cap_string + "Electricity|Biomass",
+            cap_string + "Electricity|Hydro",
+            cap_string + "Electricity|Hydrogen",
+            cap_string + "Electricity|Nuclear",
             ]].sum()
 
     # Test if we forgot something
@@ -324,22 +354,11 @@ def get_capacities_electricity(n, region):
         ] if col in capacities_electricity.index
     ]
     assert isclose(
-        var["Capacity|Electricity"],
+        var[cap_string + "Electricity"],
         capacities_electricity.drop(_drop_idx).sum(),
     )
-    
-    return var
 
-def get_capacities_heat(n, region):
-
-    kwargs = {
-        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
-        'nice_names': False,
-    }
-
-    var = pd.Series()
-
-    capacities_heat = n.statistics.optimal_capacity(
+    capacities_heat = cap_func(
         bus_carrier=[
             "urban central heat",
             "urban decentral heat",
@@ -347,11 +366,12 @@ def get_capacities_heat(n, region):
         ],
         **kwargs,
     ).filter(like=region).groupby("carrier").sum().drop(
-        ["urban central heat vent"]
+        ["urban central heat vent"],
+        errors="ignore", # drop existing labels or do nothing
     ).multiply(MW2GW)
 
 
-    var["Capacity|Heat|Solar thermal"] = \
+    var[cap_string + "Heat|Solar thermal"] = \
         capacities_heat.filter(like="solar thermal").sum()
     # TODO Ariadne DB distinguishes between Heat and Decentral Heat!
     # We should probably change all capacities here?!
@@ -360,25 +380,25 @@ def get_capacities_heat(n, region):
     #  We could be much more detailed for the heat sector (as for electricity)
     # if desired by Ariadne
     #
-    var["Capacity|Heat|Biomass|w/ CCS"] = \
-        capacities_heat.get('urban central solid biomass CHP CC') 
-    var["Capacity|Heat|Biomass|w/o CCS"] = \
+    var[cap_string + "Heat|Biomass|w/ CCS"] = \
+        capacities_heat.get('urban central solid biomass CHP CC',0) 
+    var[cap_string + "Heat|Biomass|w/o CCS"] = \
         capacities_heat.get('urban central solid biomass CHP') \
         +  capacities_heat.filter(like="biomass boiler").sum()
     
-    var["Capacity|Heat|Biomass"] = \
-        var["Capacity|Heat|Biomass|w/ CCS"] + \
-        var["Capacity|Heat|Biomass|w/o CCS"]
+    var[cap_string + "Heat|Biomass"] = \
+        var[cap_string + "Heat|Biomass|w/ CCS"] + \
+        var[cap_string + "Heat|Biomass|w/o CCS"]
 
     assert isclose(
-        var["Capacity|Heat|Biomass"],
+        var[cap_string + "Heat|Biomass"],
         capacities_heat.filter(like="biomass").sum()
     )
     
-    var["Capacity|Heat|Resistive heater"] = \
+    var[cap_string + "Heat|Resistive heater"] = \
         capacities_heat.filter(like="resistive heater").sum()
     
-    var["Capacity|Heat|Processes"] = \
+    var[cap_string + "Heat|Processes"] = \
         pd.Series({c: capacities_heat.get(c) for c in [
                 "Fischer-Tropsch",
                 "H2 Electrolysis",
@@ -389,89 +409,78 @@ def get_capacities_heat(n, region):
 
     # !!! Missing in the Ariadne database
 
-    var["Capacity|Heat|Gas"] = \
+    var[cap_string + "Heat|Gas"] = \
         capacities_heat.filter(like="gas boiler").sum() \
         + capacities_heat.filter(like="gas CHP").sum()
     
-    # var["Capacity|Heat|Geothermal"] =
+    # var[cap_string + "Heat|Geothermal"] =
     # ! Not implemented 
 
-    var["Capacity|Heat|Heat pump"] = \
+    var[cap_string + "Heat|Heat pump"] = \
         capacities_heat.filter(like="heat pump").sum()
 
-    var["Capacity|Heat|Oil"] = \
+    var[cap_string + "Heat|Oil"] = \
         capacities_heat.filter(like="oil boiler").sum()
 
-    var["Capacity|Heat|Storage Converter"] = \
+    var[cap_string + "Heat|Storage Converter"] = \
         capacities_heat.filter(like="water tanks discharger").sum()
 
-    storage_capacities = n.statistics.optimal_capacity(
+    storage_capacities = cap_func(
         storage=True,
         **kwargs,
     ).filter(like=region).groupby("carrier").sum().multiply(MW2GW)
 
-    var["Capacity|Heat|Storage Reservoir"] = \
+    var[cap_string + "Heat|Storage Reservoir"] = \
         storage_capacities.filter(like="water tanks").sum()
 
-    var["Capacity|Heat"] = (
-        var["Capacity|Heat|Solar thermal"] +
-        var["Capacity|Heat|Resistive heater"] +
-        var["Capacity|Heat|Biomass"] +
-        var["Capacity|Heat|Oil"] +
-        var["Capacity|Heat|Gas"] +
-        var["Capacity|Heat|Processes"] +
-        #var["Capacity|Heat|Hydrogen"] +
-        var["Capacity|Heat|Heat pump"]
+    var[cap_string + "Heat"] = (
+        var[cap_string + "Heat|Solar thermal"] +
+        var[cap_string + "Heat|Resistive heater"] +
+        var[cap_string + "Heat|Biomass"] +
+        var[cap_string + "Heat|Oil"] +
+        var[cap_string + "Heat|Gas"] +
+        var[cap_string + "Heat|Processes"] +
+        #var[cap_string + "Heat|Hydrogen"] +
+        var[cap_string + "Heat|Heat pump"]
     )
 
     assert isclose(
-        var["Capacity|Heat"],
+        var[cap_string + "Heat"],
         capacities_heat[
             # exclude storage converters (i.e., dischargers)
             ~capacities_heat.index.str.contains("discharger")
         ].sum()
     )
 
-    return var
-
-
-def get_capacities_other(n, region):
-    kwargs = {
-        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
-        'nice_names': False,
-    }
-
-    var = pd.Series()
-
-    capacities_h2 = n.statistics.optimal_capacity(
+    capacities_h2 = cap_func(
         bus_carrier="H2",
         **kwargs,
     ).filter(
         like=region
     ).groupby("carrier").sum().multiply(MW2GW)
 
-    var["Capacity|Hydrogen|Gas|w/ CCS"] = \
-        capacities_h2.get("SMR CC")
+    var[cap_string + "Hydrogen|Gas|w/ CCS"] = \
+        capacities_h2.get("SMR CC",0)
     
-    var["Capacity|Hydrogen|Gas|w/o CCS"] = \
-        capacities_h2.get("SMR")
+    var[cap_string + "Hydrogen|Gas|w/o CCS"] = \
+        capacities_h2.get("SMR",0)
     
-    var["Capacity|Hydrogen|Gas"] = \
+    var[cap_string + "Hydrogen|Gas"] = \
         capacities_h2.filter(like="SMR").sum()
     
-    assert var["Capacity|Hydrogen|Gas"] == \
-        var["Capacity|Hydrogen|Gas|w/ CCS"] + \
-        var["Capacity|Hydrogen|Gas|w/o CCS"] 
+    assert var[cap_string + "Hydrogen|Gas"] == \
+        var[cap_string + "Hydrogen|Gas|w/ CCS"] + \
+        var[cap_string + "Hydrogen|Gas|w/o CCS"] 
     
-    var["Capacity|Hydrogen|Electricity"] = \
+    var[cap_string + "Hydrogen|Electricity"] = \
         capacities_h2.get("H2 Electrolysis", 0)
 
-    var["Capacity|Hydrogen"] = (
-        var["Capacity|Hydrogen|Electricity"]
-        + var["Capacity|Hydrogen|Gas"]
+    var[cap_string + "Hydrogen"] = (
+        var[cap_string + "Hydrogen|Electricity"]
+        + var[cap_string + "Hydrogen|Gas"]
     )
     assert isclose(
-        var["Capacity|Hydrogen"],
+        var[cap_string + "Hydrogen"],
         capacities_h2.reindex([
             "H2 Electrolysis",
             "SMR",
@@ -479,17 +488,17 @@ def get_capacities_other(n, region):
         ]).sum(), # if technology not build, reindex returns NaN
     )
 
-    storage_capacities = n.statistics.optimal_capacity(
+    storage_capacities = cap_func(
         storage=True,
         **kwargs,
     ).filter(like=region).groupby("carrier").sum().multiply(MW2GW)
 
-    var["Capacity|Hydrogen|Reservoir"] = \
+    var[cap_string + "Hydrogen|Reservoir"] = \
         storage_capacities.get("H2")
 
 
 
-    capacities_gas = n.statistics.optimal_capacity(
+    capacities_gas = cap_func(
         bus_carrier="gas",
         **kwargs,
     ).filter(
@@ -497,44 +506,45 @@ def get_capacities_other(n, region):
     ).groupby("carrier").sum().drop(
         # Drop Import (Generator, gas), Storage (Store, gas), 
         # and Transmission capacities
-        ["gas", "gas pipeline", "gas pipeline new"]
+        ["gas", "gas pipeline", "gas pipeline new"],
+        errors="ignore",
     ).multiply(MW2GW)
 
-    var["Capacity|Gases|Hydrogen"] = \
+    var[cap_string + "Gases|Hydrogen"] = \
         capacities_gas.get("Sabatier", 0)
     
-    var["Capacity|Gases|Biomass"] = \
+    var[cap_string + "Gases|Biomass"] = \
         capacities_gas.reindex([
             "biogas to gas",
             "biogas to gas CC",
         ]).sum()
 
-    var["Capacity|Gases"] = (
-        var["Capacity|Gases|Hydrogen"] +
-        var["Capacity|Gases|Biomass"] 
+    var[cap_string + "Gases"] = (
+        var[cap_string + "Gases|Hydrogen"] +
+        var[cap_string + "Gases|Biomass"] 
     )
 
     assert isclose(
-        var["Capacity|Gases"],
+        var[cap_string + "Gases"],
         capacities_gas.sum(),
     )
 
 
-    capacities_liquids = n.statistics.optimal_capacity(
+    capacities_liquids = cap_func(
         bus_carrier=["oil", "methanol"],
         **kwargs,
     ).filter(
         like=region
     ).groupby("carrier").sum().multiply(MW2GW)
 
-    var["Capacity|Liquids|Hydrogen"] = \
-        capacities_liquids.get("Fischer-Tropsch") + \
+    var[cap_string + "Liquids|Hydrogen"] = \
+        capacities_liquids.get("Fischer-Tropsch",0) + \
         capacities_liquids.get("methanolisation", 0)
     
-    var["Capacity|Liquids"] = var["Capacity|Liquids|Hydrogen"]
+    var[cap_string + "Liquids"] = var[cap_string + "Liquids|Hydrogen"]
 
     assert isclose(
-        var["Capacity|Liquids"], capacities_liquids.sum(),
+        var[cap_string + "Liquids"], capacities_liquids.sum(),
     )
 
     return var 
@@ -834,7 +844,7 @@ def get_secondary_energy(n, region):
     ).filter(like=region).groupby(
         ["carrier"]
     ).sum().multiply(MWh2PJ).drop(
-        ["AC", "DC", "electricity distribution grid" ]
+        ["AC", "DC", "electricity distribution grid"],
     )
 
     var["Secondary Energy|Electricity|Coal|Hard Coal"] = \
@@ -1729,9 +1739,11 @@ def get_emissions(n, region, _energy_totals):
 def get_ariadne_var(n, industry_demand, energy_totals, region):
 
     var = pd.concat([
-        get_capacities_electricity(n, region),
-        get_capacities_heat(n, region),
-        get_capacities_other(n, region),
+        get_capacities(n, region),
+        get_capacity_additions_simple(n,region),
+        get_installed_capacities(n,region),
+        #get_capacity_additions(n, region),
+        #get_capacity_additions_nstat(n, region),
         get_primary_energy(n, region),
         get_secondary_energy(n, region),
         get_final_energy(n, region, industry_demand, energy_totals),
