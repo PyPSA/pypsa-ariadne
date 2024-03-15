@@ -382,8 +382,8 @@ if __name__ == "__main__":
     logging.basicConfig(level=snakemake.config["logging"]["level"])
 
     wasserstoff_kernnetz = load_and_merge_raw(
-        snakemake.input.wasserstoff_kernnetz_1[0],
-        snakemake.input.wasserstoff_kernnetz_2[0],
+        snakemake.input.wasserstoff_kernnetz_1,
+        snakemake.input.wasserstoff_kernnetz_2,
     )
 
     wasserstoff_kernnetz = prepare_dataset(wasserstoff_kernnetz)
