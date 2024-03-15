@@ -121,16 +121,20 @@ limits_capacity_min:
           2025: 8
           2030: 30 # Wind-auf-See Law
           2035: 40 # 40 Wind-auf-See Law
-          2040: 41 #55
+          # assuming at least 1/3 of difference reached in 2040
+          2040: 50
           2045: 70 #70 Wind-auf-See Law
       solar:
         DE:
           2020: 59
-          2025: 94.7
+          # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW, 
+          # assuming at least 1/3 of difference reached in 2025
+          2025: 101 
           2030: 215 # PV strategy
-          2035: 307.5
+          2035: 309
           2040: 400 # PV strategy
           2045: 400
+          # What about the EEG2023 "Strommengenpfad"?
 
 h2_import_max:
   DE:
@@ -170,7 +174,7 @@ renewable:
     capacity_per_sqkm: 8
 
 costs:
-  version: v0.8.0
+  version: v0.8.1
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
