@@ -6,8 +6,8 @@
 run:
   name:
   - KN2045_Bal_v4
-  - KN2045_Elec_v4
-  - KN2045_H2_v4
+  # - KN2045_Elec_v4
+  # - KN2045_H2_v4
   # - KN2045plus_EasyRide
   # - KN2045plus_LowDemand
   # - KN2045minus_WorstCase
@@ -42,12 +42,11 @@ scenario:
     - none
   planning_horizons:
   - 2020
-  #- 2025
+  - 2025
   - 2030
-  #- 2035
-  #- 2040
-  #- 2045
-  #- 2050
+  - 2035
+  - 2040
+  - 2045
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
 # Germany plus 12 "Stromnachbarn"

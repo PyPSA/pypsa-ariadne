@@ -241,15 +241,15 @@ def unravel_oilbus(n):
     """
     logger.info("Unraveling oil bus")
     # add buses
-    n.add("Bus", "DE oil")
-    n.add("Bus", "DE renewable oil")
-    n.add("Bus", "EU renewable oil")
+    n.add("Bus", "DE oil", carrier="oil")
+    n.add("Bus", "DE renewable oil", carrier="e-fuels")
+    n.add("Bus", "EU renewable oil", carrier="e-fuels")
 
     # add one generator for DE oil
     n.add("Generator",
           name="DE oil",
           bus="DE oil",
-          carrier="oil",
+          carrier="fossil oil import",
           p_nom_extendable=True,
           marginal_cost=n.generators.loc["EU oil"].marginal_cost,
           )
@@ -267,20 +267,29 @@ def unravel_oilbus(n):
     # add links between oil buses
     n.madd(
         "Link",
-        ["EU renewable oil -> DE renewable oil", "EU renewable oil -> EU oil", "DE renewable oil -> DE oil"],
-        bus0=["EU renewable oil", "EU renewable oil", "DE renewable oil"],
-        bus1=["DE renewable oil", "EU oil", "DE oil"],
-        carrier="oil",
+        ["EU renewable oil -> DE oil", "EU renewable oil -> EU oil", "DE renewable oil -> DE oil", "DE renewable oil -> EU oil"],
+        bus0=["EU renewable oil", "EU renewable oil", "DE renewable oil", "DE renewable oil"],
+        bus1=["DE renewable oil", "EU oil", "DE oil", "EU oil"],
+        carrier="e-fuels",
         p_nom=1e9,
         p_min_pu=0,
     )
 
     # add stores
+    n.add("Store",
+          "DE oil Store",
+          bus="DE oil",
+          carrier="oil",
+          e_nom_extendable=True,
+          e_cyclic=True,
+          capital_cost=0.02,
+          )
+
     n.madd(
         "Store",
-        ["DE oil Store", "DE renewable oil Store", "EU renewable oil Store"],
-        bus=["DE oil", "DE renewable oil", "EU renewable oil"],
-        carrier="oil",
+        ["DE renewable oil Store", "EU renewable oil Store"],
+        bus=["DE renewable oil", "EU renewable oil"],
+        carrier="e-fuels",
         e_nom_extendable=True,
         e_cyclic=True,
         capital_cost=0.02,

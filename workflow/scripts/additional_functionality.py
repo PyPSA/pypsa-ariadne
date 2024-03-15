@@ -288,7 +288,7 @@ def add_h2_derivate_limit(n, snapshots, investment_year, config):
 
         logger.info(f"limiting H2 derivate imports in {ct} to {limit/1e6} TWh/a")
 
-        incoming = n.links.index[n.links.index.str.contains("EU renewable oil -> DE renewable oil")]
+        incoming = n.links.index[n.links.index.str.contains("EU renewable oil -> DE oil")]
         outgoing = n.links.index[n.links.index.str.contains("DE renewable oil -> EU oil")]
 
         incoming_p = (n.model["Link-p"].loc[:, incoming]*n.snapshot_weightings.generators).sum()
