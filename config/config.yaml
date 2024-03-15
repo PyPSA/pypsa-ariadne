@@ -170,7 +170,7 @@ renewable:
     capacity_per_sqkm: 8
 
 costs:
-  version: v0.8.0
+  version: v0.8.1
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:

@@ -6,6 +6,7 @@
 # This script reads in data from the IIASA database to create the scenario.yaml file
 
 import pyam
+import yaml
 import pandas as pd
 import os
 
@@ -40,76 +41,34 @@ def get_shares(df):
     return transport_share, naval_share
 
 
-def write_to_scenario_yaml(output, scenario, transport_share, naval_share):
-    # write the data to the output file
-    with open(output, 'r') as f:
-        lines = f.readlines()
-    
-    #get first occurence of scenario
-    first = lines.index(scenario + ":\n")
+def write_to_scenario_yaml(output, scenarios, transport_share, naval_share):
+    # read in yaml file
+    with open("config/scenarios.yaml", 'r') as file:
+        config = yaml.safe_load(file)
     
     mapping_transport = {
         'PHEV': 'land_transport_fuel_cell_share',
         'BEV': 'land_transport_electric_share',
         'ICE': 'land_transport_ice_share'
     }
-    
-    # transport sector
-    start_index = []
-    for i, line in enumerate(lines):
-        if line.strip() == "land_transport_fuel_cell_share:":
-            start_index.append(i)
-        elif line.strip() == "land_transport_electric_share:":
-            start_index.append(i)
-        elif line.strip() == "land_transport_ice_share:":
-            start_index.append(i)
-
-    numb = next((i for i, num in enumerate(start_index) if num > first), None)
-    start_index = start_index[numb : numb+ 3]
-
-    j = 0
-    # Modify the content accordingly
-    for key in mapping_transport.keys():
-        idx = start_index[j] + 1
-        for col in transport_share.columns:
-            if pd.notnull(transport_share.loc[key, col]):
-                lines[idx] = f"      {col}: {transport_share.loc[key, col]:.3f}\n"
-            idx += 1
-        j += 1
-
-    # naval sector
     mapping_navigation = {
         'H2': 'shipping_hydrogen_share',
         'MeOH': 'shipping_methanol_share',
         'Oil': 'shipping_oil_share',
     }
-    
-    # transport sector
-    start_index = []
-    for i, line in enumerate(lines):
-        if line.strip() == "shipping_hydrogen_share:":
-            start_index.append(i)
-        elif line.strip() == "shipping_methanol_share:":
-            start_index.append(i)
-        elif line.strip() == "shipping_oil_share:":
-            start_index.append(i)
 
-    numb = next((i for i, num in enumerate(start_index) if num > first), None)
-    start_index = start_index[numb : numb+ 3]
-
-    j = 0
-    # Modify the content accordingly
-    for key in mapping_navigation.keys():
-        idx = start_index[j] + 1
-        for col in naval_share.columns:
-            if pd.notnull(naval_share.loc[key, col]):
-                lines[idx] = f"      {col}: {naval_share.loc[key, col]:.3f}\n"
-            idx += 1
-        j += 1
+    for scenario in scenarios:
+        for key in mapping_transport.keys():
+            for year in transport_share.columns:
+                config[scenario]["sector"][mapping_transport[key]][year] = round(transport_share.loc[key, year].item(), 4)
+        for key in mapping_navigation.keys():
+            for year in naval_share.columns:
+                config[scenario]["sector"][mapping_navigation[key]][year] = round(naval_share.loc[key, year].item(), 4)
         
-    # Write the modified content back to the file
-    with open(output, 'w') as f:
-        f.writelines(lines)
+    # write back to yaml file        
+    with open(output, 'w') as file:
+        yaml.dump(config, file)
+
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -138,6 +97,6 @@ if __name__ == "__main__":
 
     transport_share, naval_share = get_shares(df)
 
-    scenario = snakemake.params.scenario_name[0]
+    scenarios = snakemake.params.scenario_name
     output = snakemake.input[0]
-    write_to_scenario_yaml(output, scenario, transport_share, naval_share)
+    write_to_scenario_yaml(output, scenarios, transport_share, naval_share)
