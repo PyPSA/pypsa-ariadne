@@ -6,7 +6,8 @@
 # This script reads in data from the IIASA database to create the scenario.yaml file
 
 import pyam
-import yaml
+import ruamel.yaml
+from pathlib import Path
 import pandas as pd
 import os
 
@@ -43,8 +44,9 @@ def get_shares(df):
 
 def write_to_scenario_yaml(output, scenarios, transport_share, naval_share):
     # read in yaml file
-    with open("config/scenarios.yaml", 'r') as file:
-        config = yaml.safe_load(file)
+    yaml = ruamel.yaml.YAML()
+    file_path = Path(output)
+    config = yaml.load(file_path)
     
     mapping_transport = {
         'PHEV': 'land_transport_fuel_cell_share',
@@ -64,10 +66,9 @@ def write_to_scenario_yaml(output, scenarios, transport_share, naval_share):
         for key in mapping_navigation.keys():
             for year in naval_share.columns:
                 config[scenario]["sector"][mapping_navigation[key]][year] = round(naval_share.loc[key, year].item(), 4)
-        
-    # write back to yaml file        
-    with open(output, 'w') as file:
-        yaml.dump(config, file)
+
+    # write back to yaml file
+    yaml.dump(config, file_path)
 
 
 if __name__ == "__main__":

@@ -52,6 +52,7 @@ dependencies:
 - pypsa>=0.27.0
 - highs
 - pyam
+- ruamel.yaml
 
   # Keep in conda environment when calling ipython
 - ipython
