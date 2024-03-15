@@ -260,6 +260,8 @@ plotting:
   tech_colors:
     load: "#111100"
     H2 pipeline (Kernnetz): '#6b3161'
+    fossil oil import: '#c9c9c9'
+    e-fuels: '#c9c9c9'
   countries:
   - all
   - DE
