@@ -242,8 +242,8 @@ def unravel_oilbus(n):
     logger.info("Unraveling oil bus")
     # add buses
     n.add("Bus", "DE oil", carrier="oil")
-    n.add("Bus", "DE renewable oil", carrier="e-fuels")
-    n.add("Bus", "EU renewable oil", carrier="e-fuels")
+    n.add("Bus", "DE renewable oil", carrier="renewable oil")
+    n.add("Bus", "EU renewable oil", carrier="renewable oil")
 
     # add one generator for DE oil
     n.add("Generator",
@@ -269,8 +269,8 @@ def unravel_oilbus(n):
         "Link",
         ["EU renewable oil -> DE oil", "EU renewable oil -> EU oil", "DE renewable oil -> DE oil", "DE renewable oil -> EU oil"],
         bus0=["EU renewable oil", "EU renewable oil", "DE renewable oil", "DE renewable oil"],
-        bus1=["DE renewable oil", "EU oil", "DE oil", "EU oil"],
-        carrier="e-fuels",
+        bus1=["DE oil", "EU oil", "DE oil", "EU oil"],
+        carrier="renewable oil",
         p_nom=1e9,
         p_min_pu=0,
     )
@@ -289,7 +289,7 @@ def unravel_oilbus(n):
         "Store",
         ["DE renewable oil Store", "EU renewable oil Store"],
         bus=["DE renewable oil", "EU renewable oil"],
-        carrier="e-fuels",
+        carrier="renewable oil",
         e_nom_extendable=True,
         e_cyclic=True,
         capital_cost=0.02,
