@@ -269,7 +269,7 @@ def unravel_oilbus(n):
         "Link",
         ["EU renewable oil -> DE oil", "EU renewable oil -> EU oil", "DE renewable oil -> DE oil", "DE renewable oil -> EU oil"],
         bus0=["EU renewable oil", "EU renewable oil", "DE renewable oil", "DE renewable oil"],
-        bus1=["DE renewable oil", "EU oil", "DE oil", "EU oil"],
+        bus1=["DE oil", "EU oil", "DE oil", "EU oil"],
         carrier="e-fuels",
         p_nom=1e9,
         p_min_pu=0,
