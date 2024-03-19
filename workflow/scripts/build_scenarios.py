@@ -12,8 +12,7 @@ import pandas as pd
 import os
 
 def get_shares(df, planning_horizons):
-    # Get share of vehicles for transport sector - meglecting heavy duty vehicles
-    # At the 
+    # Get share of vehicles for transport sector - neglecting heavy duty vehicles
     total_transport = df.loc["DEMO v1", "Stock|Transportation|LDV"]
     tech_transport = df.loc["DEMO v1"].loc[[ 
         "Stock|Transportation|LDV|ICE",
@@ -25,7 +24,7 @@ def get_shares(df, planning_horizons):
     transport_share = transport_share[planning_horizons]
     transport_share.set_index(pd.Index(["ICE", "BEV", "PHEV"]), inplace=True)
 
-    # Get share of Navigation fuels
+    # Get share of Navigation fuels from corresponding "Ariadne Leitmodell"
     total_navigation = \
         df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation"] + \
         df.loc["DEMO v1", "Final Energy|Transportation|Domestic Navigation"]
@@ -88,13 +87,13 @@ if __name__ == "__main__":
         snakemake = mock_snakemake("build_scenarios")
 
     # Set USERNAME and PASSWORD for the Ariadne DB
-    ariadne = pd.read_csv(
+    ariadne_db = pd.read_csv(
         snakemake.input.ariadne_database,
         index_col=["model", "scenario", "region", "variable", "unit"]
     )
-    ariadne.columns = ariadne.columns.astype(int)
+    ariadne_db.columns = ariadne_db.columns.astype(int)
 
-    df = ariadne.loc[
+    df = ariadne_db.loc[
         :, 
         snakemake.params.iiasa_scenario, 
         "Deutschland"]
@@ -105,9 +104,7 @@ if __name__ == "__main__":
 
     scenarios = snakemake.params.scenario_name
 
-    if "snakemake" in globals():
-        filename = snakemake.input.scenario_yaml
-    else:
-        filename = "../config/scenarios.yaml"
+    filename = snakemake.input.scenario_yaml
+
 
     write_to_scenario_yaml(filename, scenarios, transport_share, naval_share)
