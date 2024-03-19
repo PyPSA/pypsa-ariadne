@@ -5,39 +5,43 @@
 
 # This script reads in data from the IIASA database to create the scenario.yaml file
 
-import pyam
+
 import ruamel.yaml
 from pathlib import Path
 import pandas as pd
 import os
 
-def get_shares(df):
-    # Get share of vehicles for transport sector - meglecting heavy duty vehicles
-    total_transport = df.loc["Stock|Transportation|LDV"]
-    tech_transport = df.loc[["Stock|Transportation|LDV|ICE",
-                "Stock|Transportation|LDV|BEV",
-                "Stock|Transportation|LDV|PHEV",]]
+def get_shares(df, planning_horizons):
+    # Get share of vehicles for transport sector - neglecting heavy duty vehicles
+    total_transport = df.loc["DEMO v1", "Stock|Transportation|LDV"]
+    tech_transport = df.loc["DEMO v1"].loc[[ 
+        "Stock|Transportation|LDV|ICE",
+        "Stock|Transportation|LDV|BEV",
+        "Stock|Transportation|LDV|PHEV",
+    ]]
 
     transport_share = tech_transport / total_transport
-    transport_share = transport_share[[2020, 2025, 2030, 2035, 2040, 2045]]
-    transport_share.reset_index(drop=True, inplace=True)
+    transport_share = transport_share[planning_horizons]
     transport_share.set_index(pd.Index(["ICE", "BEV", "PHEV"]), inplace=True)
 
-    # Get share of Navigation fuels
-    total_navigation = df.loc[["Final Energy|Bunkers|Navigation",
-                         "Final Energy|Transportation|Domestic Navigation"]].sum(axis=0)
-    navigation_liquid = df.loc[["Final Energy|Bunkers|Navigation",
-                         "Final Energy|Transportation|Domestic Navigation|Liquids"]].sum()
-    navigation_h2 = df.loc[["Final Energy|Transportation|Domestic Navigation|Hydrogen"]]    
+    # Get share of Navigation fuels from corresponding "Ariadne Leitmodell"
+    total_navigation = \
+        df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation"] + \
+        df.loc["DEMO v1", "Final Energy|Transportation|Domestic Navigation"]
+    navigation_liquid = \
+        df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation|Liquids"] + \
+        df.loc["DEMO v1", "Final Energy|Transportation|Domestic Navigation|Liquids"]
+    
+    navigation_h2 = df.loc["DEMO v1", "Final Energy|Transportation|Domestic Navigation|Hydrogen"]    
 
     h2_share = navigation_h2 / total_navigation
-    liquid_share = pd.DataFrame(navigation_liquid / total_navigation, columns=['Oil']).transpose()
-
-    h2_share.reset_index(drop=True, inplace=True)
-    h2_share.set_index(pd.Index(["H2"]), inplace=True)
-    naval_share = pd.concat([liquid_share, h2_share])
-    naval_share.loc["MeOH"] = 0.0
-    naval_share = naval_share[[2020, 2025, 2030, 2035, 2040, 2045]]
+    liquid_share = navigation_liquid / total_navigation
+    methanol_share = (1 - h2_share - liquid_share).round(6)
+    
+    naval_share = pd.concat(
+            [liquid_share, h2_share, methanol_share]).set_index(
+            pd.Index(["Oil", "H2", "MeOH"])
+        )[planning_horizons]
 
     return transport_share, naval_share
 
@@ -83,21 +87,24 @@ if __name__ == "__main__":
         snakemake = mock_snakemake("build_scenarios")
 
     # Set USERNAME and PASSWORD for the Ariadne DB
-    pyam.iiasa.set_config(
-        snakemake.params.iiasa_usr, 
-        snakemake.params.iiasa_pwd,
+    ariadne_db = pd.read_csv(
+        snakemake.input.ariadne_database,
+        index_col=["model", "scenario", "region", "variable", "unit"]
     )
+    ariadne_db.columns = ariadne_db.columns.astype(int)
 
-    model_df= pyam.read_iiasa(
-        "ariadne_intern",
-        model=snakemake.params.iiasa_model,
-        scenario=snakemake.params.iiasa_scenario,
-    ).timeseries()
+    df = ariadne_db.loc[
+        :, 
+        snakemake.params.iiasa_scenario, 
+        "Deutschland"]
 
-    df = model_df.loc[snakemake.params.iiasa_model, snakemake.params.iiasa_scenario, "Deutschland"]
 
-    transport_share, naval_share = get_shares(df)
+    planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045]
+    transport_share, naval_share = get_shares(df, planning_horizons)
 
     scenarios = snakemake.params.scenario_name
-    output = snakemake.input[0]
-    write_to_scenario_yaml(output, scenarios, transport_share, naval_share)
+
+    filename = snakemake.input.scenario_yaml
+
+
+    write_to_scenario_yaml(filename, scenarios, transport_share, naval_share)

@@ -15,10 +15,7 @@ KN2045_Bal_v4:
       resolution_sector: 365H
 
   iiasa_database:
-    db_name: ariadne_intern
-    model_name: Hybrid # should be Leitmodell
-    scenario: 8Gt_EnSec # should be consistent with KN2045_Bal_v4
-    region: Deutschland
+    reference_scenario: 8Gt_Bal_v3
 
   # boundary condition of maximum volumes
   limits_volume_max:
@@ -68,46 +65,46 @@ KN2045_Bal_v4:
   sector:
     land_transport_electric_share:
       2020: 0.0047
-      2025: 0.0608
-      2030: 0.2722
-      2035: 0.5577
-      2040: 0.7713
-      2045: 0.8931
+      2025: 0.0611
+      2030: 0.243
+      2035: 0.5199
+      2040: 0.74
+      2045: 0.8737
     land_transport_fuel_cell_share:
       2020: 0.004
-      2025: 0.0351
-      2030: 0.0664
-      2035: 0.0462
-      2040: 0.0235
-      2045: 0.0076
+      2025: 0.0362
+      2030: 0.0667
+      2035: 0.0485
+      2040: 0.0252
+      2045: 0.0085
     land_transport_ice_share:
       2020: 0.9913
-      2025: 0.9041
-      2030: 0.6614
-      2035: 0.3961
-      2040: 0.2052
-      2045: 0.0993
+      2025: 0.9027
+      2030: 0.6903
+      2035: 0.4316
+      2040: 0.2348
+      2045: 0.1178
     shipping_hydrogen_share:
       2020: 0.0
       2025: 0.0
-      2030: 0.0218
-      2035: 0.0504
-      2040: 0.0804
-      2045: 0.0937
+      2030: 0.0238
+      2035: 0.0522
+      2040: 0.0802
+      2045: 0.1142
     shipping_methanol_share:
       2020: 0.0
       2025: 0.0
       2030: 0.0
       2035: 0.0
-      2040: 0.0
+      2040: -0.0
       2045: 0.0
     shipping_oil_share:
       2020: 1.0
       2025: 1.0
-      2030: 0.9782
-      2035: 0.9496
-      2040: 0.9196
-      2045: 0.9063
+      2030: 0.9762
+      2035: 0.9478
+      2040: 0.9198
+      2045: 0.8858
 
 KN2045_Elec_v4:
 # Fokus auf dem Hochlauf von Technologien zur direkten Elektrifizierung der Sektoren
@@ -120,10 +117,8 @@ KN2045_Elec_v4:
       resolution_sector: 365H
 
   iiasa_database:
-    db_name: ariadne_intern
-    model_name: Hybrid
-    region: Deutschland
-    scenario: 8Gt_EnSec
+    reference_scenario: 8Gt_Elec_v3
+
   limits_volume_max:
     # constrain electricity import in TWh
     electricity_import:
@@ -171,46 +166,46 @@ KN2045_Elec_v4:
   sector:
     land_transport_electric_share:
       2020: 0.0047
-      2025: 0.0608
-      2030: 0.2722
-      2035: 0.5577
-      2040: 0.7713
-      2045: 0.8931
+      2025: 0.0611
+      2030: 0.243
+      2035: 0.5199
+      2040: 0.74
+      2045: 0.8737
     land_transport_fuel_cell_share:
       2020: 0.004
-      2025: 0.0351
-      2030: 0.0664
-      2035: 0.0462
-      2040: 0.0235
-      2045: 0.0076
+      2025: 0.0362
+      2030: 0.0667
+      2035: 0.0485
+      2040: 0.0252
+      2045: 0.0085
     land_transport_ice_share:
       2020: 0.9913
-      2025: 0.9041
-      2030: 0.6614
-      2035: 0.3961
-      2040: 0.2052
-      2045: 0.0993
+      2025: 0.9027
+      2030: 0.6903
+      2035: 0.4316
+      2040: 0.2348
+      2045: 0.1178
     shipping_hydrogen_share:
       2020: 0.0
       2025: 0.0
-      2030: 0.0218
-      2035: 0.0504
-      2040: 0.0804
-      2045: 0.0937
+      2030: 0.0238
+      2035: 0.0522
+      2040: 0.0802
+      2045: 0.1142
     shipping_methanol_share:
       2020: 0.0
       2025: 0.0
       2030: 0.0
       2035: 0.0
-      2040: 0.0
+      2040: -0.0
       2045: 0.0
     shipping_oil_share:
       2020: 1.0
       2025: 1.0
-      2030: 0.9782
-      2035: 0.9496
-      2040: 0.9196
-      2045: 0.9063
+      2030: 0.9762
+      2035: 0.9478
+      2040: 0.9198
+      2045: 0.8858
 
 KN2045_H2_v4:
 # Fokus stärker auf dem Hochlauf von Technologien zur indirekten Elektrifizierung der Sektoren
@@ -223,10 +218,7 @@ KN2045_H2_v4:
       resolution_sector: 365H
 
   iiasa_database:
-    db_name: ariadne_intern
-    model_name: Hybrid # should be Leitmodell
-    scenario: 8Gt_EnSec # should be consistent with KN2045_Elec_v4
-    region: Deutschland
+    reference_scenario: 8Gt_H2_v3
 
   limits_volume_max:
     # constrain electricity import in TWh
@@ -277,43 +269,43 @@ KN2045_H2_v4:
   sector:
     land_transport_electric_share:
       2020: 0.0047
-      2025: 0.0608
-      2030: 0.2722
-      2035: 0.5577
-      2040: 0.7713
-      2045: 0.8931
+      2025: 0.0611
+      2030: 0.243
+      2035: 0.5199
+      2040: 0.74
+      2045: 0.8737
     land_transport_fuel_cell_share:
       2020: 0.004
-      2025: 0.0351
-      2030: 0.0664
-      2035: 0.0462
-      2040: 0.0235
-      2045: 0.0076
+      2025: 0.0362
+      2030: 0.0667
+      2035: 0.0485
+      2040: 0.0252
+      2045: 0.0085
     land_transport_ice_share:
       2020: 0.9913
-      2025: 0.9041
-      2030: 0.6614
-      2035: 0.3961
-      2040: 0.2052
-      2045: 0.0993
+      2025: 0.9027
+      2030: 0.6903
+      2035: 0.4316
+      2040: 0.2348
+      2045: 0.1178
     shipping_hydrogen_share:
       2020: 0.0
       2025: 0.0
-      2030: 0.0218
-      2035: 0.0504
-      2040: 0.0804
-      2045: 0.0937
+      2030: 0.0238
+      2035: 0.0522
+      2040: 0.0802
+      2045: 0.1142
     shipping_methanol_share:
       2020: 0.0
       2025: 0.0
       2030: 0.0
       2035: 0.0
-      2040: 0.0
+      2040: -0.0
       2045: 0.0
     shipping_oil_share:
       2020: 1.0
       2025: 1.0
-      2030: 0.9782
-      2035: 0.9496
-      2040: 0.9196
-      2045: 0.9063
+      2030: 0.9762
+      2035: 0.9478
+      2040: 0.9198
+      2045: 0.8858

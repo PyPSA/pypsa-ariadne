@@ -19,8 +19,17 @@ run:
 
 iiasa_database:
   db_name: ariadne_intern
-  model_name: Hybrid
-  scenario: 8Gt_EnSec
+  leitmodelle:
+    - REMIND-EU v1.1
+    - REMod v1.0
+    - TIMES PanEU v1.0
+    - FORECAST v1.0
+    - DEMO v1
+  scenarios: 
+    - 8Gt_Bal_v3
+    - 8Gt_Elec_v3
+    - 8Gt_H2_v3
+  reference_scenario: 8Gt_Bal_v3
   region: Deutschland
 
 
