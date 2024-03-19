@@ -7,38 +7,34 @@ dependencies:
 - python>=3.8
 - pip
 
-- pre-commit
-- black
+- atlite>=0.2.9
+- pypsa>=0.27.0
+- linopy
+- dask
 
-- jupyter
-- jupyterlab
-
-  # Dependencies of the workflow itself
+  # Dependencies of the workflow itself (see pypsa-eur)
 - xlrd
 - openpyxl!=3.1.1
 - pycountry
 - seaborn
-- snakemake-minimal>=7.7.0
+- snakemake-minimal>=8.5
 - memory_profiler
 - yaml
 - pytables
 - lxml
 - powerplantmatching>=0.5.11
 - numpy
-- pandas>=1.4
+- pandas>=2.1
 - geopandas>=0.11.0
-- atlite>=0.2.9
-- dask
-- xarray
+- xarray>=2023.11.0
 - rioxarray
 - netcdf4
 - networkx
 - scipy
+- glpk
 - shapely>=2.0
-- pyomo
-- gurobi
-- ipopt
-- matplotlib<3.6
+- pyscipopt
+- matplotlib
 - proj
 - fiona
 - country_converter
@@ -48,10 +44,12 @@ dependencies:
 - tabula-py
 - pyxlsb
 - graphviz
-- tsam>=1.1.0
-- pypsa>=0.27.0
-- highs
+- pre-commit
+
+  # Ariadne specific
 - pyam
+- ruamel.yaml
+- gurobi
 
   # Keep in conda environment when calling ipython
 - ipython
@@ -61,5 +59,10 @@ dependencies:
 - descartes
 - rasterio!=1.2.10
 
-
+- pip:
+  - tsam>=2.3.1
+  - snakemake-storage-plugin-http
+  - snakemake-executor-plugin-slurm
+  - snakemake-executor-plugin-cluster-generic
+  - highspy
 
