@@ -230,13 +230,14 @@ if config["wasserstoff_kernnetz"]["enable"]:
 
 rule build_scenarios:
     params:
-        iiasa_usr=os.environ["IIASA_USERNAME"],
-        iiasa_pwd=os.environ["IIASA_PASSWORD"],
-        iiasa_model=config["iiasa_database"]["model_name"],
-        iiasa_scenario=config["iiasa_database"]["scenario"],
+        iiasa_scenario=config["iiasa_database"]["reference_scenario"],
         scenario_name=config["run"]["name"],
     input:
-        "config/scenarios.yaml"
+        #default_scenarios_yaml="config/scenarios.default.yaml",
+        ariadne_database=resources("ariadne_database.csv"),
+        scenario_yaml=config["run"]["scenarios"]["file"],
+    #output:
+    #    config["run"]["scenarios"]["file"],
     log:
         "logs/build_scenarios.log"
     script:
