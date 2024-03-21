@@ -16,7 +16,7 @@ from prepare_sector_network import (
     prepare_costs,
     lossy_bidirectional_links,
 )
-from add_electricity import load_costs, update_transmission_costs
+from add_electricity import load_costs
 
 
 def first_technology_occurrence(n):
@@ -296,6 +296,35 @@ def unravel_oilbus(n):
         capital_cost=0.02,
     )
 
+def update_transmission_costs(n, costs, length_factor=1.0):
+    n.lines["capital_cost"] = (
+        n.lines["length"] * length_factor * costs.at["HVAC overhead", "capital_cost"]
+    )
+
+    if n.links.empty:
+        return
+    # get all DC links that are not the reverse links
+    dc_b = (n.links.carrier == "DC") & ~(n.links.index.str.contains("reverse"))
+
+    # If there are no dc links, then the 'underwater_fraction' column
+    # may be missing. Therefore we have to return here.
+    if n.links.loc[dc_b].empty:
+        return
+
+    costs = (
+        n.links.loc[dc_b, "length"]
+        * length_factor
+        * (
+            (1.0 - n.links.loc[dc_b, "underwater_fraction"])
+            * costs.at["HVDC overhead", "capital_cost"]
+            + n.links.loc[dc_b, "underwater_fraction"]
+            * costs.at["HVDC submarine", "capital_cost"]
+        )
+        + costs.at["HVDC inverter pair", "capital_cost"]
+    )
+    n.links.loc[dc_b, "capital_cost"] = costs
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
@@ -313,6 +342,7 @@ if __name__ == "__main__":
             ll="v1.2",
             sector_opts="365H-T-H-B-I-A-solar+p3-linemaxext15",
             planning_horizons="2040",
+            run="KN2045_H2_v4"
         )
 
     logger.info("Adding Ariadne-specific functionality")
@@ -355,6 +385,7 @@ if __name__ == "__main__":
         nyears,
     )
 
-    update_transmission_costs(n, costs_loaded)
+    # change to NEP21 costs
+    update_transmission_costs(n, costs_loaded, snakemake.params.length_factor)
 
     n.export_to_netcdf(snakemake.output.network)
