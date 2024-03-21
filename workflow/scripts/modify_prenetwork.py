@@ -16,6 +16,7 @@ from prepare_sector_network import (
     prepare_costs,
     lossy_bidirectional_links,
 )
+from add_electricity import load_costs, update_transmission_costs
 
 
 def first_technology_occurrence(n):
@@ -346,4 +347,14 @@ if __name__ == "__main__":
         wkn = pd.read_csv(fn, index_col=0)
         add_wasserstoff_kernnetz(n, wkn, costs)
         n.links.reversed = n.links.reversed.astype(float)
+
+    costs_loaded = load_costs(
+        snakemake.input.costs,
+        snakemake.params.costs,
+        snakemake.params.max_hours,
+        nyears,
+    )
+
+    update_transmission_costs(n, costs_loaded)
+
     n.export_to_netcdf(snakemake.output.network)

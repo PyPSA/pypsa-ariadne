@@ -3,10 +3,10 @@ gas,fuel,11.2,EUR/MWh_th,Ariadne,
 oil,fuel,22.1982,EUR2020/MWh,Ariadne,"$2020 = 0.8775 EUR2020, 1bbl = 1.6998MWh"
 coal,fuel,5.7048,EUR2020/MWh,Ariadne,"$2020 = 0.8775 EUR2020, 1t = 8.06 MWh"
 electrolysis,investment,1450,EUR2020/kW_e,DEA,"linear interpolation of AEC 100 MW upper limit 2020 to 2050"
-decentral air-sourced heat pump, investment, 3.319, EUR2020/kw_th, Ariadne,
-decentral ground-sourced heat pump, investment, 5.340, EUR2020/kw_th, Ariadne,
-electricity distribution grid, investment, 3000, EUR2020/kW, Ariadne,
-HVAC overhead, investment, 736, EUR2020/MW/km, Ariadne,
-HVDC inverter pair, investment, 600000, EUR2020/MW, Ariadne,
-HVDC overhead, investment, 1000, EUR2020/MW/km, Ariadne,
-HVDC submarine, investment, 3250, EUR2020/MW/km, Ariadne,
+decentral air-sourced heat pump,investment,3.319,EUR2020/kw_th,Ariadne,
+decentral ground-sourced heat pump,investment,5.340,EUR2020/kw_th,Ariadne,
+electricity distribution grid,investment,3000,EUR2020/kW,Ariadne,
+HVAC overhead,investment,736,EUR2020/MW/km,Ariadne,
+HVDC inverter pair,investment,600000,EUR2020/MW,Ariadne,
+HVDC overhead,investment,1000,EUR2020/MW/km,Ariadne,
+HVDC submarine,investment,3250,EUR2020/MW/km,Ariadne,

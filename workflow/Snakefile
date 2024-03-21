@@ -138,6 +138,7 @@ rule modify_prenetwork:
     params:
         enable_kernnetz=config["wasserstoff_kernnetz"]["enable"],
         costs=config["costs"],
+        max_hours=config["electricity"]["max_hours"],
     input:
         network=RESULTS
         + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
