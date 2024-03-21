@@ -244,15 +244,6 @@ def unravel_oilbus(n):
     n.add("Bus", "DE oil", carrier="oil")
     n.add("Bus", "DE renewable oil", carrier="renewable oil")
     n.add("Bus", "EU renewable oil", carrier="renewable oil")
-
-    # add one generator for DE oil
-    n.add("Generator",
-          name="DE oil",
-          bus="DE oil",
-          carrier="fossil oil import",
-          p_nom_extendable=True,
-          marginal_cost=n.generators.loc["EU oil"].marginal_cost,
-          )
     
     # change links from EU oil to DE oil
     german_oil_links = n.links[(n.links.bus0=="EU oil") & (n.links.index.str.contains("DE"))].index
