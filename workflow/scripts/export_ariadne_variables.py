@@ -16,8 +16,6 @@ MWh2GJ = 3.6
 TWh2PJ = 3.6
 MWh2PJ = 3.6e-6
 
-#n.statistics.withdrawal(bus_carrier="land transport oil", groupby=groupby, aggregate_time=False).filter(like="DE1 0",axis=0)
-
 def _get_t_sum(df, df_t, carrier, region, snapshot_weightings, port):
     if type(carrier) == list:
         return sum(
@@ -533,22 +531,26 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
 
 
     capacities_liquids = cap_func(
-        bus_carrier=["oil", "methanol"],
+        bus_carrier="renewable oil",
         **kwargs,
     ).filter(
         like=region
     ).groupby("carrier").sum().multiply(MW2GW)
-
+    #
     var[cap_string + "Liquids|Hydrogen"] = \
-        capacities_liquids.get("Fischer-Tropsch",0) + \
-        capacities_liquids.get("methanolisation", 0)
+    var[cap_string + "Liquids"] = \
+        capacities_liquids.get("Fischer-Tropsch",0) 
     
-    var[cap_string + "Liquids"] = var[cap_string + "Liquids|Hydrogen"]
-
-    assert isclose(
-        var[cap_string + "Liquids"], capacities_liquids.sum(),
-    )
-
+    capacities_methanol = cap_func(
+        bus_carrier="methanol",
+        **kwargs,
+    ).filter(
+        like=region
+    ).groupby("carrier").sum().multiply(MW2GW)
+    #
+    var[cap_string + "Methanol"] = \
+        capacities_methanol.get("methanolisation", 0)
+    
     return var 
 
 def get_primary_energy(n, region):
@@ -2381,7 +2383,7 @@ if __name__ == "__main__":
             ll="v1.2",
             sector_opts="None",
             planning_horizons="2050",
-            run="240219-test/normal"
+            run="KN2045_Bal_v4"
         )
 
 
@@ -2431,7 +2433,7 @@ if __name__ == "__main__":
     )
 
     # For debugging
-    n = networks[3]
+    n = networks[0]
     region="DE"
     kwargs = {
         'groupby': n.statistics.groupers.get_name_bus_and_carrier,
