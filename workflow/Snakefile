@@ -258,7 +258,7 @@ rule export_ariadne_variables:
         energy_totals=resources("energy_totals.csv"),
 
     output:
-        ariadne_variables=RESULTS + "ariadne/ariadne_variables.csv"
+        exported_variables=RESULTS + "ariadne/exported_variables.csv"
     log:
         RESULTS + "logs/export_ariadne_variables.log"
     script:
@@ -266,9 +266,11 @@ rule export_ariadne_variables:
 
 
 rule plot_ariadne_variables:
-    input:
+    params:
         iiasa_scenario=config["iiasa_database"]["reference_scenario"],
-        ariadne_variables=RESULTS + "ariadne/ariadne_variables.csv"
+    input:
+        exported_variables=RESULTS + "ariadne/exported_variables.csv",
+        ariadne_database=resources("ariadne_database.csv"),
     output:
         primary_energy=RESULTS + "ariadne/primary_energy.png",
         primary_energy_detailed=RESULTS + "ariadne/primary_energy_detailed.png",
@@ -281,13 +283,13 @@ rule plot_ariadne_variables:
         energy_demand_emissions=RESULTS + "ariadne/energy_demand_emissions.png",
         energy_supply_emissions=RESULTS + "ariadne/energy_supply_emissions.png",
         co2_emissions=RESULTS + "ariadne/co2_emissions.png",
-        primary_energy_price = RESULTS + "ariadne/prices/primary_energy_price.png",
-        secondary_energy_price = RESULTS + "ariadne/prices/secondary_energy_price.png",
-        final_energy_residential_price = RESULTS + "ariadne/prices/final_energy_residential_price.png",
-        final_energy_industry_price = RESULTS + "ariadne/prices/final_energy_industry_price.png",
-        final_energy_transportation_price = RESULTS + "ariadne/prices/final_energy_transportation_price.png",
-        final_energy_residential_commercial_price = RESULTS + "ariadne/prices/final_energy_residential_commercial_price.png",
-        all_prices = RESULTS + "ariadne/prices/all_prices.png",
+        primary_energy_price = RESULTS + "ariadne/primary_energy_price.png",
+        secondary_energy_price = RESULTS + "ariadne/secondary_energy_price.png",
+        final_energy_residential_price = RESULTS + "ariadne/final_energy_residential_price.png",
+        final_energy_industry_price = RESULTS + "ariadne/final_energy_industry_price.png",
+        final_energy_transportation_price = RESULTS + "ariadne/final_energy_transportation_price.png",
+        final_energy_residential_commercial_price = RESULTS + "ariadne/final_energy_residential_commercial_price.png",
+        all_prices = RESULTS + "ariadne/all_prices.png",
     script:
         "scripts/plot_ariadne_variables.py"
 

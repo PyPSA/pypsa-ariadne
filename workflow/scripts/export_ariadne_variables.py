@@ -561,11 +561,24 @@ def get_primary_energy(n, region):
 
     var = pd.Series()
 
-    EU_oil_supply = n.statistics.supply(bus_carrier="oil")
+    if "DE" in region:
+        total_oil_supply =  n.statistics.supply(bus_carrier="oil", **kwargs).groupby("name").sum().get([
+            "DE oil",
+            "DE renewable oil -> DE oil",
+            "EU renewable oil -> DE oil",
+        ])
+
+    else:
+        total_oil_supply =  n.statistics.supply(bus_carrier="oil", **kwargs).groupby("name").sum().get([
+            "EU oil",
+            "DE renewable oil -> EU oil",
+            "EU renewable oil -> EU oil",
+        ])
+
     oil_fossil_fraction = (
-        EU_oil_supply.get("Generator").get("oil")
-        / EU_oil_supply.sum()
-    ) # TODO Would be desirable to resolve this regionally
+        total_oil_supply[~total_oil_supply.index.str.contains("renewable")].sum()
+        / total_oil_supply.sum()
+    )
     
     oil_usage = n.statistics.withdrawal(
         bus_carrier="oil", 
@@ -583,7 +596,7 @@ def get_primary_energy(n, region):
 
     
     var["Primary Energy|Oil|Electricity"] = \
-        oil_usage.get("oil")
+        oil_usage.get("oil", 0)
     # This will get the oil store as well, but it should be 0
     
     var["Primary Energy|Oil"] = (
@@ -601,8 +614,6 @@ def get_primary_energy(n, region):
     )   
     assert isclose(var["Primary Energy|Oil"], oil_usage.sum())
 
-    # !! TODO since gas is now regionally resolved we 
-    # compute the reginoal gas supply 
     regional_gas_supply = n.statistics.supply(
         bus_carrier="gas", 
         **kwargs,
@@ -1075,12 +1086,24 @@ def get_secondary_energy(n, region):
             )
         ].sum()
     )
+    if "DE" in region:
+        total_oil_supply =  n.statistics.supply(bus_carrier="oil", **kwargs).groupby("name").sum().get([
+            "DE oil",
+            "DE renewable oil -> DE oil",
+            "EU renewable oil -> DE oil",
+        ])
 
-    EU_oil_supply = n.statistics.supply(bus_carrier="oil")
+    else:
+        total_oil_supply =  n.statistics.supply(bus_carrier="oil", **kwargs).groupby("name").sum().get([
+            "EU oil",
+            "DE renewable oil -> EU oil",
+            "EU renewable oil -> EU oil",
+        ])
+
     oil_fossil_fraction = (
-        EU_oil_supply.get("Generator").get("oil")
-        / EU_oil_supply.sum()
-    ) # TODO Would be desirable to resolve this regionally
+        total_oil_supply[~total_oil_supply.index.str.contains("renewable")].sum()
+        / total_oil_supply.sum()
+    )
     
     oil_fuel_usage = n.statistics.withdrawal(
         bus_carrier="oil", 
@@ -1089,7 +1112,7 @@ def get_secondary_energy(n, region):
         like=region
     ).groupby(
         "carrier"
-    ).sum().multiply(oil_fossil_fraction).multiply(MWh2PJ).reindex(
+    ).sum().multiply(MWh2PJ).reindex(
         [
             "agriculture machinery oil",
             "kerosene for aviation",
@@ -1361,11 +1384,24 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
         + energy_totals["total international navigation"]
     )
 
-    EU_oil_supply = n.statistics.supply(bus_carrier="oil")
+    if "DE" in region:
+        total_oil_supply =  n.statistics.supply(bus_carrier="oil", **kwargs).groupby("name").sum().get([
+            "DE oil",
+            "DE renewable oil -> DE oil",
+            "EU renewable oil -> DE oil",
+        ])
+
+    else:
+        total_oil_supply =  n.statistics.supply(bus_carrier="oil", **kwargs).groupby("name").sum().get([
+            "EU oil",
+            "DE renewable oil -> EU oil",
+            "EU renewable oil -> EU oil",
+        ])
+
     oil_fossil_fraction = (
-        EU_oil_supply.get("Generator").get("oil")
-        / EU_oil_supply.sum()
-    ) 
+        total_oil_supply[~total_oil_supply.index.str.contains("renewable")].sum()
+        / total_oil_supply.sum()
+    )
 
     var["Final Energy|Transportation|Liquids"] = (
         sum_load(n, "land transport oil", region)
@@ -1431,13 +1467,13 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
         + var["Final Energy|Agriculture|Liquids"]
     )
 
-    assert isclose(
-        var["Final Energy|Agriculture"],
-        energy_totals.get("total agriculture")
-    ) 
+    # assert isclose(
+    #     var["Final Energy|Agriculture"],
+    #     energy_totals.get("total agriculture")
+    # ) 
     # It's nice to do these double checks, but it's less
     # straightforward for the other categories
-
+    # !!! TODO this assert is temporarily disbaled because of https://github.com/PyPSA/pypsa-eur/issues/985
 
     # var["Final Energy"] = \
     # var["Final Energy incl Non-Energy Use incl Bunkers"] = \
@@ -2383,7 +2419,7 @@ if __name__ == "__main__":
             ll="v1.2",
             sector_opts="None",
             planning_horizons="2050",
-            run="KN2045_Bal_v4"
+            run="KN2045_H2_v4"
         )
 
 
@@ -2428,7 +2464,7 @@ if __name__ == "__main__":
     )
 
     df.to_csv(
-        snakemake.output.ariadne_variables,
+        snakemake.output.exported_variables,
         index=False
     )
 

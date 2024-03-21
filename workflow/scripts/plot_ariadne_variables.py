@@ -115,22 +115,13 @@ if __name__ == "__main__":
             ll="v1.2",
             sector_opts="None",
             planning_horizons="2050",
-            run="240219-test/normal"
+            run="KN2045_H2_v4"
         )
 
-    
     df = pd.read_csv(
-        snakemake.input.ariadne_variables,
+        snakemake.input.exported_variables,
         index_col=["Model", "Scenario", "Region", "Variable", "Unit"]
     ).groupby(["Variable","Unit"]).sum()
-
-    df.columns = pd.to_numeric(df.columns)
-
-    # Set USERNAME and PASSWORD for the Ariadne DB
-    pyam.iiasa.set_config(
-        os.environ["IIASA_USERNAME"], 
-        os.environ["IIASA_PASSWORD"],
-    )
 
     leitmodell="REMIND-EU v1.1"
 
@@ -240,6 +231,7 @@ if __name__ == "__main__":
         savepath=snakemake.output.energy_supply_emissions,
         select_regex="Emissions\|CO2\|Energy\|Supply\|[^|]*$",
         stacked=False,
+
         drop_regex="^(?!.*(and)).+"
     )
 
