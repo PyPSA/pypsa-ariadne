@@ -132,16 +132,12 @@ if __name__ == "__main__":
         os.environ["IIASA_PASSWORD"],
     )
 
-    model_df = pyam.read_iiasa(
-        "ariadne_intern",
-        model="REMIND-EU v1.1",
-        scenario="8Gt_Bal_v3",
-        region="Deutschland",
-    ).timeseries()
     leitmodell="REMIND-EU v1.1"
-    dfremind = model_df.loc[
-        leitmodell, "8Gt_Bal_v3", "Deutschland"
-    ][pd.to_numeric(df.keys())]
+
+    dfremind = pd.read_csv(
+        snakemake.input.ariadne_database,
+        index_col=["model", "scenario", "region", "variable", "unit"]
+    ).loc[leitmodell, snakemake.params.iiasa_scenario, "Deutschland"][df.keys()]
     dfremind.index.names = df.index.names
 
 

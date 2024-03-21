@@ -233,12 +233,14 @@ if config["wasserstoff_kernnetz"]["enable"]:
 
 rule download_ariadne_template:
     input:
-        HTTP.remote("https://github.com/iiasa/ariadne-intern-workflow/raw/master/attachments/2024-02-23_template_Ariadne.xlsx")
+        storage(
+            "https://github.com/iiasa/ariadne-intern-workflow/raw/master/attachments/2024-02-23_template_Ariadne.xlsx",
+            keep_local=True,
+        )
     output:
         resources("template_ariadne_database.xlsx")
     run:
         move(input[0], output[0])
-        #validate_checksum(output[0], input[0])
 
 rule export_ariadne_variables:
     input:
@@ -265,6 +267,7 @@ rule export_ariadne_variables:
 
 rule plot_ariadne_variables:
     input:
+        iiasa_scenario=config["iiasa_database"]["reference_scenario"],
         ariadne_variables=RESULTS + "ariadne/ariadne_variables.csv"
     output:
         primary_energy=RESULTS + "ariadne/primary_energy.png",
@@ -291,6 +294,7 @@ rule plot_ariadne_variables:
 rule ariadne_all:
     input:
         expand(RESULTS + "ariadne/capacity_detailed.png", run=config["run"]["name"])
+
 rule build_scenarios:
     params:
         iiasa_scenario=config["iiasa_database"]["reference_scenario"],
