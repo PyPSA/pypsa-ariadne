@@ -122,7 +122,10 @@ use rule prepare_sector_network from pypsaeur with:
 rule modify_cost_data:
     input:
         costs=resources("costs_{planning_horizons}.csv"),
-        modifications="ariadne-data/costs_{planning_horizons}-modifications.csv",
+        modifications=lambda w: (
+            "ariadne-data/costs_2019-modifications.csv"
+            if w.planning_horizons == "2020" and config["energy"]["energy_totals_year"] == 2019
+            else "ariadne-data/costs_{planning_horizons}-modifications.csv")
     output:
         resources("modified-costs_{planning_horizons}.csv"),
     resources:
