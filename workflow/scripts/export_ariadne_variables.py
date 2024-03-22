@@ -2463,6 +2463,15 @@ if __name__ == "__main__":
         yearly_dfs
     )
 
+    df["Region"] = df["Region"].str.replace("DE", "Deutschland")
+
+    print(
+        "Dropping variables which are not in the template:",
+        *df.loc[df["Unit"] == "NA"]["Variable"],
+        sep="\n"
+    )
+    df.drop(df.loc[df["Unit"] == "NA"].index, inplace=True)
+
     df.to_csv(
         snakemake.output.exported_variables,
         index=False
