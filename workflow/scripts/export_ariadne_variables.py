@@ -2355,7 +2355,7 @@ def get_ariadne_var(n, industry_demand, energy_totals, region):
     var = pd.concat([
         get_capacities(n, region),
         get_capacity_additions_simple(n,region),
-        get_installed_capacities(n,region),
+        #get_installed_capacities(n,region),
         #get_capacity_additions(n, region),
         #get_capacity_additions_nstat(n, region),
         get_primary_energy(n, region),
