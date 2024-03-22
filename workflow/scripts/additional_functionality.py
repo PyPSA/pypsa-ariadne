@@ -200,7 +200,13 @@ def add_co2limit_country(n, limit_countries, snakemake):
 
             lhs.append((n.model["Link-p"].loc[:, links]*efficiency*n.snapshot_weightings.generators).sum())
 
-        lhs = sum(lhs)
+        incoming = n.links.index[n.links.index == "EU renewable oil -> DE oil"]
+        outgoing = n.links.index[n.links.index == "DE renewable oil -> EU oil"]
+
+        incoming_p = (n.model["Link-p"].loc[:, incoming]*n.snapshot_weightings.generators).sum()
+        outgoing_p = (n.model["Link-p"].loc[:, outgoing]*n.snapshot_weightings.generators).sum()
+
+        lhs = sum(lhs) + (outgoing_p - incoming_p)*0.2571
 
         cname = f"co2_limit-{ct}"
 

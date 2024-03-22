@@ -249,7 +249,7 @@ def unravel_oilbus(n):
     n.add("Generator",
           name="DE oil",
           bus="DE oil",
-          carrier="fossil oil import",
+          carrier="oil",
           p_nom_extendable=True,
           marginal_cost=n.generators.loc["EU oil"].marginal_cost,
           )
