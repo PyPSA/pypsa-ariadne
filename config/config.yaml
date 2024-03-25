@@ -180,9 +180,9 @@ first_technology_occurrence:
 
 renewable:
   offwind-ac:
-    capacity_per_sqkm: 8
+    capacity_per_sqkm: 10
   offwind-dc:
-    capacity_per_sqkm: 8
+    capacity_per_sqkm: 10
 
 costs:
   version: v0.8.1
