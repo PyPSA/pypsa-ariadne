@@ -2373,7 +2373,7 @@ def get_ariadne_var(n, industry_demand, energy_totals, region):
 # uses the global variables model, scenario and var2unit. For now.
 def get_data(
         n, industry_demand, energy_totals, region,
-        version="0.9.0", scenario="test"
+        version="0.10", scenario="test"
     ):
     
     var = get_ariadne_var(n, industry_demand, energy_totals, region)
@@ -2424,12 +2424,9 @@ if __name__ == "__main__":
 
 
     config = snakemake.config
-    var2unit = pd.read_excel(
-        snakemake.input.template, 
-        sheet_name="variable_definitions",
-        index_col="Variable",
-    )["Unit"]
-
+    ariadne_template = pd.read_excel(
+        snakemake.input.template, sheet_name=None)
+    var2unit = ariadne_template["variable_definitions"].set_index("Variable")["Unit"]
     industry_demands = [
         pd.read_csv(
             in_dem, 
@@ -2463,8 +2460,8 @@ if __name__ == "__main__":
         yearly_dfs
     )
 
-    df["Region"] = df["Region"].str.replace("DE", "Deutschland")
-
+    df["Region"] = df["Region"].str.replace("DE", "DEU")
+    df["Model"] = "PyPSA-Eur v0.10"
     print(
         "Dropping variables which are not in the template:",
         *df.loc[df["Unit"] == "NA"]["Variable"],
@@ -2472,10 +2469,18 @@ if __name__ == "__main__":
     )
     df.drop(df.loc[df["Unit"] == "NA"].index, inplace=True)
 
-    df.to_csv(
-        snakemake.output.exported_variables,
-        index=False
-    )
+    meta = pd.Series({
+        'Model': "PyPSA-Eur v0.10", 
+        'Scenario': snakemake.config["iiasa_database"]["reference_scenario"], 
+        'Quality Assessment': "preliminary",
+        'Internal usage within Kopernikus AG Szenarien': "no",
+        'Release for publication': "no",
+    })
+
+    with pd.ExcelWriter(snakemake.output.exported_variables) as writer:
+        df.to_excel(writer, sheet_name="data", index=False)
+        meta.to_frame().T.to_excel(writer, sheet_name="meta", index=False)
+
 
     # For debugging
     n = networks[0]

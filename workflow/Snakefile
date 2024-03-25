@@ -258,7 +258,7 @@ rule export_ariadne_variables:
         energy_totals=resources("energy_totals.csv"),
 
     output:
-        exported_variables=RESULTS + "ariadne/exported_variables.csv"
+        exported_variables=RESULTS + "ariadne/exported_variables.xlsx"
     log:
         RESULTS + "logs/export_ariadne_variables.log"
     script:
@@ -269,7 +269,7 @@ rule plot_ariadne_variables:
     params:
         iiasa_scenario=config["iiasa_database"]["reference_scenario"],
     input:
-        exported_variables=RESULTS + "ariadne/exported_variables.csv",
+        exported_variables=RESULTS + "ariadne/exported_variables.xlsx",
         ariadne_database=resources("ariadne_database.csv"),
     output:
         primary_energy=RESULTS + "ariadne/primary_energy.png",
