@@ -46,7 +46,64 @@ def get_shares(df, planning_horizons):
     return transport_share, naval_share
 
 
-def write_to_scenario_yaml(output, scenarios, transport_share, naval_share):
+
+def get_ksg_targets(df):
+    # relative to the DE emissions in 1990 *including bunkers*; also
+    # account for non-CO2 GHG and allow extra room for international
+    # bunkers which are excluded from the national targets
+
+    # Baseline emission in DE in 1990 in Mt as understood by the KSG and by PyPSA
+    baseline_ksg = 1251
+    baseline_pypsa = 1052
+
+    ## GHG targets according to KSG
+    initial_years_ksg = pd.Series(
+        index = [2020, 2025, 2030],
+        data = [813, 643, 438],
+    )
+
+    later_years_ksg = pd.Series(
+        index = [2035, 2040, 2045, 2050],
+        data = [0.77, 0.88, 1.0, 1.0],
+    )
+
+    targets_ksg = pd.concat(
+        [initial_years_ksg, (1 - later_years_ksg) * baseline_ksg],
+    )
+
+    ## Compute nonco2 from Ariadne-Leitmodell (REMIND)
+
+    co2_ksg = (
+        df.loc["Emissions|CO2 incl Bunkers","Mt CO2/yr"]  
+        - df.loc["Emissions|CO2|Land-Use Change","Mt CO2-equiv/yr"]
+        - df.loc["Emissions|CO2|Energy|Demand|Bunkers","Mt CO2/yr"]
+    )
+
+    ghg_ksg = (
+        df.loc["Emissions|Kyoto Gases","Mt CO2-equiv/yr"]
+        - df.loc["Emissions|Kyoto Gases|Land-Use Change","Mt CO2-equiv/yr"]
+        # No Kyoto Gas emissions for Bunkers recorded in Ariadne DB
+    )
+
+    nonco2 = ghg_ksg - co2_ksg
+
+    ## PyPSA disregards nonco2 GHG emissions, but includes bunkers
+
+    targets_pypsa = (
+        targets_ksg - nonco2 
+        + df.loc["Emissions|CO2|Energy|Demand|Bunkers","Mt CO2/yr"]
+    )
+
+    target_fractions_pypsa = (
+        targets_pypsa.loc[targets_ksg.index] / baseline_pypsa
+    )
+
+    return target_fractions_pypsa.round(3)
+
+
+
+def write_to_scenario_yaml(
+        output, scenarios, transport_share, naval_share, ksg_target_fractions):
     # read in yaml file
     yaml = ruamel.yaml.YAML()
     file_path = Path(output)
@@ -70,9 +127,12 @@ def write_to_scenario_yaml(output, scenarios, transport_share, naval_share):
         for key in mapping_navigation.keys():
             for year in naval_share.columns:
                 config[scenario]["sector"][mapping_navigation[key]][year] = round(naval_share.loc[key, year].item(), 4)
+        for year, target in ksg_target_fractions.items():
+            config[scenario]["co2_budget_national"][year]["DE"] = target
 
     # write back to yaml file
     yaml.dump(config, file_path)
+
 
 
 if __name__ == "__main__":
@@ -98,7 +158,7 @@ if __name__ == "__main__":
         snakemake.params.iiasa_scenario, 
         "Deutschland"]
 
-
+    ksg_target_fractions = get_ksg_targets(df.loc["REMIND-EU v1.1"])
     planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045]
     transport_share, naval_share = get_shares(df, planning_horizons)
 
@@ -107,4 +167,5 @@ if __name__ == "__main__":
     filename = snakemake.input.scenario_yaml
 
 
-    write_to_scenario_yaml(filename, scenarios, transport_share, naval_share)
+    write_to_scenario_yaml(
+        filename, scenarios, transport_share, naval_share, ksg_target_fractions)
