@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
     # leitmodell for steel and cement demand
     leitmodell="FORECAST v1.0"
-    year = int(snakemake.input.industrial_production.split("_")[-1].split(".")[0])
+    year = snakemake.input.industrial_production.split("_")[-1].split(".")[0]
     existing_industry = pd.read_csv(snakemake.input.industrial_production, index_col=0)
 
     ariadne = pd.read_csv(
@@ -33,33 +33,18 @@ if __name__ == "__main__":
     print(
         "German demand before modification", 
         existing_industry.loc["DE", ["Cement", "Electric arc", "Integrated steelworks", "DRI + Electric arc"]], sep="\n")
+    # get cement and write it into the existing industry dataframe
+    existing_industry.loc["DE", "Cement"] = ariadne.loc["Cement", year]
+    
+    # get steel ratios from existing_industry
+    steel = existing_industry.loc["DE", ["Electric arc", "Integrated steelworks", "DRI + Electric arc"]]
+    ratio = steel/steel.sum()
 
-    mapping = {
-        "gas boiler" : "Gas Boiler",
-        "oil boiler" : "Oil Boiler",
-        "air heat pump" : "Heat Pump|Electrical|Air",
-        "ground heat pump" : "Heat Pump|Electrical|Ground",
-        "biomass boiler" : "Biomass Boiler",
-    }
+    # multiply with steel production including primary and secondary steel since distinguishing is taken care of later
+    existing_industry.loc["DE", ["Electric arc", "Integrated steelworks", "DRI + Electric arc"]] = ratio * ariadne.loc["Production|Steel", year]
 
-    year = "2020"
-    for tech in mapping:
-        stock = ariadne.at[   
-            f"Stock|Space Heating|{mapping[tech]}",
-            year,
-        ]
+    print(
+        "German demand after modification", 
+        existing_industry.loc["DE", ["Cement", "Electric arc", "Integrated steelworks", "DRI + Electric arc"]], sep="\n")
 
-        peak = (
-            stock * existing_heating.loc["Germany"].sum()
-            / ariadne.at[f"Stock|Space Heating", year]
-
-        )
-        existing_heating.at["Germany", tech] = peak
-
-
-
-    print(f"Heating demand after modification with {leitmodell}:", 
-        existing_heating.loc["Germany"], sep="\n")
-
-
-    existing_heating.to_csv(snakemake.output.existing_heating)
+    existing_industry.to_csv(snakemake.output.industrial_production)
