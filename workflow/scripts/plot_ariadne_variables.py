@@ -125,6 +125,7 @@ if __name__ == "__main__":
         sheet_name="data"
     ).groupby(["Variable","Unit"]).sum()
 
+    df.columns = df.columns.astype(str)
     leitmodell="REMIND-EU v1.1"
 
     dfremind = pd.read_csv(
@@ -132,7 +133,7 @@ if __name__ == "__main__":
         index_col=["model", "scenario", "region", "variable", "unit"]
     ).loc[
         leitmodell, snakemake.params.iiasa_scenario, "Deutschland"
-    ][df.keys().astype(str)]
+    ][df.columns]
     dfremind.index.names = df.index.names
 
 
