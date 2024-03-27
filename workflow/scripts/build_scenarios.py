@@ -159,7 +159,7 @@ if __name__ == "__main__":
         "Deutschland"]
 
     ksg_target_fractions = get_ksg_targets(df.loc["REMIND-EU v1.1"])
-    planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045]
+    planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045, 2050]
     transport_share, naval_share = get_shares(df, planning_horizons)
 
     scenarios = snakemake.params.scenario_name
