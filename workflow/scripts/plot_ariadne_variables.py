@@ -118,9 +118,11 @@ if __name__ == "__main__":
             run="KN2045_H2_v4"
         )
 
-    df = pd.read_csv(
+    df = pd.read_excel(
         snakemake.input.exported_variables,
-        index_col=["Model", "Scenario", "Region", "Variable", "Unit"]
+        index_col=list(range(5)),
+        #index_col=["Model", "Scenario", "Region", "Variable", "Unit"],
+        sheet_name="data"
     ).groupby(["Variable","Unit"]).sum()
 
     leitmodell="REMIND-EU v1.1"
@@ -128,7 +130,9 @@ if __name__ == "__main__":
     dfremind = pd.read_csv(
         snakemake.input.ariadne_database,
         index_col=["model", "scenario", "region", "variable", "unit"]
-    ).loc[leitmodell, snakemake.params.iiasa_scenario, "Deutschland"][df.keys()]
+    ).loc[
+        leitmodell, snakemake.params.iiasa_scenario, "Deutschland"
+    ][df.keys().astype(str)]
     dfremind.index.names = df.index.names
 
 
