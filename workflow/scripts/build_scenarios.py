@@ -103,11 +103,23 @@ def get_ksg_targets(df):
 
 
 def write_to_scenario_yaml(
-        output, scenarios, transport_share, naval_share, ksg_target_fractions):
+        output, scenario, df):
     # read in yaml file
     yaml = ruamel.yaml.YAML()
     file_path = Path(output)
     config = yaml.load(file_path)
+    reference_scenario = config[scenario]["iiasa_database"]["reference_scenario"]
+
+    ksg_target_fractions = get_ksg_targets(
+        df.loc["REMIND-EU v1.1", reference_scenario]
+    )
+
+    planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045] # for 2050 we still need data
+
+    transport_share, naval_share = get_shares(
+        df.loc[:, reference_scenario, :],
+        planning_horizons,
+    )
     
     mapping_transport = {
         'PHEV': 'land_transport_fuel_cell_share',
@@ -120,15 +132,14 @@ def write_to_scenario_yaml(
         'Oil': 'shipping_oil_share',
     }
 
-    for scenario in scenarios:
-        for key in mapping_transport.keys():
-            for year in transport_share.columns:
-                config[scenario]["sector"][mapping_transport[key]][year] = round(transport_share.loc[key, year].item(), 4)
-        for key in mapping_navigation.keys():
-            for year in naval_share.columns:
-                config[scenario]["sector"][mapping_navigation[key]][year] = round(naval_share.loc[key, year].item(), 4)
-        for year, target in ksg_target_fractions.items():
-            config[scenario]["co2_budget_national"][year]["DE"] = target
+    for key in mapping_transport.keys():
+        for year in transport_share.columns:
+            config[scenario]["sector"][mapping_transport[key]][year] = round(transport_share.loc[key, year].item(), 4)
+    for key in mapping_navigation.keys():
+        for year in naval_share.columns:
+            config[scenario]["sector"][mapping_navigation[key]][year] = round(naval_share.loc[key, year].item(), 4)
+    for year, target in ksg_target_fractions.items():
+        config[scenario]["co2_budget_national"][year]["DE"] = target
 
     # write back to yaml file
     yaml.dump(config, file_path)
@@ -155,17 +166,13 @@ if __name__ == "__main__":
 
     df = ariadne_db.loc[
         :, 
-        snakemake.params.iiasa_scenario, 
+        :,
         "Deutschland"]
-
-    ksg_target_fractions = get_ksg_targets(df.loc["REMIND-EU v1.1"])
-    planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045, 2050]
-    transport_share, naval_share = get_shares(df, planning_horizons)
-
+    
     scenarios = snakemake.params.scenario_name
 
     filename = snakemake.input.scenario_yaml
 
-
-    write_to_scenario_yaml(
-        filename, scenarios, transport_share, naval_share, ksg_target_fractions)
+    for scenario in scenarios:
+        write_to_scenario_yaml(
+            filename, scenario, df)
