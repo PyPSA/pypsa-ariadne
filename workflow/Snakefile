@@ -237,7 +237,6 @@ if config["wasserstoff_kernnetz"]["enable"]:
 
 rule build_scenarios:
     params:
-        iiasa_scenario=config["iiasa_database"]["reference_scenario"],
         scenario_name=config["run"]["name"],
     input:
         ariadne_database=resources("ariadne_database.csv"),
