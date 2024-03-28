@@ -296,7 +296,7 @@ def unravel_oilbus(n):
         capital_cost=0.02,
     )
 
-def transmission_costs_NEP(n, costs, length_factor=1.0):
+def transmission_costs_from_modified_cost_data(n, costs, length_factor=1.0):
     # copying the the function update_transmission_costs from add_electricity
     # slight change to the function so it works in modify_prenetwork
     n.lines["capital_cost"] = (
@@ -388,6 +388,6 @@ if __name__ == "__main__":
     )
 
     # change to NEP21 costs
-    transmission_costs_NEP(n, costs_loaded, snakemake.params.length_factor)
+    transmission_costs_from_modified_cost_data(n, costs_loaded, snakemake.params.length_factor)
 
     n.export_to_netcdf(snakemake.output.network)
