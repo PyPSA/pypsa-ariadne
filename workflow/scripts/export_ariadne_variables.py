@@ -16,6 +16,32 @@ MWh2GJ = 3.6
 TWh2PJ = 3.6
 MWh2PJ = 3.6e-6
 
+def _get_oil_fossil_fraction(n, region, kwargs):
+    if "DE" in region:
+        total_oil_supply =  n.statistics.supply(
+            bus_carrier="oil", **kwargs
+        ).groupby("name").sum().get([
+            "DE oil",
+            "DE renewable oil -> DE oil",
+            "EU renewable oil -> DE oil",
+        ])
+
+    else:
+        total_oil_supply =  n.statistics.supply(
+            bus_carrier="oil", **kwargs
+        ).groupby("name").sum().get([
+            "EU oil",
+            "DE renewable oil -> EU oil",
+            "EU renewable oil -> EU oil",
+        ])
+
+    oil_fossil_fraction = (
+        total_oil_supply[~total_oil_supply.index.str.contains("renewable")].sum()
+        / total_oil_supply.sum()
+    )
+
+    return oil_fossil_fraction
+
 def _get_t_sum(df, df_t, carrier, region, snapshot_weightings, port):
     if type(carrier) == list:
         return sum(
@@ -561,24 +587,7 @@ def get_primary_energy(n, region):
 
     var = pd.Series()
 
-    if "DE" in region:
-        total_oil_supply =  n.statistics.supply(bus_carrier="oil", **kwargs).groupby("name").sum().get([
-            "DE oil",
-            "DE renewable oil -> DE oil",
-            "EU renewable oil -> DE oil",
-        ])
-
-    else:
-        total_oil_supply =  n.statistics.supply(bus_carrier="oil", **kwargs).groupby("name").sum().get([
-            "EU oil",
-            "DE renewable oil -> EU oil",
-            "EU renewable oil -> EU oil",
-        ])
-
-    oil_fossil_fraction = (
-        total_oil_supply[~total_oil_supply.index.str.contains("renewable")].sum()
-        / total_oil_supply.sum()
-    )
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
     
     oil_usage = n.statistics.withdrawal(
         bus_carrier="oil", 
@@ -1086,24 +1095,9 @@ def get_secondary_energy(n, region):
             )
         ].sum()
     )
-    if "DE" in region:
-        total_oil_supply =  n.statistics.supply(bus_carrier="oil", **kwargs).groupby("name").sum().get([
-            "DE oil",
-            "DE renewable oil -> DE oil",
-            "EU renewable oil -> DE oil",
-        ])
 
-    else:
-        total_oil_supply =  n.statistics.supply(bus_carrier="oil", **kwargs).groupby("name").sum().get([
-            "EU oil",
-            "DE renewable oil -> EU oil",
-            "EU renewable oil -> EU oil",
-        ])
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
 
-    oil_fossil_fraction = (
-        total_oil_supply[~total_oil_supply.index.str.contains("renewable")].sum()
-        / total_oil_supply.sum()
-    )
     
     oil_fuel_usage = n.statistics.withdrawal(
         bus_carrier="oil", 
@@ -1384,24 +1378,7 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
         + energy_totals["total international navigation"]
     )
 
-    if "DE" in region:
-        total_oil_supply =  n.statistics.supply(bus_carrier="oil", **kwargs).groupby("name").sum().get([
-            "DE oil",
-            "DE renewable oil -> DE oil",
-            "EU renewable oil -> DE oil",
-        ])
-
-    else:
-        total_oil_supply =  n.statistics.supply(bus_carrier="oil", **kwargs).groupby("name").sum().get([
-            "EU oil",
-            "DE renewable oil -> EU oil",
-            "EU renewable oil -> EU oil",
-        ])
-
-    oil_fossil_fraction = (
-        total_oil_supply[~total_oil_supply.index.str.contains("renewable")].sum()
-        / total_oil_supply.sum()
-    )
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
 
     var["Final Energy|Transportation|Liquids"] = (
         sum_load(n, "land transport oil", region)
