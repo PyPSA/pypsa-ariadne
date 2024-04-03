@@ -47,7 +47,7 @@ scenario:
   simpl:
   - ''
   ll:
-  - v1.2
+  - vopt
   clusters:
   - 22
   opts:
