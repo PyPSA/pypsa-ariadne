@@ -10,7 +10,7 @@ CurrentPolicies:
 # fixing CO2 budget at 2030 value for 2035-2050
 # reducing VRE targets in 2030 to 75% of the target (following REMIND)
 # not forcing H2 production
-# orient transport transformation towards ALADIN (Fraunhofer model) results
+# orient transport transformation from REMod v1.0 (currently is DEMO)
 # industry transformation towards FORECAST results
 # consider not assuming Kernnetz
 
@@ -23,8 +23,8 @@ CurrentPolicies:
     enable: false
 
   iiasa_database:
-    # TODO: wait for REMod v1.0 to upload a Trend scenario
-    reference_scenario: Trend
+    # TODO: wait for REMod v1.0 to upload a first Trend scenario
+    reference_scenario: Trend # CurrentPolicies once it's renamed
 
   co2_budget:
     2020: 0.800 # 20% reduction by 2020

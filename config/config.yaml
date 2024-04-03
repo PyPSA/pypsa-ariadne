@@ -27,6 +27,7 @@ iiasa_database:
     - FORECAST v1.0
     - DEMO v1
   scenarios:
+    # - CurrentPolicies
     - Trend
     - 8Gt_Bal_v3
     - 8Gt_Elec_v3
