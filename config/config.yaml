@@ -5,7 +5,7 @@
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   name:
-  - Trend
+  - CurrentPolicies
   - KN2045_Bal_v4
   - KN2045_Elec_v4
   - KN2045_H2_v4
