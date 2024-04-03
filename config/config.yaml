@@ -5,10 +5,10 @@
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   name:
-  - KN2045_Trend_v4
-  # - KN2045_Bal_v4
-  # - KN2045_Elec_v4
-  # - KN2045_H2_v4
+  - Trend
+  - KN2045_Bal_v4
+  - KN2045_Elec_v4
+  - KN2045_H2_v4
   # - KN2045plus_EasyRide
   # - KN2045plus_LowDemand
   # - KN2045minus_WorstCase
