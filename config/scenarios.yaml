@@ -105,6 +105,15 @@ KN2045_Bal_v4:
       2035: 0.9478
       2040: 0.9198
       2045: 0.8858
+  industry:
+    St_primary_fraction:
+      2020: 0.6939
+      2025: 0.6247
+      2030: 0.5881
+      2035: 0.5432
+      2040: 0.4981
+      2045: 0.4487
+      2050: 0.3
 
 KN2045_Elec_v4:
 # Fokus auf dem Hochlauf von Technologien zur direkten Elektrifizierung der Sektoren
@@ -206,6 +215,16 @@ KN2045_Elec_v4:
       2035: 0.9478
       2040: 0.9198
       2045: 0.8858
+
+  industry:
+    St_primary_fraction:
+      2020: 0.6
+      2025: 0.55
+      2030: 0.5
+      2035: 0.45
+      2040: 0.4
+      2045: 0.35
+      2050: 0.3
 
 KN2045_H2_v4:
 # Fokus stärker auf dem Hochlauf von Technologien zur indirekten Elektrifizierung der Sektoren
@@ -309,3 +328,12 @@ KN2045_H2_v4:
       2035: 0.9478
       2040: 0.9198
       2045: 0.8858
+  industry:
+    St_primary_fraction:
+      2020: 0.6
+      2025: 0.55
+      2030: 0.5
+      2035: 0.45
+      2040: 0.4
+      2045: 0.35
+      2050: 0.3

@@ -45,8 +45,18 @@ def get_shares(df, planning_horizons):
 
     return transport_share, naval_share
 
+def get_primary_steel_share(df, planning_horizons):
+    # Get share of primary steel production
+    model = "FORECAST v1.0"
+    total_steel = df.loc[model, "Production|Steel"]
+    primary_steel = df.loc[model, "Production|Steel|Primary"]
+    
+    primary_steel_share = primary_steel / total_steel
+    primary_steel_share = primary_steel_share[planning_horizons]
+    
+    return primary_steel_share.set_index(pd.Index(["Primary_Steel_Share"]))
 
-def write_to_scenario_yaml(output, scenarios, transport_share, naval_share):
+def write_to_scenario_yaml(output, scenarios, transport_share, naval_share, st_primary_fraction):
     # read in yaml file
     yaml = ruamel.yaml.YAML()
     file_path = Path(output)
@@ -70,6 +80,8 @@ def write_to_scenario_yaml(output, scenarios, transport_share, naval_share):
         for key in mapping_navigation.keys():
             for year in naval_share.columns:
                 config[scenario]["sector"][mapping_navigation[key]][year] = round(naval_share.loc[key, year].item(), 4)
+        for year in st_primary_fraction.columns:
+            config[scenario]["industry"]["St_primary_fraction"][year] = round(st_primary_fraction.loc["Primary_Steel_Share", year].item(), 4)
 
     # write back to yaml file
     yaml.dump(config, file_path)
@@ -106,5 +118,6 @@ if __name__ == "__main__":
 
     filename = snakemake.input.scenario_yaml
 
+    st_primary_fraction = get_primary_steel_share(df, planning_horizons)
 
-    write_to_scenario_yaml(filename, scenarios, transport_share, naval_share)
+    write_to_scenario_yaml(filename, scenarios, transport_share, naval_share, st_primary_fraction)
