@@ -301,6 +301,7 @@ rule build_scenarios:
     params:
         iiasa_scenario=config["iiasa_database"]["reference_scenario"],
         scenario_name=config["run"]["name"],
+        years=config["scenario"]["planning_horizons"],
     input:
         ariadne_database=resources("ariadne_database.csv"),
         scenario_yaml=config["run"]["scenarios"]["file"],

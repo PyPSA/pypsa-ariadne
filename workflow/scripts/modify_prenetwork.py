@@ -295,6 +295,37 @@ def unravel_oilbus(n):
         capital_cost=0.02,
     )
 
+def transmission_costs_from_modified_cost_data(n, costs, length_factor=1.0):
+    # copying the the function update_transmission_costs from add_electricity
+    # slight change to the function so it works in modify_prenetwork
+    n.lines["capital_cost"] = (
+        n.lines["length"] * length_factor * costs.at["HVAC overhead", "capital_cost"]
+    )
+
+    if n.links.empty:
+        return
+    # get all DC links that are not the reverse links
+    dc_b = (n.links.carrier == "DC") & ~(n.links.index.str.contains("reverse"))
+
+    # If there are no dc links, then the 'underwater_fraction' column
+    # may be missing. Therefore we have to return here.
+    if n.links.loc[dc_b].empty:
+        return
+
+    costs = (
+        n.links.loc[dc_b, "length"]
+        * length_factor
+        * (
+            (1.0 - n.links.loc[dc_b, "underwater_fraction"])
+            * costs.at["HVDC overhead", "capital_cost"]
+            + n.links.loc[dc_b, "underwater_fraction"]
+            * costs.at["HVDC submarine", "capital_cost"]
+        )
+        + costs.at["HVDC inverter pair", "capital_cost"]
+    )
+    n.links.loc[dc_b, "capital_cost"] = costs
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
@@ -347,4 +378,15 @@ if __name__ == "__main__":
         wkn = pd.read_csv(fn, index_col=0)
         add_wasserstoff_kernnetz(n, wkn, costs)
         n.links.reversed = n.links.reversed.astype(float)
+
+    costs_loaded = load_costs(
+        snakemake.input.costs,
+        snakemake.params.costs,
+        snakemake.params.max_hours,
+        nyears,
+    )
+
+    # change to NEP21 costs
+    transmission_costs_from_modified_cost_data(n, costs_loaded, snakemake.params.length_factor)
+
     n.export_to_netcdf(snakemake.output.network)
