@@ -345,6 +345,7 @@ if __name__ == "__main__":
             ll="v1.2",
             sector_opts="365H-T-H-B-I-A-solar+p3-linemaxext15",
             planning_horizons="2040",
+            run="KN2045_H2_v4"
         )
 
     logger.info("Adding Ariadne-specific functionality")
