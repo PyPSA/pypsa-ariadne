@@ -16,9 +16,10 @@ run:
     enable: true
   shared_resources: true #stops recalculating
   disable_progressbar: true
-  debug_co2_limit: false
+  debug_co2_limit: true
   debug_elec_import_limit: false
-  debug_h2deriv_limit: false
+  debug_h2deriv_limit: true
+  debug_unravel_oilbus: true
 
 iiasa_database:
   db_name: ariadne_intern

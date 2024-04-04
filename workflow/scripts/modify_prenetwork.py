@@ -339,7 +339,8 @@ if __name__ == "__main__":
 
     first_technology_occurrence(n)
 
-    unravel_oilbus(n)
+    if not snakemake.config["run"]["debug_unravel_oilbus"]:
+        unravel_oilbus(n)
 
     if snakemake.config["wasserstoff_kernnetz"]["enable"]:
         fn = snakemake.input.wkn
