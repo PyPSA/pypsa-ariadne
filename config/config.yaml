@@ -5,8 +5,8 @@
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   name:
-  # - KN2045_Bal_v4
-  # - KN2045_Elec_v4
+  - KN2045_Bal_v4
+  - KN2045_Elec_v4
   - KN2045_H2_v4
   # - KN2045plus_EasyRide
   # - KN2045plus_LowDemand
@@ -270,9 +270,16 @@ industry:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
 solving:
   runtime: 12h
-  mem_mb: 140000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
+  mem_mb: 40000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
   options:
     load_shedding: false
+  # solver:
+  #   options: gurobi-numeric-focus
+  # solver_options:
+  #   gurobi-default:
+  #     NumericFocus: 1
+  #     FeasibilityTol: 1.e-4
+  #     BarHomogeneous: 1
 
 plotting:
   tech_colors:
