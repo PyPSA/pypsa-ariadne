@@ -17,6 +17,8 @@ from prepare_sector_network import (
     lossy_bidirectional_links,
 )
 
+from add_electricity import load_costs
+
 
 def first_technology_occurrence(n):
     """
