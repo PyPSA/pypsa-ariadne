@@ -58,17 +58,17 @@ CurrentPolicies:
             2020: 48
             2025: 61
             2030: 86.5 # 75 % Wind-an-Land Law
-            2035: 117.75 # 75 % Wind-an-Land Law
-            2040: 120 # 75 % Wind-an-Land Law
-            2045: 120
+            2035: 86.5
+            2040: 86.5
+            2045: 86.5
         offwind:
           DE:
             2020: 7.77
             2025: 8
             2030: 22.5 # 75 % Wind-auf-See Law
-            2035: 30 # 75 % Wind-auf-See Law assuming at least 1/3 of difference reached in 2040
-            2040: 32.5 # 75 % Wind-auf-See Law
-            2045: 52.5 # 75 % Wind-auf-See Law
+            2035: 22.5
+            2040: 22.5
+            2045: 22.5
         solar:
           DE:
             2020: 59
@@ -76,9 +76,9 @@ CurrentPolicies:
             # assuming at least 1/3 of difference reached in 2025
             2025: 101 
             2030: 161.25 # 75 % PV strategy
-            2035: 231.75
-            2040: 300 # 75 % PV strategy
-            2045: 300
+            2035: 161.25
+            2040: 161.25
+            2045: 161.25
 
   # boundary condition of maximum volumes
   limits_volume_max:
