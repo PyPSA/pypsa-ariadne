@@ -16,7 +16,20 @@ MWh2GJ = 3.6
 TWh2PJ = 3.6
 MWh2PJ = 3.6e-6
 
+
 def _get_oil_fossil_fraction(n, region, kwargs):
+    total_oil_supply =  n.statistics.supply(
+        bus_carrier="oil", **kwargs
+    ).drop("Store").groupby("carrier").sum()
+
+    oil_fossil_fraction = (
+        total_oil_supply.get("oil")
+        / total_oil_supply.sum()
+    )
+
+    return oil_fossil_fraction
+
+def __get_oil_fossil_fraction(n, region, kwargs):
     if "DE" in region:
         total_oil_supply =  n.statistics.supply(
             bus_carrier="oil", **kwargs
