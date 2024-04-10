@@ -103,46 +103,53 @@ def get_ksg_targets(df):
 
 
 def write_to_scenario_yaml(
-        output, scenario, df):
+        input, output, scenarios, df):
     # read in yaml file
     yaml = ruamel.yaml.YAML()
-    file_path = Path(output)
+    file_path = Path(input)
     config = yaml.load(file_path)
-    reference_scenario = config[scenario]["iiasa_database"]["reference_scenario"]
+    for scenario in scenarios:
+        reference_scenario = config[scenario]["iiasa_database"]["reference_scenario"]
 
-    ksg_target_fractions = get_ksg_targets(
-        df.loc["REMIND-EU v1.1", reference_scenario]
-    )
+        ksg_target_fractions = get_ksg_targets(
+            df.loc["REMIND-EU v1.1", reference_scenario]
+        )
 
-    planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045] # for 2050 we still need data
+        planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045] # for 2050 we still need data
 
-    transport_share, naval_share = get_shares(
-        df.loc[:, reference_scenario, :],
-        planning_horizons,
-    )
-    
-    mapping_transport = {
-        'PHEV': 'land_transport_fuel_cell_share',
-        'BEV': 'land_transport_electric_share',
-        'ICE': 'land_transport_ice_share'
-    }
-    mapping_navigation = {
-        'H2': 'shipping_hydrogen_share',
-        'MeOH': 'shipping_methanol_share',
-        'Oil': 'shipping_oil_share',
-    }
-
-    for key in mapping_transport.keys():
-        for year in transport_share.columns:
-            config[scenario]["sector"][mapping_transport[key]][year] = round(transport_share.loc[key, year].item(), 4)
-    for key in mapping_navigation.keys():
-        for year in naval_share.columns:
-            config[scenario]["sector"][mapping_navigation[key]][year] = round(naval_share.loc[key, year].item(), 4)
-    for year, target in ksg_target_fractions.items():
-        config[scenario]["co2_budget_national"][year]["DE"] = target
+        transport_share, naval_share = get_shares(
+            df.loc[:, reference_scenario, :],
+            planning_horizons,
+        )
+        
+        mapping_transport = {
+            'PHEV': 'land_transport_fuel_cell_share',
+            'BEV': 'land_transport_electric_share',
+            'ICE': 'land_transport_ice_share'
+        }
+        mapping_navigation = {
+            'H2': 'shipping_hydrogen_share',
+            'MeOH': 'shipping_methanol_share',
+            'Oil': 'shipping_oil_share',
+        }
+        # TODO: create new keys to add to the yaml file
+        # is deleted every time so I don't need to check if it already exists
+        config[scenario]["sector"] = {}
+        for key in mapping_transport.keys():
+            config[scenario]["sector"][mapping_transport[key]] = {}
+            for year in transport_share.columns:
+                config[scenario]["sector"][mapping_transport[key]][year] = round(transport_share.loc[key, year].item(), 4)
+        for key in mapping_navigation.keys():
+            config[scenario]["sector"][mapping_navigation[key]] = {}
+            for year in naval_share.columns:
+                config[scenario]["sector"][mapping_navigation[key]][year] = round(naval_share.loc[key, year].item(), 4)
+        config[scenario]["co2_budget_national"] = {}
+        for year, target in ksg_target_fractions.items():
+            config[scenario]["co2_budget_national"][year] = {}
+            config[scenario]["co2_budget_national"][year]["DE"] = target
 
     # write back to yaml file
-    yaml.dump(config, file_path)
+    yaml.dump(config, Path(output))
 
 
 
@@ -171,8 +178,9 @@ if __name__ == "__main__":
     
     scenarios = snakemake.params.scenario_name
 
-    filename = snakemake.input.scenario_yaml
+    input = snakemake.input.scenario_yaml
+    output = snakemake.output.scenario_yaml
 
-    for scenario in scenarios:
-        write_to_scenario_yaml(
-            filename, scenario, df)
+    # for scenario in scenarios:
+    write_to_scenario_yaml(
+        input, output, scenarios, df)
