@@ -7,7 +7,7 @@ import yaml, sys
 
 sys.path.append("workflow/submodules/pypsa-eur/scripts")
 
-from _helpers import path_provider, get_rdir
+from _helpers import path_provider, get_scenarios, get_rdir
 
 min_version("8.5")
 
@@ -16,6 +16,7 @@ configfile: "config/config.yaml"
 configfile: "config/config.personal.yaml"
 
 run = config["run"]
+scenarios = get_scenarios(run) # global variable
 RDIR = get_rdir(run)
 
 logs = path_provider("logs/", RDIR, run["shared_resources"])
