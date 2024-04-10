@@ -238,7 +238,7 @@ rule build_scenarios:
         scenario_name=config["run"]["name"],
     input:
         ariadne_database=resources("ariadne_database.csv"),
-        scenario_yaml="config/scenarios_manual.yaml",
+        scenario_yaml="config/scenarios.manual.yaml",
     output:
         scenario_yaml=config["run"]["scenarios"]["file"],
     log:
