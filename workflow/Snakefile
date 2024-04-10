@@ -7,7 +7,7 @@ import yaml, sys
 
 sys.path.append("workflow/submodules/pypsa-eur/scripts")
 
-from _helpers import path_provider
+from _helpers import path_provider, get_rdir
 
 min_version("8.5")
 
@@ -16,17 +16,7 @@ configfile: "config/config.yaml"
 configfile: "config/config.personal.yaml"
 
 run = config["run"]
-scenarios = run.get("scenarios", {})
-if run["name"] and scenarios.get("enable"):
-    fn = Path(scenarios["file"])
-    scenarios = yaml.safe_load(fn.read_text())
-    RDIR = "{run}/"
-    if run["name"] == "all":
-        config["run"]["name"] = list(scenarios.keys())
-elif run["name"]:
-    RDIR = run["name"] + "/"
-else:
-    RDIR = ""
+RDIR = get_rdir(run)
 
 logs = path_provider("logs/", RDIR, run["shared_resources"])
 benchmarks = path_provider("benchmarks/", RDIR, run["shared_resources"])
