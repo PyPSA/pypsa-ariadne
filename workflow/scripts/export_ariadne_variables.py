@@ -55,6 +55,47 @@ def __get_oil_fossil_fraction(n, region, kwargs):
 
     return oil_fossil_fraction
 
+# how to handle pipelines?
+# how to account for the region?
+def _get_gas_fossil_fraction(n, region, kwargs):
+    total_gas_supply =  n.statistics.supply(
+        bus_carrier="gas", **kwargs
+    ).drop("Store").groupby("carrier").sum()
+
+    drops = ["gas pipeline", "gas pipeline new"]
+    for d in drops:
+        if d in total_gas_supply.index:
+            total_gas_supply.drop(d)
+
+    gas_fossil_fraction = (
+        total_gas_supply.get("gas")
+        / total_gas_supply.sum()
+    )
+
+    return gas_fossil_fraction
+
+def _get_h2_fossil_fraction(n, region, kwargs):
+    total_h2_supply =  n.statistics.supply(
+        bus_carrier="H2", **kwargs
+    ).drop("Store").groupby("carrier").sum()
+
+    drops = ["H2 pipeline", "H2 pipeline (Kernnetz)"]
+    for d in drops:
+        if d in total_h2_supply.index:
+            total_h2_supply.drop(d)
+
+    h2_fossil_fraction_c = (
+        total_h2_supply.get(["SMR", "SMR CC"])
+        / total_h2_supply.sum()
+    )
+
+    h2_fossil_fraction = \
+        h2_fossil_fraction_c["SMR"] * n.links[n.links.carrier == "SMR"].efficiency.mean() \
+        + h2_fossil_fraction_c["SMR CC"] * n.links[n.links.carrier == "SMR CC"].efficiency.mean()
+
+    return h2_fossil_fraction
+
+
 def _get_t_sum(df, df_t, carrier, region, snapshot_weightings, port):
     if type(carrier) == list:
         return sum(
@@ -1787,13 +1828,41 @@ def get_nodal_flows(n, bus_carrier, region, query='index == index or index != in
         bus_carrier=bus_carrier, 
         groupby=groupby,
         aggregate_time=False,
-    ).filter(
+    ).query(query
+    ).groupby("bus"
+    ).sum().T.filter(
         like=region,
-        axis=0,
-    ).query(query).groupby("bus").sum().T 
+        axis=1,
+    )
     
-    return result
+    return result 
 
+def get_nodal_supply(n, bus_carrier, query='index == index or index != index'):
+    """
+    Get the nodal flows for a given bus carrier and region.
+
+    Parameters:
+        n (pypsa.Network): The PyPSA network object.
+        bus_carrier (str): The bus carrier for which to retrieve the nodal flows.
+        region (str): The region for which to retrieve the nodal flows.
+        query (str, optional): A query string to filter the nodal flows. Defaults to 'index == index or index != index'.
+
+    Returns:
+        pandas.DataFrame: The nodal flows for the specified bus carrier and region.
+    """
+
+    groupby = n.statistics.groupers.get_name_bus_and_carrier
+
+    result = n.statistics.supply(
+        bus_carrier=bus_carrier, 
+        groupby=groupby,
+        aggregate_time=False,
+    ).query(query
+    ).groupby("bus"
+    ).sum().T
+    
+    return result 
+    
 
 def price_load(n, load_carrier, region):
     """
@@ -1948,6 +2017,21 @@ def get_prices(n, region):
 
     var = pd.Series()
 
+    kwargs = {
+        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
+        'nice_names': False,
+    }
+
+    # co2 additions
+    co2_price = -n.global_constraints.loc["CO2Limit", "mu"] - n.global_constraints.loc["co2_limit-DE", "mu"]
+    # specific emissions in tons CO2/MWh (https://www.volker-quaschning.de/datserv/CO2-spez/index_e.php)
+    specific_emisisons = {
+        "oil" : 266.5e-3,
+        "gas" : 200.8e-3,
+        "hard coal" : 338.2e-3,
+        "lignite" : 398.7e-3,
+    }
+
     nodal_flows_lv = get_nodal_flows(
         n, "low voltage", region,
         query = "not carrier.str.contains('agriculture')"
@@ -1972,13 +2056,24 @@ def get_prices(n, region):
     
     # Price|Primary Energy|Coal
     # is coal also lignite? -> yes according to michas code (coal for industry is already included as it withdraws from coal bus)
-    nf_coal = get_nodal_flows(n, "coal", region)
+    nf_coal = get_nodal_flows(n, "coal", "EU")
     nodal_prices_coal = n.buses_t.marginal_price[nf_coal.columns]
     coal_price = nf_coal.mul(nodal_prices_coal).values.sum() / nf_coal.values.sum() if nf_coal.values.sum() > 0 else np.nan
 
-    nf_lignite = get_nodal_flows(n, "lignite", region)
+    nf_lignite = get_nodal_flows(n, "lignite", "EU")
     nodal_prices_lignite = n.buses_t.marginal_price[nf_lignite.columns]
     lignite_price = nf_lignite.mul(nodal_prices_lignite).values.sum() / nf_lignite.values.sum() if nf_lignite.values.sum() > 0 else np.nan
+
+    coal_fraction = nf_coal.values.sum() / (nf_coal.values.sum() + nf_lignite.values.sum())
+    lignite_fraction = nf_lignite.values.sum() / (nf_coal.values.sum() + nf_lignite.values.sum())
+    co2_add_coal = \
+        coal_fraction * specific_emisisons["hard coal"] * co2_price \
+        + lignite_fraction * specific_emisisons["lignite"] * co2_price 
+
+
+    
+    
+
 
     var["Price|Primary Energy|Coal"] = \
         get_weighted_costs([coal_price, lignite_price], [nf_coal.values.sum(), nf_lignite.values.sum()])/ MWh2GJ
@@ -1987,15 +2082,25 @@ def get_prices(n, region):
     nodal_flows_gas = get_nodal_flows(n, "gas", region)
     nodal_prices_gas = n.buses_t.marginal_price[nodal_flows_gas.columns]
 
+    # co2 part
+    gas_fossil_fraction = _get_gas_fossil_fraction(n, region, kwargs)
+    co2_add_gas = gas_fossil_fraction * specific_emisisons["gas"] * co2_price
+
+
     var["Price|Primary Energy|Gas"] = \
         nodal_flows_gas.mul(nodal_prices_gas).values.sum()  / nodal_flows_gas.values.sum() / MWh2GJ
     
     # Price|Primary Energy|Oil
-    nodal_flows_oil = get_nodal_flows(n, "oil", region)
+    # if oil bus is unravelled change "EU" into region
+    nodal_flows_oil = get_nodal_flows(n, "oil", "EU")
     nodal_prices_oil = n.buses_t.marginal_price[nodal_flows_oil.columns]
 
+    # co2 part
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
+    co2_add_oil = oil_fossil_fraction * specific_emisisons["oil"] * co2_price
+
     var["Price|Primary Energy|Oil"] = \
-        nodal_flows_oil.mul(nodal_prices_oil).values.sum() / nodal_flows_oil.values.sum() /MWh2GJ
+        (nodal_flows_oil.mul(nodal_prices_oil).values.sum() / nodal_flows_oil.values.sum() + co2_add_oil) /MWh2GJ
 
     # Price|Secondary Energy|Electricity
     # electricity price at the secondary level, i.e. for large scale consumers (e.g. aluminum production). Prices should include the effect of carbon prices.
@@ -2027,9 +2132,12 @@ def get_prices(n, region):
         n, "H2", region
         )
     nodal_prices_h2 = n.buses_t.marginal_price[nodal_flows_h2.columns]
+    
+    h2_fossil_fraction = _get_h2_fossil_fraction(n, region, kwargs)
+    co2_add_h2 = h2_fossil_fraction * specific_emisisons["gas"] * co2_price
 
     var["Price|Secondary Energy|Hydrogen"] = \
-        nodal_flows_h2.mul(nodal_prices_h2).values.sum() / nodal_flows_h2.values.sum() /MWh2GJ  
+        (nodal_flows_h2.mul(nodal_prices_h2).values.sum() / nodal_flows_h2.values.sum() + co2_add_h2) /MWh2GJ  
 
     # From PIK plots
     # "Price|Final Energy|Residential|Hydrogen" = final energy consumption by the residential sector of hydrogen
@@ -2409,7 +2517,7 @@ if __name__ == "__main__":
             ll="v1.2",
             sector_opts="None",
             planning_horizons="2050",
-            run="KN2045_H2_v4"
+            run="KN2045_Bal_v4"
         )
 
 
@@ -2479,3 +2587,4 @@ if __name__ == "__main__":
         'groupby': n.statistics.groupers.get_name_bus_and_carrier,
         'nice_names': False,
     }
+
