@@ -2076,10 +2076,6 @@ def get_prices(n, region):
         + lignite_fraction * specific_emisisons["lignite"] * co2_price 
 
 
-    
-    
-
-
     var["Price|Primary Energy|Coal"] = \
         get_weighted_costs([coal_price, lignite_price], [nf_coal.values.sum(), nf_lignite.values.sum()])/ MWh2GJ
     
@@ -2104,8 +2100,11 @@ def get_prices(n, region):
     oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
     co2_add_oil = oil_fossil_fraction * specific_emisisons["oil"] * co2_price
 
-    var["Price|Primary Energy|Oil"] = \
+    if not math.isnan(nodal_flows_oil.values.sum()):
+        var["Price|Primary Energy|Oil"] = \
         (nodal_flows_oil.mul(nodal_prices_oil).values.sum() / nodal_flows_oil.values.sum() + co2_add_oil) /MWh2GJ
+    else:
+        var["Price|Primary Energy|Oil"] = np.nan
 
     # Price|Secondary Energy|Electricity
     # electricity price at the secondary level, i.e. for large scale consumers (e.g. aluminum production). Prices should include the effect of carbon prices.
@@ -2126,8 +2125,10 @@ def get_prices(n, region):
         costs_gen_links(n, region, "Sabatier")[0] / MWh2GJ
 
     var["Price|Secondary Energy|Gases|Biomass"] = \
-        costs_gen_links(n, region, "biogas to gas")[0] / MWh2GJ
-    
+        get_weighted_costs_links(
+            ['biogas to gas', 'biogas to gas CC'], 
+            n, region) / MWh2GJ
+        
     # Price|Secondary Energy|Gases|Efuel
     # Price for gaseous Efuels at the secondary level, i.e. for large scale consumers. Prices should include the effect of carbon prices.
     # what are gaseous Efuels?
@@ -2412,9 +2413,8 @@ def get_prices(n, region):
     nodal_flows_gas.mul(nodal_prices_gas).values.sum() / nodal_flows_gas.values.sum() /MWh2GJ
 
     nodal_flows_oil = get_nodal_flows(
-        n, "oil", region,
+        n, "oil", "EU",
         query = "not carrier.str.contains('rural')"
-                "& not carrier == 'oil'"
                 "& not carrier.str.contains('urban decentral')"
             )
     nodal_prices_oil = n.buses_t.marginal_price[nodal_flows_oil.columns]
@@ -2800,4 +2800,5 @@ if __name__ == "__main__":
         'groupby': n.statistics.groupers.get_name_bus_and_carrier,
         'nice_names': False,
     }
+
 
