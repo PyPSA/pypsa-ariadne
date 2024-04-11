@@ -12,7 +12,7 @@ dconf
 results/
 resources/
 data/
-config/scenarios_automated.yaml
+config/scenarios.automated.yaml
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
