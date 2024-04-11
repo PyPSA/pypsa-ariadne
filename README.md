@@ -55,12 +55,12 @@ Details on Python environment variables in VSCode can be found here: https://cod
 
 ## Run the analysis
 
-Before running any scenarios, the rule `build_scenarios` must be executed. This will write the file `config/scenarios_automated.yaml` which includes transport shares and ksg goals from the iiasa database as well as the information from the file `config/scenarios_manual.yaml`.
+Before running any scenarios, the rule `build_scenarios` must be executed. This will write the file `config/scenarios.automated.yaml` which includes transport shares and ksg goals from the iiasa database as well as the information from the file `config/scenarios.manual.yaml`.
 
     snakemake -call build_scenarios -f
 
-Note that the hierarchy of scenario files is the following: `scenarios_automated.yaml` > `config.yaml` > `config.default.yaml`
-Changes in the file `scenarios_manual.yaml` are only taken into account if the rule `build_scenarios` is executed.
+Note that the hierarchy of scenario files is the following: `scenarios.automated.yaml` > `config.yaml` > `config.default.yaml`
+Changes in the file `scenarios.manual.yaml` are only taken into account if the rule `build_scenarios` is executed.
 
 For the first run open config.yaml and set
 
