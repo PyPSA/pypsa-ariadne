@@ -103,39 +103,63 @@ def get_ksg_targets(df):
 
 
 def write_to_scenario_yaml(
-        output, scenarios, transport_share, naval_share, ksg_target_fractions):
+        input, output, scenarios, df):
     # read in yaml file
     yaml = ruamel.yaml.YAML()
-    file_path = Path(output)
+    file_path = Path(input)
     config = yaml.load(file_path)
-    
-    mapping_transport = {
-        'PHEV': 'land_transport_fuel_cell_share',
-        'BEV': 'land_transport_electric_share',
-        'ICE': 'land_transport_ice_share'
-    }
-    mapping_navigation = {
-        'H2': 'shipping_hydrogen_share',
-        'MeOH': 'shipping_methanol_share',
-        'Oil': 'shipping_oil_share',
-    }
-
     for scenario in scenarios:
+        reference_scenario = config[scenario]["iiasa_database"]["reference_scenario"]
+        if scenario == "CurrentPolicies":
+            ksg_target_fractions = get_ksg_targets(
+                df.loc["REMIND-EU v1.1", "8Gt_Bal_v3"]
+            )
+            ksg_target_fractions[[2035, 2040, 2045]] = ksg_target_fractions[2030]
+        else:
+            ksg_target_fractions = get_ksg_targets(
+                df.loc["REMIND-EU v1.1", reference_scenario]
+            )
+
+        planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045] # for 2050 we still need data
+
+        transport_share, naval_share = get_shares(
+            df.loc[:, reference_scenario, :],
+            planning_horizons,
+        )
+        
+        mapping_transport = {
+            'PHEV': 'land_transport_fuel_cell_share',
+            'BEV': 'land_transport_electric_share',
+            'ICE': 'land_transport_ice_share'
+        }
+        mapping_navigation = {
+            'H2': 'shipping_hydrogen_share',
+            'MeOH': 'shipping_methanol_share',
+            'Oil': 'shipping_oil_share',
+        }
+
+        config[scenario]["sector"] = {}
         for key, sector_mapping in mapping_transport.items():
+            config[scenario]["sector"][sector_mapping] = {}
             for year in transport_share.columns:
                 target_year = 2030 if scenario == "CurrentPolicies" and int(year) > 2030 else year
                 config[scenario]["sector"][sector_mapping][year] = round(transport_share.loc[key, target_year].item(), 4)
+
         for key, sector_mapping in mapping_navigation.items():
+            config[scenario]["sector"][sector_mapping] = {}
+
             for year in naval_share.columns:
                 target_year = 2030 if scenario == "CurrentPolicies" and int(year) > 2030 else year
                 config[scenario]["sector"][sector_mapping][year] = round(naval_share.loc[key, target_year].item(), 4)
 
+        config[scenario]["co2_budget_national"] = {}
         for year, target in ksg_target_fractions.items():
+            config[scenario]["co2_budget_national"][year] = {}
             target_value = float(ksg_target_fractions[2030]) if year > 2030 and scenario == "CurrentPolicies" else target
             config[scenario]["co2_budget_national"][year]["DE"] = target_value
 
     # write back to yaml file
-    yaml.dump(config, file_path)
+    yaml.dump(config, Path(output))
 
 
 
@@ -159,16 +183,14 @@ if __name__ == "__main__":
 
     df = ariadne_db.loc[
         :, 
-        snakemake.params.iiasa_scenario, 
+        :,
         "Deutschland"]
-
-    ksg_target_fractions = get_ksg_targets(df.loc["REMIND-EU v1.1"])
-    planning_horizons = snakemake.params.years
-    transport_share, naval_share = get_shares(df, planning_horizons)
-
+    
     scenarios = snakemake.params.scenario_name
 
-    filename = snakemake.input.scenario_yaml
+    input = snakemake.input.scenario_yaml
+    output = snakemake.output.scenario_yaml
 
+    # for scenario in scenarios:
     write_to_scenario_yaml(
-        filename, scenarios, transport_share, naval_share, ksg_target_fractions)
+        input, output, scenarios, df)
