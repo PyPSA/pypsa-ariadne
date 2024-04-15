@@ -142,15 +142,12 @@ def write_to_scenario_yaml(
         for key, sector_mapping in mapping_transport.items():
             config[scenario]["sector"][sector_mapping] = {}
             for year in transport_share.columns:
-                target_year = 2030 if scenario == "CurrentPolicies" and int(year) > 2030 else year
-                config[scenario]["sector"][sector_mapping][year] = round(transport_share.loc[key, target_year].item(), 4)
+                config[scenario]["sector"][sector_mapping][year] = round(transport_share.loc[key, year].item(), 4)
 
         for key, sector_mapping in mapping_navigation.items():
             config[scenario]["sector"][sector_mapping] = {}
-
             for year in naval_share.columns:
-                target_year = 2030 if scenario == "CurrentPolicies" and int(year) > 2030 else year
-                config[scenario]["sector"][sector_mapping][year] = round(naval_share.loc[key, target_year].item(), 4)
+                config[scenario]["sector"][sector_mapping][year] = round(naval_share.loc[key, year].item(), 4)
 
         config[scenario]["co2_budget_national"] = {}
         for year, target in ksg_target_fractions.items():
