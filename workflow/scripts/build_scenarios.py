@@ -45,7 +45,16 @@ def get_shares(df, planning_horizons):
 
     return transport_share, naval_share
 
-
+def get_primary_steel_share(df, planning_horizons):
+    # Get share of primary steel production
+    model = "FORECAST v1.0"
+    total_steel = df.loc[model, "Production|Steel"]
+    primary_steel = df.loc[model, "Production|Steel|Primary"]
+    
+    primary_steel_share = primary_steel / total_steel
+    primary_steel_share = primary_steel_share[planning_horizons]
+    
+    return primary_steel_share.set_index(pd.Index(["Primary_Steel_Share"]))
 
 def get_ksg_targets(df):
     # relative to the DE emissions in 1990 *including bunkers*; also
@@ -101,7 +110,6 @@ def get_ksg_targets(df):
     return target_fractions_pypsa.round(3)
 
 
-
 def write_to_scenario_yaml(
         input, output, scenarios, df):
     # read in yaml file
@@ -149,6 +157,12 @@ def write_to_scenario_yaml(
             for year in naval_share.columns:
                 config[scenario]["sector"][sector_mapping][year] = round(naval_share.loc[key, year].item(), 4)
 
+        st_primary_fraction = get_primary_steel_share(df.loc[:, reference_scenario, :], planning_horizons)
+        
+        config[scenario]["industry"] = {}
+        config[scenario]["industry"]["St_primary_fraction"] = {}
+        for year in st_primary_fraction.columns:
+            config[scenario]["industry"]["St_primary_fraction"][year] = round(st_primary_fraction.loc["Primary_Steel_Share", year].item(), 4)
         config[scenario]["co2_budget_national"] = {}
         for year, target in ksg_target_fractions.items():
             config[scenario]["co2_budget_national"][year] = {}
