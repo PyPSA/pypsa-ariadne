@@ -4,6 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
+  prefix: 20250415steelcement
   name:
   - CurrentPolicies
   - KN2045_Bal_v4
@@ -15,6 +16,7 @@ run:
   # - KN2045minus_SupplyFocus
   scenarios:
     enable: true
+    file: config/scenarios.automated.yaml
   shared_resources: true #stops recalculating
   disable_progressbar: true
   debug_co2_limit: true
