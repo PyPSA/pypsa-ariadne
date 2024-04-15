@@ -32,7 +32,7 @@ ariadne = pd.read_csv(
     "Deutschland",
     :,
     "Mt/yr",
-]
+].multiply(1000)
 
 print(
     "German industry demand before modification", 
