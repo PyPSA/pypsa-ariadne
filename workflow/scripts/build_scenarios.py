@@ -110,10 +110,15 @@ def write_to_scenario_yaml(
     config = yaml.load(file_path)
     for scenario in scenarios:
         reference_scenario = config[scenario]["iiasa_database"]["reference_scenario"]
-
-        ksg_target_fractions = get_ksg_targets(
-            df.loc["REMIND-EU v1.1", reference_scenario]
-        )
+        if scenario == "CurrentPolicies":
+            ksg_target_fractions = get_ksg_targets(
+                df.loc["REMIND-EU v1.1", "8Gt_Bal_v3"]
+            )
+            ksg_target_fractions[[2035, 2040, 2045]] = ksg_target_fractions[2030]
+        else:
+            ksg_target_fractions = get_ksg_targets(
+                df.loc["REMIND-EU v1.1", reference_scenario]
+            )
 
         planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045] # for 2050 we still need data
 
@@ -132,21 +137,26 @@ def write_to_scenario_yaml(
             'MeOH': 'shipping_methanol_share',
             'Oil': 'shipping_oil_share',
         }
-        # TODO: create new keys to add to the yaml file
-        # is deleted every time so I don't need to check if it already exists
+
         config[scenario]["sector"] = {}
-        for key in mapping_transport.keys():
-            config[scenario]["sector"][mapping_transport[key]] = {}
+        for key, sector_mapping in mapping_transport.items():
+            config[scenario]["sector"][sector_mapping] = {}
             for year in transport_share.columns:
-                config[scenario]["sector"][mapping_transport[key]][year] = round(transport_share.loc[key, year].item(), 4)
-        for key in mapping_navigation.keys():
-            config[scenario]["sector"][mapping_navigation[key]] = {}
+                target_year = 2030 if scenario == "CurrentPolicies" and int(year) > 2030 else year
+                config[scenario]["sector"][sector_mapping][year] = round(transport_share.loc[key, target_year].item(), 4)
+
+        for key, sector_mapping in mapping_navigation.items():
+            config[scenario]["sector"][sector_mapping] = {}
+
             for year in naval_share.columns:
-                config[scenario]["sector"][mapping_navigation[key]][year] = round(naval_share.loc[key, year].item(), 4)
+                target_year = 2030 if scenario == "CurrentPolicies" and int(year) > 2030 else year
+                config[scenario]["sector"][sector_mapping][year] = round(naval_share.loc[key, target_year].item(), 4)
+
         config[scenario]["co2_budget_national"] = {}
         for year, target in ksg_target_fractions.items():
             config[scenario]["co2_budget_national"][year] = {}
-            config[scenario]["co2_budget_national"][year]["DE"] = target
+            target_value = float(ksg_target_fractions[2030]) if year > 2030 and scenario == "CurrentPolicies" else target
+            config[scenario]["co2_budget_national"][year]["DE"] = target_value
 
     # write back to yaml file
     yaml.dump(config, Path(output))
