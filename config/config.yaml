@@ -5,6 +5,7 @@
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
   name:
+  - CurrentPolicies
   - KN2045_Bal_v4
   - KN2045_Elec_v4
   - KN2045_H2_v4
@@ -25,7 +26,9 @@ iiasa_database:
     - TIMES PanEU v1.0
     - FORECAST v1.0
     - DEMO v1
-  scenarios: 
+  scenarios:
+    # - CurrentPolicies
+    - Trend
     - 8Gt_Bal_v3
     - 8Gt_Elec_v3
     - 8Gt_H2_v3

@@ -129,16 +129,20 @@ def write_to_scenario_yaml(
     }
 
     for scenario in scenarios:
-        for key in mapping_transport.keys():
+        for key, sector_mapping in mapping_transport.items():
             for year in transport_share.columns:
-                config[scenario]["sector"][mapping_transport[key]][year] = round(transport_share.loc[key, year].item(), 4)
-        for key in mapping_navigation.keys():
+                target_year = 2030 if scenario == "CurrentPolicies" and int(year) > 2030 else year
+                config[scenario]["sector"][sector_mapping][year] = round(transport_share.loc[key, target_year].item(), 4)
+        for key, sector_mapping in mapping_navigation.items():
             for year in naval_share.columns:
-                config[scenario]["sector"][mapping_navigation[key]][year] = round(naval_share.loc[key, year].item(), 4)
+                target_year = 2030 if scenario == "CurrentPolicies" and int(year) > 2030 else year
+                config[scenario]["sector"][sector_mapping][year] = round(naval_share.loc[key, target_year].item(), 4)
+
         for year in st_primary_fraction.columns:
             config[scenario]["industry"]["St_primary_fraction"][year] = round(st_primary_fraction.loc["Primary_Steel_Share", year].item(), 4)
         for year, target in ksg_target_fractions.items():
-            config[scenario]["co2_budget_national"][year]["DE"] = target
+            target_value = float(ksg_target_fractions[2030]) if year > 2030 and scenario == "CurrentPolicies" else target
+            config[scenario]["co2_budget_national"][year]["DE"] = target_value
 
     # write back to yaml file
     yaml.dump(config, file_path)
@@ -169,7 +173,7 @@ if __name__ == "__main__":
         "Deutschland"]
 
     ksg_target_fractions = get_ksg_targets(df.loc["REMIND-EU v1.1"])
-    planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045, 2050]
+    planning_horizons = snakemake.params.years
     transport_share, naval_share = get_shares(df, planning_horizons)
 
     scenarios = snakemake.params.scenario_name
