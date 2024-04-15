@@ -173,10 +173,9 @@ rule modify_existing_heating:
 
 rule retrieve_mastr:
     input:
-        HTTP.remote(
+        storage(
             "https://zenodo.org/records/8225106/files/bnetza_open_mastr_2023-08-08_B.zip",
             keep_local=True,
-            static=True,
         ),
     params:
         "data/mastr",
@@ -191,21 +190,20 @@ rule build_existing_chp_de:
     input:
         mastr_biomass="data/mastr/bnetza_open_mastr_2023-08-08_B_biomass.csv",
         mastr_combustion="data/mastr/bnetza_open_mastr_2023-08-08_B_combustion.csv",
-        plz_mapping=HTTP.remote(
+        plz_mapping=storage(
             "https://raw.githubusercontent.com/WZBSocialScienceCenter/plz_geocoord/master/plz_geocoord.csv",
             keep_local=True,
-            static=True,
         ),
-        busmap=RESOURCES + "networks/base.nc",
+        busmap=resources("networks/base.nc"),
     output:
-        german_chp=RESOURCES + "german_chp.csv",
+        german_chp=resources("german_chp.csv"),
     script:
         "scripts/build_existing_chp_de.py"
 
 use rule add_existing_baseyear from pypsaeur with:
     input:
         **rules.add_existing_baseyear.input,
-        custom_powerplants=RESOURCES + "german_chp.csv",
+        custom_powerplants=resources("german_chp.csv"),
 
 use rule build_existing_heating_distribution from pypsaeur with:
     input:
