@@ -15,6 +15,7 @@ run:
   # - KN2045minus_SupplyFocus
   scenarios:
     enable: true
+    file: config/scenarios.automated.yaml
   shared_resources: true #stops recalculating
   disable_progressbar: true
 

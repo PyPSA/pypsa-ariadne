@@ -166,7 +166,7 @@ if __name__ == "__main__":
         snakemake.input.regions_onshore, snakemake.input.regions_offshore
     )
 
-    kernnetz_cf = snakemake.config["wasserstoff_kernnetz"]
+    kernnetz_cf = snakemake.params.kernnetz
     if kernnetz_cf["divide_pipes"]:
         segment_length = kernnetz_cf["pipes_segment_length"]
         df = divide_pipes(df, segment_length=segment_length)
