@@ -13,10 +13,6 @@ CurrentPolicies:
 # industry transformation towards FORECAST results
 # consider not assuming Kernnetz
 
-  clustering:
-    temporal:
-      resolution_sector: 365H
-
   # Kernnetz is not assumed to be built
   wasserstoff_kernnetz:
     enable: false
@@ -110,10 +106,6 @@ KN2045_Bal_v4:
 # Importe erneuerbar erzeugter Energien auf mittlerem Niveau
 # dient als Referenzszenario in der Familie der Ariadne-Szenarien
 
-  clustering:
-    temporal:
-      resolution_sector: 365H
-
   iiasa_database:
     reference_scenario: 8Gt_Bal_v3
 
@@ -167,10 +159,6 @@ KN2045_Elec_v4:
 # Ausbau der erneuerbaren Stromerzeugung erreicht politisch gesetzte Ziele
 # Importe erneuerbar erzeugter Energien auf mittlerem Niveau
 
-  clustering:
-    temporal:
-      resolution_sector: 365H
-
   iiasa_database:
     reference_scenario: 8Gt_Elec_v3
 
@@ -222,10 +210,6 @@ KN2045_H2_v4:
 # Verstärkter Einsatz von Wasserstoff und synthetischen Kraftstoffen - erneuerbar erzeugt und auch importiert
 # Direkte Elektrifizierung spielt dennoch wesentliche Rolle bei der Dekarbonisierung der Endenergie
 # Ausbau der erneuerbaren Stromerzeugung erreicht politisch gesetzte Ziele
-
-  clustering:
-    temporal:
-      resolution_sector: 365H
 
   iiasa_database:
     reference_scenario: 8Gt_H2_v3
