@@ -243,9 +243,17 @@ def unravel_oilbus(n):
     """
     logger.info("Unraveling oil bus")
     # add buses
-    n.add("Bus", "DE oil", carrier="oil")
-    n.add("Bus", "DE renewable oil", carrier="renewable oil")
-    n.add("Bus", "EU renewable oil", carrier="renewable oil")
+    n.add("Bus", "DE", location="DE", x=10.5, y=51.2, carrier="none")
+    n.add("Bus", "DE oil", location="DE", x=10.5, y=51.2, carrier="oil")
+    n.add("Bus", "DE renewable oil", location="DE", x=10.5, y=51.2, carrier="renewable oil")
+    n.add(
+        "Bus", 
+        "EU renewable oil", 
+        location="EU",
+        x=n.buses.loc["EU","x"],
+        y=n.buses.loc["EU","y"],
+        carrier="renewable oil"
+    )
 
     # add one generator for DE oil
     n.add("Generator",
