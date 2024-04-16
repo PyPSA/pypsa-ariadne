@@ -328,8 +328,7 @@ def additional_functionality(n, snapshots, snakemake):
 
     h2_import_limits(n, snapshots, investment_year, snakemake.config)
     
-    if not snakemake.config["run"]["debug_elec_import_limit"]:
-        electricity_import_limits(n, snapshots, investment_year, snakemake.config)
+    electricity_import_limits(n, snapshots, investment_year, snakemake.config)
     
     if investment_year >= 2025:
         h2_production_limits(n, snapshots, investment_year, snakemake.config)
