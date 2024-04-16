@@ -287,15 +287,15 @@ def unravel_oilbus(n):
           capital_cost=0.02,
           )
 
-    n.madd(
-        "Store",
-        ["DE renewable oil Store", "EU renewable oil Store"],
-        bus=["DE renewable oil", "EU renewable oil"],
-        carrier="renewable oil",
-        e_nom_extendable=True,
-        e_cyclic=True,
-        capital_cost=0.02,
-    )
+    # n.madd(
+    #     "Store",
+    #     ["DE renewable oil Store", "EU renewable oil Store"],
+    #     bus=["DE renewable oil", "EU renewable oil"],
+    #     carrier="renewable oil",
+    #     e_nom_extendable=True,
+    #     e_cyclic=True,
+    #     capital_cost=0.02,
+    # )
 
 def transmission_costs_from_modified_cost_data(n, costs, length_factor=1.0):
     # copying the the function update_transmission_costs from add_electricity

@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20250415steelcement
+  prefix: 20250415exportmerge
   name:
   - CurrentPolicies
   - KN2045_Bal_v4
@@ -19,10 +19,9 @@ run:
     file: config/scenarios.automated.yaml
   shared_resources: true #stops recalculating
   disable_progressbar: true
-  debug_co2_limit: true
-  debug_elec_import_limit: false
-  debug_h2deriv_limit: true
-  debug_unravel_oilbus: true
+  debug_co2_limit: false
+  debug_h2deriv_limit: false
+  debug_unravel_oilbus: false
 
 iiasa_database:
   db_name: ariadne_intern

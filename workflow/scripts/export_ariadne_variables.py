@@ -2406,10 +2406,10 @@ if __name__ == "__main__":
             simpl="",
             clusters=22,
             opts="",
-            ll="v1.2",
+            ll="vopt",
             sector_opts="None",
-            planning_horizons="2050",
-            run="KN2045_H2_v4"
+            planning_horizons="2025",
+            run="KN2045_Bal_v4"
         )
 
 

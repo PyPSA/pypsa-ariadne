@@ -112,7 +112,7 @@ KN2045_Bal_v4:
 
   clustering:
     temporal:
-      resolution_sector: 3H
+      resolution_sector: 365H
 
   iiasa_database:
     reference_scenario: 8Gt_Bal_v3
@@ -169,7 +169,7 @@ KN2045_Elec_v4:
 
   clustering:
     temporal:
-      resolution_sector: 3H
+      resolution_sector: 365H
 
   iiasa_database:
     reference_scenario: 8Gt_Elec_v3
@@ -225,7 +225,7 @@ KN2045_H2_v4:
 
   clustering:
     temporal:
-      resolution_sector: 3H
+      resolution_sector: 365H
 
   iiasa_database:
     reference_scenario: 8Gt_H2_v3
