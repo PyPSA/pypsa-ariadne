@@ -2070,9 +2070,8 @@ def get_prices(n, region):
         coal_fraction * specific_emisisons["hard coal"] * co2_price \
         + lignite_fraction * specific_emisisons["lignite"] * co2_price 
 
-
     var["Price|Primary Energy|Coal"] = \
-        get_weighted_costs([coal_price, lignite_price], [nf_coal.values.sum(), nf_lignite.values.sum()])/ MWh2GJ
+        (get_weighted_costs([coal_price, lignite_price], [nf_coal.values.sum(), nf_lignite.values.sum()]) + co2_add_coal)/ MWh2GJ
     
     # Price|Primary Energy|Gas
     nodal_flows_gas = get_nodal_flows(n, "gas", region)
@@ -2084,7 +2083,7 @@ def get_prices(n, region):
 
 
     var["Price|Primary Energy|Gas"] = \
-        nodal_flows_gas.mul(nodal_prices_gas).values.sum()  / nodal_flows_gas.values.sum() / MWh2GJ
+        (nodal_flows_gas.mul(nodal_prices_gas).values.sum()  / nodal_flows_gas.values.sum() + co2_add_gas) / MWh2GJ
     
     # Price|Primary Energy|Oil
     # if oil bus is unravelled change "EU" into region
@@ -2095,11 +2094,8 @@ def get_prices(n, region):
     oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
     co2_add_oil = oil_fossil_fraction * specific_emisisons["oil"] * co2_price
 
-    if not math.isnan(nodal_flows_oil.values.sum()):
-        var["Price|Primary Energy|Oil"] = \
+    var["Price|Primary Energy|Oil"] = \
         (nodal_flows_oil.mul(nodal_prices_oil).values.sum() / nodal_flows_oil.values.sum() + co2_add_oil) /MWh2GJ
-    else:
-        var["Price|Primary Energy|Oil"] = np.nan
 
     # Price|Secondary Energy|Electricity
     # electricity price at the secondary level, i.e. for large scale consumers (e.g. aluminum production). Prices should include the effect of carbon prices.
