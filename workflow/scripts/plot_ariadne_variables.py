@@ -74,6 +74,12 @@ def within_plot(df, df2,
         )
     
     n = df.shape[1]
+    if n == 0:
+        print("Warning! Apparently the variables required for this plot are missing.")
+        fig = plt.figure()
+        plt.title("Warning! Apparently the variables required for this plot are missing.")
+        fig.savefig(savepath, bbox_inches="tight")
+        return fig
     rows = n // 2 + n % 2 
 
     fig, axes = plt.subplots(rows, 2, figsize=(10, 5 * rows))
