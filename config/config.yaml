@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20250415steelcement
+  prefix: 20250416exportmerge
   name:
   - CurrentPolicies
   - KN2045_Bal_v4
@@ -19,6 +19,9 @@ run:
     file: config/scenarios.automated.yaml
   shared_resources: true #stops recalculating
   disable_progressbar: true
+  debug_co2_limit: false
+  debug_h2deriv_limit: false
+  debug_unravel_oilbus: false
 
 iiasa_database:
   db_name: ariadne_intern
@@ -36,7 +39,6 @@ iiasa_database:
     - 8Gt_H2_v3
   reference_scenario: 8Gt_Bal_v3
   region: Deutschland
-
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
 foresight: myopic
@@ -87,7 +89,7 @@ clustering:
     'PL': 0.0454
     'SE': 0.0454
   temporal:
-    resolution_sector: 3H
+    resolution_sector: 365H
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:
@@ -269,9 +271,16 @@ industry:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
 solving:
   runtime: 12h
-  mem_mb: 140000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
+  mem_mb: 40000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
   options:
     load_shedding: false
+  # solver:
+  #   options: gurobi-numeric-focus
+  # solver_options:
+  #   gurobi-default:
+  #     NumericFocus: 1
+  #     FeasibilityTol: 1.e-4
+  #     BarHomogeneous: 1
 
 plotting:
   tech_colors:
