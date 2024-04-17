@@ -2369,10 +2369,10 @@ def get_capex(n, costs, region):
     ).filter(like=region).groupby("carrier").sum()# in bn 
     # var["Investment"] = 
     # var["Investment|Energy Supply"] = \ 
-    var["Investment|Energy Supply|Electricity"] = \
-        capex_electricity.sum()
-    var["Investment|Energy Supply|Electricity|Coal"] = \
-        capex_electricity.reindex(["coal", "lignite"]).sum()
+    #var["Investment|Energy Supply|Electricity"] = \
+    #    capex_electricity.sum()
+    #var["Investment|Energy Supply|Electricity|Coal"] = \
+    #    capex_electricity.reindex(["coal", "lignite"]).sum()
     # var["Investment|Energy Supply|Electricity|Coal|w/ CCS"] = \ 
     # var["Investment|Energy Supply|Electricity|Coal|w/o CCS"] = \
     # var["Investment|Energy Supply|Electricity|Gas"] = \ 
@@ -2395,7 +2395,7 @@ def get_capex(n, costs, region):
     # var["Investment|Energy Supply|Electricity|Other"] = 
     var["Investment|Energy Supply|Electricity|Transmission and Distribution"] = (
         capacities_electricity.get("electricity distribution grid", 0) * costs.at["electricity distribution grid", "investment"]
-    )
+    ) # weirdly all of the distribution grid is listed as expanded_capacity in that year
     # var["Investment|Energy Supply|Electricity|Electricity Storage"] = \ 
     # var["Investment|Energy Supply|Hydrogen|Fossil"] = \ 
     # var["Investment|Energy Supply|Hydrogen|Biomass"] = \
