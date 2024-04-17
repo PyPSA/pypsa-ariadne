@@ -5,6 +5,12 @@ from numpy import isclose
 import math
 import numpy as np
 
+paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
+for path in paths:
+    sys.path.insert(0, os.path.abspath(path))
+
+from prepare_sector_network import prepare_costs
+
 # Defining global varibales
 
 TWh2PJ = 3.6
@@ -135,6 +141,17 @@ def get_capacity_additions_simple(n, region):
                      index = "Capacity Additions" + caps.index.str[8:])
 
 
+def _get_capex(n, region):
+    def _capex(*args, **kwargs):
+        # call n.statistics.capex, but ignore the storage keyword
+        kwargs.pop("storage", None)
+        return n.statistics.capex(*args,**kwargs)
+    return _get_capacities(
+        n,
+        region,
+        _capex,
+        cap_string="Investment|"
+    )
 
 def get_capacity_additions(n, region):
     def _f(*args, **kwargs):
@@ -2339,6 +2356,76 @@ def get_prices(n, region):
 
     return var
 
+def get_capex(n, costs, region):
+    kwargs = {
+        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
+        'nice_names': False,
+    }
+
+    var = pd.Series()
+    capacities_electricity = n.statistics.expanded_capacity(
+        bus_carrier=["AC", "low voltage"],
+        **kwargs,
+    ).filter(like=region).groupby("carrier").sum()# in bn 
+    # var["Investment"] = 
+    # var["Investment|Energy Supply"] = \ 
+    var["Investment|Energy Supply|Electricity"] = \
+        capex_electricity.sum()
+    var["Investment|Energy Supply|Electricity|Coal"] = \
+        capex_electricity.reindex(["coal", "lignite"]).sum()
+    # var["Investment|Energy Supply|Electricity|Coal|w/ CCS"] = \ 
+    # var["Investment|Energy Supply|Electricity|Coal|w/o CCS"] = \
+    # var["Investment|Energy Supply|Electricity|Gas"] = \ 
+    # var["Investment|Energy Supply|Electricity|Gas|w/ CCS"] = \  
+    # var["Investment|Energy Supply|Electricity|Gas|w/o CCS"] = \ 
+    # var["Investment|Energy Supply|Electricity|Oil"] = \ 
+    # var["Investment|Energy Supply|Electricity|Oil|w/ CCS"] = \  
+    # var["Investment|Energy Supply|Electricity|Oil|w/o CCS"] = \ 
+    # var["Investment|Energy Supply|Electricity|Non-fossil"] = \  
+    # var["Investment|Energy Supply|Electricity|Biomass"] = \ 
+    # var["Investment|Energy Supply|Electricity|Biomass|w/ CCS"] = \  
+    # var["Investment|Energy Supply|Electricity|Biomass|w/o CCS"] = \ 
+    # var["Investment|Energy Supply|Electricity|Nuclear"] = \ 
+    # var["Investment|Energy Supply|Electricity|Non-Biomass Renewables"] = \  
+    # var["Investment|Energy Supply|Electricity|Hydro"] = 
+    # var["Investment|Energy Supply|Electricity|Solar"] = 
+    # var["Investment|Energy Supply|Electricity|Wind"] = \
+    # var["Investment|Energy Supply|Electricity|Geothermal"] = \  
+    # var["Investment|Energy Supply|Electricity|Ocean"] = 
+    # var["Investment|Energy Supply|Electricity|Other"] = 
+    var["Investment|Energy Supply|Electricity|Transmission and Distribution"] = (
+        capacities_electricity.get("electricity distribution grid", 0) * costs.at["electricity distribution grid", "investment"]
+    )
+    # var["Investment|Energy Supply|Electricity|Electricity Storage"] = \ 
+    # var["Investment|Energy Supply|Hydrogen|Fossil"] = \ 
+    # var["Investment|Energy Supply|Hydrogen|Biomass"] = \
+    # var["Investment|Energy Supply|Hydrogen|Electrolysis"] = 
+    # var["Investment|Energy Supply|Hydrogen|Other"] = \  
+    # var["Investment|Energy Supply|Liquids"] = \ 
+    # var["Investment|Energy Supply|Liquids|Oil"] = \ 
+    # var["Investment|Energy Supply|Liquids|Coal and Gas"] = \
+    # var["Investment|Energy Supply|Liquids|Biomass"] = \ 
+    # var["Investment|Energy Supply|CO2 Transport and Storage"] = 
+    # var["Investment|Energy Supply|Other"] = 
+    # var["Investment|Energy Efficiency"] = \ 
+    # var["Investment|Energy Supply|Heat"] = \
+    # var["Investment|Energy Supply|Hydrogen"] = \
+    # var["Investment|RnD|Energy Supply"] = \ 
+    # var["Investment|Energy Demand|Transportation"] = \  
+    # var["Investment|Energy Demand|Transportation|LDV"] = \  
+    # var["Investment|Energy Demand|Transportation|Bus"] = \  
+    # var["Investment|Energy Demand|Transportation|Rail"] = \ 
+    # var["Investment|Energy Demand|Transportation|Truck"] = \
+    # var["Investment|Infrastructure|Transport"] = \  
+    # var["Investment|Energy Demand|Residential and Commercial"] = \  
+    # var["Investment|Energy Demand|Residential and Commercial|Low-Efficiency Buildings"] = \ 
+    # var["Investment|Energy Demand|Residential and Commercial|Medium-Efficiency Buildings"] = \  
+    # var["Investment|Energy Demand|Residential and Commercial|High-Efficiency Buildings"] = \
+    # var["Investment|Energy Demand|Residential and Commercial|Building Retrofits"] = 
+    # var["Investment|Energy Demand|Residential and Commercial|Space Heating"] = \
+    # var["Investment|Infrastructure|Industry|Green"] = \ 
+    # var["Investment|Infrastructure|Industry|Non-Green"] = \ 
+    # var["Investment|Industry"] = \  
 
 def get_ariadne_var(n, industry_demand, energy_totals, region):
 
@@ -2408,8 +2495,8 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts="None",
-            planning_horizons="2025",
-            run="CurrentPolicies"
+            #planning_horizons="2025",
+            run="KN2045_Bal_v4"
         )
 
 
@@ -2432,10 +2519,23 @@ if __name__ == "__main__":
         level="year",
     ).multiply(TWh2PJ)
 
+    nhours = int(snakemake.params.hours[0:3])
+    nyears = nhours / 8760
+
+    costs = list(map(
+        lambda _costs: prepare_costs(
+            _costs,
+            snakemake.params.costs,
+            nyears,
+        ).multiply(1e-9), # in bn €
+        snakemake.input.costs
+    ))
+
+
     networks = [pypsa.Network(n) for n in snakemake.input.networks]
 
     yearly_dfs = []
-    for i, year in enumerate(config["scenario"]["planning_horizons"]):
+    for i, year in enumerate(snakemake.params.planning_horizons):
         yearly_dfs.append(get_data(
             networks[i],
             industry_demands[i],
@@ -2477,6 +2577,7 @@ if __name__ == "__main__":
 
     # For debugging
     n = networks[0]
+    c = costs[0]
     region="DE"
     kwargs = {
         'groupby': n.statistics.groupers.get_name_bus_and_carrier,
