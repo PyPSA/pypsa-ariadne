@@ -4,12 +4,12 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20250416exportmerge
+  prefix: post-discretize-links-test
   name:
-  - CurrentPolicies
+  #- CurrentPolicies
   - KN2045_Bal_v4
-  - KN2045_Elec_v4
-  - KN2045_H2_v4
+  #- KN2045_Elec_v4
+  #- KN2045_H2_v4
   # - KN2045plus_EasyRide
   # - KN2045plus_LowDemand
   # - KN2045minus_WorstCase
@@ -318,3 +318,21 @@ pypsa_eur:
   - PHS
   - hydro
   Store: []
+
+# post-discretization
+post-discretization:
+  lines:
+    AC: 1700
+  links:
+    DC: 2000 # check
+    gas pipeline:  1500
+    gas pipeline new:  1500
+    H2 pipeline:  1200
+    H2 pipeline (Kernnetz):  1200
+    H2 pipeline retrofitted:  1200
+
+solving:
+  options:
+    skip_iterations: false
+    min_iterations: 2
+    max_iterations: 2
