@@ -4,12 +4,12 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: post-discretize-links-test
+  prefix: post-discretize-all-test
   name:
-  #- CurrentPolicies
+  - CurrentPolicies
   - KN2045_Bal_v4
-  #- KN2045_Elec_v4
-  #- KN2045_H2_v4
+  - KN2045_Elec_v4
+  - KN2045_H2_v4
   # - KN2045plus_EasyRide
   # - KN2045plus_LowDemand
   # - KN2045minus_WorstCase
@@ -334,5 +334,5 @@ post-discretization:
 solving:
   options:
     skip_iterations: false
-    min_iterations: 2
-    max_iterations: 2
+    min_iterations: 1
+    max_iterations: 1
