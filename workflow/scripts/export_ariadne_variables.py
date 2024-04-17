@@ -2409,7 +2409,7 @@ if __name__ == "__main__":
             ll="vopt",
             sector_opts="None",
             planning_horizons="2025",
-            run="KN2045_Bal_v4"
+            run="CurrentPolicies"
         )
 
 
@@ -2426,7 +2426,10 @@ if __name__ == "__main__":
     ]
     energy_totals = pd.read_csv(
         snakemake.input.energy_totals,
-        index_col=0,
+        index_col=[0,1],
+    ).xs(
+        snakemake.params.energy_totals_year,
+        level="year",
     ).multiply(TWh2PJ)
 
     networks = [pypsa.Network(n) for n in snakemake.input.networks]

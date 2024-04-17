@@ -269,6 +269,8 @@ rule download_ariadne_template:
         move(input[0], output[0])
 
 rule export_ariadne_variables:
+    params:
+        energy_totals_year=config_provider("energy", "energy_totals_year"),
     input:
         template=resources("template_ariadne_database.xlsx"),
         industry_demands=expand(
