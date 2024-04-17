@@ -49,24 +49,21 @@ def get_transport_growth(df, planning_horizons):
     # Aviation growth factor - using REMIND-EU v1.1 since DEMO v1 does not include bunkers
     aviation_model = "REMIND-EU v1.1"
     aviation = df.loc[aviation_model,"Final Energy|Bunkers|Aviation"]
-    aviation = aviation[planning_horizons]
-    aviation.reset_index(inplace=True)
-    aviation.drop(columns="unit", inplace=True)
-    aviation_growth_factor = aviation / aviation[2020][0]
+    aviation_growth_factor = aviation.loc["PJ/yr"] / aviation.loc["PJ/yr", 2020]
 
     # Transport growth factor - using DEMO v1
     transport_model = "DEMO v1"
-    freight = df.loc[transport_model, "Energy Service|Transportation|Freight|Road"][planning_horizons].reset_index().drop(columns="unit")
-    person = df.loc[transport_model, "Energy Service|Transportation|Passenger|Road"][planning_horizons].reset_index().drop(columns="unit")
-    freight_PJ = df.loc[transport_model, "Final Energy|Transportation|Truck"][planning_horizons].reset_index().drop(columns="unit")
-    person_PJ = df.loc[transport_model, "Final Energy|Transportation|LDV"][planning_horizons].reset_index().drop(columns="unit")
+    freight = df.loc[transport_model, "Energy Service|Transportation|Freight|Road"]
+    person = df.loc[transport_model, "Energy Service|Transportation|Passenger|Road"]
+    freight_PJ = df.loc[transport_model, "Final Energy|Transportation|Truck"]
+    person_PJ = df.loc[transport_model, "Final Energy|Transportation|LDV"]
     
-    transport_growth_factor = pd.DataFrame(columns=planning_horizons)
+    transport_growth_factor = pd.Series()
     for year in planning_horizons:
-        share = (person_PJ.loc[0, year] / (person_PJ.loc[0, year] + freight_PJ.loc[0, year]))
-        transport_growth_factor.loc[0, year] = share * (person.loc[0, year] / person.loc[0, 2020]) + (1 - share) * (freight.loc[0, year] / freight.loc[0, 2020])
+        share = (person_PJ.loc["PJ/yr", year] / (person_PJ.loc["PJ/yr", year] + freight_PJ.loc["PJ/yr", year]))
+        transport_growth_factor.loc[year] = share * (person.loc["bn pkm/yr", year] / person.loc["bn pkm/yr", 2020]) + (1 - share) * (freight.loc["bn tkm/yr", year] / freight.loc["bn tkm/yr", 2020])
 
-    return aviation_growth_factor, transport_growth_factor
+    return aviation_growth_factor[planning_horizons].rename("aviation_growth"), transport_growth_factor.rename("land_transport_growth")
 
 
 def get_primary_steel_share(df, planning_horizons):
@@ -185,8 +182,8 @@ def write_to_scenario_yaml(
         config[scenario]["sector"]["land_transport_demand_factor"] = {}
         config[scenario]["sector"]["aviation_demand_factor"] = {}
         for year in planning_horizons:
-            config[scenario]["sector"]["aviation_demand_factor"][year] = round(aviation_demand_factor.loc[0, year].item(), 4)
-            config[scenario]["sector"]["land_transport_demand_factor"][year] = round(land_transport_demand_factor.loc[0, year].item(), 4)
+            config[scenario]["sector"]["aviation_demand_factor"][year] = round(aviation_demand_factor.loc[year].item(), 4)
+            config[scenario]["sector"]["land_transport_demand_factor"][year] = round(land_transport_demand_factor.loc[year].item(), 4)
 
         st_primary_fraction = get_primary_steel_share(df.loc[:, reference_scenario, :], planning_horizons)
         
