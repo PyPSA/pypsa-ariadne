@@ -270,6 +270,9 @@ rule download_ariadne_template:
 
 rule export_ariadne_variables:
     params:
+        planning_horizons = config_provider("scenario","planning_horizons")
+        hours=config_provider("clustering","temporal","resolution_sector"),
+        costs=config_provider("costs"),
         energy_totals_year=config_provider("energy", "energy_totals_year"),
     input:
         template=resources("template_ariadne_database.xlsx"),
@@ -282,9 +285,11 @@ rule export_ariadne_variables:
             **config["scenario"],
             allow_missing=True,
         ),
-
+        costs=expand(
+            resources("modified-costs_{planning_horizons}.csv"),
+            **config["scenario"],
+        ),
         energy_totals=resources("energy_totals.csv"),
-
     output:
         exported_variables=RESULTS + "ariadne/exported_variables.xlsx"
     log:
