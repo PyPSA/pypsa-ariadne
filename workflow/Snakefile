@@ -270,7 +270,7 @@ rule download_ariadne_template:
 
 rule export_ariadne_variables:
     params:
-        planning_horizons = config_provider("scenario","planning_horizons")
+        planning_horizons = config_provider("scenario","planning_horizons"),
         hours=config_provider("clustering","temporal","resolution_sector"),
         costs=config_provider("costs"),
         energy_totals_year=config_provider("energy", "energy_totals_year"),
