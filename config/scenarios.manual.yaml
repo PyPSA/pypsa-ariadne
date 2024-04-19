@@ -15,7 +15,7 @@ CurrentPolicies:
 
   # Kernnetz is not assumed to be built
   wasserstoff_kernnetz:
-    enable: false
+    enable: true
 
   iiasa_database:
     # TODO: wait for REMod v1.0 to upload a first Trend scenario
