@@ -48,22 +48,22 @@ def get_transport_shares(df, planning_horizons):
 def get_transport_growth(df, planning_horizons):
     # Aviation growth factor - using REMIND-EU v1.1 since DEMO v1 does not include bunkers
     aviation_model = "REMIND-EU v1.1"
-    aviation = df.loc[aviation_model,"Final Energy|Bunkers|Aviation"]
-    aviation_growth_factor = aviation.loc["PJ/yr"] / aviation.loc["PJ/yr", 2020]
+    aviation = df.loc[aviation_model,"Final Energy|Bunkers|Aviation", "PJ/yr"]
+    aviation_growth_factor = aviation / aviation[2020]
 
     # Transport growth factor - using DEMO v1
     transport_model = "DEMO v1"
-    freight = df.loc[transport_model, "Energy Service|Transportation|Freight|Road"]
-    person = df.loc[transport_model, "Energy Service|Transportation|Passenger|Road"]
-    freight_PJ = df.loc[transport_model, "Final Energy|Transportation|Truck"]
-    person_PJ = df.loc[transport_model, "Final Energy|Transportation|LDV"]
+    freight = df.loc[transport_model, "Energy Service|Transportation|Freight|Road", "bn tkm/yr"]
+    person = df.loc[transport_model, "Energy Service|Transportation|Passenger|Road", "bn pkm/yr"]
+    freight_PJ = df.loc[transport_model, "Final Energy|Transportation|Truck", "PJ/yr"]
+    person_PJ = df.loc[transport_model, "Final Energy|Transportation|LDV", "PJ/yr"]
     
     transport_growth_factor = pd.Series()
     for year in planning_horizons:
-        share = (person_PJ.loc["PJ/yr", year] / (person_PJ.loc["PJ/yr", year] + freight_PJ.loc["PJ/yr", year]))
-        transport_growth_factor.loc[year] = share * (person.loc["bn pkm/yr", year] / person.loc["bn pkm/yr", 2020]) + (1 - share) * (freight.loc["bn tkm/yr", year] / freight.loc["bn tkm/yr", 2020])
+        share = (person_PJ[year] / (person_PJ[year] + freight_PJ[year]))
+        transport_growth_factor.loc[year] = share * (person[year] / person[2020]) + (1 - share) * (freight[year] / freight[2020])
 
-    return aviation_growth_factor[planning_horizons].rename("aviation_growth"), transport_growth_factor.rename("land_transport_growth")
+    return aviation_growth_factor[planning_horizons], transport_growth_factor
 
 
 def get_primary_steel_share(df, planning_horizons):
