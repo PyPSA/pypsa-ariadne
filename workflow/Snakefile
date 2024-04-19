@@ -7,7 +7,7 @@ from snakemake.utils import min_version
 include: "submodules/pypsa-eur/rules/common.smk"
 
 import yaml, sys
-
+from shutil import  move
 sys.path.append("workflow/submodules/pypsa-eur/scripts")
 
 from _helpers import path_provider, get_scenarios, get_rdir
@@ -255,6 +255,75 @@ rule cluster_wasserstoff_kernnetz:
         clustered_h2_network=resources("wasserstoff_kernnetz_elec_s{simpl}_{clusters}.csv"),
     script:
         "scripts/cluster_wasserstoff_kernnetz.py"
+
+
+rule download_ariadne_template:
+    input:
+        storage(
+            "https://github.com/iiasa/ariadne-intern-workflow/raw/master/attachments/2024-03-28_template_Ariadne.xlsx",
+            keep_local=True,
+        )
+    output:
+        resources("template_ariadne_database.xlsx")
+    run:
+        move(input[0], output[0])
+
+rule export_ariadne_variables:
+    params:
+        energy_totals_year=config_provider("energy", "energy_totals_year"),
+    input:
+        template=resources("template_ariadne_database.xlsx"),
+        industry_demands=expand(
+            resources("industrial_energy_demand_elec_s{simpl}_{clusters}_{planning_horizons}.csv"),
+            **config["scenario"]
+        ),
+        networks=expand(
+            RESULTS + "postnetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
+            **config["scenario"],
+            allow_missing=True,
+        ),
+
+        energy_totals=resources("energy_totals.csv"),
+
+    output:
+        exported_variables=RESULTS + "ariadne/exported_variables.xlsx"
+    log:
+        RESULTS + "logs/export_ariadne_variables.log"
+    script:
+        "scripts/export_ariadne_variables.py"
+
+
+rule plot_ariadne_variables:
+    params:
+        iiasa_scenario=config_provider("iiasa_database", "reference_scenario"),
+    input:
+        exported_variables=RESULTS + "ariadne/exported_variables.xlsx",
+        ariadne_database=resources("ariadne_database.csv"),
+    output:
+        primary_energy=RESULTS + "ariadne/primary_energy.png",
+        primary_energy_detailed=RESULTS + "ariadne/primary_energy_detailed.png",
+        secondary_energy=RESULTS + "ariadne/secondary_energy.png",
+        secondary_energy_detailed=RESULTS + "ariadne/secondary_energy_detailed.png",
+        final_energy=RESULTS + "ariadne/final_energy.png",
+        final_energy_detailed=RESULTS + "ariadne/final_energy_detailed.png",
+        capacity=RESULTS + "ariadne/capacity.png",
+        capacity_detailed=RESULTS + "ariadne/capacity_detailed.png",
+        energy_demand_emissions=RESULTS + "ariadne/energy_demand_emissions.png",
+        energy_supply_emissions=RESULTS + "ariadne/energy_supply_emissions.png",
+        co2_emissions=RESULTS + "ariadne/co2_emissions.png",
+        primary_energy_price = RESULTS + "ariadne/primary_energy_price.png",
+        secondary_energy_price = RESULTS + "ariadne/secondary_energy_price.png",
+        final_energy_residential_price = RESULTS + "ariadne/final_energy_residential_price.png",
+        final_energy_industry_price = RESULTS + "ariadne/final_energy_industry_price.png",
+        final_energy_transportation_price = RESULTS + "ariadne/final_energy_transportation_price.png",
+        final_energy_residential_commercial_price = RESULTS + "ariadne/final_energy_residential_commercial_price.png",
+        all_prices = RESULTS + "ariadne/all_prices.png",
+    script:
+        "scripts/plot_ariadne_variables.py"
+
+rule ariadne_all:
+    input:
+        expand(RESULTS + "ariadne/capacity_detailed.png", run=config_provider("run", "name"))
 
 rule build_scenarios:
     params:

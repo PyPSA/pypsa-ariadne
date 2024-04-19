@@ -152,7 +152,7 @@ def electricity_import_limits(n, snapshots, investment_year, config):
         )
 
 
-def add_co2limit_country(n, limit_countries, snakemake):
+def add_co2limit_country(n, limit_countries, snakemake, debug=False):
     """
     Add a set of emissions limit constraints for specified countries.
 
@@ -203,10 +203,11 @@ def add_co2limit_country(n, limit_countries, snakemake):
         incoming = n.links.index[n.links.index == "EU renewable oil -> DE oil"]
         outgoing = n.links.index[n.links.index == "DE renewable oil -> EU oil"]
 
-        incoming_p = (n.model["Link-p"].loc[:, incoming]*n.snapshot_weightings.generators).sum()
-        outgoing_p = (n.model["Link-p"].loc[:, outgoing]*n.snapshot_weightings.generators).sum()
+        if not debug:
+            lhs.append((-1*n.model["Link-p"].loc[:, incoming]*0.2571*n.snapshot_weightings.generators).sum())
+            lhs.append((n.model["Link-p"].loc[:, outgoing]*0.2571*n.snapshot_weightings.generators).sum())
 
-        lhs = sum(lhs) + (outgoing_p - incoming_p)*0.2571
+        lhs = sum(lhs)
 
         cname = f"co2_limit-{ct}"
 
@@ -326,17 +327,19 @@ def additional_functionality(n, snapshots, snakemake):
     add_min_limits(n, snapshots, investment_year, snakemake.config)
 
     h2_import_limits(n, snapshots, investment_year, snakemake.config)
-
+    
     electricity_import_limits(n, snapshots, investment_year, snakemake.config)
     
     if investment_year >= 2025:
         h2_production_limits(n, snapshots, investment_year, snakemake.config)
-
-    add_h2_derivate_limit(n, snapshots, investment_year, snakemake.config)
+    
+    if not snakemake.config["run"]["debug_h2deriv_limit"]:
+        add_h2_derivate_limit(n, snapshots, investment_year, snakemake.config)
 
     #force_boiler_profiles_existing_per_load(n)
     force_boiler_profiles_existing_per_boiler(n)
 
     if snakemake.config["sector"]["co2_budget_national"]:
         limit_countries = snakemake.config["co2_budget_national"][investment_year]
-        add_co2limit_country(n, limit_countries, snakemake)
+        add_co2limit_country(n, limit_countries, snakemake,                  
+            debug=snakemake.config["run"]["debug_co2_limit"])

@@ -16,6 +16,7 @@ from prepare_sector_network import (
     prepare_costs,
     lossy_bidirectional_links,
 )
+
 from add_electricity import load_costs
 
 
@@ -242,9 +243,17 @@ def unravel_oilbus(n):
     """
     logger.info("Unraveling oil bus")
     # add buses
-    n.add("Bus", "DE oil", carrier="oil")
-    n.add("Bus", "DE renewable oil", carrier="renewable oil")
-    n.add("Bus", "EU renewable oil", carrier="renewable oil")
+    n.add("Bus", "DE", location="DE", x=10.5, y=51.2, carrier="none")
+    n.add("Bus", "DE oil", location="DE", x=10.5, y=51.2, carrier="oil")
+    n.add("Bus", "DE renewable oil", location="DE", x=10.5, y=51.2, carrier="renewable oil")
+    n.add(
+        "Bus", 
+        "EU renewable oil", 
+        location="EU",
+        x=n.buses.loc["EU","x"],
+        y=n.buses.loc["EU","y"],
+        carrier="renewable oil"
+    )
 
     # add one generator for DE oil
     n.add("Generator",
@@ -286,15 +295,15 @@ def unravel_oilbus(n):
           capital_cost=0.02,
           )
 
-    n.madd(
-        "Store",
-        ["DE renewable oil Store", "EU renewable oil Store"],
-        bus=["DE renewable oil", "EU renewable oil"],
-        carrier="renewable oil",
-        e_nom_extendable=True,
-        e_cyclic=True,
-        capital_cost=0.02,
-    )
+    # n.madd(
+    #     "Store",
+    #     ["DE renewable oil Store", "EU renewable oil Store"],
+    #     bus=["DE renewable oil", "EU renewable oil"],
+    #     carrier="renewable oil",
+    #     e_nom_extendable=True,
+    #     e_cyclic=True,
+    #     capital_cost=0.02,
+    # )
 
 def transmission_costs_from_modified_cost_data(n, costs, length_factor=1.0):
     # copying the the function update_transmission_costs from add_electricity
@@ -372,7 +381,8 @@ if __name__ == "__main__":
 
     first_technology_occurrence(n)
 
-    unravel_oilbus(n)
+    if not snakemake.config["run"]["debug_unravel_oilbus"]:
+        unravel_oilbus(n)
 
     if snakemake.params.enable_kernnetz:
         fn = snakemake.input.wkn
