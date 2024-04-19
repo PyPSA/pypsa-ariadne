@@ -141,19 +141,6 @@ def get_capacity_additions_simple(n, region):
     return pd.Series(data = caps.values - incaps.values,
                      index = "Capacity Additions" + caps.index.str[8:])
 
-
-def _get_capex(n, region):
-    def _capex(*args, **kwargs):
-        # call n.statistics.capex, but ignore the storage keyword
-        kwargs.pop("storage", None)
-        return n.statistics.capex(*args,**kwargs)
-    return _get_capacities(
-        n,
-        region,
-        _capex,
-        cap_string="Investment|"
-    )
-
 def get_capacity_additions(n, region):
     def _f(*args, **kwargs):
         return n.statistics.optimal_capacity(*args, **kwargs).sub(
