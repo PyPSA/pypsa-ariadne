@@ -4,6 +4,7 @@ from functools import reduce
 from numpy import isclose
 import math
 import numpy as np
+import os
 
 paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
 for path in paths:
@@ -2356,7 +2357,7 @@ def get_prices(n, region):
 
     return var
 
-def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0):
+def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1.0):
     kwargs = {
         'groupby': n_pre.statistics.groupers.get_name_bus_and_carrier,
         'nice_names': False,
@@ -2404,7 +2405,7 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0):
 
     dc_new = (dc_expansion > 10) & (n_pre.links.loc[dc_links.index].p_nom_min < 10)
 
-    dc_investments = (
+    dc_investments = dc_links.length * length_factor * (
         (1 - dc_links.underwater_fraction) 
         * dc_expansion 
         * costs.at["HVDC overhead", "investment"]
@@ -2412,13 +2413,12 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0):
         dc_links.underwater_fraction 
         * dc_expansion 
         * costs.at["HVDC submarine", "investment"] 
-        + 
-        dc_new * costs.at["HVDC inverter pair","investment"] 
-    )
+        
+    ) + dc_new * costs.at["HVDC inverter pair","investment"] 
 
     ac_lines = n.lines[(n.lines.bus0 + n.lines.bus1).str.contains(region)]
     ac_expansion = ac_lines.s_nom_opt - n_pre.lines.loc[ac_lines.index].s_nom_min
-    ac_investments = ac_expansion * costs.at["HVAC overhead", "investment"]
+    ac_investments = ac_lines.length * length_factor *  ac_expansion * costs.at["HVAC overhead", "investment"]
     var["Investment|Energy Supply|Electricity|Transmission"] = \
         dc_investments.sum() + ac_investments.sum()
 
@@ -2473,6 +2473,7 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0):
     # var["Investment|Infrastructure|Industry|Green"] = \ 
     # var["Investment|Infrastructure|Industry|Non-Green"] = \ 
     # var["Investment|Industry"] = \  
+    return var
 
 def get_ariadne_var(n, industry_demand, energy_totals, costs, region):
 
@@ -2487,7 +2488,11 @@ def get_ariadne_var(n, industry_demand, energy_totals, costs, region):
         get_final_energy(n, region, industry_demand, energy_totals),
         get_prices(n,region), 
         get_emissions(n, region, energy_totals),
-        get_investments(n,n,costs,region)
+        get_investments(
+            n, n, costs, region,
+            dg_cost_factor=snakemake.params.dg_cost_factor,
+            length_factor=snakemake.params.length_factor
+        )
     ])
 
     return var
@@ -2607,7 +2612,7 @@ if __name__ == "__main__":
         *df.loc[df["Unit"] == "NA"]["Variable"],
         sep="\n"
     )
-    df.drop(df.loc[df["Unit"] == "NA"].index, inplace=True)
+    #df.drop(df.loc[df["Unit"] == "NA"].index, inplace=True)
 
     meta = pd.Series({
         'Model': "PyPSA-Eur v0.10", 

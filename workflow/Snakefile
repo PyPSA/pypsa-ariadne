@@ -270,6 +270,7 @@ rule download_ariadne_template:
 
 rule export_ariadne_variables:
     params:
+        length_factor=config_provider("lines", "length_factor"),
         dg_cost_factor=config_provider("sector", "electricity_distribution_grid_cost_factor"),
         planning_horizons = config_provider("scenario","planning_horizons"),
         hours=config_provider("clustering","temporal","resolution_sector"),
