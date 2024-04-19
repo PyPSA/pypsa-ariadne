@@ -2406,8 +2406,14 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1
     ac_lines = n.lines[(n.lines.bus0 + n.lines.bus1).str.contains(region)]
     ac_expansion = ac_lines.s_nom_opt - n_pre.lines.loc[ac_lines.index].s_nom_min
     ac_investments = ac_lines.length * length_factor *  ac_expansion * costs.at["HVAC overhead", "investment"]
+    var["Investment|Energy Supply|Electricity|Transmission|AC"] = \
+        ac_investments.sum()    
+    var["Investment|Energy Supply|Electricity|Transmission|DC"] = \
+        dc_investments.sum() 
+    
     var["Investment|Energy Supply|Electricity|Transmission"] = \
-        dc_investments.sum() + ac_investments.sum()
+    var["Investment|Energy Supply|Electricity|Transmission|AC"] + \
+    var["Investment|Energy Supply|Electricity|Transmission|DC"] 
 
     distribution_grid = n.links[
         n.links.carrier.str.contains("distribution")].filter(like="DE",axis=0)
@@ -2426,9 +2432,49 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1
     )
     var["Investment|Energy Supply|Electricity|Distribution"] = \
         dg_investment
-    #var["Investment|Energy Supply|Electricity|Transmission and Distribution"]
-    # weirdly all of the distribution grid is listed as expanded_capacity in 2020
+    
+    var["Investment|Energy Supply|Electricity|Transmission and Distribution"] = \
+        var["Investment|Energy Supply|Electricity|Distribution"] + \
+        var["Investment|Energy Supply|Electricity|Transmission"]
+    
 
+    h2_links = n.links[
+        n.links.carrier.str.contains("H2 pipeline")
+        & ~n.links.reversed
+        & (n.links.bus0 + n.links.bus1).str.contains(region)
+    ]
+    year = n.links.build_year.max()
+    new_h2_links = h2_links[
+        ((year - 5) < h2_links.build_year) 
+        & ( h2_links.build_year <= year)]
+    h2_costs = (
+        new_h2_links.length * new_h2_links.p_nom_opt 
+        * costs.at["H2 pipeline", "investment"]
+    )
+
+    var["Investment|Energy Supply|Hydrogen|Transmission"] = \
+        h2_costs.sum()
+
+
+    gas_links = n.links[
+        (
+            ((n.links.carrier == "gas pipeline") & (n.links.build_year > 2020)) 
+            | (n.links.carrier == "gas pipeline new")
+        )
+        & ~n.links.reversed
+        & (n.links.bus0 + n.links.bus1).str.contains(region)
+    ]
+    year = n.links.build_year.max()
+    new_gas_links = gas_links[
+        ((year - 5) < gas_links.build_year) 
+        & (gas_links.build_year <= year)]
+    gas_costs = (
+        new_gas_links.length * new_gas_links.p_nom_opt 
+        * costs.at["CH4 (g) pipeline", "investment"]
+    )
+
+    var["Investment|Energy Supply|Gas|Transmission"] = \
+        gas_costs.sum()
 
     # var["Investment|Energy Supply|Electricity|Electricity Storage"] = \ 
     # var["Investment|Energy Supply|Hydrogen|Fossil"] = \ 
@@ -2534,7 +2580,7 @@ if __name__ == "__main__":
             ll="vopt",
             sector_opts="None",
             #planning_horizons="2025",
-            run="KN2045_Bal_v4"
+            run="KN2045_Elec_v4"
         )
 
 
