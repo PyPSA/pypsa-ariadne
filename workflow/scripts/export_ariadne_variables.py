@@ -2356,17 +2356,18 @@ def get_prices(n, region):
 
     return var
 
-def get_capex(n, costs, region):
+def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0):
     kwargs = {
-        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
+        'groupby': n_pre.statistics.groupers.get_name_bus_and_carrier,
         'nice_names': False,
     }
-
     var = pd.Series()
-    capacities_electricity = n.statistics.expanded_capacity(
-        bus_carrier=["AC", "low voltage"],
-        **kwargs,
-    ).filter(like=region).groupby("carrier").sum()# in bn 
+
+    # capacities_electricity = n.statistics.expanded_capacity(
+    #     bus_carrier=["AC", "low voltage"],
+    #     **kwargs,
+    # ).filter(like=region).groupby("carrier").sum() # in bn 
+    # 
     # var["Investment"] = 
     # var["Investment|Energy Supply"] = \ 
     #var["Investment|Energy Supply|Electricity"] = \
@@ -2393,9 +2394,55 @@ def get_capex(n, costs, region):
     # var["Investment|Energy Supply|Electricity|Geothermal"] = \  
     # var["Investment|Energy Supply|Electricity|Ocean"] = 
     # var["Investment|Energy Supply|Electricity|Other"] = 
-    var["Investment|Energy Supply|Electricity|Transmission and Distribution"] = (
-        capacities_electricity.get("electricity distribution grid", 0) * costs.at["electricity distribution grid", "investment"]
-    ) # weirdly all of the distribution grid is listed as expanded_capacity in that year
+
+    dc_links = n.links[
+        (n.links.carrier=="DC") & 
+        (n.links.bus0 + n.links.bus1).str.contains(region) & 
+        ~n.links.index.str.contains("reversed")
+    ]
+    dc_expansion = dc_links.p_nom_opt - n_pre.links.loc[dc_links.index].p_nom_min
+
+    dc_new = (dc_expansion > 10) & (n_pre.links.loc[dc_links.index].p_nom_min < 10)
+
+    dc_investments = (
+        (1 - dc_links.underwater_fraction) 
+        * dc_expansion 
+        * costs.at["HVDC overhead", "investment"]
+        + 
+        dc_links.underwater_fraction 
+        * dc_expansion 
+        * costs.at["HVDC submarine", "investment"] 
+        + 
+        dc_new * costs.at["HVDC inverter pair","investment"] 
+    )
+
+    ac_lines = n.lines[(n.lines.bus0 + n.lines.bus1).str.contains(region)]
+    ac_expansion = ac_lines.s_nom_opt - n_pre.lines.loc[ac_lines.index].s_nom_min
+    ac_investments = ac_expansion * costs.at["HVAC overhead", "investment"]
+    var["Investment|Energy Supply|Electricity|Transmission"] = \
+        dc_investments.sum() + ac_investments.sum()
+
+    distribution_grid = n.links[
+        n.links.carrier.str.contains("distribution")].filter(like="DE",axis=0)
+
+    year = distribution_grid.build_year.max()
+    year_pre = (year - 5) if year > 2020 else 2020
+
+    dg_expansion = (
+        distribution_grid.p_nom_opt.sum() 
+        - distribution_grid[distribution_grid.build_year <= year_pre].p_nom_opt.sum()
+    )
+    dg_investment = (
+        dg_expansion 
+        * costs.at["electricity distribution grid", "investment"]
+        * dg_cost_factor
+    )
+    var["Investment|Energy Supply|Electricity|Distribution"] = \
+        dg_investment
+    #var["Investment|Energy Supply|Electricity|Transmission and Distribution"]
+    # weirdly all of the distribution grid is listed as expanded_capacity in 2020
+
+
     # var["Investment|Energy Supply|Electricity|Electricity Storage"] = \ 
     # var["Investment|Energy Supply|Hydrogen|Fossil"] = \ 
     # var["Investment|Energy Supply|Hydrogen|Biomass"] = \
@@ -2427,7 +2474,7 @@ def get_capex(n, costs, region):
     # var["Investment|Infrastructure|Industry|Non-Green"] = \ 
     # var["Investment|Industry"] = \  
 
-def get_ariadne_var(n, industry_demand, energy_totals, region):
+def get_ariadne_var(n, industry_demand, energy_totals, costs, region):
 
     var = pd.concat([
         get_capacities(n, region),
@@ -2439,21 +2486,20 @@ def get_ariadne_var(n, industry_demand, energy_totals, region):
         get_secondary_energy(n, region),
         get_final_energy(n, region, industry_demand, energy_totals),
         get_prices(n,region), 
-        get_emissions(n, region, energy_totals)
+        get_emissions(n, region, energy_totals),
+        get_investments(n,n,costs,region)
     ])
 
     return var
 
 
-
-
 # uses the global variables model, scenario and var2unit. For now.
 def get_data(
-        n, industry_demand, energy_totals, region,
+        n, industry_demand, energy_totals, costs, region,
         version="0.10", scenario="test"
     ):
     
-    var = get_ariadne_var(n, industry_demand, energy_totals, region)
+    var = get_ariadne_var(n, industry_demand, energy_totals, costs, region)
 
     data = []
     for v in var.index:
@@ -2540,6 +2586,7 @@ if __name__ == "__main__":
             networks[i],
             industry_demands[i],
             energy_totals,
+            costs[i],
             "DE",
             version=config["version"],
             scenario=config["run"]["name"][0],
@@ -2583,3 +2630,4 @@ if __name__ == "__main__":
         'groupby': n.statistics.groupers.get_name_bus_and_carrier,
         'nice_names': False,
     }
+    dg_cost_factor=snakemake.params.dg_cost_factor
