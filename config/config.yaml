@@ -182,6 +182,11 @@ coal_generation_ban:
 nuclear_generation_ban:
   DE: 2022
 
+electricity:
+  H2_OCGT_retrofit:
+    enable: true
+    year: 2020
+
 first_technology_occurrence:
   Link:
     H2 pipeline: 2025
