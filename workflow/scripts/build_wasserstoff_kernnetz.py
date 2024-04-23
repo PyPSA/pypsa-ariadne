@@ -388,7 +388,7 @@ if __name__ == "__main__":
 
     wasserstoff_kernnetz = prepare_dataset(wasserstoff_kernnetz)
 
-    if snakemake.config["wasserstoff_kernnetz"]["reload_locations"]:
+    if snakemake.params.reload_locations:
         locations = geocode_locations(wasserstoff_kernnetz)
     else:
         locations = pd.read_csv(snakemake.input.locations, index_col=0)

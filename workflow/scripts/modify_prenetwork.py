@@ -26,7 +26,7 @@ def first_technology_occurrence(n):
     if investment year is before configured year.
     """
 
-    for c, carriers in snakemake.config["first_technology_occurrence"].items():
+    for c, carriers in snakemake.params.technology_occurrence.items():
         for carrier, first_year in carriers.items():
             if int(snakemake.wildcards.planning_horizons) < first_year:
                 logger.info(f"{carrier} not extendable before {first_year}.")
@@ -76,8 +76,8 @@ def new_boiler_ban(n):
 
     year = int(snakemake.wildcards.planning_horizons)
 
-    for ct in snakemake.config["new_decentral_fossil_boiler_ban"]:
-        ban_year = int(snakemake.config["new_decentral_fossil_boiler_ban"][ct])
+    for ct in snakemake.params.fossil_boiler_ban:
+        ban_year = int(snakemake.params.fossil_boiler_ban[ct])
         if ban_year < year:
             logger.info(f"For year {year} in {ct} implementing ban on new decentral oil & gas boilers from {ban_year}")
             links = n.links.index[(n.links.index.str[:2] == ct) & (n.links.index.str.contains("gas boiler") ^ n.links.index.str.contains("oil boiler")) & n.links.p_nom_extendable & ~n.links.index.str.contains("urban central")]
@@ -89,8 +89,8 @@ def coal_generation_ban(n):
 
     year = int(snakemake.wildcards.planning_horizons)
 
-    for ct in snakemake.config["coal_generation_ban"]:
-        ban_year = int(snakemake.config["coal_generation_ban"][ct])
+    for ct in snakemake.params.coal_ban:
+        ban_year = int(snakemake.params.coal_ban[ct])
         if ban_year < year:
             logger.info(f"For year {year} in {ct} implementing coal and lignite ban from {ban_year}")
             links = n.links.index[(n.links.index.str[:2] == ct) & n.links.carrier.isin(["coal","lignite"])]
@@ -102,8 +102,8 @@ def nuclear_generation_ban(n):
 
     year = int(snakemake.wildcards.planning_horizons)
 
-    for ct in snakemake.config["nuclear_generation_ban"]:
-        ban_year = int(snakemake.config["nuclear_generation_ban"][ct])
+    for ct in snakemake.params.nuclear_ban:
+        ban_year = int(snakemake.params.nuclear_ban[ct])
         if ban_year < year:
             logger.info(f"For year {year} in {ct} implementing nuclear ban from {ban_year}")
             links = n.links.index[(n.links.index.str[:2] == ct) & n.links.carrier.isin(["nuclear"])]
@@ -161,7 +161,7 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
     investment_year = int(snakemake.wildcards.planning_horizons)
 
     # get previous planning horizon
-    planning_horizons = snakemake.config["scenario"]["planning_horizons"]
+    planning_horizons = snakemake.params.planning_horizons
     i = planning_horizons.index(int(snakemake.wildcards.planning_horizons))
     previous_investment_year = int(planning_horizons[i - 1]) if i != 0 else 2015
 
@@ -189,7 +189,7 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
         )
 
         # add reversed pipes and losses
-        losses = snakemake.config["sector"]["transmission_efficiency"]["H2 pipeline"]
+        losses = snakemake.params.H2_transmission_efficiency
         lossy_bidirectional_links(n, "H2 pipeline (Kernnetz)", losses, subset=names)
 
         # reduce the gas network capacity of retrofitted lines from kernnetz
@@ -205,9 +205,9 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
 
     # reduce H2 retrofitting potential from gas network for all kernnetz
     # pipelines which are being build in total (more conservative approach)
-    if not wkn.empty and snakemake.config["sector"]["H2_retrofit"]:
+    if not wkn.empty and snakemake.params.H2_retrofit:
 
-        conversion_rate = snakemake.config["sector"]["H2_retrofit_capacity_per_CH4"]
+        conversion_rate = snakemake.params.H2_retrofit_capacity_per_CH4
 
         retrofitted_b = (
             n.links.carrier == "H2 pipeline retrofitted"
@@ -243,9 +243,17 @@ def unravel_oilbus(n):
     """
     logger.info("Unraveling oil bus")
     # add buses
-    n.add("Bus", "DE oil", carrier="oil")
-    n.add("Bus", "DE renewable oil", carrier="renewable oil")
-    n.add("Bus", "EU renewable oil", carrier="renewable oil")
+    n.add("Bus", "DE", location="DE", x=10.5, y=51.2, carrier="none")
+    n.add("Bus", "DE oil", location="DE", x=10.5, y=51.2, carrier="oil")
+    n.add("Bus", "DE renewable oil", location="DE", x=10.5, y=51.2, carrier="renewable oil")
+    n.add(
+        "Bus", 
+        "EU renewable oil", 
+        location="EU",
+        x=n.buses.loc["EU","x"],
+        y=n.buses.loc["EU","y"],
+        carrier="renewable oil"
+    )
 
     # add one generator for DE oil
     n.add("Generator",
@@ -287,15 +295,15 @@ def unravel_oilbus(n):
           capital_cost=0.02,
           )
 
-    n.madd(
-        "Store",
-        ["DE renewable oil Store", "EU renewable oil Store"],
-        bus=["DE renewable oil", "EU renewable oil"],
-        carrier="renewable oil",
-        e_nom_extendable=True,
-        e_cyclic=True,
-        capital_cost=0.02,
-    )
+    # n.madd(
+    #     "Store",
+    #     ["DE renewable oil Store", "EU renewable oil Store"],
+    #     bus=["DE renewable oil", "EU renewable oil"],
+    #     carrier="renewable oil",
+    #     e_nom_extendable=True,
+    #     e_cyclic=True,
+    #     capital_cost=0.02,
+    # )
 
 def transmission_costs_from_modified_cost_data(n, costs, length_factor=1.0):
     # copying the the function update_transmission_costs from add_electricity
@@ -376,7 +384,7 @@ if __name__ == "__main__":
     if not snakemake.config["run"]["debug_unravel_oilbus"]:
         unravel_oilbus(n)
 
-    if snakemake.config["wasserstoff_kernnetz"]["enable"]:
+    if snakemake.params.enable_kernnetz:
         fn = snakemake.input.wkn
         wkn = pd.read_csv(fn, index_col=0)
         add_wasserstoff_kernnetz(n, wkn, costs)
