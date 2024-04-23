@@ -2645,7 +2645,7 @@ if __name__ == "__main__":
         *df.loc[df["Unit"] == "NA"]["Variable"],
         sep="\n"
     )
-    #df.drop(df.loc[df["Unit"] == "NA"].index, inplace=True)
+    df.drop(df.loc[df["Unit"] == "NA"].index, inplace=True)
 
     meta = pd.Series({
         'Model': "PyPSA-Eur v0.10", 
