@@ -1305,7 +1305,7 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
         low_voltage_electricity[
             # carrier does not contain one of the following substrings
             ~low_voltage_electricity.index.str.contains(
-                "urban central|industry|agriculture|charger"
+                "urban central|industry|agriculture|charger|distribution"
                 # Excluding chargers (battery and EV)
             )
         ].sum()
@@ -2603,7 +2603,7 @@ if __name__ == "__main__":
         level="year",
     ).multiply(TWh2PJ)
 
-    nhours = int(snakemake.params.hours[0:3])
+    nhours = int(snakemake.params.hours[:-1])
     nyears = nhours / 8760
 
     costs = list(map(
