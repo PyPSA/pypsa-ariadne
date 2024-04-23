@@ -55,8 +55,6 @@ def __get_oil_fossil_fraction(n, region, kwargs):
 
     return oil_fossil_fraction
 
-# how to handle pipelines?
-# how to account for the region?
 def _get_gas_fossil_fraction(n, region, kwargs):
     total_gas_supply =  n.statistics.supply(
         bus_carrier="gas", **kwargs
@@ -73,27 +71,6 @@ def _get_gas_fossil_fraction(n, region, kwargs):
     )
 
     return gas_fossil_fraction
-
-def _get_h2_fossil_fraction(n, region, kwargs):
-    total_h2_supply =  n.statistics.supply(
-        bus_carrier="H2", **kwargs
-    ).drop("Store").groupby("carrier").sum()
-
-    drops = ["H2 pipeline", "H2 pipeline (Kernnetz)"]
-    for d in drops:
-        if d in total_h2_supply.index:
-            total_h2_supply.drop(d)
-
-    h2_fossil_fraction_c = (
-        total_h2_supply.get(["SMR", "SMR CC"])
-        / total_h2_supply.sum()
-    )
-
-    h2_fossil_fraction = \
-        h2_fossil_fraction_c["SMR"] * n.links[n.links.carrier == "SMR"].efficiency.mean() \
-        + h2_fossil_fraction_c["SMR CC"] * n.links[n.links.carrier == "SMR CC"].efficiency.mean()
-
-    return h2_fossil_fraction
 
 
 def _get_t_sum(df, df_t, carrier, region, snapshot_weightings, port):
@@ -2024,12 +2001,12 @@ def get_prices(n, region):
 
     # co2 additions
     co2_price = -n.global_constraints.loc["CO2Limit", "mu"] - n.global_constraints.loc["co2_limit-DE", "mu"]
-    # specific emissions in tons CO2/MWh (https://www.volker-quaschning.de/datserv/CO2-spez/index_e.php)
+    # specific emissions in tons CO2/MWh
     specific_emisisons = {
-        "oil" : 266.5e-3,
-        "gas" : 200.8e-3,
-        "hard coal" : 338.2e-3,
-        "lignite" : 398.7e-3,
+        "oil" : n.links[n.links.carrier =="oil"].efficiency2.unique().item(),
+        "gas" : n.links[n.links.carrier =="OCGT"].efficiency2.unique().item(),
+        "hard coal" : n.links[n.links.carrier =="coal"].efficiency2.unique().item(),
+        "lignite" : n.links[n.links.carrier =="lignite"].efficiency2.unique().item(),
     }
 
     nodal_flows_lv = get_nodal_flows(
@@ -2124,17 +2101,14 @@ def get_prices(n, region):
     # Price for gaseous Efuels at the secondary level, i.e. for large scale consumers. Prices should include the effect of carbon prices.
     # what are gaseous Efuels?
     
-    # Price|Secondary Energy|Hydrogen
+    # Price|Secondary Energy|Hydrogen (carbon costs not yet included)
     nodal_flows_h2 = get_nodal_flows(
         n, "H2", region
         )
     nodal_prices_h2 = n.buses_t.marginal_price[nodal_flows_h2.columns]
-    
-    h2_fossil_fraction = _get_h2_fossil_fraction(n, region, kwargs)
-    co2_add_h2 = h2_fossil_fraction * specific_emisisons["gas"] * co2_price
 
     var["Price|Secondary Energy|Hydrogen"] = \
-        (nodal_flows_h2.mul(nodal_prices_h2).values.sum() / nodal_flows_h2.values.sum() + co2_add_h2) /MWh2GJ  
+        (nodal_flows_h2.mul(nodal_prices_h2).values.sum() / nodal_flows_h2.values.sum()) /MWh2GJ  
 
     # From PIK plots
     # "Price|Final Energy|Residential|Hydrogen" = final energy consumption by the residential sector of hydrogen
