@@ -4,6 +4,13 @@ from functools import reduce
 from numpy import isclose
 import math
 import numpy as np
+import os
+
+paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
+for path in paths:
+    sys.path.insert(0, os.path.abspath(path))
+
+from prepare_sector_network import prepare_costs
 
 # Defining global varibales
 
@@ -151,8 +158,6 @@ def get_capacity_additions_simple(n, region):
     incaps = get_installed_capacities(n, region)
     return pd.Series(data = caps.values - incaps.values,
                      index = "Capacity Additions" + caps.index.str[8:])
-
-
 
 def get_capacity_additions(n, region):
     def _f(*args, **kwargs):
@@ -1318,7 +1323,7 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
         low_voltage_electricity[
             # carrier does not contain one of the following substrings
             ~low_voltage_electricity.index.str.contains(
-                "urban central|industry|agriculture|charger"
+                "urban central|industry|agriculture|charger|distribution"
                 # Excluding chargers (battery and EV)
             )
         ].sum()
@@ -2019,7 +2024,7 @@ def get_prices(n, region):
     nodal_prices_lv = n.buses_t.marginal_price[nodal_flows_lv.columns] 
 
     # electricity price at the final level in the residential sector. Prices should include the effect of carbon prices.
-    var["Price|Final Energy|Residential|Electricity"] = \
+    var["Price|Final Energy|Residential and Commercial|Electricity"] = \
         nodal_flows_lv.mul(nodal_prices_lv).values.sum() / nodal_flows_lv.values.sum() / MWh2GJ
     
     # vars: Tier 1, Category: energy(price)
@@ -2110,7 +2115,7 @@ def get_prices(n, region):
         (nodal_flows_h2.mul(nodal_prices_h2).values.sum() / nodal_flows_h2.values.sum()) /MWh2GJ  
 
     # From PIK plots
-    # "Price|Final Energy|Residential|Hydrogen" = final energy consumption by the residential sector of hydrogen
+    # "Price|Final Energy|Residential and Commercial|Hydrogen" = final energy consumption by the residential sector of hydrogen
     # do we have residential applications for hydrogen?
 
     nf_gas_residential = get_nodal_flows(
@@ -2121,27 +2126,27 @@ def get_prices(n, region):
     nodal_prices_gas = n.buses_t.marginal_price[nf_gas_residential.columns]
 
     # !!! mv much higher: check carbon effect!
-    var["Price|Final Energy|Residential|Gases"] = \
+    var["Price|Final Energy|Residential and Commercial|Gases"] = \
         nf_gas_residential.mul(nodal_prices_gas).values.sum() / nf_gas_residential.values.sum() / MWh2GJ  if nf_gas_residential.values.sum() > 0 else np.nan
 
-    # "Price|Final Energy|Residential|Gases|Natural Gas" ?
-    # "Price|Final Energy|Residential|Liquids|Biomass" x
+    # "Price|Final Energy|Residential and Commercial|Gases|Natural Gas" ?
+    # "Price|Final Energy|Residential and Commercial|Liquids|Biomass" x
     
-    var["Price|Final Energy|Residential|Liquids|Oil"] = \
+    var["Price|Final Energy|Residential and Commercial|Liquids|Oil"] = \
         get_weighted_costs_links(
             ['rural oil boiler', 'urban decentral oil boiler'], 
             n, region) / MWh2GJ
 
-    var["Price|Final Energy|Residential|Liquids"] = \
-        var["Price|Final Energy|Residential|Liquids|Oil"]
+    var["Price|Final Energy|Residential and Commercial|Liquids"] = \
+        var["Price|Final Energy|Residential and Commercial|Liquids|Oil"]
 
-    var["Price|Final Energy|Residential|Solids|Biomass"] = \
+    var["Price|Final Energy|Residential and Commercial|Solids|Biomass"] = \
         get_weighted_costs_links(
             ['rural biomass boiler', 'urban decentral biomass boiler'],
             n, region) / MWh2GJ
     
-    var["Price|Final Energy|Residential|Solids"] = \
-        var["Price|Final Energy|Residential|Solids|Biomass"]
+    var["Price|Final Energy|Residential and Commercial|Solids"] = \
+        var["Price|Final Energy|Residential and Commercial|Solids|Biomass"]
 
     # "Price|Final Energy|Industry|Electricity"✓
 
@@ -2293,7 +2298,7 @@ def get_prices(n, region):
     # Price|Final Energy|Residential and Commercial|Hydrogen|Other Taxes
 
     var["Price|Final Energy|Residential and Commercial|Electricity"] = \
-        var["Price|Final Energy|Residential|Electricity"]
+        var["Price|Final Energy|Residential and Commercial|Electricity"]
 
     # Price|Final Energy|Residential and Commercial|Electricity|Sales Margin x
     # Price|Final Energy|Residential and Commercial|Electricity|Transport and Distribution
@@ -2405,9 +2410,9 @@ def get_prices(n, region):
     
     # Price|Final Energy|Transportation|Passenger|Solids x
 
-    # Price|Final Energy|Residential|Hydrogen x
-    # Price|Final Energy|Residential|Gases|Natural Gas ?
-    # Price|Final Energy|Residential|Solids|Coal x
+    # Price|Final Energy|Residential and Commercial|Hydrogen x
+    # Price|Final Energy|Residential and Commercial|Gases|Natural Gas ?
+    # Price|Final Energy|Residential and Commercial|Solids|Coal x
 
     # Price|Final Energy|Transportation|Electricity|Carbon Price Component ?
     # Price|Final Energy|Transportation|Gases|Carbon Price Component
@@ -2416,34 +2421,224 @@ def get_prices(n, region):
 
     return var
 
+    
+def get_discretized_value(value, disc_int):
 
-def get_ariadne_var(n, industry_demand, energy_totals, region):
+        if value == 0.0:
+            return value
+
+        add = value - value % disc_int
+        value = value % disc_int
+        discrete = disc_int if value > 0.3 * disc_int else 0.0
+
+        return add + discrete
+
+def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1.0):
+    kwargs = {
+        'groupby': n_pre.statistics.groupers.get_name_bus_and_carrier,
+        'nice_names': False,
+    }
+    var = pd.Series()
+
+    # capacities_electricity = n.statistics.expanded_capacity(
+    #     bus_carrier=["AC", "low voltage"],
+    #     **kwargs,
+    # ).filter(like=region).groupby("carrier").sum() # in bn 
+    # 
+    # var["Investment"] = 
+    # var["Investment|Energy Supply"] = \ 
+    #var["Investment|Energy Supply|Electricity"] = \
+    #    capex_electricity.sum()
+    #var["Investment|Energy Supply|Electricity|Coal"] = \
+    #    capex_electricity.reindex(["coal", "lignite"]).sum()
+    # var["Investment|Energy Supply|Electricity|Coal|w/ CCS"] = \ 
+    # var["Investment|Energy Supply|Electricity|Coal|w/o CCS"] = \
+    # var["Investment|Energy Supply|Electricity|Gas"] = \ 
+    # var["Investment|Energy Supply|Electricity|Gas|w/ CCS"] = \  
+    # var["Investment|Energy Supply|Electricity|Gas|w/o CCS"] = \ 
+    # var["Investment|Energy Supply|Electricity|Oil"] = \ 
+    # var["Investment|Energy Supply|Electricity|Oil|w/ CCS"] = \  
+    # var["Investment|Energy Supply|Electricity|Oil|w/o CCS"] = \ 
+    # var["Investment|Energy Supply|Electricity|Non-fossil"] = \  
+    # var["Investment|Energy Supply|Electricity|Biomass"] = \ 
+    # var["Investment|Energy Supply|Electricity|Biomass|w/ CCS"] = \  
+    # var["Investment|Energy Supply|Electricity|Biomass|w/o CCS"] = \ 
+    # var["Investment|Energy Supply|Electricity|Nuclear"] = \ 
+    # var["Investment|Energy Supply|Electricity|Non-Biomass Renewables"] = \  
+    # var["Investment|Energy Supply|Electricity|Hydro"] = 
+    # var["Investment|Energy Supply|Electricity|Solar"] = 
+    # var["Investment|Energy Supply|Electricity|Wind"] = \
+    # var["Investment|Energy Supply|Electricity|Geothermal"] = \  
+    # var["Investment|Energy Supply|Electricity|Ocean"] = 
+    # var["Investment|Energy Supply|Electricity|Other"] = 
+
+    dc_links = n.links[
+        (n.links.carrier=="DC") & 
+        (n.links.bus0 + n.links.bus1).str.contains(region) & 
+        ~n.links.index.str.contains("reversed")
+    ]
+    dc_expansion = dc_links.p_nom_opt.apply(
+            lambda x: get_discretized_value(x, 2000)
+        ) - n_pre.links.loc[dc_links.index].p_nom_min.apply(
+            lambda x: get_discretized_value(x, 2000)
+        )
+        
+    dc_new = (dc_expansion > 0) & (n_pre.links.loc[dc_links.index].p_nom_min > 10)
+
+    dc_investments = dc_links.length * length_factor * (
+        (1 - dc_links.underwater_fraction) 
+        * dc_expansion 
+        * costs.at["HVDC overhead", "investment"]
+        + 
+        dc_links.underwater_fraction 
+        * dc_expansion 
+        * costs.at["HVDC submarine", "investment"] 
+        
+    ) + dc_new * costs.at["HVDC inverter pair","investment"] 
+
+    ac_lines = n.lines[(n.lines.bus0 + n.lines.bus1).str.contains(region)]
+    ac_expansion = ac_lines.s_nom_opt.apply(
+            lambda x: get_discretized_value(x, 1700)
+        ) - n_pre.lines.loc[ac_lines.index].s_nom_min.apply(
+            lambda x: get_discretized_value(x, 1700)
+        )
+    ac_investments = ac_lines.length * length_factor *  ac_expansion * costs.at["HVAC overhead", "investment"]
+    var["Investment|Energy Supply|Electricity|Transmission|AC"] = \
+        ac_investments.sum()    
+    var["Investment|Energy Supply|Electricity|Transmission|DC"] = \
+        dc_investments.sum() 
+    
+    var["Investment|Energy Supply|Electricity|Transmission"] = \
+    var["Investment|Energy Supply|Electricity|Transmission|AC"] + \
+    var["Investment|Energy Supply|Electricity|Transmission|DC"] 
+
+    distribution_grid = n.links[
+        n.links.carrier.str.contains("distribution")].filter(like="DE",axis=0)
+
+    year = distribution_grid.build_year.max()
+    year_pre = (year - 5) if year > 2020 else 2020
+
+    dg_expansion = (
+        distribution_grid.p_nom_opt.sum() 
+        - distribution_grid[distribution_grid.build_year <= year_pre].p_nom_opt.sum()
+    )
+    dg_investment = (
+        dg_expansion 
+        * costs.at["electricity distribution grid", "investment"]
+        * dg_cost_factor
+    )
+    var["Investment|Energy Supply|Electricity|Distribution"] = \
+        dg_investment
+    
+    var["Investment|Energy Supply|Electricity|Transmission and Distribution"] = \
+        var["Investment|Energy Supply|Electricity|Distribution"] + \
+        var["Investment|Energy Supply|Electricity|Transmission"]
+    
+
+    h2_links = n.links[
+        n.links.carrier.str.contains("H2 pipeline")
+        & ~n.links.reversed
+        & (n.links.bus0 + n.links.bus1).str.contains(region)
+    ]
+    year = n.links.build_year.max()
+    new_h2_links = h2_links[
+        ((year - 5) < h2_links.build_year) 
+        & ( h2_links.build_year <= year)]
+    h2_costs = (
+        new_h2_links.length * new_h2_links.p_nom_opt.apply(
+            lambda x: get_discretized_value(x, 1500)
+        ) 
+        * costs.at["H2 pipeline", "investment"]
+    )
+
+    var["Investment|Energy Supply|Hydrogen|Transmission"] = \
+        h2_costs.sum()
+
+
+    gas_links = n.links[
+        (
+            ((n.links.carrier == "gas pipeline") & (n.links.build_year > 2020)) 
+            | (n.links.carrier == "gas pipeline new")
+        )
+        & ~n.links.reversed
+        & (n.links.bus0 + n.links.bus1).str.contains(region)
+    ]
+    year = n.links.build_year.max()
+    new_gas_links = gas_links[
+        ((year - 5) < gas_links.build_year) 
+        & (gas_links.build_year <= year)]
+    gas_costs = (
+        new_gas_links.length * new_gas_links.p_nom_opt.apply(
+            lambda x: get_discretized_value(x, 1200)
+        ) 
+        * costs.at["CH4 (g) pipeline", "investment"]
+    )
+
+    var["Investment|Energy Supply|Gas|Transmission"] = \
+        gas_costs.sum()
+
+    # var["Investment|Energy Supply|Electricity|Electricity Storage"] = \ 
+    # var["Investment|Energy Supply|Hydrogen|Fossil"] = \ 
+    # var["Investment|Energy Supply|Hydrogen|Biomass"] = \
+    # var["Investment|Energy Supply|Hydrogen|Electrolysis"] = 
+    # var["Investment|Energy Supply|Hydrogen|Other"] = \  
+    # var["Investment|Energy Supply|Liquids"] = \ 
+    # var["Investment|Energy Supply|Liquids|Oil"] = \ 
+    # var["Investment|Energy Supply|Liquids|Coal and Gas"] = \
+    # var["Investment|Energy Supply|Liquids|Biomass"] = \ 
+    # var["Investment|Energy Supply|CO2 Transport and Storage"] = 
+    # var["Investment|Energy Supply|Other"] = 
+    # var["Investment|Energy Efficiency"] = \ 
+    # var["Investment|Energy Supply|Heat"] = \
+    # var["Investment|Energy Supply|Hydrogen"] = \
+    # var["Investment|RnD|Energy Supply"] = \ 
+    # var["Investment|Energy Demand|Transportation"] = \  
+    # var["Investment|Energy Demand|Transportation|LDV"] = \  
+    # var["Investment|Energy Demand|Transportation|Bus"] = \  
+    # var["Investment|Energy Demand|Transportation|Rail"] = \ 
+    # var["Investment|Energy Demand|Transportation|Truck"] = \
+    # var["Investment|Infrastructure|Transport"] = \  
+    # var["Investment|Energy Demand|Residential and Commercial"] = \  
+    # var["Investment|Energy Demand|Residential and Commercial|Low-Efficiency Buildings"] = \ 
+    # var["Investment|Energy Demand|Residential and Commercial|Medium-Efficiency Buildings"] = \  
+    # var["Investment|Energy Demand|Residential and Commercial|High-Efficiency Buildings"] = \
+    # var["Investment|Energy Demand|Residential and Commercial|Building Retrofits"] = 
+    # var["Investment|Energy Demand|Residential and Commercial|Space Heating"] = \
+    # var["Investment|Infrastructure|Industry|Green"] = \ 
+    # var["Investment|Infrastructure|Industry|Non-Green"] = \ 
+    # var["Investment|Industry"] = \  
+    return var
+
+def get_ariadne_var(n, industry_demand, energy_totals, costs, region):
 
     var = pd.concat([
-        #get_capacities(n, region),
-        #get_capacity_additions_simple(n,region),
+        get_capacities(n, region),
+        get_capacity_additions_simple(n,region),
         #get_installed_capacities(n,region),
         #get_capacity_additions(n, region),
         #get_capacity_additions_nstat(n, region),
-        #get_primary_energy(n, region),
-        #get_secondary_energy(n, region),
-        #get_final_energy(n, region, industry_demand, energy_totals),
+        get_primary_energy(n, region),
+        get_secondary_energy(n, region),
+        get_final_energy(n, region, industry_demand, energy_totals),
         get_prices(n,region), 
-        #get_emissions(n, region, energy_totals)
+        get_emissions(n, region, energy_totals),
+        get_investments(
+            n, n, costs, region,
+            dg_cost_factor=snakemake.params.dg_cost_factor,
+            length_factor=snakemake.params.length_factor
+        )
     ])
 
     return var
 
 
-
-
 # uses the global variables model, scenario and var2unit. For now.
 def get_data(
-        n, industry_demand, energy_totals, region,
+        n, industry_demand, energy_totals, costs, region,
         version="0.10", scenario="test"
     ):
     
-    var = get_ariadne_var(n, industry_demand, energy_totals, region)
+    var = get_ariadne_var(n, industry_demand, energy_totals, costs, region)
 
     data = []
     for v in var.index:
@@ -2509,17 +2704,31 @@ if __name__ == "__main__":
         level="year",
     ).multiply(TWh2PJ)
 
+    nhours = int(snakemake.params.hours[:-1])
+    nyears = nhours / 8760
+
+    costs = list(map(
+        lambda _costs: prepare_costs(
+            _costs,
+            snakemake.params.costs,
+            nyears,
+        ).multiply(1e-9), # in bn €
+        snakemake.input.costs
+    ))
+
+
     networks = [pypsa.Network(n) for n in snakemake.input.networks]
 
     yearly_dfs = []
-    for i, year in enumerate(config["scenario"]["planning_horizons"]):
+    for i, year in enumerate(snakemake.params.planning_horizons):
         yearly_dfs.append(get_data(
             networks[i],
             industry_demands[i],
             energy_totals,
+            costs[i],
             "DE",
             version=config["version"],
-            scenario=config["run"]["name"][0],
+            scenario=snakemake.wildcards.run,
         ))
 
     df = reduce(
@@ -2541,9 +2750,9 @@ if __name__ == "__main__":
 
     meta = pd.Series({
         'Model': "PyPSA-Eur v0.10", 
-        'Scenario': snakemake.config["iiasa_database"]["reference_scenario"], 
+        'Scenario': snakemake.wildcards.run, 
         'Quality Assessment': "preliminary",
-        'Internal usage within Kopernikus AG Szenarien': "no",
+        'Internal usage within Kopernikus AG Szenarien': "yes",
         'Release for publication': "no",
     })
 
@@ -2554,10 +2763,10 @@ if __name__ == "__main__":
 
     # For debugging
     n = networks[0]
+    c = costs[0]
     region="DE"
     kwargs = {
         'groupby': n.statistics.groupers.get_name_bus_and_carrier,
         'nice_names': False,
     }
-
-
+    dg_cost_factor=snakemake.params.dg_cost_factor
