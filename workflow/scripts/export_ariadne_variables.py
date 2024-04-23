@@ -2651,7 +2651,7 @@ if __name__ == "__main__":
         'Model': "PyPSA-Eur v0.10", 
         'Scenario': snakemake.config["iiasa_database"]["reference_scenario"], 
         'Quality Assessment': "preliminary",
-        'Internal usage within Kopernikus AG Szenarien': "no",
+        'Internal usage within Kopernikus AG Szenarien': "yes",
         'Release for publication': "no",
     })
 
