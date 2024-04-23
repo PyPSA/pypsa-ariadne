@@ -294,7 +294,8 @@ rule export_ariadne_variables:
         ),
         energy_totals=resources("energy_totals.csv"),
     output:
-        exported_variables=RESULTS + "ariadne/exported_variables.xlsx"
+        exported_variables=RESULTS + "ariadne/exported_variables.xlsx",
+        exported_variables_full=RESULTS + "ariadne/exported_variables_full.xlsx",
     log:
         RESULTS + "logs/export_ariadne_variables.log"
     script:
