@@ -2344,6 +2344,18 @@ def get_prices(n, region):
 
     return var
 
+    
+def get_discretized_value(value, disc_int):
+
+        if value == 0.0:
+            return value
+
+        add = value - value % disc_int
+        value = value % disc_int
+        discrete = disc_int if value > 0.3 * disc_int else 0.0
+
+        return add + discrete
+
 def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1.0):
     kwargs = {
         'groupby': n_pre.statistics.groupers.get_name_bus_and_carrier,
@@ -2388,9 +2400,13 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1
         (n.links.bus0 + n.links.bus1).str.contains(region) & 
         ~n.links.index.str.contains("reversed")
     ]
-    dc_expansion = dc_links.p_nom_opt - n_pre.links.loc[dc_links.index].p_nom_min
-
-    dc_new = (dc_expansion > 10) & (n_pre.links.loc[dc_links.index].p_nom_min < 10)
+    dc_expansion = dc_links.p_nom_opt.apply(
+            lambda x: get_discretized_value(x, 2000)
+        ) - n_pre.links.loc[dc_links.index].p_nom_min.apply(
+            lambda x: get_discretized_value(x, 2000)
+        )
+        
+    dc_new = (dc_expansion > 0) & (n_pre.links.loc[dc_links.index].p_nom_min > 10)
 
     dc_investments = dc_links.length * length_factor * (
         (1 - dc_links.underwater_fraction) 
@@ -2404,7 +2420,11 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1
     ) + dc_new * costs.at["HVDC inverter pair","investment"] 
 
     ac_lines = n.lines[(n.lines.bus0 + n.lines.bus1).str.contains(region)]
-    ac_expansion = ac_lines.s_nom_opt - n_pre.lines.loc[ac_lines.index].s_nom_min
+    ac_expansion = ac_lines.s_nom_opt.apply(
+            lambda x: get_discretized_value(x, 1700)
+        ) - n_pre.lines.loc[ac_lines.index].s_nom_min.apply(
+            lambda x: get_discretized_value(x, 1700)
+        )
     ac_investments = ac_lines.length * length_factor *  ac_expansion * costs.at["HVAC overhead", "investment"]
     var["Investment|Energy Supply|Electricity|Transmission|AC"] = \
         ac_investments.sum()    
@@ -2448,7 +2468,9 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1
         ((year - 5) < h2_links.build_year) 
         & ( h2_links.build_year <= year)]
     h2_costs = (
-        new_h2_links.length * new_h2_links.p_nom_opt 
+        new_h2_links.length * new_h2_links.p_nom_opt.apply(
+            lambda x: get_discretized_value(x, 1500)
+        ) 
         * costs.at["H2 pipeline", "investment"]
     )
 
@@ -2469,7 +2491,9 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1
         ((year - 5) < gas_links.build_year) 
         & (gas_links.build_year <= year)]
     gas_costs = (
-        new_gas_links.length * new_gas_links.p_nom_opt 
+        new_gas_links.length * new_gas_links.p_nom_opt.apply(
+            lambda x: get_discretized_value(x, 1200)
+        ) 
         * costs.at["CH4 (g) pipeline", "investment"]
     )
 
@@ -2627,7 +2651,7 @@ if __name__ == "__main__":
             costs[i],
             "DE",
             version=config["version"],
-            scenario=config["run"]["name"][0],
+            scenario=snakemake.wildcards.run,
         ))
 
     df = reduce(
@@ -2649,7 +2673,7 @@ if __name__ == "__main__":
 
     meta = pd.Series({
         'Model': "PyPSA-Eur v0.10", 
-        'Scenario': snakemake.config["iiasa_database"]["reference_scenario"], 
+        'Scenario': snakemake.params.iiasa_scenario, 
         'Quality Assessment': "preliminary",
         'Internal usage within Kopernikus AG Szenarien': "yes",
         'Release for publication': "no",
