@@ -2741,6 +2741,10 @@ if __name__ == "__main__":
 
     df["Region"] = df["Region"].str.replace("DE", "DEU")
     df["Model"] = "PyPSA-Eur v0.10"
+
+    with pd.ExcelWriter(snakemake.output.exported_variables_full) as writer:
+        df.to_excel(writer, sheet_name="data", index=False)
+
     print(
         "Dropping variables which are not in the template:",
         *df.loc[df["Unit"] == "NA"]["Variable"],
