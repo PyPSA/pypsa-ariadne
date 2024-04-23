@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20250417exportinvestments
+  prefix: 20240423exportinvestments
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -168,7 +168,7 @@ h2_import_max:
     2050: 200
 
 wasserstoff_kernnetz:
-  enable: true
+  enable: false
   reload_locations: false
   divide_pipes: true
   pipes_segment_length: 10
