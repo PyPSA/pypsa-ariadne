@@ -2673,7 +2673,7 @@ if __name__ == "__main__":
 
     meta = pd.Series({
         'Model': "PyPSA-Eur v0.10", 
-        'Scenario': snakemake.params.iiasa_scenario, 
+        'Scenario': snakemake.wildcards.run, 
         'Quality Assessment': "preliminary",
         'Internal usage within Kopernikus AG Szenarien': "yes",
         'Release for publication': "no",
