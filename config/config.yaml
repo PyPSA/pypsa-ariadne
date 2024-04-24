@@ -106,26 +106,6 @@ co2_budget:
   2045: 0.050
   2050: 0.000 # climate-neutral by 2050
 
-# calculated in workflow/scripts/_compute_co2_targets_DE.py; are
-# relative to the DE emissions in 1990 *including bunkers*; also
-# account for non-CO2 GHG and allow extra room for international
-# bunkers which are excluded from the national targets
-co2_budget_national:
-  2020:
-    DE: 0.728
-  2025:
-    DE: 0.571
-  2030:
-    DE: 0.396
-  2035:
-    DE: 0.258
-  2040:
-    DE: 0.118
-  2045:
-    DE: -0.028
-  2050:
-    DE: -0.024
-
 limits_capacity_min:
     Generator:
       onwind:
