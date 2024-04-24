@@ -2609,6 +2609,14 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1
     # var["Investment|Industry"] = \  
     return var
 
+def get_policy(n):
+    var = pd.Series()
+
+    var["Price|Carbon"] = \
+        -n.global_constraints.loc["CO2Limit", "mu"] - n.global_constraints.loc["co2_limit-DE", "mu"]
+
+    return var
+
 def get_ariadne_var(n, industry_demand, energy_totals, costs, region):
 
     var = pd.concat([
@@ -2626,7 +2634,8 @@ def get_ariadne_var(n, industry_demand, energy_totals, costs, region):
             n, n, costs, region,
             dg_cost_factor=snakemake.params.dg_cost_factor,
             length_factor=snakemake.params.length_factor
-        )
+        ),
+        get_policy(n)
     ])
 
     return var
