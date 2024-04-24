@@ -4,10 +4,10 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240423exportinvestments
+  prefix: 20240424fixCurrentPolicies
   name:
-  # - CurrentPolicies
-  - KN2045_Bal_v4
+  - CurrentPolicies
+  # - KN2045_Bal_v4
   # - KN2045_Elec_v4
   # - KN2045_H2_v4
   # - KN2045plus_EasyRide

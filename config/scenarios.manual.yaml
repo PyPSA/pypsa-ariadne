@@ -21,6 +21,31 @@ CurrentPolicies:
     # TODO: wait for REMod v1.0 to upload a first Trend scenario
     reference_scenario: Trend # CurrentPolicies once it's renamed
 
+  co2_budget:
+    2020: 0.800 # 20% reduction by 2020
+    2025: 0.600
+    2030: 0.450 # 55% reduction by 2030 (Ff55)
+    2035: 0.450 # stagnation for the Trend scenario
+    2040: 0.450
+    2045: 0.450
+    2050: 0.450
+
+  co2_budget_national:
+    2020:
+      DE: 0.728
+    2025:
+      DE: 0.573
+    2030:
+      DE: 0.401
+    2035:
+      DE: 0.401 # 2030 value
+    2040:
+      DE: 0.401 # 2030 value
+    2045:
+      DE: 0.401  # 2030 value
+    2050:
+      DE: 0.401  # 2030 value
+
   limits_capacity_min:
     Generator:
       onwind:
@@ -97,7 +122,7 @@ CurrentPolicies:
         2035: 0
         2040: 0
         2045: 0
- 
+
  
 KN2045_Bal_v4:
 # Ausgewogener Mix an Technologien zur Dekarbonisierung der Sektoren
