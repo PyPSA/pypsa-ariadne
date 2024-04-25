@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 
 def scenario_plot(df, var):
     unit = df._get_label_or_level_values("Unit")[0]
+    if var.startswith("Investment"):
+        unit = "billion EUR2020/yr"
     df = df.droplevel("Unit")
     ax = df.T.plot(
         xlabel="years",
@@ -14,7 +16,8 @@ def scenario_plot(df, var):
     prefix=snakemake.config["run"]["prefix"]
     var=var.replace("|","-").replace("\\","-").replace(" ","-").replace("/","-")
     ax.figure.savefig(
-        f"results/{prefix}/ariadne_comparison/{var}")
+        f"results/{prefix}/ariadne_comparison/{var}",
+        bbox_inches="tight")
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -52,3 +55,5 @@ if __name__ == "__main__":
 
     for var in df._get_label_or_level_values("Variable"):
         scenario_plot(df.xs(var, level="Variable"), var)
+
+    var = "Price|Carbon"
