@@ -122,15 +122,15 @@ if __name__ == "__main__":
             ll="v1.2",
             sector_opts="None",
             planning_horizons="2050",
-            run="KN2045_H2_v4"
+            run="CurrentPolicies"
         )
 
     df = pd.read_excel(
-        snakemake.input.exported_variables,
+        snakemake.input.exported_variables_full,
         index_col=list(range(5)),
         #index_col=["Model", "Scenario", "Region", "Variable", "Unit"],
         sheet_name="data"
-    ).groupby(["Variable","Unit"]).sum()
+    ).groupby(["Variable","Unit"], dropna=False).sum()
 
     df.columns = df.columns.astype(str)
     leitmodell="REMIND-EU v1.1"
@@ -144,13 +144,13 @@ if __name__ == "__main__":
     dfremind.index.names = df.index.names
 
 
-    idx = df.index.intersection(dfremind.index)
-    print(
-        f"Dropping variables missing in {leitmodell}:", 
-        df.index.difference(dfremind.index),
-    )
-    df = df.loc[idx]
-    dfremind = dfremind.loc[idx]
+    # idx = df.index.intersection(dfremind.index)
+    # print(
+    #     f"Dropping variables missing in {leitmodell}:", 
+    #     df.index.difference(dfremind.index),
+    # )
+    # df = df.loc[idx]
+    # dfremind = dfremind.loc[idx]
 
     side_by_side_plot(
         df,
@@ -317,5 +317,13 @@ if __name__ == "__main__":
         title = "Price of carbon", 
         savepath=snakemake.output.policy_carbon,
         unit="EUR/tCO2"
+    )
+
+    within_plot(
+        df[df.index.get_level_values("Variable").str.startswith('Investment|Energy Supply')], 
+        dfremind, 
+        title = "Investment in Energy Supply", 
+        savepath=snakemake.output.investment_energy_supply ,
+        unit="billion EUR"
     )
 
