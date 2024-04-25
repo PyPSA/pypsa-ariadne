@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import pyam
 import os
+import numpy as np
 
 def ariadne_subplot(
     df, ax, title, 
@@ -61,6 +62,7 @@ def side_by_side_plot(
 def within_plot(df, df2, 
                 title, savepath, 
                 select_regex="", drop_regex="",
+                write_sum = False,
                 unit = "EUR_2020/GJ", **kwargs
                 ):
 
@@ -93,6 +95,19 @@ def within_plot(df, df2,
             axes[i].plot(df2.T.xs(var, axis=1, level=0), label="REMIND-EU")   
         axes[i].set_title(var)
         axes[i].legend()
+
+        if write_sum:
+            sum_df1 = round(df.xs(var, axis=1, level=0).sum().values.item(), 2)
+            if var in df2.index.get_level_values("Variable"):
+                sum_df2 = round(df2.T.xs(var, axis=1, level=0).sum().values.item(), 2)
+            else:
+                sum_df2 = np.nan
+            # Annotate plot with the sum of variables
+            sum_text = f"Sum: \nPyPSA-Eur = {sum_df1},\nREMIND-EU = {sum_df2}"
+            axes[i].annotate(sum_text, xy=(0, 1), xycoords='axes fraction', fontsize=12,
+                        xytext=(5, -5), textcoords='offset points', ha='left', va='top')
+
+
 
     # Remove the last subplot if there's an odd number of plots
     if n % 2 != 0:
@@ -316,7 +331,7 @@ if __name__ == "__main__":
         dfremind, 
         title = "Price of carbon", 
         savepath=snakemake.output.policy_carbon,
-        unit="EUR/tCO2"
+        unit="EUR/tCO2",
     )
 
     within_plot(
@@ -324,6 +339,7 @@ if __name__ == "__main__":
         dfremind, 
         title = "Investment in Energy Supply", 
         savepath=snakemake.output.investment_energy_supply ,
-        unit="billion EUR"
+        unit="billion EUR",
+        write_sum = True,
     )
 
