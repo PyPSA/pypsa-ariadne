@@ -309,7 +309,7 @@ rule plot_ariadne_variables:
     params:
         iiasa_scenario=config_provider("iiasa_database", "reference_scenario"),
     input:
-        exported_variables=RESULTS + "ariadne/exported_variables.xlsx",
+        exported_variables_full=RESULTS + "ariadne/exported_variables_full.xlsx",
         ariadne_database=resources("ariadne_database.csv"),
     output:
         primary_energy=RESULTS + "ariadne/primary_energy.png",
@@ -331,6 +331,7 @@ rule plot_ariadne_variables:
         final_energy_residential_commercial_price = RESULTS + "ariadne/final_energy_residential_commercial_price.png",
         all_prices = RESULTS + "ariadne/all_prices.png",
         policy_carbon = RESULTS + "ariadne/policy_carbon.png",
+        investment_energy_supply = RESULTS + "ariadne/investment_energy_supply.png",
     script:
         "scripts/plot_ariadne_variables.py"
 
