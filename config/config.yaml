@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: post-discretize-all-test
+  prefix: 240430postDiscretizeAll
   name:
   - CurrentPolicies
   - KN2045_Bal_v4
@@ -274,6 +274,9 @@ solving:
   mem_mb: 40000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
   options:
     load_shedding: false
+    skip_iterations: false # settings for post-discretization: false
+    min_iterations: 1 # settings for post-discretization: 1
+    max_iterations: 1 # settings for post-discretization: 1
   # solver:
   #   options: gurobi-numeric-focus
   # solver_options:
@@ -330,9 +333,3 @@ post-discretization:
     H2 pipeline:  1200
     H2 pipeline (Kernnetz):  1200
     H2 pipeline retrofitted:  1200
-
-solving:
-  options:
-    skip_iterations: false
-    min_iterations: 1
-    max_iterations: 1
