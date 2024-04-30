@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: MIT
 """
-Creates map of optimised hydrogen network, storage and selected other
+Creates map of optimised hydrogen network including the Kernnetz, storage and selected other
 infrastructure.
 """
 
@@ -89,6 +89,7 @@ def plot_h2_map(n, regions):
 
     h2_new = n.links[n.links.carrier == "H2 pipeline"]
     h2_retro = n.links[n.links.carrier == "H2 pipeline retrofitted"]
+    h2_kern = n.links[n.links.carrier == "H2 pipeline (Kernnetz)"]
 
     if snakemake.params.foresight == "myopic":
         # sum capacitiy for pipelines from different investment periods
@@ -97,6 +98,13 @@ def plot_h2_map(n, regions):
         if not h2_retro.empty:
             h2_retro = (
                 group_pipes(h2_retro, drop_direction=True)
+                .reindex(h2_new.index)
+                .fillna(0)
+            )
+
+        if not h2_kern.empty:
+            h2_kern = (
+                group_pipes(h2_kern, drop_direction=True)
                 .reindex(h2_new.index)
                 .fillna(0)
             )
@@ -125,6 +133,36 @@ def plot_h2_map(n, regions):
         to_concat = [h2_new, h2_retro_w_new, h2_retro_wo_new]
         h2_total = pd.concat(to_concat).p_nom_opt.groupby(level=0).sum()
 
+    elif not h2_kern.empty:
+        if snakemake.params.foresight != "myopic":
+            positive_order = h2_kern.bus0 < h2_kern.bus1
+            h2_kern_p = h2_kern[positive_order]
+            swap_buses = {"bus0": "bus1", "bus1": "bus0"}
+            h2_kern_n = h2_kern[~positive_order].rename(columns=swap_buses)
+            h2_kern = pd.concat([h2_kern_p, h2_kern_n])
+
+            h2_kern["index_orig"] = h2_kern.index
+            h2_kern.index = h2_kern.apply(
+                lambda x: f"H2 pipeline {x.bus0.replace(' H2', '')} -> {x.bus1.replace(' H2', '')}",
+                axis=1,
+            )
+
+        kern_w_new_i = h2_kern.index.intersection(h2_new.index)
+        h2_kern_w_new = h2_kern.loc[kern_w_new_i]
+
+        kern_wo_new_i = h2_kern.index.difference(h2_new.index)
+        h2_kern_wo_new = h2_kern.loc[kern_wo_new_i]
+        h2_kern_wo_new.index = h2_kern_wo_new.index_orig
+
+        if not h2_retro.empty:
+            to_concat = [h2_new, h2_new, h2_retro_w_new, h2_retro_wo_new, h2_kern_w_new, h2_kern_wo_new]
+            h2_total = pd.concat(to_concat).p_nom_opt.groupby(level=0).sum()
+
+        else:
+            to_concat = [h2_new, h2_new, h2_kern_w_new, h2_kern_wo_new]
+            h2_total = pd.concat(to_concat).p_nom_opt.groupby(level=0).sum()
+
+
     else:
         h2_total = h2_new.p_nom_opt
 
@@ -141,6 +179,13 @@ def plot_h2_map(n, regions):
     link_widths_retro = retro / linewidth_factor
     link_widths_retro[n.links.p_nom_opt < line_lower_threshold] = 0.0
 
+    kern = n.links.p_nom_opt.where(
+        n.links.carrier == "H2 pipeline (Kernnetz)", other=0.0
+    )
+    link_widths_kern = kern / linewidth_factor
+    link_widths_kern[n.links.p_nom_opt < line_lower_threshold] = 0.0
+
+
     n.links.bus0 = n.links.bus0.str.replace(" H2", "")
     n.links.bus1 = n.links.bus1.str.replace(" H2", "")
 
@@ -150,15 +195,26 @@ def plot_h2_map(n, regions):
 
     color_h2_pipe = "#b3f3f4"
     color_retrofit = "#499a9c"
+    color_kern = '#6b3161'
 
     bus_colors = {"H2 Electrolysis": "#ff29d9", "H2 Fuel Cell": "#805394"}
 
+    # n.plot(
+    #     geomap=True,
+    #     bus_sizes=bus_sizes,
+    #     bus_colors=bus_colors,
+    #     link_colors=color_h2_pipe,
+    #     link_widths=link_widths_total,
+    #     branch_components=["Link"],
+    #     ax=ax,
+    #     **map_opts,
+    # )
+
     n.plot(
         geomap=True,
-        bus_sizes=bus_sizes,
-        bus_colors=bus_colors,
-        link_colors=color_h2_pipe,
-        link_widths=link_widths_total,
+        bus_sizes=0,
+        link_colors=color_retrofit,
+        link_widths=link_widths_retro,
         branch_components=["Link"],
         ax=ax,
         **map_opts,
@@ -167,8 +223,8 @@ def plot_h2_map(n, regions):
     n.plot(
         geomap=True,
         bus_sizes=0,
-        link_colors=color_retrofit,
-        link_widths=link_widths_retro,
+        link_colors=color_kern,
+        link_widths=link_widths_kern,
         branch_components=["Link"],
         ax=ax,
         **map_opts,
@@ -231,8 +287,8 @@ def plot_h2_map(n, regions):
         legend_kw=legend_kw,
     )
 
-    colors = [bus_colors[c] for c in carriers] + [color_h2_pipe, color_retrofit]
-    labels = carriers + ["H2 pipeline (total)", "H2 pipeline (repurposed)"]
+    colors = [bus_colors[c] for c in carriers] + [color_h2_pipe, color_retrofit, color_kern]
+    labels = carriers + ["H2 pipeline (total)", "H2 pipeline (repurposed)", "H2 pipeline (Kernnetz)"]
 
     legend_kw = dict(
         loc="upper left",
@@ -272,7 +328,7 @@ if __name__ == "__main__":
     set_scenario_config(snakemake)
 
     # n = pypsa.Network(snakemake.input.network)
-    fn= "/home/julian-geis/repos/pypsa-ariadne/results/20240426plotH2Kernnetz/CurrentPolicies/postnetworks/elec_s_22_lvopt__none_2045.nc"
+    fn= "/home/julian-geis/repos/pypsa-ariadne/results/20240426plotH2Kernnetz/CurrentPolicies/postnetworks/elec_s_22_lvopt__none_2030.nc"
     n = pypsa.Network(fn)
 
     regions = gpd.read_file(snakemake.input.regions).set_index("name")
