@@ -137,7 +137,7 @@ if __name__ == "__main__":
             ll="v1.2",
             sector_opts="None",
             planning_horizons="2050",
-            run="CurrentPolicies"
+            run="KN2045_Bal_v4"
         )
 
     df = pd.read_excel(
@@ -157,15 +157,6 @@ if __name__ == "__main__":
         leitmodell, snakemake.params.iiasa_scenario, "Deutschland"
     ][df.columns]
     dfremind.index.names = df.index.names
-
-
-    # idx = df.index.intersection(dfremind.index)
-    # print(
-    #     f"Dropping variables missing in {leitmodell}:", 
-    #     df.index.difference(dfremind.index),
-    # )
-    # df = df.loc[idx]
-    # dfremind = dfremind.loc[idx]
 
     side_by_side_plot(
         df,
