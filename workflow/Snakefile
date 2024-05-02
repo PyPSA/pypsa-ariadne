@@ -82,8 +82,6 @@ rule retrieve_ariadne_database:
     params:
         leitmodelle=config_provider("iiasa_database", "leitmodelle"),
         scenarios=config_provider("iiasa_database", "scenarios"),
-        iiasa_usr=os.environ["IIASA_USERNAME"],
-        iiasa_pwd=os.environ["IIASA_PASSWORD"]
     output:
         data=resources("ariadne_database.csv"),
     log:
