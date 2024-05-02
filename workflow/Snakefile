@@ -22,9 +22,9 @@ run = config["run"]
 scenarios = get_scenarios(run) # global variable
 RDIR = get_rdir(run)
 
-logs = path_provider("logs/", RDIR, run["shared_resources"], run["exclude"])
-benchmarks = path_provider("benchmarks/", RDIR, run["shared_resources"], run["exclude"])
-resources = path_provider("resources/", RDIR, run["shared_resources"], run["exclude"])
+logs = path_provider("logs/", RDIR, run["shared_resources"])
+benchmarks = path_provider("benchmarks/", RDIR, run["shared_resources"])
+resources = path_provider("resources/", RDIR, run["shared_resources"])
 
 RESULTS = "results/" + RDIR
 
