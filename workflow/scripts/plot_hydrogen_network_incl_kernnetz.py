@@ -15,6 +15,7 @@ import pandas as pd
 import pypsa
 import os
 import sys
+import numpy as np
 
 path = "../submodules/pypsa-eur/scripts"
 sys.path.insert(0, os.path.abspath(path))
@@ -48,7 +49,7 @@ def group_pipes(df, drop_direction=False):
     )
 
 
-def plot_h2_map(n, regions):
+def plot_h2_map(n, regions, output):
     # if "H2 pipeline" not in n.links.carrier.unique():
     #     return
 
@@ -199,16 +200,16 @@ def plot_h2_map(n, regions):
 
     bus_colors = {"H2 Electrolysis": "#ff29d9", "H2 Fuel Cell": "#805394"}
 
-    # n.plot(
-    #     geomap=True,
-    #     bus_sizes=bus_sizes,
-    #     bus_colors=bus_colors,
-    #     link_colors=color_h2_pipe,
-    #     link_widths=link_widths_total,
-    #     branch_components=["Link"],
-    #     ax=ax,
-    #     **map_opts,
-    # )
+    n.plot(
+        geomap=True,
+        bus_sizes=bus_sizes,
+        bus_colors=bus_colors,
+        link_colors=color_h2_pipe,
+        link_widths=link_widths_total,
+        branch_components=["Link"],
+        ax=ax,
+        **map_opts,
+    )
 
     n.plot(
         geomap=True,
@@ -301,7 +302,7 @@ def plot_h2_map(n, regions):
 
     ax.set_facecolor("white")
 
-    fig.savefig(snakemake.output.map, bbox_inches="tight")
+    fig.savefig(output, bbox_inches="tight")
 
 
 if __name__ == "__main__":
@@ -324,12 +325,12 @@ if __name__ == "__main__":
             run="CurrentPolicies"
         )
 
-    configure_logging(snakemake)
-    set_scenario_config(snakemake)
+    # configure_logging(snakemake)
+    # set_scenario_config(snakemake)
 
-    # n = pypsa.Network(snakemake.input.network)
-    fn= "/home/julian-geis/repos/pypsa-ariadne/results/20240426plotH2Kernnetz/CurrentPolicies/postnetworks/elec_s_22_lvopt__none_2030.nc"
-    n = pypsa.Network(fn)
+    networks = [pypsa.Network(n) for n in snakemake.input.networks]
+    # fn= "/home/julian-geis/repos/pypsa-ariadne/results/20240426plotH2Kernnetz/CurrentPolicies/postnetworks/elec_s_22_lvopt__none_2030.nc"
+    # n = pypsa.Network(fn)
 
     regions = gpd.read_file(snakemake.input.regions).set_index("name")
 
@@ -340,5 +341,6 @@ if __name__ == "__main__":
 
     proj = load_projection(snakemake.params.plotting)
 
-    plot_h2_map(n, regions)
+    for i in np.arange(len(networks)):
+        plot_h2_map(networks[i], regions, output=snakemake.output.maps[i])
 
