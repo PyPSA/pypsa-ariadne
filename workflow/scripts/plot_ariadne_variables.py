@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import pyam
 import os
+import numpy as np
 
 def ariadne_subplot(
     df, ax, title, 
@@ -60,7 +61,9 @@ def side_by_side_plot(
 
 def within_plot(df, df2, 
                 title, savepath, 
-                select_regex="", drop_regex="",**kwargs
+                select_regex="", drop_regex="",
+                write_sum = False,
+                unit = "EUR_2020/GJ", **kwargs
                 ):
 
     df = df.T.copy()
@@ -75,9 +78,9 @@ def within_plot(df, df2,
     
     n = df.shape[1]
     if n == 0:
-        print("Warning! Apparently the variables required for this plot are missing.")
+        print(f"Warning! Apparently the variables required for this plot (({title}) are missing.")
         fig = plt.figure()
-        plt.title("Warning! Apparently the variables required for this plot are missing.")
+        plt.title(f"Warning! Apparently the variables required for this plot ({title}) are missing.")
         fig.savefig(savepath, bbox_inches="tight")
         return fig
     rows = n // 2 + n % 2 
@@ -93,11 +96,24 @@ def within_plot(df, df2,
         axes[i].set_title(var)
         axes[i].legend()
 
+        if write_sum:
+            sum_df1 = round(df.xs(var, axis=1, level=0).sum().values.item(), 2)
+            if var in df2.index.get_level_values("Variable"):
+                sum_df2 = round(df2.T.xs(var, axis=1, level=0).sum().values.item(), 2)
+            else:
+                sum_df2 = np.nan
+            # Annotate plot with the sum of variables
+            sum_text = f"Sum: \nPyPSA-Eur = {sum_df1},\nREMIND-EU = {sum_df2}"
+            axes[i].annotate(sum_text, xy=(0, 1), xycoords='axes fraction', fontsize=12,
+                        xytext=(5, -5), textcoords='offset points', ha='left', va='top')
+
+
+
     # Remove the last subplot if there's an odd number of plots
     if n % 2 != 0:
         fig.delaxes(axes[-1])
 
-    plt.suptitle(title + " in EUR_2020/GJ", fontsize="xx-large", y=1.0)
+    plt.suptitle(f"{title} in ({unit})", fontsize="xx-large", y=1.0)
     plt.tight_layout()
     plt.close()
     fig.savefig(savepath, bbox_inches="tight")
@@ -121,15 +137,15 @@ if __name__ == "__main__":
             ll="v1.2",
             sector_opts="None",
             planning_horizons="2050",
-            run="KN2045_H2_v4"
+            run="KN2045_Bal_v4"
         )
 
     df = pd.read_excel(
-        snakemake.input.exported_variables,
+        snakemake.input.exported_variables_full,
         index_col=list(range(5)),
         #index_col=["Model", "Scenario", "Region", "Variable", "Unit"],
         sheet_name="data"
-    ).groupby(["Variable","Unit"]).sum()
+    ).groupby(["Variable","Unit"], dropna=False).sum()
 
     df.columns = df.columns.astype(str)
     leitmodell="REMIND-EU v1.1"
@@ -141,15 +157,6 @@ if __name__ == "__main__":
         leitmodell, snakemake.params.iiasa_scenario, "Deutschland"
     ][df.columns]
     dfremind.index.names = df.index.names
-
-
-    idx = df.index.intersection(dfremind.index)
-    print(
-        f"Dropping variables missing in {leitmodell}:", 
-        df.index.difference(dfremind.index),
-    )
-    df = df.loc[idx]
-    dfremind = dfremind.loc[idx]
 
     side_by_side_plot(
         df,
@@ -271,13 +278,13 @@ if __name__ == "__main__":
         savepath=snakemake.output.secondary_energy_price,
     )
 
-    within_plot(
-        df[df.index.get_level_values("Variable").str.startswith("Price|Final Energy|Residential")], 
-        dfremind, 
-        title = "Price|Final Energy|Residential", 
-        savepath=snakemake.output.final_energy_residential_price,
-        #select_regex="Price\|Final Energy\|Residential\|[^|]*$"
-    )
+    # within_plot(
+    #     df[df.index.get_level_values("Variable").str.startswith("Price|Final Energy|Residential")], 
+    #     dfremind, 
+    #     title = "Price|Final Energy|Residential", 
+    #     savepath=snakemake.output.final_energy_residential_price,
+    #     #select_regex="Price\|Final Energy\|Residential\|[^|]*$"
+    # )
 
     within_plot(
         df[df.index.get_level_values("Variable").str.startswith("Price|Final Energy|Industry")], 
@@ -308,5 +315,22 @@ if __name__ == "__main__":
         dfremind, 
         title = "All prices", 
         savepath=snakemake.output.all_prices,
+    )
+
+    within_plot(
+        df[df.index.get_level_values("Variable").str.startswith('Price|Carbon')], 
+        dfremind, 
+        title = "Price of carbon", 
+        savepath=snakemake.output.policy_carbon,
+        unit="EUR/tCO2",
+    )
+
+    within_plot(
+        df[df.index.get_level_values("Variable").str.startswith('Investment|Energy Supply')], 
+        dfremind, 
+        title = "Investment in Energy Supply", 
+        savepath=snakemake.output.investment_energy_supply ,
+        unit="billion EUR",
+        write_sum = True,
     )
 
