@@ -260,7 +260,7 @@ rule cluster_wasserstoff_kernnetz:
 rule download_ariadne_template:
     input:
         storage(
-            "https://github.com/iiasa/ariadne-intern-workflow/raw/master/attachments/2024-03-28_template_Ariadne.xlsx",
+            "https://github.com/iiasa/ariadne-intern-workflow/raw/main/attachments/2024-03-28_template_Ariadne.xlsx",
             keep_local=True,
         )
     output:
