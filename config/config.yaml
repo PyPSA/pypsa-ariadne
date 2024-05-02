@@ -4,10 +4,10 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240424fixCurrentPolicies
+  prefix: 20240504addUnitCommitment
   name:
-  - CurrentPolicies
-  # - KN2045_Bal_v4
+  #- CurrentPolicies
+    - KN2045_Bal_v4
   # - KN2045_Elec_v4
   # - KN2045_H2_v4
   # - KN2045plus_EasyRide
@@ -94,7 +94,7 @@ clustering:
     'PL': 0.0454
     'SE': 0.0454
   temporal:
-    resolution_sector: 365H
+    resolution_sector: 780H
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:
@@ -303,3 +303,7 @@ pypsa_eur:
   - PHS
   - hydro
   Store: []
+
+unit_commitment: 
+  enable: true # set to false to disable unit commitment 
+  carriers: [OCGT, CCGT, nuclear, coal, lignite, oil, urban central solid biomass CHP] # subset of [OCGT, CCGT, nuclear, coal, lignite, oil, urban central solid biomass CHP]

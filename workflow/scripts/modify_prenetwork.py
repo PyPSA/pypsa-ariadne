@@ -326,6 +326,103 @@ def transmission_costs_from_modified_cost_data(n, costs, length_factor=1.0):
     )
     n.links.loc[dc_b, "capital_cost"] = costs
 
+def add_unit_committment(n, carriers_uc):
+    """
+    Add unit commitment for conventionals
+    based on
+    https://discord.com/channels/914472852571426846/1042037164088766494/1042395972438868030
+    from DIW
+    [1] https://www.diw.de/documents/publikationen/73/diw_01.c.424566.de/diw_datadoc_2013-068.pdf
+    
+    [2] update with p.48 https://www.agora-energiewende.de/fileadmin/Projekte/2017/Flexibility_in_thermal_plants/115_flexibility-report-WEB.pdf
+    
+    [3] SI Schill et al. p.26 https://static-content.springer.com/esm/art%3A10.1038%2Fnenergy.2017.50/MediaObjects/41560_2017_BFnenergy201750_MOESM196_ESM.pdf
+    [4] MA https://zenodo.org/record/6421682
+    """
+    # OCGT
+    if "OCGT" in carriers_uc:
+        logger.info("add unit commitment to OCGT")
+        links_i = n.links[n.links.carrier.isin(["OCGT"])].index
+        # n.links.loc[links_i, "p_min_pu"] = 0.2  # [3]   # removed since otherwise NL is not solving
+        n.links.loc[links_i, "start_up_cost"] = 24 * 0.4 # [3] start-up depreciation costs Eur/MW
+        n.links.loc[links_i, "ramp_limit_up"] = 1  # [2] 8-12% per min
+        n.links.loc[links_i, "ramp_limit_start_up"] = 0.2  # [4] p.41
+        n.links.loc[links_i, "ramp_limit_shut_down"] = 0.2  # [4] p.41
+        # cold/warm start up time within minutes, complete ramp up within one hour
+
+    # CCGT
+    if "CCGT" in carriers_uc:
+        logger.info("add unit commitment to CCGT") 
+        links_i = n.links[n.links.carrier.isin(["CCGT"])].index
+        n.links.loc[links_i, "p_min_pu"] = 0.45  # [2] mean of Minimum load Most commonly used power plants
+        n.links.loc[links_i, "start_up_cost"] = 144 * 0.57 # [3] start-up depreciation costs Eur/MW, in [4] 144
+        n.links.loc[links_i, "min_up_time"] = 3  # mean of "Cold start-up time" [2] Most commonly used power plants
+        n.links.loc[links_i, "min_down_time"] = 2   # [3] Minimum offtime [hours]
+        n.links.loc[links_i, "ramp_limit_up"] = 1  # [2] 2-4% per min
+        n.links.loc[links_i, "ramp_limit_start_up"] = 0.45  # [4] p.41
+        n.links.loc[links_i, "ramp_limit_shut_down"] = 0.45 # [4] p.41
+ 
+
+    # coal
+    if "coal" in carriers_uc:
+        logger.info("add unit commitment to coal")
+        links_i = n.links[n.links.carrier.isin(["coal"])].index
+        n.links.loc[links_i, "p_min_pu"] = 0.325  # [2] mean of Minimum load Most commonly used power plants
+        n.links.loc[links_i, "start_up_cost"] =  108 * 0.33 # [4] p.41
+        n.links.loc[links_i, "min_up_time"] = 5  # mean of "Cold start-up time" [2] Most commonly used power plants
+        n.links.loc[links_i, "min_down_time"] = 6   # [3] Minimum offtime [hours], large plant
+        n.links.loc[links_i, "ramp_limit_up"] = 1  # [2] 1.5-4% per minute
+        n.links.loc[links_i, "ramp_limit_start_up"] = 0.38 # [4] p.41
+        n.links.loc[links_i, "ramp_limit_shut_down"] = 0.38 # [4] p.41
+    
+    # lignite
+    if "lignite" in carriers_uc:
+        logger.info("add unit commitment to lignite")
+        links_i = n.links[n.links.carrier.isin(["lignite"])].index
+        n.links.loc[links_i, "p_min_pu"] = 0.325 # 0.4  # [3]
+        n.links.loc[links_i, "start_up_cost"] = 58 * 0.33 # [4] p.41
+        n.links.loc[links_i, "min_up_time"] = 7  # mean of "Cold start-up time" [2] Most commonly used power plants
+        n.links.loc[links_i, "min_down_time"] = 6   # [3] Minimum offtime [hours], large plant
+        n.links.loc[links_i, "ramp_limit_up"] = 1  # [2] 1-2% per minute
+        n.links.loc[links_i, "ramp_limit_start_up"] = 0.4 # [4] p.41
+        n.links.loc[links_i, "ramp_limit_shut_down"] = 0.4 # [4] p.41
+    
+    # nuclear
+    if "nuclear" in carriers_uc:
+        logger.info("add unit commitment to nuclear")
+        links_i = n.links[n.links.carrier.isin(["nuclear"])].index
+        n.links.loc[links_i, "p_min_pu"] = 0.5 # [3]
+        n.links.loc[links_i, "start_up_cost"] = 50 * 0.33 # [3]    start-up depreciation costs Eur/MW
+        n.links.loc[links_i, "min_up_time"] = 6   # [1]
+        n.links.loc[links_i, "ramp_limit_up"] = 0.3  # [4]
+        n.links.loc[links_i, "min_down_time"] = 10  # [3] Minimum offtime [hours]
+        n.links.loc[links_i, "ramp_limit_start_up"] = 0.5  # [4] p.41
+        n.links.loc[links_i, "ramp_limit_shut_down"] = 0.5 # [4] p.41
+    
+    # oil
+    if "oil" in carriers_uc:
+        logger.info("add unit commitment to oil")
+        links_i = n.links[n.links.carrier.isin(["oil"])].index
+        n.links.loc[links_i, "p_min_pu"] = 0.2 # [4]
+        n.links.loc[links_i, "start_up_cost"] = 1 * 0.35 # [4]    start-up depreciation costs Eur/MW
+        n.links.loc[links_i, "ramp_limit_start_up"] = 0.2  # [4] p.41
+        n.links.loc[links_i, "ramp_limit_shut_down"] = 0.2 # [4] p.41
+
+    # biomass
+    if "urban central solid biomass CHP" in carriers_uc:
+        logger.info("add unit commitment to biomass")
+        links_i = n.links[n.links.carrier=="urban central solid biomass CHP"].index
+        n.links.loc[links_i, "p_min_pu"] = 0.38 # [4]
+        n.links.loc[links_i, "start_up_cost"] = 78 * 0.27 # [4]
+        n.links.loc[links_i, "min_up_time"] = 2   # [4]
+        n.links.loc[links_i, "min_down_time"] = 2  # [4]
+        n.links.loc[links_i, "ramp_limit_start_up"] = 0.38  # [4] p.41
+        n.links.loc[links_i, "ramp_limit_shut_down"] = 0.38 # [4] p.41
+    
+    links_i = n.links[n.links.carrier.isin(carriers_uc)].index
+    n.links.loc[links_i, "committable"] = True
+
+
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -341,10 +438,10 @@ if __name__ == "__main__":
             simpl="",
             clusters=22,
             opts="",
-            ll="v1.2",
-            sector_opts="365H-T-H-B-I-A-solar+p3-linemaxext15",
+            ll="vopt",
+            sector_opts="none",
             planning_horizons="2040",
-            run="KN2045_H2_v4"
+            run="CurrentPolicies"
         )
 
     logger.info("Adding Ariadne-specific functionality")
@@ -390,5 +487,9 @@ if __name__ == "__main__":
 
     # change to NEP21 costs
     transmission_costs_from_modified_cost_data(n, costs_loaded, snakemake.params.length_factor)
+
+    # add unit commitment
+    if snakemake.config["unit_commitment"]["enable"]:
+        add_unit_committment(n, snakemake.config["unit_commitment"]["carriers"])
 
     n.export_to_netcdf(snakemake.output.network)
