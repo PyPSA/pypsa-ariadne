@@ -29,7 +29,7 @@ if __name__ == "__main__":
         from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(
-            "plot_ariadne_scenario_comparison",
+            "ariadne_all",
             # simpl="",
             # clusters=22,
             # opts="",
@@ -40,7 +40,7 @@ if __name__ == "__main__":
         )
 
     dfs = []
-    for file in snakemake.input:
+    for file in snakemake.input.exported_variables:
         _df = pd.read_excel(file,
             index_col=list(range(5)),
             sheet_name="data").droplevel(["Model", "Region"])
