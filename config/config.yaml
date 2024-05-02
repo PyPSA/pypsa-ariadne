@@ -6,10 +6,10 @@
 run:
   prefix: 20240502pyamupdate
   name:
-  # - CurrentPolicies
-  - KN2045_Bal_v4
-  - KN2045_Elec_v4
-  - KN2045_H2_v4
+  - CurrentPolicies
+  # - KN2045_Bal_v4
+  # - KN2045_Elec_v4
+  # - KN2045_H2_v4
   # - KN2045plus_EasyRide
   # - KN2045plus_LowDemand
   # - KN2045minus_WorstCase
@@ -77,7 +77,7 @@ countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'P
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
-  retrieve: auto # set to false once initial data is retrieved
+  retrieve: false # set to false once initial data is retrieved
   retrieve_cutout: false # set to false once initial data is retrieved
 clustering:
   focus_weights:
