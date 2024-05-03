@@ -13,6 +13,7 @@ def scenario_plot(df, var):
         ylabel=str(unit),
         title=str(var)
     )
+    plt.close()
     prefix=snakemake.config["run"]["prefix"]
     var=var.replace("|","-").replace("\\","-").replace(" ","-").replace("/","-")
     ax.figure.savefig(
