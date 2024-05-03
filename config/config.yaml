@@ -6,10 +6,10 @@
 run:
   prefix: 20240502pyamupdate
   name:
-  - CurrentPolicies
-  # - KN2045_Bal_v4
-  # - KN2045_Elec_v4
-  # - KN2045_H2_v4
+  # - CurrentPolicies
+  - KN2045_Bal_v4
+  - KN2045_Elec_v4
+  - KN2045_H2_v4
   # - KN2045plus_EasyRide
   # - KN2045plus_LowDemand
   # - KN2045minus_WorstCase
