@@ -280,7 +280,7 @@ KN2045plus_EasyRide:
     reference_scenario: 8Gt_EasyRide_v3 # TODO: wait for database
 
   # boundary condition of maximum volumes
-  limits_volume_max:
+  limits_volume_max: # following the Bal scenario
     # constrain electricity import in TWh
     electricity_import:
       DE:
