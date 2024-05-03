@@ -1,7 +1,7 @@
 
 import pandas as pd
 import matplotlib.pyplot as plt
-
+import os
 
 def scenario_plot(df, var):
     unit = df._get_label_or_level_values("Unit")[0]
@@ -21,7 +21,6 @@ def scenario_plot(df, var):
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
-        import os
         import sys
 
         path = "../submodules/pypsa-eur/scripts"
