@@ -93,34 +93,32 @@ rule retrieve_ariadne_database:
         "scripts/retrieve_ariadne_database.py"
 
 
-#if config["enable"]["retrieve"] and config["enable"].get("retrieve_cost_data", True):
-#
-#    use rule retrieve_cost_data from pypsaeur with:
-#        output:
-#            resources("costs_{year}-original.csv"),
+# def input_profile_offwind(w):
+#     return {
+#         f"profile_{tech}": resources(f"profile_{tech}.nc")
+#         for tech in ["offwind-ac", "offwind-dc"]
+#         if (tech in config["electricity"]["renewable_carriers"])
+#     }
 
-def input_profile_offwind(w):
-    return {
-        f"profile_{tech}": resources(f"profile_{tech}.nc")
-        for tech in ["offwind-ac", "offwind-dc"]
-        if (tech in config["electricity"]["renewable_carriers"])
-    }
+# use rule prepare_sector_network from pypsaeur with:
+#     input:
+#         unpack(input_profile_offwind),
+#         # **{k: v for k, v in rules.prepare_sector_network.input.items() if k != "costs"},
+# 	    # costs=resources("modified-costs_{planning_horizons}.csv"),
 
-use rule prepare_sector_network from pypsaeur with:
-    input:
-        unpack(input_profile_offwind),
-        **{k: v for k, v in rules.prepare_sector_network.input.items() if k != "costs"},
-	    costs=resources("modified-costs_{planning_horizons}.csv"),
 
 rule modify_cost_data:
+    params:
+        file_path="ariadne-data/costs/",
+        file_name="costs_{planning_horizons}.csv",
+        cost_horizon=config_provider("costs", "horizon"),
     input:
-        costs=resources("costs_{planning_horizons}.csv"),
         modifications=lambda w: (
             "ariadne-data/costs_2019-modifications.csv"
             if w.planning_horizons == "2020" and config["energy"]["energy_totals_year"] == 2019
             else "ariadne-data/costs_{planning_horizons}-modifications.csv")
     output:
-        resources("modified-costs_{planning_horizons}.csv"),
+        resources("costs_{planning_horizons}.csv"),
     resources:
         mem_mb=1000
     script:
@@ -146,7 +144,7 @@ rule modify_prenetwork:
         network=RESULTS
         + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
         wkn=resources("wasserstoff_kernnetz_elec_s{simpl}_{clusters}.csv") if config_provider("wasserstoff_kernnetz", "enable") else [],
-        costs=resources("modified-costs_{planning_horizons}.csv"),
+        costs=resources("costs_{planning_horizons}.csv"),
     output:
         network=RESULTS
         + "prenetworks-final/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc"
@@ -290,7 +288,7 @@ rule export_ariadne_variables:
             allow_missing=True,
         ),
         costs=expand(
-            resources("modified-costs_{planning_horizons}.csv"),
+            resources("costs_{planning_horizons}.csv"),
             **config["scenario"],
             run=config["run"]["name"],
         ),

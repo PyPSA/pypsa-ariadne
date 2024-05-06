@@ -179,7 +179,7 @@ renewable:
     capacity_per_sqkm: 10
 
 costs:
-  version: v0.8.1
+  horizon: "mean" # "optimist", "pessimist" or "mean"
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
