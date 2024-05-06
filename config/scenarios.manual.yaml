@@ -30,6 +30,9 @@ CurrentPolicies:
     2045: 0.450
     2050: 0.450
 
+  costs:
+    horizon: "mean"
+
   limits_capacity_min:
     Generator:
       onwind:
@@ -119,6 +122,9 @@ KN2045_Bal_v4:
   iiasa_database:
     reference_scenario: 8Gt_Bal_v3
 
+  costs:
+    horizon: "mean"
+
   # boundary condition of maximum volumes
   limits_volume_max:
     # constrain electricity import in TWh
@@ -172,6 +178,9 @@ KN2045_Elec_v4:
   iiasa_database:
     reference_scenario: 8Gt_Elec_v3
 
+  costs:
+    horizon: "mean"
+
   limits_volume_max:
     # constrain electricity import in TWh
     electricity_import:
@@ -223,6 +232,9 @@ KN2045_H2_v4:
 
   iiasa_database:
     reference_scenario: 8Gt_H2_v3
+
+  costs:
+    horizon: "mean"
 
   limits_volume_max:
     # constrain electricity import in TWh
@@ -278,6 +290,9 @@ KN2045plus_EasyRide:
 # Verlagerung der energieintensiven Grundstoffindustrie
   iiasa_database:
     reference_scenario: 8Gt_EasyRide_v3 # TODO: wait for database
+
+  costs:
+    horizon: "optimist"
 
   # boundary condition of maximum volumes
   limits_volume_max: # following the Bal scenario
@@ -355,6 +370,9 @@ KN2045plus_LowDemand:
 # innerhalb Deutschlands und knappe Importe EE möglich
   iiasa_database:
     reference_scenario: 8Gt_LowDemand_v3 # TODO: wait for database
+
+  costs:
+    horizon: "optimist"
 
   # boundary condition of maximum volumes
   limits_volume_max: # Half of the Bal scenario
@@ -435,6 +453,7 @@ KN2045minus_WorstCase:
 # eher knapper Ausbau EE und EE Importe
   iiasa_database:
     reference_scenario: 8Gt_WorstCase_v3 # TODO: wait for database
+
   co2_budget:
     2020: 0.800 # 20% reduction by 2020
     2025: 0.600
@@ -443,6 +462,9 @@ KN2045minus_WorstCase:
     2040: 0.450
     2045: 0.450
     2050: 0.450
+
+  costs:
+    horizon: "pessimist"
 
   # boundary condition of maximum volumes
   limits_volume_max: # Half of the Bal scenario
@@ -520,6 +542,10 @@ KN2045minus_SupplyFocus:
 # Ausbau EE und EE Importe jetzt aber auskömmlich
   iiasa_database:
     reference_scenario: 8Gt_WorstCase_v3 # TODO: wait for database
+
+  costs:
+    horizon: "pessimist"
+
   co2_budget:
     2020: 0.800 # 20% reduction by 2020
     2025: 0.600
