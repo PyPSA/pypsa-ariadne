@@ -30,28 +30,15 @@ You need [mamba](https://mamba.readthedocs.io/en/latest/) to run the analysis. U
 
 ## Provide login details
 
-The snakemake rule `retrieve_ariadne_scenario_data` logs into the IIASA Database. It requires a USERNAME and a PASSWORD which should be set as environment variables in your local shell configuration. To do that on Linux open your `.bashrc` with a text editor, e.g., with
+The snakemake rule `retrieve_ariadne_database` logs into the IIASA Database via the [`pyam`](https://pyam-iamc.readthedocs.io/en/stable/tutorials/iiasa.html) package. The credentials for logging into this database have to be stored locally on your machine with `ixmp4`. To do this, run
 
 ```
-vim ~/.bashrc
+ixmp4 login <username>
 ```
 
-and then add the following two lines to the end of that file:
+You will be prompted to enter your `<password>`. 
 
-```
-export IIASA_USERNAME='USERNAME'
-export IIASA_PASSWORD='PASSWORD'
-```
-
-Fill in the correct login details and don't forget the quotation marks. You might have to restart your terminal session / vscode window for the new variables to become available. 
-
-**Caution for vscode users**: If you want to use the environment variables in an Interactive Python Session, another step might be required depending on your local config. Create a file `.env` in the working directory and add the lines:
-```
-IIASA_USERNAME='USERNAME'
-IIASA_PASSWORD='PASSWORD'
-```
-Details on Python environment variables in VSCode can be found here: https://code.visualstudio.com/docs/python/environments#_environment-variables
-
+Caveat: These credentials are stored on your machine in plain text.
 
 ## Run the analysis
 

@@ -47,7 +47,7 @@ dependencies:
 - pre-commit
 
   # Ariadne specific
-- pyam
+- pyam>=2.0
 - ruamel.yaml
 - gurobi
 
