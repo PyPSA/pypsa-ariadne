@@ -1284,9 +1284,18 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
 
     # var["Final Energy|Industry|Other"] = \
 
-    var["Final Energy|Industry|Solids"] = \
-        industry_demand.get(["coal", "coke", "solid biomass"]).sum()
+
     
+    var["Final Energy|Industry|Solids|Biomass"] = \
+        industry_demand.get("solid biomass")
+    
+    var["Final Energy|Industry|Solids|Coal"] = \
+        industry_demand.get(["coal", "coke"]).sum()
+    
+    var["Final Energy|Industry|Solids"] = \
+        var["Final Energy|Industry|Solids|Biomass"] + \
+        var["Final Energy|Industry|Solids|Coal"]
+
     # Why is AMMONIA zero?
         
     # var["Final Energy|Industry excl Non-Energy Use|Non-Metallic Minerals"] = \
@@ -1508,10 +1517,35 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
         + var["Final Energy|Industry|Electricity"]
     )
     
-    # var["Final Energy|Solids"] = \
-    # var["Final Energy|Solids|Biomass"] = \
-    # var["Final Energy|Gases"] = \
-    # var["Final Energy|Liquids"] = \
+
+    # TODO The problem with all of these is that FEEDSTOCKS have to be excluded!!!
+
+    var["Final Energy|Solids"] = (
+        # var["Final Energy|Agriculture|Solids"]
+        var["Final Energy|Residential and Commercial|Solids"]
+        + var["Final Energy|Industry|Solids"]
+    )
+
+    var["Final Energy|Solids|Biomass"] = (
+        var["Final Energy|Residential and Commercial|Solids|Biomass"]
+        + var["Final Energy|Industry|Solids|Biomass"]
+    )
+
+    var["Final Energy|Solids|Biomass"] = \
+        var["Final Energy|Industry|Solids|Coal"]
+
+    var["Final Energy|Gases"] = (
+        var["Final Energy|Residential and Commercial|Gases"]
+        + var["Final Energy|Industry|Gases"]
+    )
+
+    var["Final Energy|Liquids"] = (
+        var["Final Energy|Agriculture|Liquids"]
+        + var["Final Energy|Residential and Commercial|Liquids"]
+        + var["Final Energy|Transportation|Liquids"]
+        + var["Final Energy|Industry|Liquids"]
+    )
+
     var["Final Energy|Heat"] = (
         var["Final Energy|Agriculture|Heat"]
         + var["Final Energy|Residential and Commercial|Heat"]
