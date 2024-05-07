@@ -1333,12 +1333,14 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
         **kwargs,
     ).filter(
         like=region,
-    ).groupby("carrier").sum().multiply(MWh2PJ)
+    ).groupby("carrier").sum().drop([ # chargers affect all sectors equally
+        "urban decentral water tanks charger",
+        "rural water tanks charger",
+    ]).multiply(MWh2PJ)
 
     decentral_heat_residential_and_commercial_fraction = (
-        decentral_heat_withdrawal.get(
-            ["rural heat", "urban decentral heat"]
-        ).sum() / decentral_heat_withdrawal.sum()
+        sum_load(n, ["urban decentral heat", "rural heat"], region) 
+        / decentral_heat_withdrawal.sum()
     )
 
     decentral_heat_supply_rescom = n.statistics.supply(
@@ -1352,27 +1354,61 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
     # Dischargers probably should not be considered, to avoid double counting
 
     var["Final Energy|Residential and Commercial|Heat"] = (
-        sum_load(n, "urban central heat", region) # Maybe use n.statistics instead
+        sum_load(n, "urban central heat", region) # For urban central Final Energy is delivered as Heat
         + decentral_heat_supply_rescom.filter(like="solar thermal").sum()
-    )
-        # Assuming for solar thermal secondary energy == Final energy
+    ) # Assuming for solar thermal secondary energy == Final energy
 
+    gas_fossil_fraction = _get_gas_fossil_fraction(n, region, kwargs)
+
+    gas_usage = n.statistics.withdrawal(
+        bus_carrier="gas", **kwargs
+    ).filter(like=region).groupby(
+        ["carrier"]
+    ).sum().multiply(MWh2PJ)
+
+    # !!! Here the final is delivered as gas, not as heat
     var["Final Energy|Residential and Commercial|Gases"] = \
-        decentral_heat_supply_rescom.filter(like="gas boiler").sum()
+        gas_usage.get("urban decentral gas boiler", 0) + \
+        gas_usage.get("rural gas boiler", 0)    
+    
+    var["Final Energy|Residential and Commercial|Gases|Natural Gas"] = (
+        var["Final Energy|Residential and Commercial|Gases"]
+        * gas_fossil_fraction
+    )
+    
 
     # var["Final Energy|Residential and Commercial|Hydrogen"] = \
     # ! Not implemented
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
+    oil_usage = n.statistics.withdrawal(
+        bus_carrier="oil", **kwargs
+    ).filter(like=region).groupby(
+        ["carrier"]
+    ).sum().multiply(MWh2PJ)
 
     var["Final Energy|Residential and Commercial|Liquids"] = \
-        decentral_heat_supply_rescom.filter(like="oil boiler").sum()
+        oil_usage.get("urban decentral oil boiler", 0) + \
+        oil_usage.get("rural oil boiler", 0)
+    
+    var["Final Energy|Residential and Commercial|Liquids|Petroleum"] = (
+        var["Final Energy|Residential and Commercial|Liquids"]
+        * oil_fossil_fraction
+    )   
     
     # var["Final Energy|Residential and Commercial|Other"] = \
     # var["Final Energy|Residential and Commercial|Solids|Coal"] = \
     # ! Not implemented 
 
+    biomass_usage = n.statistics.withdrawal(
+        bus_carrier="solid biomass", **kwargs
+    ).filter(like=region).groupby(
+        ["carrier"]
+    ).sum().multiply(MWh2PJ)
+
     var["Final Energy|Residential and Commercial|Solids"] = \
     var["Final Energy|Residential and Commercial|Solids|Biomass"] = \
-        decentral_heat_supply_rescom.filter(like="biomass boiler").sum()
+        biomass_usage.get("urban decentral biomass boiler", 0) + \
+        biomass_usage.get("rural biomass boiler", 0)
 
     # Q: Everything else seems to be not implemented
 
@@ -1383,6 +1419,22 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
         + var["Final Energy|Residential and Commercial|Liquids"]
         + var["Final Energy|Residential and Commercial|Solids"]
     )
+
+    # TODO double check prices for usage of correct FE carrier
+
+    var["Final Energy|Residential and Commercial|Space and Water Heating"] = (
+        # district heating
+        var["Final Energy|Residential and Commercial|Heat"]
+        # decentral boilers
+        + var["Final Energy|Residential and Commercial|Gases"]
+        + var["Final Energy|Residential and Commercial|Liquids"]
+        + var["Final Energy|Residential and Commercial|Solids"]
+        # resistive heaters and heat pumps
+        + low_voltage_electricity.filter(like="rural").sum() 
+        + low_voltage_electricity.filter(like="urban decentral").sum()
+        )
+
+
 
     # var["Final Energy|Transportation|Other"] = \
 
