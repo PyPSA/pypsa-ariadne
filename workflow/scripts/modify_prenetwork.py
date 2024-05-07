@@ -326,6 +326,31 @@ def transmission_costs_from_modified_cost_data(n, costs, length_factor=1.0):
     )
     n.links.loc[dc_b, "capital_cost"] = costs
 
+# specific emissions in tons CO2/MWh according to n.links[n.links.carrier =="your_carrier].efficiency2.unique().item()
+specific_emisisons = {
+    "oil" : 0.2571,
+    "gas" : 0.198, # OCGT
+    "coal" : 0.3361,
+    "lignite" : 0.4069,
+    "co2 sequestered": 1.0,
+    "co2": 0.0,
+}
+
+def emissions_upstream(n):
+
+    n.remove("GlobalConstraint", "CO2Limit")
+
+    n.add(
+        "GlobalConstraint",
+        "CO2Limit",
+        carrier_attribute="co2_emissions",
+        sense="<=",
+        constant=0, # -10000
+    )
+
+    for carrier in specific_emisisons:
+        n.carriers.loc[carrier, "co2_emissions"] = specific_emisisons[carrier]    
+
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -390,5 +415,7 @@ if __name__ == "__main__":
 
     # change to NEP21 costs
     transmission_costs_from_modified_cost_data(n, costs_loaded, snakemake.params.length_factor)
+
+    emissions_downstream(n)
 
     n.export_to_netcdf(snakemake.output.network)
