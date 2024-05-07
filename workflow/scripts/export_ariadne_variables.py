@@ -787,6 +787,9 @@ def get_primary_energy(n, region):
 
     biomass_CHP_E_fraction =  biomass_CHP_E_to_H * (1 / (biomass_CHP_E_to_H + 1))
     
+    var["Primary Energy|Biomass|Gases"] = \
+        biomass_usage.filter(like="biogas to gas").sum()
+
     var["Primary Energy|Biomass|w/ CCS"] = \
         biomass_usage[biomass_usage.index.str.contains("CC")].sum()
     
@@ -877,6 +880,15 @@ def get_primary_energy(n, region):
     )
     # Primary Energy|Other
     # Not implemented
+    
+    var["Primary Energy"] = (
+        var["Primary Energy|Fossil"] +
+        var["Primary Energy|Biomass"] +
+        var["Primary Energy|Hydro"] +
+        var["Primary Energy|Solar"] +
+        var["Primary Energy|Wind"] +
+        var["Primary Energy|Nuclear"]
+    )
 
     return var
 
@@ -1220,8 +1232,36 @@ def get_secondary_energy(n, region):
         var["Secondary Energy|Gases"],
         gas_fuel_usage.sum()
     )
-        
 
+    electricity_withdrawal = n.statistics.withdrawal(
+        bus_carrier=["low voltage", "AC"], **kwargs
+    ).filter(like=region).groupby(
+        ["carrier"]
+    ).sum().multiply(MWh2PJ).drop(
+        ["AC", "DC", "electricity distribution grid"],
+    )
+    
+    var["Secondary Energy Input|Electricity|Hydrogen"] = \
+        electricity_withdrawal.get("H2 Electrolysis", 0)
+    
+    var["Secondary Energy Input|Electricity|Heat"] = \
+        electricity_withdrawal.filter(like="urban central").sum()
+    
+    hydrogen_withdrawal = n.statistics.withdrawal(
+        bus_carrier="H2", **kwargs
+    ).filter(like=region).groupby(
+        ["carrier"]
+    ).sum().multiply(MWh2PJ)
+
+    var["Secondary Energy Input|Hydrogen|Electricity"] = \
+        hydrogen_withdrawal.get("H2 Fuel Cell", 0)
+    
+    var["Secondary Energy Input|Hydrogen|Gases"] = \
+        hydrogen_withdrawal.get("Sabatier", 0)
+
+    var["Secondary Energy Input|Hydrogen|Liquids"] = \
+        hydrogen_withdrawal.get("Fischer-Tropsch", 0)
+    
     return var
 
 def get_final_energy(n, region, _industry_demand, _energy_totals):
@@ -1265,6 +1305,12 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
     var["Final Energy|Industry|Hydrogen"] = \
         industry_demand.get("hydrogen")
     
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
+    var["Final Energy|Industry|Liquids|Petroleum"] = \
+        sum_load(n, "naphtha for industry", region) * oil_fossil_fraction
+    
+    var["Final Energy|Industry|Liquids|Efuel"] = \
+        sum_load(n, "naphtha for industry", region) * (1 - oil_fossil_fraction)
 
     var["Final Energy|Industry|Liquids"] = \
        sum_load(n, "naphtha for industry", region)
@@ -1813,9 +1859,10 @@ def get_emissions(n, region, _energy_totals):
         var["Emissions|CO2|Energy|Supply|Heat"] + \
         var["Emissions|CO2|Energy|Supply|Electricity"]
 
-
     var["Emissions|CO2|Energy|Supply|Hydrogen"] = \
+    var["Emissions|Gross Fossil CO2|Energy|Supply|Hydrogen"] = \
         co2_emissions.filter(like="SMR").sum()
+    
     
     var["Emissions|CO2|Energy|Supply|Gases"] = \
         (-1) * co2_negative_emissions.filter(
@@ -1852,6 +1899,11 @@ def get_emissions(n, region, _energy_totals):
     var["Emissions|CO2|Energy and Industrial Processes"] = \
         var["Emissions|CO2|Energy"] + \
         var["Emissions|CO2|Industrial Processes"]
+    
+    var["Emissions|Gross Fossil CO2|Energy|Supply"] = \
+        var["Emissions|Gross Fossil CO2|Energy|Supply|Electricity"] + \
+        var["Emissions|Gross Fossil CO2|Energy|Supply|Heat"] + \
+        var["Emissions|Gross Fossil CO2|Energy|Supply|Hydrogen"]
 
     assert isclose(
         var["Emissions|CO2"],
@@ -2764,8 +2816,7 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts="None",
-            planning_horizons="2050",
-            run="KN2045_Bal_v4"
+            run="CurrentPolicies"
         )
 
 
