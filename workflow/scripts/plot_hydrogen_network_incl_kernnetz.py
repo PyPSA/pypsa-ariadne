@@ -49,7 +49,7 @@ def group_pipes(df, drop_direction=False):
     )
 
 
-def plot_h2_map(n, regions, output):
+def plot_h2_map(n, regions):
     # if "H2 pipeline" not in n.links.carrier.unique():
     #     return
 
@@ -302,7 +302,7 @@ def plot_h2_map(n, regions, output):
 
     ax.set_facecolor("white")
 
-    fig.savefig(output, bbox_inches="tight")
+    fig.savefig(snakemake.output.map, bbox_inches="tight")
 
 
 if __name__ == "__main__":
@@ -325,10 +325,10 @@ if __name__ == "__main__":
             run="CurrentPolicies"
         )
 
-    # configure_logging(snakemake)
-    # set_scenario_config(snakemake)
+    configure_logging(snakemake)
+    set_scenario_config(snakemake)
 
-    networks = [pypsa.Network(n) for n in snakemake.input.networks]
+    n = pypsa.Network(snakemake.input.network)
     # fn= "/home/julian-geis/repos/pypsa-ariadne/results/20240426plotH2Kernnetz/CurrentPolicies/postnetworks/elec_s_22_lvopt__none_2030.nc"
     # n = pypsa.Network(fn)
 
@@ -341,6 +341,5 @@ if __name__ == "__main__":
 
     proj = load_projection(snakemake.params.plotting)
 
-    for i in np.arange(len(networks)):
-        plot_h2_map(networks[i], regions, output=snakemake.output.maps[i])
+    plot_h2_map(n, regions)
 
