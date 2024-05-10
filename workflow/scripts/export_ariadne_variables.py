@@ -2825,9 +2825,6 @@ def get_non_energy_use(n, region, year):
     CH4_for_MeOH = production.loc[region, "Methanol"] * snakemake.params.MWh_CH4_per_tMeOH * 1e3
 
     var["Final Energy|Non-Energy Use|Gases"] = non_energy_natural_gas + CH4_for_MeOH
-    var["Final Energy|Non-Energy Use|Gases|Biomass"] = 0
-    var["Final Energy|Non-Energy Use|Gases|Efuel"] = 0
-    var["Final Energy|Non-Energy Use|Gases|Natural Gas"] = non_energy_natural_gas + CH4_for_MeOH
 
     var["Final Energy|Non-Energy Use|Liquids"] = non_energy_naphtha
     
