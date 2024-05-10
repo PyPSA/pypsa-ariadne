@@ -5,6 +5,8 @@ from numpy import isclose
 import math
 import numpy as np
 import os
+from _helpers import mute_print
+import re
 
 paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
 for path in paths:
@@ -2744,7 +2746,105 @@ def get_policy(n):
 
     return var
 
-def get_ariadne_var(n, industry_demand, energy_totals, costs, region):
+def load_idees_data(sector, country):
+    sheet_names = {
+        "Iron and steel": "ISI",
+        "Chemicals Industry": "CHI",
+        "Non-metallic mineral products": "NMM",
+        "Pulp, paper and printing": "PPA",
+        "Food, beverages and tobacco": "FBT",
+        "Non Ferrous Metals": "NFM",
+        "Transport Equipment": "TRE",
+        "Machinery Equipment": "MAE",
+        "Textiles and leather": "TEL",
+        "Wood and wood products": "WWP",
+        "Other Industrial Sectors": "OIS",
+        }
+    year=2015
+    suffixes = {"out": "", "fec": "_fec", "ued": "_ued", "emi": "_emi"}
+    sheets = {k: sheet_names[sector] + v for k, v in suffixes.items()}
+
+    def usecols(x):
+        return isinstance(x, str) or x == year
+
+    with mute_print():
+        idees = pd.read_excel(
+            f"{snakemake.input.idees}/JRC-IDEES-2015_Industry_{country}.xlsx",
+            sheet_name=list(sheets.values()),
+            index_col=0,
+            header=0,
+            usecols=usecols,
+        )
+
+    for k, v in sheets.items():
+        idees[k] = idees.pop(v).squeeze()
+
+    return idees
+
+def get_non_energy_use(n, region, year):
+    var = pd.Series()
+
+    # from build_industry_sector_ratios import load_idees_data
+    # read in shares of non-energy use
+    sector = "Chemicals Industry"
+    idees = load_idees_data(sector, country="DE")
+
+    subsector = "Chemicals: Feedstock (energy used as raw material)"
+    s_fec = idees["fec"][13:22]
+    assert s_fec.index[0] == subsector
+
+    # LPG and other feedstock materials are assimilated to naphtha
+    # since they will be produced through Fischer-Tropsh process
+    sel = ["Solids", "Refinery gas", "LPG",
+        "Diesel oil", "Residual fuel oil", "Other liquids"]
+    
+    naphtha = s_fec["Naphtha"] + s_fec[sel].sum()
+    natural_gas = s_fec["Natural gas"]
+
+    # share of non-energy use in MWh/t_Material
+    sector_ratios = pd.read_csv(snakemake.input.sector_ratios, index_col=0)
+    share_naphtha = naphtha / sector_ratios.loc["naphtha", "HVC"]
+    share_natural_gas = natural_gas / sector_ratios.loc["methane", "HVC"]
+    # get recycling rate
+    share_naphtha *= snakemake.params.HVC_primary[year]
+    share_natural_gas *= snakemake.params.HVC_primary[year]
+
+    ind_production = pd.read_csv(snakemake.input.industrial_production, index_col=0)
+    ind_production = ind_production.loc[region, "HVC"]
+
+    non_energy_naphtha = ind_production * share_naphtha
+    non_energy_natural_gas = ind_production * share_natural_gas
+
+    # get stochiometric demand of H2 for ammonia and methanol
+    ammonia_demand = 1.8199 # MWh/kton TODO: check this again
+    methanol_demand = 0.6346 # MWh/kton TODO: check this again
+
+    # get H2 demand for ammonia and methanol production
+    # get right file
+    years = [int(re.search(r'(\d{4})-modified\.csv', filename).group(1)) for filename in snakemake.input.industrial_production_per_country_tomorrow]
+    index = next((idx for idx, y in enumerate(years) if y == year), None)
+    production = pd.read_csv(snakemake.input.industrial_production_per_country_tomorrow[index], index_col=0) # kton/a
+    h2_demand = production.loc[region, "Ammonia"] * ammonia_demand + production.loc[region, "Methanol"] * methanol_demand
+
+    var["Final Energy|Non-Energy Use|Gases"] = non_energy_natural_gas + h2_demand
+    var["Final Energy|Non-Energy Use|Gases|Biomass"] = 0
+    var["Final Energy|Non-Energy Use|Gases|Efuel"] = 0
+    var["Final Energy|Non-Energy Use|Gases|Natural Gas"] = non_energy_natural_gas
+    var["Final Energy|Non-Energy Use|Gases|Hydrogen"] = h2_demand
+
+    var["Final Energy|Non-Energy Use|Liquids"] = non_energy_naphtha
+    
+    var["Final Energy|Non-Energy Use|Solids"] = 0
+    var["Final Energy|Non-Energy Use|Solids|Coal"] = 0
+    var["Final Energy|Non-Energy Use|Solids|Biomass"] = 0
+
+    var["Final Energy|Non-Energy Use|Hydrogen"] = h2_demand
+
+    var["Final Energy|Non-Energy Use"] = non_energy_natural_gas + h2_demand + non_energy_naphtha
+
+    return var
+
+def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
 
     var = pd.concat([
         get_capacities(n, region),
@@ -2762,7 +2862,8 @@ def get_ariadne_var(n, industry_demand, energy_totals, costs, region):
             dg_cost_factor=snakemake.params.dg_cost_factor,
             length_factor=snakemake.params.length_factor
         ),
-        get_policy(n)
+        get_policy(n),
+        get_non_energy_use(n, region, year)
     ])
 
     return var
@@ -2770,11 +2871,11 @@ def get_ariadne_var(n, industry_demand, energy_totals, costs, region):
 
 # uses the global variables model, scenario and var2unit. For now.
 def get_data(
-        n, industry_demand, energy_totals, costs, region,
-        version="0.10", scenario="test"
+        n, industry_demand, energy_totals, costs, region, year,
+        version="0.10", scenario="test",
     ):
     
-    var = get_ariadne_var(n, industry_demand, energy_totals, costs, region)
+    var = get_ariadne_var(n, industry_demand, energy_totals, costs, region, year)
 
     data = []
     for v in var.index:
@@ -2816,7 +2917,7 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts="None",
-            run="CurrentPolicies"
+            run="KN2045_Bal_v4"
         )
 
 
@@ -2862,6 +2963,7 @@ if __name__ == "__main__":
             energy_totals,
             costs[i],
             "DE",
+            year=year,
             version=config["version"],
             scenario=snakemake.wildcards.run,
         ))
