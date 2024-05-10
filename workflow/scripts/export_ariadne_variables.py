@@ -2877,6 +2877,28 @@ def get_policy(n):
 
     return var
 
+def get_production(region, year):
+
+    var = pd.Series()
+    # read in the industrial production data
+    years = [int(re.search(r'(\d{4})-modified\.csv', filename).group(1)) for filename in snakemake.input.industrial_production_per_country_tomorrow]
+    index = next((idx for idx, y in enumerate(years) if y == year), None)
+    production = pd.read_csv(snakemake.input.industrial_production_per_country_tomorrow[index], index_col=0) # kton/a
+    
+    var["Production|Non-Metallic Minerals|Cement"] = production.loc[region, "Cement"]
+    var["Production|Steel"] = production.loc["DE", ["Electric arc", "Integrated steelworks", "DRI + Electric arc"]].sum()
+    var["Production|Steel|Primary"] = var["Production|Steel"] * snakemake.params.St_primary_fraction[year]
+    var["Production|Steel|Secondary"] = var["Production|Steel"] * (1 - snakemake.params.St_primary_fraction[year])
+    
+    # optional:
+    # var[""Production|Pulp and Paper"]
+    # var["Production|Chemicals|Ammonia"]
+    # var["Production|Chemicals|Methanol"]
+    # var["Production|Pulp and Paper"]
+    # var["Production|Non-Ferrous Metals"]
+
+    return var
+
 def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
 
     var = pd.concat([
@@ -2885,6 +2907,7 @@ def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
         #get_installed_capacities(n,region),
         #get_capacity_additions(n, region),
         #get_capacity_additions_nstat(n, region),
+        get_production(region, year),
         get_primary_energy(n, region),
         get_secondary_energy(n, region),
         get_final_energy(n, region, industry_demand, energy_totals, year),

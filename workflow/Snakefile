@@ -279,6 +279,7 @@ rule export_ariadne_variables:
         MWh_CH4_per_tMeOH=config_provider("industry", "MWh_CH4_per_tMeOH"),
         MWh_CH4_per_tNH3_SMR=config_provider("industry", "MWh_CH4_per_tNH3_SMR"),
         MWh_H2_per_tNH3_electrolysis=config_provider("industry", "MWh_H2_per_tNH3_electrolysis"),
+        St_primary_fraction=config_provider("industry", "St_primary_fraction"),
     input:
         template=resources("template_ariadne_database.xlsx"),
         industry_demands=expand(
