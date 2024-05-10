@@ -24,6 +24,7 @@ t2Mt = 1e-6
 MWh2GJ = 3.6
 TWh2PJ = 3.6
 MWh2PJ = 3.6e-6
+toe_to_MWh = 11.630 # GWh/ktoe OR MWh/toe
 
 
 
@@ -2784,8 +2785,7 @@ def load_idees_data(sector, country):
 def get_non_energy_use(n, region, year):
     var = pd.Series()
 
-    # from build_industry_sector_ratios import load_idees_data
-    # read in shares of non-energy use
+    # read in shares of non-energy use [ktoe]
     sector = "Chemicals Industry"
     idees = load_idees_data(sector, country="DE")
 
@@ -2798,39 +2798,39 @@ def get_non_energy_use(n, region, year):
     sel = ["Solids", "Refinery gas", "LPG",
         "Diesel oil", "Residual fuel oil", "Other liquids"]
     
-    naphtha = s_fec["Naphtha"] + s_fec[sel].sum()
-    natural_gas = s_fec["Natural gas"]
+    naphtha = (s_fec["Naphtha"] + s_fec[sel].sum()) * toe_to_MWh *1e3 # MWh
+    natural_gas = s_fec["Natural gas"] * toe_to_MWh * 1e3 # MWh
 
-    # share of non-energy use in MWh/t_Material
-    sector_ratios = pd.read_csv(snakemake.input.sector_ratios, index_col=0)
-    share_naphtha = naphtha / sector_ratios.loc["naphtha", "HVC"]
-    share_natural_gas = natural_gas / sector_ratios.loc["methane", "HVC"]
-    # get recycling rate
-    share_naphtha *= snakemake.params.HVC_primary[year]
-    share_natural_gas *= snakemake.params.HVC_primary[year]
+    # read in industrial production of 2015 [kt/a]
+    industrial_production = pd.read_csv(snakemake.input.industrial_production, index_col=0)
+    ammonia_region = industrial_production.loc[region, "Ammonia"]
+    MeOH_region = industrial_production.loc[region, "Methanol"]
 
-    ind_production = pd.read_csv(snakemake.input.industrial_production, index_col=0)
-    ind_production = ind_production.loc[region, "HVC"]
+    # subtracting natural gas demand for ammonia and methanol production
+    natural_gas -= ammonia_region * snakemake.params.MWh_CH4_per_tNH3_SMR * 1e3 # MWh
+    natural_gas -= MeOH_region * snakemake.params.MWh_CH4_per_tMeOH * 1e3 # MWh
 
-    non_energy_naphtha = ind_production * share_naphtha
-    non_energy_natural_gas = ind_production * share_natural_gas
+    # adjust demand for non-energy use with recycling rate
+    non_energy_naphtha = naphtha * snakemake.params.HVC_primary[year]
+    non_energy_natural_gas = natural_gas * snakemake.params.HVC_primary[year]
 
-    # get stochiometric demand of H2 for ammonia and methanol
-    ammonia_demand = 1.8199 # MWh/kton TODO: check this again
-    methanol_demand = 0.6346 # MWh/kton TODO: check this again
+    # get stochiometric demand of H2 for ammonia production
+    stoch_NH3 = 5.882 # MWh/ton
 
-    # get H2 demand for ammonia and methanol production
-    # get right file
+    # read in production volume for the time horizon
     years = [int(re.search(r'(\d{4})-modified\.csv', filename).group(1)) for filename in snakemake.input.industrial_production_per_country_tomorrow]
     index = next((idx for idx, y in enumerate(years) if y == year), None)
     production = pd.read_csv(snakemake.input.industrial_production_per_country_tomorrow[index], index_col=0) # kton/a
-    h2_demand = production.loc[region, "Ammonia"] * ammonia_demand + production.loc[region, "Methanol"] * methanol_demand
 
-    var["Final Energy|Non-Energy Use|Gases"] = non_energy_natural_gas + h2_demand
+    # get H2 demand for ammonia and methanol production
+    # get production volume in kton/a
+    H2_for_NH3 = production.loc[region, "Ammonia"] * stoch_NH3 *1e3
+    CH4_for_MeOH = production.loc[region, "Methanol"] * snakemake.params.MWh_CH4_per_tMeOH * 1e3
+
+    var["Final Energy|Non-Energy Use|Gases"] = non_energy_natural_gas + CH4_for_MeOH
     var["Final Energy|Non-Energy Use|Gases|Biomass"] = 0
     var["Final Energy|Non-Energy Use|Gases|Efuel"] = 0
-    var["Final Energy|Non-Energy Use|Gases|Natural Gas"] = non_energy_natural_gas
-    var["Final Energy|Non-Energy Use|Gases|Hydrogen"] = h2_demand
+    var["Final Energy|Non-Energy Use|Gases|Natural Gas"] = non_energy_natural_gas + CH4_for_MeOH
 
     var["Final Energy|Non-Energy Use|Liquids"] = non_energy_naphtha
     
@@ -2838,11 +2838,11 @@ def get_non_energy_use(n, region, year):
     var["Final Energy|Non-Energy Use|Solids|Coal"] = 0
     var["Final Energy|Non-Energy Use|Solids|Biomass"] = 0
 
-    var["Final Energy|Non-Energy Use|Hydrogen"] = h2_demand
+    var["Final Energy|Non-Energy Use|Hydrogen"] = H2_for_NH3
 
-    var["Final Energy|Non-Energy Use"] = non_energy_natural_gas + h2_demand + non_energy_naphtha
+    var["Final Energy|Non-Energy Use"] = non_energy_natural_gas + H2_for_NH3 + non_energy_naphtha + CH4_for_MeOH
 
-    return var
+    return var*MWh2PJ
 
 def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
 
