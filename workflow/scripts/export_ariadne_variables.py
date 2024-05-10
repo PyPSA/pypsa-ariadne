@@ -1267,7 +1267,42 @@ def get_secondary_energy(n, region):
     
     return var
 
-def get_final_energy(n, region, _industry_demand, _energy_totals):
+def load_idees_data(sector, country):
+    sheet_names = {
+        "Iron and steel": "ISI",
+        "Chemicals Industry": "CHI",
+        "Non-metallic mineral products": "NMM",
+        "Pulp, paper and printing": "PPA",
+        "Food, beverages and tobacco": "FBT",
+        "Non Ferrous Metals": "NFM",
+        "Transport Equipment": "TRE",
+        "Machinery Equipment": "MAE",
+        "Textiles and leather": "TEL",
+        "Wood and wood products": "WWP",
+        "Other Industrial Sectors": "OIS",
+        }
+    year=2015
+    suffixes = {"out": "", "fec": "_fec", "ued": "_ued", "emi": "_emi"}
+    sheets = {k: sheet_names[sector] + v for k, v in suffixes.items()}
+
+    def usecols(x):
+        return isinstance(x, str) or x == year
+
+    with mute_print():
+        idees = pd.read_excel(
+            f"{snakemake.input.idees}/JRC-IDEES-2015_Industry_{country}.xlsx",
+            sheet_name=list(sheets.values()),
+            index_col=0,
+            header=0,
+            usecols=usecols,
+        )
+
+    for k, v in sheets.items():
+        idees[k] = idees.pop(v).squeeze()
+
+    return idees
+
+def get_final_energy(n, region, _industry_demand, _energy_totals, year):
 
     kwargs = {
         'groupby': n.statistics.groupers.get_name_bus_and_carrier,
@@ -1275,6 +1310,63 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
     }
 
     var = pd.Series()
+
+    # read in shares of non-energy use [ktoe]
+    sector = "Chemicals Industry"
+    idees = load_idees_data(sector, country="DE")
+
+    subsector = "Chemicals: Feedstock (energy used as raw material)"
+    s_fec = idees["fec"][13:22]
+    assert s_fec.index[0] == subsector
+
+    # LPG and other feedstock materials are assimilated to naphtha
+    # since they will be produced through Fischer-Tropsh process
+    sel = ["Solids", "Refinery gas", "LPG",
+        "Diesel oil", "Residual fuel oil", "Other liquids"]
+    
+    naphtha = (s_fec["Naphtha"] + s_fec[sel].sum()) * toe_to_MWh *1e3 # MWh
+    natural_gas = s_fec["Natural gas"] * toe_to_MWh * 1e3 # MWh
+
+    # read in industrial production of 2015 [kt/a]
+    industrial_production = pd.read_csv(snakemake.input.industrial_production, index_col=0)
+    ammonia_region = industrial_production.loc[region, "Ammonia"]
+    MeOH_region = industrial_production.loc[region, "Methanol"]
+
+    # subtracting natural gas demand for ammonia and methanol production
+    natural_gas -= ammonia_region * snakemake.params.MWh_CH4_per_tNH3_SMR * 1e3 # MWh
+    natural_gas -= MeOH_region * snakemake.params.MWh_CH4_per_tMeOH * 1e3 # MWh
+
+    # adjust demand for non-energy use with recycling rate
+    non_energy_naphtha = naphtha * snakemake.params.HVC_primary[year]
+    non_energy_natural_gas = natural_gas * snakemake.params.HVC_primary[year]
+
+    # read in production volume for the time horizon
+    years = [int(re.search(r'(\d{4})-modified\.csv', filename).group(1)) for filename in snakemake.input.industrial_production_per_country_tomorrow]
+    index = next((idx for idx, y in enumerate(years) if y == year), None)
+    production = pd.read_csv(snakemake.input.industrial_production_per_country_tomorrow[index], index_col=0) # kton/a
+
+    # get H2 demand for ammonia and methanol production
+    # get production volume in kton/a
+    H2_for_NH3 = production.loc[region, "Ammonia"] * snakemake.params.MWh_H2_per_tNH3_electrolysis *1e3
+    CH4_for_MeOH = production.loc[region, "Methanol"] * snakemake.params.MWh_CH4_per_tMeOH * 1e3
+
+    var["Final Energy|Non-Energy Use|Gases"] = (non_energy_natural_gas + CH4_for_MeOH) * MWh2PJ
+
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
+
+    var["Final Energy|Non-Energy Use|Liquids"] = non_energy_naphtha * MWh2PJ
+    var["Final Energy|Non-Energy Use|Liquids|Petroleum"] = non_energy_naphtha * MWh2PJ * oil_fossil_fraction
+    var["Final Energy|Non-Energy Use|Liquids|Efuel"] = non_energy_naphtha * MWh2PJ * (1 - oil_fossil_fraction)
+    var["Final Energy|Non-Energy Use|Liquids|Biomass"] = 0
+
+    var["Final Energy|Non-Energy Use|Solids"] = 0
+    var["Final Energy|Non-Energy Use|Solids|Coal"] = 0
+    var["Final Energy|Non-Energy Use|Solids|Biomass"] = 0
+
+    var["Final Energy|Non-Energy Use|Hydrogen"] = H2_for_NH3 * MWh2PJ
+
+    var["Final Energy|Non-Energy Use"] = (non_energy_natural_gas + H2_for_NH3 + non_energy_naphtha + CH4_for_MeOH) * MWh2PJ
+
 
     energy_totals = _energy_totals.loc[region[0:2]]
 
@@ -1288,10 +1380,16 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
     var["Final Energy|Industry|Electricity"] = \
         industry_demand.get("electricity")
         # or use: sum_load(n, "industry electricity", region)
+    # electricity is not used for non-energy purposes
+    var["Final Energy|Industry excl Non-Energy Use|Electricity"] = \
+        var["Final Energy|Industry|Electricity"]
 
     var["Final Energy|Industry|Heat"] = \
         industry_demand.get("low-temperature heat")
-    
+    # heat is not used for non-energy purposes
+    var["Final Energy|Industry excl Non-Energy Use|Heat"] = \
+        var["Final Energy|Industry|Heat"]
+
     # var["Final Energy|Industry|Solar"] = \
     # !: Included in |Heat
 
@@ -1301,22 +1399,38 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
     var["Final Energy|Industry|Gases"] = \
         industry_demand.get("methane")
     # "gas for industry" is now regionally resolved and could be used here
+    # subtract non-energy used gases from total gas demand
+    var["Final Energy|Industry excl Non-Energy Use|Gases"] = \
+        var["Final Energy|Industry|Gases"] - var["Final Energy|Non-Energy Use|Gases"]
 
     # var["Final Energy|Industry|Power2Heat"] = \
     # Q: misleading description
 
     var["Final Energy|Industry|Hydrogen"] = \
         industry_demand.get("hydrogen")
+    # subtract non-energy used hydrogen from total hydrogen demand
+    var["Final Energy|Industry excl Non-Energy Use|Hydrogen"] = \
+        var["Final Energy|Industry|Hydrogen"] - var["Final Energy|Non-Energy Use|Hydrogen"]
     
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
     var["Final Energy|Industry|Liquids|Petroleum"] = \
         sum_load(n, "naphtha for industry", region) * oil_fossil_fraction
     
+    # subtract non-energy used petroleum from total petroleum demand
+    var["Final Energy|Industry excl Non-Energy Use|Liquids|Petroleum"] = \
+        var["Final Energy|Industry|Liquids|Petroleum"] - var["Final Energy|Non-Energy Use|Liquids|Petroleum"]
+    
     var["Final Energy|Industry|Liquids|Efuel"] = \
         sum_load(n, "naphtha for industry", region) * (1 - oil_fossil_fraction)
+    # subtract non-energy used efuels from total efuels demand
+    var["Final Energy|Industry excl Non-Energy Use|Liquids|Efuel"] = \
+        var["Final Energy|Industry|Liquids|Efuel"] - var["Final Energy|Non-Energy Use|Liquids|Efuel"]
 
     var["Final Energy|Industry|Liquids"] = \
        sum_load(n, "naphtha for industry", region)
+    # subtract non-energy used liquids from total liquid demand
+    var["Final Energy|Industry excl Non-Energy Use|Liquids"] = \
+        var["Final Energy|Industry|Liquids"] - var["Final Energy|Non-Energy Use|Liquids"]
+
     #TODO This is plastics not liquids for industry! Look in industry demand!
     
 
@@ -1326,13 +1440,20 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
     
     var["Final Energy|Industry|Solids|Biomass"] = \
         industry_demand.get("solid biomass")
+    var["Final Energy|Industry excl Non-Energy Use|Solids|Biomass"] = \
+        var["Final Energy|Industry|Solids|Biomass"]
     
     var["Final Energy|Industry|Solids|Coal"] = \
         industry_demand.get(["coal", "coke"]).sum()
+    var["Final Energy|Industry excl Non-Energy Use|Solids|Coal"] = \
+        var["Final Energy|Industry|Solids|Coal"]
     
     var["Final Energy|Industry|Solids"] = \
         var["Final Energy|Industry|Solids|Biomass"] + \
         var["Final Energy|Industry|Solids|Coal"]
+    # no solids used for non-energy purposes
+    var["Final Energy|Industry excl Non-Energy Use|Solids"] = \
+        var["Final Energy|Industry|Solids"]
 
     # Why is AMMONIA zero?
         
@@ -1356,6 +1477,15 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
             "Final Energy|Industry|Hydrogen",
             "Final Energy|Industry|Liquids",
             "Final Energy|Industry|Solids",
+        ]).sum()
+    var["Final Energy|Industry excl Non-Energy Use"] = \
+        var.get([
+            "Final Energy|Industry excl Non-Energy Use|Electricity",
+            "Final Energy|Industry excl Non-Energy Use|Heat",
+            "Final Energy|Industry excl Non-Energy Use|Gases",
+            "Final Energy|Industry excl Non-Energy Use|Hydrogen",
+            "Final Energy|Industry excl Non-Energy Use|Liquids",
+            "Final Energy|Industry excl Non-Energy Use|Solids",
         ]).sum()
 
     # Final energy is delivered to the consumers
@@ -2747,97 +2877,6 @@ def get_policy(n):
 
     return var
 
-def load_idees_data(sector, country):
-    sheet_names = {
-        "Iron and steel": "ISI",
-        "Chemicals Industry": "CHI",
-        "Non-metallic mineral products": "NMM",
-        "Pulp, paper and printing": "PPA",
-        "Food, beverages and tobacco": "FBT",
-        "Non Ferrous Metals": "NFM",
-        "Transport Equipment": "TRE",
-        "Machinery Equipment": "MAE",
-        "Textiles and leather": "TEL",
-        "Wood and wood products": "WWP",
-        "Other Industrial Sectors": "OIS",
-        }
-    year=2015
-    suffixes = {"out": "", "fec": "_fec", "ued": "_ued", "emi": "_emi"}
-    sheets = {k: sheet_names[sector] + v for k, v in suffixes.items()}
-
-    def usecols(x):
-        return isinstance(x, str) or x == year
-
-    with mute_print():
-        idees = pd.read_excel(
-            f"{snakemake.input.idees}/JRC-IDEES-2015_Industry_{country}.xlsx",
-            sheet_name=list(sheets.values()),
-            index_col=0,
-            header=0,
-            usecols=usecols,
-        )
-
-    for k, v in sheets.items():
-        idees[k] = idees.pop(v).squeeze()
-
-    return idees
-
-def get_non_energy_use(n, region, year):
-    var = pd.Series()
-
-    # read in shares of non-energy use [ktoe]
-    sector = "Chemicals Industry"
-    idees = load_idees_data(sector, country="DE")
-
-    subsector = "Chemicals: Feedstock (energy used as raw material)"
-    s_fec = idees["fec"][13:22]
-    assert s_fec.index[0] == subsector
-
-    # LPG and other feedstock materials are assimilated to naphtha
-    # since they will be produced through Fischer-Tropsh process
-    sel = ["Solids", "Refinery gas", "LPG",
-        "Diesel oil", "Residual fuel oil", "Other liquids"]
-    
-    naphtha = (s_fec["Naphtha"] + s_fec[sel].sum()) * toe_to_MWh *1e3 # MWh
-    natural_gas = s_fec["Natural gas"] * toe_to_MWh * 1e3 # MWh
-
-    # read in industrial production of 2015 [kt/a]
-    industrial_production = pd.read_csv(snakemake.input.industrial_production, index_col=0)
-    ammonia_region = industrial_production.loc[region, "Ammonia"]
-    MeOH_region = industrial_production.loc[region, "Methanol"]
-
-    # subtracting natural gas demand for ammonia and methanol production
-    natural_gas -= ammonia_region * snakemake.params.MWh_CH4_per_tNH3_SMR * 1e3 # MWh
-    natural_gas -= MeOH_region * snakemake.params.MWh_CH4_per_tMeOH * 1e3 # MWh
-
-    # adjust demand for non-energy use with recycling rate
-    non_energy_naphtha = naphtha * snakemake.params.HVC_primary[year]
-    non_energy_natural_gas = natural_gas * snakemake.params.HVC_primary[year]
-
-    # read in production volume for the time horizon
-    years = [int(re.search(r'(\d{4})-modified\.csv', filename).group(1)) for filename in snakemake.input.industrial_production_per_country_tomorrow]
-    index = next((idx for idx, y in enumerate(years) if y == year), None)
-    production = pd.read_csv(snakemake.input.industrial_production_per_country_tomorrow[index], index_col=0) # kton/a
-
-    # get H2 demand for ammonia and methanol production
-    # get production volume in kton/a
-    H2_for_NH3 = production.loc[region, "Ammonia"] * snakemake.params.MWh_H2_per_tNH3_electrolysis *1e3
-    CH4_for_MeOH = production.loc[region, "Methanol"] * snakemake.params.MWh_CH4_per_tMeOH * 1e3
-
-    var["Final Energy|Non-Energy Use|Gases"] = non_energy_natural_gas + CH4_for_MeOH
-
-    var["Final Energy|Non-Energy Use|Liquids"] = non_energy_naphtha
-    
-    var["Final Energy|Non-Energy Use|Solids"] = 0
-    var["Final Energy|Non-Energy Use|Solids|Coal"] = 0
-    var["Final Energy|Non-Energy Use|Solids|Biomass"] = 0
-
-    var["Final Energy|Non-Energy Use|Hydrogen"] = H2_for_NH3
-
-    var["Final Energy|Non-Energy Use"] = non_energy_natural_gas + H2_for_NH3 + non_energy_naphtha + CH4_for_MeOH
-
-    return var*MWh2PJ
-
 def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
 
     var = pd.concat([
@@ -2848,7 +2887,7 @@ def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
         #get_capacity_additions_nstat(n, region),
         get_primary_energy(n, region),
         get_secondary_energy(n, region),
-        get_final_energy(n, region, industry_demand, energy_totals),
+        get_final_energy(n, region, industry_demand, energy_totals, year),
         get_prices(n,region), 
         get_emissions(n, region, energy_totals),
         get_investments(
@@ -2857,7 +2896,6 @@ def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
             length_factor=snakemake.params.length_factor
         ),
         get_policy(n),
-        get_non_energy_use(n, region, year)
     ])
 
     return var
