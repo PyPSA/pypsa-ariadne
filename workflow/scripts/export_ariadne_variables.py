@@ -2821,7 +2821,7 @@ def get_non_energy_use(n, region, year):
 
     # get H2 demand for ammonia and methanol production
     # get production volume in kton/a
-    H2_for_NH3 = production.loc[region, "Ammonia"] * snakemake.input.MWh_H2_per_tNH3_electrolysis *1e3
+    H2_for_NH3 = production.loc[region, "Ammonia"] * snakemake.params.MWh_H2_per_tNH3_electrolysis *1e3
     CH4_for_MeOH = production.loc[region, "Methanol"] * snakemake.params.MWh_CH4_per_tMeOH * 1e3
 
     var["Final Energy|Non-Energy Use|Gases"] = non_energy_natural_gas + CH4_for_MeOH
