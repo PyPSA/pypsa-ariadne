@@ -21,10 +21,11 @@ configfile: "config/config.personal.yaml"
 run = config["run"]
 scenarios = get_scenarios(run) # global variable
 RDIR = get_rdir(run)
-
-logs = path_provider("logs/", RDIR, run["shared_resources"], run["exclude"])
-benchmarks = path_provider("benchmarks/", RDIR, run["shared_resources"], run["exclude"])
-resources = path_provider("resources/", RDIR, run["shared_resources"], run["exclude"])
+policy = run["shared_resources"]["policy"]
+exclude = run["shared_resources"]["exclude"]
+logs = path_provider("logs/", RDIR, policy, exclude)
+benchmarks = path_provider("benchmarks/", RDIR, policy, exclude)
+resources = path_provider("resources/", RDIR, policy, exclude)
 
 RESULTS = "results/" + RDIR
 
