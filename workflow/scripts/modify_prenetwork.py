@@ -17,6 +17,8 @@ from prepare_sector_network import (
     lossy_bidirectional_links,
 )
 
+from add_electricity import load_costs
+
 
 def first_technology_occurrence(n):
     """
@@ -24,7 +26,7 @@ def first_technology_occurrence(n):
     if investment year is before configured year.
     """
 
-    for c, carriers in snakemake.config["first_technology_occurrence"].items():
+    for c, carriers in snakemake.params.technology_occurrence.items():
         for carrier, first_year in carriers.items():
             if int(snakemake.wildcards.planning_horizons) < first_year:
                 logger.info(f"{carrier} not extendable before {first_year}.")
@@ -74,8 +76,8 @@ def new_boiler_ban(n):
 
     year = int(snakemake.wildcards.planning_horizons)
 
-    for ct in snakemake.config["new_decentral_fossil_boiler_ban"]:
-        ban_year = int(snakemake.config["new_decentral_fossil_boiler_ban"][ct])
+    for ct in snakemake.params.fossil_boiler_ban:
+        ban_year = int(snakemake.params.fossil_boiler_ban[ct])
         if ban_year < year:
             logger.info(f"For year {year} in {ct} implementing ban on new decentral oil & gas boilers from {ban_year}")
             links = n.links.index[(n.links.index.str[:2] == ct) & (n.links.index.str.contains("gas boiler") ^ n.links.index.str.contains("oil boiler")) & n.links.p_nom_extendable & ~n.links.index.str.contains("urban central")]
@@ -87,8 +89,8 @@ def coal_generation_ban(n):
 
     year = int(snakemake.wildcards.planning_horizons)
 
-    for ct in snakemake.config["coal_generation_ban"]:
-        ban_year = int(snakemake.config["coal_generation_ban"][ct])
+    for ct in snakemake.params.coal_ban:
+        ban_year = int(snakemake.params.coal_ban[ct])
         if ban_year < year:
             logger.info(f"For year {year} in {ct} implementing coal and lignite ban from {ban_year}")
             links = n.links.index[(n.links.index.str[:2] == ct) & n.links.carrier.isin(["coal","lignite"])]
@@ -100,8 +102,8 @@ def nuclear_generation_ban(n):
 
     year = int(snakemake.wildcards.planning_horizons)
 
-    for ct in snakemake.config["nuclear_generation_ban"]:
-        ban_year = int(snakemake.config["nuclear_generation_ban"][ct])
+    for ct in snakemake.params.nuclear_ban:
+        ban_year = int(snakemake.params.nuclear_ban[ct])
         if ban_year < year:
             logger.info(f"For year {year} in {ct} implementing nuclear ban from {ban_year}")
             links = n.links.index[(n.links.index.str[:2] == ct) & n.links.carrier.isin(["nuclear"])]
@@ -159,7 +161,7 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
     investment_year = int(snakemake.wildcards.planning_horizons)
 
     # get previous planning horizon
-    planning_horizons = snakemake.config["scenario"]["planning_horizons"]
+    planning_horizons = snakemake.params.planning_horizons
     i = planning_horizons.index(int(snakemake.wildcards.planning_horizons))
     previous_investment_year = int(planning_horizons[i - 1]) if i != 0 else 2015
 
@@ -187,7 +189,7 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
         )
 
         # add reversed pipes and losses
-        losses = snakemake.config["sector"]["transmission_efficiency"]["H2 pipeline"]
+        losses = snakemake.params.H2_transmission_efficiency
         lossy_bidirectional_links(n, "H2 pipeline (Kernnetz)", losses, subset=names)
 
         # reduce the gas network capacity of retrofitted lines from kernnetz
@@ -203,9 +205,9 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
 
     # reduce H2 retrofitting potential from gas network for all kernnetz
     # pipelines which are being build in total (more conservative approach)
-    if not wkn.empty and snakemake.config["sector"]["H2_retrofit"]:
+    if not wkn.empty and snakemake.params.H2_retrofit:
 
-        conversion_rate = snakemake.config["sector"]["H2_retrofit_capacity_per_CH4"]
+        conversion_rate = snakemake.params.H2_retrofit_capacity_per_CH4
 
         retrofitted_b = (
             n.links.carrier == "H2 pipeline retrofitted"
@@ -234,6 +236,96 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
 
     # from 2030 onwards all pipes are extendable (except from the ones the model build up before and the kernnetz lines)
 
+def unravel_oilbus(n):
+    """
+    Unravel European oil bus to enable energy balances for import of oil products.
+
+    """
+    logger.info("Unraveling oil bus")
+    # add buses
+    n.add("Bus", "DE", location="DE", x=10.5, y=51.2, carrier="none")
+    n.add("Bus", "DE oil", location="DE", x=10.5, y=51.2, carrier="oil")
+    n.add("Bus", "DE renewable oil", location="DE", x=10.5, y=51.2, carrier="renewable oil")
+    n.add(
+        "Bus", 
+        "EU renewable oil", 
+        location="EU",
+        x=n.buses.loc["EU","x"],
+        y=n.buses.loc["EU","y"],
+        carrier="renewable oil"
+    )
+
+    # add one generator for DE oil
+    n.add("Generator",
+          name="DE oil",
+          bus="DE oil",
+          carrier="oil",
+          p_nom_extendable=True,
+          marginal_cost=n.generators.loc["EU oil"].marginal_cost,
+          )
+    
+    # change links from EU oil to DE oil
+    german_oil_links = n.links[(n.links.bus0=="EU oil") & (n.links.index.str.contains("DE"))].index
+    german_FT_links = n.links[(n.links.bus1=="EU oil") & (n.links.index.str.contains("DE"))].index
+    n.links.loc[german_oil_links, "bus0"] = "DE oil"
+    n.links.loc[german_FT_links, "bus1"] = "DE renewable oil"
+
+    # change FT links in rest of Europe
+    europ_FT_links = n.links[n.links.bus1=="EU oil"].index
+    n.links.loc[europ_FT_links, "bus1"] = "EU renewable oil"
+
+    # add links between oil buses
+    n.madd(
+        "Link",
+        ["EU renewable oil -> DE oil", "EU renewable oil -> EU oil", "DE renewable oil -> DE oil", "DE renewable oil -> EU oil"],
+        bus0=["EU renewable oil", "EU renewable oil", "DE renewable oil", "DE renewable oil"],
+        bus1=["DE oil", "EU oil", "DE oil", "EU oil"],
+        carrier="renewable oil",
+        p_nom=1e6,
+        p_min_pu=0,
+    )
+
+    # add stores
+    n.add("Store",
+          "DE oil Store",
+          bus="DE oil",
+          carrier="oil",
+          e_nom_extendable=True,
+          e_cyclic=True,
+          capital_cost=0.02,
+          )
+
+
+def transmission_costs_from_modified_cost_data(n, costs, length_factor=1.0):
+    # copying the the function update_transmission_costs from add_electricity
+    # slight change to the function so it works in modify_prenetwork
+    n.lines["capital_cost"] = (
+        n.lines["length"] * length_factor * costs.at["HVAC overhead", "capital_cost"]
+    )
+
+    if n.links.empty:
+        return
+    # get all DC links that are not the reverse links
+    dc_b = (n.links.carrier == "DC") & ~(n.links.index.str.contains("reverse"))
+
+    # If there are no dc links, then the 'underwater_fraction' column
+    # may be missing. Therefore we have to return here.
+    if n.links.loc[dc_b].empty:
+        return
+
+    costs = (
+        n.links.loc[dc_b, "length"]
+        * length_factor
+        * (
+            (1.0 - n.links.loc[dc_b, "underwater_fraction"])
+            * costs.at["HVDC overhead", "capital_cost"]
+            + n.links.loc[dc_b, "underwater_fraction"]
+            * costs.at["HVDC submarine", "capital_cost"]
+        )
+        + costs.at["HVDC inverter pair", "capital_cost"]
+    )
+    n.links.loc[dc_b, "capital_cost"] = costs
+
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -252,6 +344,7 @@ if __name__ == "__main__":
             ll="v1.2",
             sector_opts="365H-T-H-B-I-A-solar+p3-linemaxext15",
             planning_horizons="2040",
+            run="KN2045_H2_v4"
         )
 
     logger.info("Adding Ariadne-specific functionality")
@@ -279,9 +372,23 @@ if __name__ == "__main__":
 
     first_technology_occurrence(n)
 
-    if snakemake.config["wasserstoff_kernnetz"]["enable"]:
+    if not snakemake.config["run"]["debug_unravel_oilbus"]:
+        unravel_oilbus(n)
+
+    if snakemake.params.enable_kernnetz:
         fn = snakemake.input.wkn
         wkn = pd.read_csv(fn, index_col=0)
         add_wasserstoff_kernnetz(n, wkn, costs)
+        n.links.reversed = n.links.reversed.astype(float)
+
+    costs_loaded = load_costs(
+        snakemake.input.costs,
+        snakemake.params.costs,
+        snakemake.params.max_hours,
+        nyears,
+    )
+
+    # change to NEP21 costs
+    transmission_costs_from_modified_cost_data(n, costs_loaded, snakemake.params.length_factor)
 
     n.export_to_netcdf(snakemake.output.network)
