@@ -24,13 +24,15 @@ def clean_data(combustion, biomass, geodata):
     PLZ is translated to longitude and latitude using the pyGeoDb data.
     """
     biomass.dropna(subset="Postleitzahl", inplace=True)
-    biomass.rename(columns={'NameStromerzeugungseinheit': 'NameKraftwerk'}, inplace=True)
-    biomass['Einsatzort'] = ''
+    biomass.rename(
+        columns={"NameStromerzeugungseinheit": "NameKraftwerk"}, inplace=True
+    )
+    biomass["Einsatzort"] = ""
 
-    data = pd.concat([biomass, combustion], join='inner', ignore_index=True)
-    
-    data['IndustryStatus'] = data['Einsatzort'].str.contains('Industrie').fillna(False)
-    
+    data = pd.concat([biomass, combustion], join="inner", ignore_index=True)
+
+    data["IndustryStatus"] = data["Einsatzort"].str.contains("Industrie").fillna(False)
+
     # Get only CHP plants
     CHP_raw = data.query("ThermischeNutzleistung > 0").copy()
     CHP_raw.NameKraftwerk = CHP_raw.NameKraftwerk.fillna(CHP_raw.EinheitMastrNummer)
@@ -48,7 +50,7 @@ def clean_data(combustion, biomass, geodata):
         "IndustryStatus": "Industry",
     }
     CHP_sel = CHP_raw[rename_columns.keys()].rename(columns=rename_columns)
-    
+
     # change date format
     CHP_sel.DateIn = CHP_sel.DateIn.str[:4].astype(float)
     CHP_sel.DateOut = CHP_sel.DateOut.str[:4].astype(float)
@@ -58,19 +60,18 @@ def clean_data(combustion, biomass, geodata):
         "Name": "first",
         "Fueltype": "first",
         "Technology": "first",
-        "Capacity": "mean", # dataset duplicates full KWK capacity for each block
-        "Capacity_thermal": "mean", # dataset duplicates full KWK capacity for each block 
+        "Capacity": "mean",  # dataset duplicates full KWK capacity for each block
+        "Capacity_thermal": "mean",  # dataset duplicates full KWK capacity for each block
         "DateIn": "mean",
         "DateOut": "mean",
         "Postleitzahl": "first",
         "Industry": "first",
-        }
+    }
     CHP_sel = CHP_sel.groupby("ID").agg(strategies).reset_index()
 
     # set missing information to match the powerplant data format
     CHP_sel[["Set", "Country", "Efficiency"]] = ["CHP", "DE", ""]
     CHP_sel[["lat", "lon"]] = [float("nan"), float("nan")]
-    
 
     # get location from PLZ
     CHP_sel.fillna({"lat": CHP_sel.Postleitzahl.map(geodata.lat)}, inplace=True)
@@ -94,15 +95,15 @@ def clean_data(combustion, biomass, geodata):
         "Brennstoffzelle": "Fuel Cell",
         "Strilingmotor": "",
         "Stirlingmotor": "",
-        'Kondensationsmaschine mit Entnahme': "Steam Turbine", 
-        'Sonstige': "",
-        'Gasturbinen ohne Abhitzekessel': "OCGT",
-        'Dampfmotor': "Steam Turbine",
-        'Gegendruckmaschine mit Entnahme': "Steam Turbine",
-        'Gegendruckmaschine ohne Entnahme':"Steam Turbine",
-        'Gasturbinen mit nachgeschalteter Dampfturbine': "CCGT",
-        'ORC (Organic Rankine Cycle)-Anlage': "Steam Turbine",
-        'Kondensationsmaschine ohne Entnahme': "Steam Turbine",
+        "Kondensationsmaschine mit Entnahme": "Steam Turbine",
+        "Sonstige": "",
+        "Gasturbinen ohne Abhitzekessel": "OCGT",
+        "Dampfmotor": "Steam Turbine",
+        "Gegendruckmaschine mit Entnahme": "Steam Turbine",
+        "Gegendruckmaschine ohne Entnahme": "Steam Turbine",
+        "Gasturbinen mit nachgeschalteter Dampfturbine": "CCGT",
+        "ORC (Organic Rankine Cycle)-Anlage": "Steam Turbine",
+        "Kondensationsmaschine ohne Entnahme": "Steam Turbine",
     }
 
     CHP_sel.replace({"Fueltype": fueltype, "Technology": technology}, inplace=True)
@@ -121,22 +122,24 @@ def clean_data(combustion, biomass, geodata):
         return pd.Series((pd.NA, pd.NA))
 
     missing_i = CHP_sel.lat.isna() | CHP_sel.lon.isna()
-    CHP_sel.loc[missing_i, ["lat", "lon"]] = CHP_sel.loc[missing_i, "Postleitzahl"].apply(lookup_geodata)
+    CHP_sel.loc[missing_i, ["lat", "lon"]] = CHP_sel.loc[
+        missing_i, "Postleitzahl"
+    ].apply(lookup_geodata)
 
     cols = [
-        'Name',
-        'Fueltype',
-        'Technology',
-        'Set',
-        'Country',
-        'Capacity',
-        'Efficiency',
-        'DateIn',
-        'DateOut',
-        'lat',
-        'lon',
-        'Capacity_thermal',
-        'Industry',
+        "Name",
+        "Fueltype",
+        "Technology",
+        "Set",
+        "Country",
+        "Capacity",
+        "Efficiency",
+        "DateIn",
+        "DateOut",
+        "lat",
+        "lon",
+        "Capacity_thermal",
+        "Industry",
     ]
 
     # convert unit of capacities from kW to MW
@@ -144,28 +147,30 @@ def clean_data(combustion, biomass, geodata):
 
     # add missing Fueltype for plants > 100 MW
     fuelmap = {
-        'GuD Mitte': 'Natural Gas',
-        'HKW Mitte': 'Natural Gas',
-        'GuD Süd': 'Natural Gas',
-        'HKW Lichterfelde': 'Natural Gas',
-        'GuD Niehl 2 RheinEnergie': 'Natural Gas',
-        'HKW Marzahn': 'Natural Gas',
-        'Gasturbinen Heizkraftwerk Nossener Brücke': 'Natural Gas',
-        'SEE916495905242': 'Natural Gas',
-        'HKW Leipzig Nord': 'Natural Gas',
-        'HKW Reuter': 'Waste',
-        'Solvay Rb Kraftwerk': 'Lignite',
-        'GuD Süd Wolfsburg': 'Natural Gas',
-        'GuD Erfurt Ost': 'Natural Gas',
-        'KW Nord': 'Natural Gas',
-        'SEE904887370686': 'Oil',
-        'GuD2': 'Natural Gas',
-        'Heizkrafwerk Hafen der Stadtwerke Münster GmbH': 'Waste',
-        'Kraftwerk Ha': 'Natural Gas',
-        'Kraftwerk HA': 'Natural Gas',
-        'PKV Dampfsammelschienen-KWK-Anlage': 'Natural Gas',
+        "GuD Mitte": "Natural Gas",
+        "HKW Mitte": "Natural Gas",
+        "GuD Süd": "Natural Gas",
+        "HKW Lichterfelde": "Natural Gas",
+        "GuD Niehl 2 RheinEnergie": "Natural Gas",
+        "HKW Marzahn": "Natural Gas",
+        "Gasturbinen Heizkraftwerk Nossener Brücke": "Natural Gas",
+        "SEE916495905242": "Natural Gas",
+        "HKW Leipzig Nord": "Natural Gas",
+        "HKW Reuter": "Waste",
+        "Solvay Rb Kraftwerk": "Lignite",
+        "GuD Süd Wolfsburg": "Natural Gas",
+        "GuD Erfurt Ost": "Natural Gas",
+        "KW Nord": "Natural Gas",
+        "SEE904887370686": "Oil",
+        "GuD2": "Natural Gas",
+        "Heizkrafwerk Hafen der Stadtwerke Münster GmbH": "Waste",
+        "Kraftwerk Ha": "Natural Gas",
+        "Kraftwerk HA": "Natural Gas",
+        "PKV Dampfsammelschienen-KWK-Anlage": "Natural Gas",
     }
-    CHP_sel['Fueltype'] = CHP_sel['Name'].map(fuelmap).combine_first(CHP_sel['Fueltype'])
+    CHP_sel["Fueltype"] = (
+        CHP_sel["Name"].map(fuelmap).combine_first(CHP_sel["Fueltype"])
+    )
 
     return CHP_sel[cols].copy()
 
@@ -175,16 +180,20 @@ def calculate_efficiency(CHP_de):
     Calculate the efficiency of the CHP plants depending on Capacity and DateIn.
     Following Triebs et al. (https://doi.org/10.1016/j.ecmx.2020.100068)
     """
+
     def EXT(cap, year):
         # returns the efficiency for extraction condensing turbine
-        return ((44/2400) * cap + 0.125 * year - 204.75) / 100
+        return ((44 / 2400) * cap + 0.125 * year - 204.75) / 100
 
-    def BP(cap,year):
+    def BP(cap, year):
         # returns the efficiency for back pressure turbine
         return ((5e-3) * cap + 0.325 * year - 611.75) / 100
+
     # TODO: differentiate between extraction condensing turbine and back pressure turbine
-    CHP_de['Efficiency'] = CHP_de.apply(lambda row: BP(row['Capacity'], row['DateIn']), axis=1)
-  
+    CHP_de["Efficiency"] = CHP_de.apply(
+        lambda row: BP(row["Capacity"], row["DateIn"]), axis=1
+    )
+
     return CHP_de
 
 
@@ -199,14 +208,16 @@ if __name__ == "__main__":
     logging.basicConfig(level=snakemake.config["logging"]["level"])
 
     biomass = pd.read_csv(snakemake.input.mastr_biomass, dtype={"Postleitzahl": str})
-    combustion = pd.read_csv(snakemake.input.mastr_combustion, dtype={"Postleitzahl": str})
+    combustion = pd.read_csv(
+        snakemake.input.mastr_combustion, dtype={"Postleitzahl": str}
+    )
 
     geodata = pd.read_csv(
-        snakemake.input.plz_mapping[0],
+        snakemake.input.plz_mapping,
         index_col="plz",
         dtype={"plz": str},
         names=["plz", "lat", "lon"],
-        skiprows=1
+        skiprows=1,
     )
 
     CHP_de = clean_data(combustion, biomass, geodata)
