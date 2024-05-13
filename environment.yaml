@@ -8,7 +8,7 @@ dependencies:
 - pip
 
 - atlite>=0.2.9
-- pypsa>=0.27.0
+- pypsa>=0.28.0
 - linopy
 - dask
 
