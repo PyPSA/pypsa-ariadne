@@ -22,9 +22,11 @@ run = config["run"]
 scenarios = get_scenarios(run) # global variable
 RDIR = get_rdir(run)
 
-logs = path_provider("logs/", RDIR, run["shared_resources"])
-benchmarks = path_provider("benchmarks/", RDIR, run["shared_resources"])
-resources = path_provider("resources/", RDIR, run["shared_resources"])
+shared_resources = run["shared_resources"]["policy"]
+exclude_from_shared = run["shared_resources"]["exclude"]
+logs = path_provider("logs/", RDIR, shared_resources, exclude_from_shared)
+benchmarks = path_provider("benchmarks/", RDIR, shared_resources, exclude_from_shared)
+resources = path_provider("resources/", RDIR, shared_resources, exclude_from_shared)
 
 RESULTS = "results/" + RDIR
 
@@ -275,11 +277,6 @@ rule export_ariadne_variables:
         hours=config_provider("clustering","temporal","resolution_sector"),
         costs=config_provider("costs"),
         energy_totals_year=config_provider("energy", "energy_totals_year"),
-        HVC_primary=config_provider("industry", "HVC_primary_fraction"),
-        MWh_CH4_per_tMeOH=config_provider("industry", "MWh_CH4_per_tMeOH"),
-        MWh_CH4_per_tNH3_SMR=config_provider("industry", "MWh_CH4_per_tNH3_SMR"),
-        MWh_H2_per_tNH3_electrolysis=config_provider("industry", "MWh_H2_per_tNH3_electrolysis"),
-        St_primary_fraction=config_provider("industry", "St_primary_fraction"),
     input:
         template=resources("template_ariadne_database.xlsx"),
         industry_demands=expand(

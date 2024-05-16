@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240502pyamupdate
+  prefix: ""
   name:
   - CurrentPolicies
   # - KN2045_Bal_v4
@@ -17,7 +17,7 @@ run:
   scenarios:
     enable: true
     file: config/scenarios.automated.yaml
-  shared_resources: true #stops recalculating
+  shared_resources: true
   disable_progressbar: true
   debug_co2_limit: false
   debug_h2deriv_limit: false
@@ -215,6 +215,7 @@ sector:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#industry
 industry:
+  ammonia: false
   St_primary_fraction:
     2020: 0.6
     2025: 0.55

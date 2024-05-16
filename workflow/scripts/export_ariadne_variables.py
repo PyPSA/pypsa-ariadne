@@ -71,6 +71,18 @@ def _get_gas_fossil_fraction(n, region, kwargs):
 
     return gas_fossil_fraction
 
+def _get_h2_fossil_fraction(n, region, kwargs):
+    total_h2_supply = n.statistics.supply(
+        bus_carrier="H2", **kwargs
+    ).drop("Store").groupby("carrier").sum()
+
+    h2_fossil_fraction = (
+        total_h2_supply.get("SMR")
+        / total_h2_supply.sum()
+    )
+
+    return h2_fossil_fraction
+
 
 def _get_t_sum(df, df_t, carrier, region, snapshot_weightings, port):
     if type(carrier) == list:
@@ -1333,24 +1345,45 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
     MeOH_region = industrial_production.loc[region, "Methanol"]
 
     # subtracting natural gas demand for ammonia and methanol production
-    natural_gas -= ammonia_region * snakemake.params.MWh_CH4_per_tNH3_SMR * 1e3 # MWh
-    natural_gas -= MeOH_region * snakemake.params.MWh_CH4_per_tMeOH * 1e3 # MWh
+    natural_gas -= ammonia_region * config["industry"]["MWh_CH4_per_tNH3_SMR"] * 1e3 # MWh
+    natural_gas -= MeOH_region * config["industry"]["MWh_CH4_per_tMeOH"] * 1e3 # MWh
 
     # adjust demand for non-energy use with recycling rate
-    non_energy_naphtha = naphtha * snakemake.params.HVC_primary[year]
-    non_energy_natural_gas = natural_gas * snakemake.params.HVC_primary[year]
+    non_energy_naphtha = naphtha * config["industry"]["HVC_primary_fraction"][year]
+    non_energy_natural_gas = natural_gas * config["industry"]["HVC_primary_fraction"][year]
 
     # read in production volume for the time horizon
     years = [int(re.search(r'(\d{4})-modified\.csv', filename).group(1)) for filename in snakemake.input.industrial_production_per_country_tomorrow]
     index = next((idx for idx, y in enumerate(years) if y == year), None)
     production = pd.read_csv(snakemake.input.industrial_production_per_country_tomorrow[index], index_col=0) # kton/a
 
-    # get H2 demand for ammonia and methanol production
-    # get production volume in kton/a
-    H2_for_NH3 = production.loc[region, "Ammonia"] * snakemake.params.MWh_H2_per_tNH3_electrolysis *1e3
-    CH4_for_MeOH = production.loc[region, "Methanol"] * snakemake.params.MWh_CH4_per_tMeOH * 1e3
+    kwargs = {
+            'groupby': n.statistics.groupers.get_name_bus_and_carrier,
+            'nice_names': False,
+        }
+    h2_fossil_fraction = _get_h2_fossil_fraction(n, region, kwargs)
 
-    var["Final Energy|Non-Energy Use|Gases"] = (non_energy_natural_gas + CH4_for_MeOH) * MWh2PJ
+    if config["industry"]["ammonia"]:
+        # MWh/a
+        Haber_Bosch_NH3 = n.statistics.supply(
+            bus_carrier="NH3", **kwargs
+            ).groupby("carrier").sum()["Haber-Bosch"]
+        
+        CH4_for_NH3 = Haber_Bosch_NH3 * h2_fossil_fraction * config["industry"]["MWh_CH4_per_tNH3_SMR"] / config["industry"]["MWh_NH3_per_tNH3"]
+        H2_for_NH3 = Haber_Bosch_NH3 * (1 - h2_fossil_fraction) / config["industry"]["MWh_H2_per_tNH3_electrolysis"]
+
+    else:
+        # t/a
+        ammonia_prod = production.loc[region, "Ammonia"] * 1e3
+        # MWh/a
+        CH4_for_NH3 = ammonia_prod * h2_fossil_fraction * config["industry"]["MWh_CH4_per_tNH3_SMR"]
+        H2_for_NH3 = ammonia_prod * (1 - h2_fossil_fraction) * config["industry"]["MWh_H2_per_tNH3_electrolysis"]
+
+    # for MeOH only CH4 is needed
+    CH4_for_MeOH = production.loc[region, "Methanol"] * config["industry"]["MWh_CH4_per_tMeOH"] * 1e3
+
+    # write var
+    var["Final Energy|Non-Energy Use|Gases"] = (non_energy_natural_gas + CH4_for_MeOH + CH4_for_NH3) * MWh2PJ
 
     oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
 
@@ -2887,8 +2920,8 @@ def get_production(region, year):
     
     var["Production|Non-Metallic Minerals|Cement"] = production.loc[region, "Cement"]
     var["Production|Steel"] = production.loc["DE", ["Electric arc", "Integrated steelworks", "DRI + Electric arc"]].sum()
-    var["Production|Steel|Primary"] = var["Production|Steel"] * snakemake.params.St_primary_fraction[year]
-    var["Production|Steel|Secondary"] = var["Production|Steel"] * (1 - snakemake.params.St_primary_fraction[year])
+    var["Production|Steel|Primary"] = var["Production|Steel"] * config["industry"]["St_primary_fraction"][year]
+    var["Production|Steel|Secondary"] = var["Production|Steel"] * (1 - config["industry"]["St_primary_fraction"][year])
     
     # optional:
     # var[""Production|Pulp and Paper"]
