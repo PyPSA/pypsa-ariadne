@@ -115,7 +115,7 @@ rule modify_cost_data:
     input:
         modifications=lambda w: (
             "ariadne-data/costs_2019-modifications.csv"
-            if w.planning_horizons == "2020" and config["energy"]["energy_totals_year"] == 2019
+            if w.planning_horizons == "2020" and config_provider("energy", "energy_totals_year") == 2019
             else "ariadne-data/costs_{planning_horizons}-modifications.csv")
     output:
         resources("costs_{planning_horizons}.csv"),
@@ -279,18 +279,17 @@ rule export_ariadne_variables:
         industry_demands=expand(
             resources("industrial_energy_demand_elec_s{simpl}_{clusters}_{planning_horizons}.csv"),
             **config["scenario"],
-            run=config["run"]["name"],
+            allow_missing=True,
         ),
         networks=expand(
             RESULTS + "postnetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
             **config["scenario"],
-            run=config["run"]["name"],
             allow_missing=True,
         ),
         costs=expand(
             resources("costs_{planning_horizons}.csv"),
             **config["scenario"],
-            run=config["run"]["name"],
+            allow_missing=True,
         ),
         energy_totals=resources("energy_totals.csv"),
     output:
@@ -335,7 +334,7 @@ rule plot_ariadne_variables:
 
 rule ariadne_all:
     input:
-        expand(RESULTS + "graphs/costs.pdf", run=config["run"]["name"]),
+        expand(RESULTS + "graphs/costs.pdf", run=config_provider("run", "name")),
         expand(RESULTS + "ariadne/capacity_detailed.png", run=config_provider("run", "name")),
         exported_variables=expand(RESULTS + "ariadne/exported_variables_full.xlsx", run=config_provider("run", "name")),
     script:
