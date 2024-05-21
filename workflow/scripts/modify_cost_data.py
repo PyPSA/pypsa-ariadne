@@ -23,9 +23,16 @@ if __name__ == "__main__":
 
     # read in cost data from technology-data library
     costs = os.path.join(
-        snakemake.params.file_path, 
+        snakemake.params.file_path,     
         snakemake.params.cost_horizon, 
         snakemake.params.file_name)
+
+    # cost_horizon is a setting for technology-data and specifies either
+    # mean, pessimist or optimist cost scenarios
+    # the cost modifications file contains specific cost assumptions for
+    # germany, developed in the ARIADNE project
+    # here pessimist and optimistic scenarios correspond to a delay or a 
+    # speed up in cost reductions
 
     costs = pd.read_csv(costs, index_col=[0, 1]).sort_index()
 
