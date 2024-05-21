@@ -4,11 +4,11 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240512pypsaupdate
+  prefix: "20240521fixshared"
   name:
-  - CurrentPolicies
-  # - KN2045_Bal_v4
-  # - KN2045_Elec_v4
+  # - CurrentPolicies
+  - KN2045_Bal_v4
+  - KN2045_Elec_v4
   # - KN2045_H2_v4
   # - KN2045plus_EasyRide
   # - KN2045plus_LowDemand
@@ -17,7 +17,11 @@ run:
   scenarios:
     enable: true
     file: config/scenarios.automated.yaml
-  shared_resources: true #stops recalculating
+  shared_resources: 
+    policy: base #stops recalculating
+    exclude:
+      - existing_heating.csv # specify files which should not be shared between scenarios
+      - costs
   disable_progressbar: true
   debug_co2_limit: false
   debug_h2deriv_limit: false
@@ -175,7 +179,7 @@ renewable:
     capacity_per_sqkm: 10
 
 costs:
-  version: v0.8.1
+  horizon: "mean" # "optimist", "pessimist" or "mean"
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
