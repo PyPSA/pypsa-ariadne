@@ -10,9 +10,7 @@ if __name__ == "__main__":
         from _helpers import mock_snakemake
 
         snakemake = mock_snakemake("retrieve_ariadne_database")
-
-    pyam.iiasa.set_config(snakemake.params.iiasa_usr, snakemake.params.iiasa_pwd)
-
+    
     db = pyam.read_iiasa(
         "ariadne_intern",
         model=snakemake.params.leitmodelle,

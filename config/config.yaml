@@ -6,10 +6,10 @@
 run:
   prefix: 240522postDiscretizeAll
   name:
-  - CurrentPolicies
+  # - CurrentPolicies
   - KN2045_Bal_v4
   - KN2045_Elec_v4
-  - KN2045_H2_v4
+  # - KN2045_H2_v4
   # - KN2045plus_EasyRide
   # - KN2045plus_LowDemand
   # - KN2045minus_WorstCase
@@ -17,7 +17,11 @@ run:
   scenarios:
     enable: true
     file: config/scenarios.automated.yaml
-  shared_resources: true #stops recalculating
+  shared_resources: 
+    policy: base #stops recalculating
+    exclude:
+      - existing_heating.csv # specify files which should not be shared between scenarios
+      - costs
   disable_progressbar: true
   debug_co2_limit: false
   debug_h2deriv_limit: false
@@ -64,6 +68,11 @@ scenario:
   - 2040
   - 2045
 
+existing_capacities:
+  grouping_years_power: [1895, 1920, 1950, 1955, 1960, 1965, 1970, 1975, 1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2019, 2024, 2029]
+  grouping_years_heat: [1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020] # heat grouping years >= baseyear will be ignored
+
+
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
 # Germany plus 12 "Stromnachbarn"
 countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'PL', 'SE']
@@ -100,26 +109,6 @@ co2_budget:
   2040: 0.100 # goal to be set next year
   2045: 0.050
   2050: 0.000 # climate-neutral by 2050
-
-# calculated in workflow/scripts/_compute_co2_targets_DE.py; are
-# relative to the DE emissions in 1990 *including bunkers*; also
-# account for non-CO2 GHG and allow extra room for international
-# bunkers which are excluded from the national targets
-co2_budget_national:
-  2020:
-    DE: 0.728
-  2025:
-    DE: 0.571
-  2030:
-    DE: 0.396
-  2035:
-    DE: 0.258
-  2040:
-    DE: 0.118
-  2045:
-    DE: -0.028
-  2050:
-    DE: -0.024
 
 limits_capacity_min:
     Generator:
@@ -163,7 +152,7 @@ h2_import_max:
     2050: 200
 
 wasserstoff_kernnetz:
-  enable: true
+  enable: false
   reload_locations: false
   divide_pipes: true
   pipes_segment_length: 10
@@ -190,7 +179,7 @@ renewable:
     capacity_per_sqkm: 10
 
 costs:
-  version: v0.8.1
+  horizon: "mean" # "optimist", "pessimist" or "mean"
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
