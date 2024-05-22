@@ -4,11 +4,11 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: "20240521fixshared"
+  prefix: 20240522mastrchps
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
-  - KN2045_Elec_v4
+  # - KN2045_Elec_v4
   # - KN2045_H2_v4
   # - KN2045plus_EasyRide
   # - KN2045plus_LowDemand

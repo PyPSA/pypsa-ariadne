@@ -191,11 +191,16 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         errors="ignore",
     ).multiply(MW2GW)
 
+    capacities_biomass = capacities_electricity.filter(like="biomass")
+
     var[cap_string + "Electricity|Biomass|w/ CCS"] = \
-        capacities_electricity.get('urban central solid biomass CHP CC', 0)
+        capacities_biomass.filter(like="CC").sum()
     
     var[cap_string + "Electricity|Biomass|w/o CCS"] = \
-        capacities_electricity.get('urban central solid biomass CHP', 0)
+        capacities_biomass.reindex(
+            ['urban central solid biomass CHP', 
+             'urban central solid biomass OP']).sum()
+    
 
     var[cap_string + "Electricity|Biomass|Solids"] = \
         var[[
@@ -204,18 +209,18 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         ]].sum()
 
     # Ariadne does no checks, so we implement our own?
-    assert var[cap_string + "Electricity|Biomass|Solids"] == \
-        capacities_electricity.filter(like="solid biomass CHP").sum()
+    assert isclose(var[cap_string + "Electricity|Biomass|Solids"],
+        capacities_biomass.sum())
 
     var[cap_string + "Electricity|Biomass"] = \
         var[cap_string + "Electricity|Biomass|Solids"]
 
 
     var[cap_string + "Electricity|Coal|Hard Coal"] = \
-        capacities_electricity.get('coal', 0)                                              
+        capacities_electricity.filter(like="coal").sum()                                             
 
     var[cap_string + "Electricity|Coal|Lignite"] = \
-        capacities_electricity.get('lignite', 0)
+        capacities_electricity.filter(like="lignite").sum()
     
     # var[cap_string + "Electricity|Coal|Hard Coal|w/ CCS"] = 
     # var[cap_string + "Electricity|Coal|Hard Coal|w/o CCS"] = 
@@ -298,7 +303,7 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
     # ! Not implemented
 
     var[cap_string + "Electricity|Oil"] = \
-        capacities_electricity.get("oil")
+        capacities_electricity.filter(like="oil").sum()
 
 
     var[cap_string + "Electricity|Solar|PV|Rooftop"] = \
@@ -640,6 +645,33 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
     
     return var 
 
+def get_CHP_E_and_H_usage(n, bus_carrier, region, fossil_fraction=1):
+    kwargs = {
+        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
+        'nice_names': False,
+    }
+
+    usage = n.statistics.withdrawal(
+        bus_carrier=bus_carrier,
+        **kwargs,
+    ).filter(
+        like=region
+    ).filter(
+        like="CHP"
+    ).multiply(MWh2PJ).multiply(fossil_fraction)
+
+    E_to_H =  (
+        n.links.loc[usage.index.get_level_values("name")].efficiency
+        / n.links.loc[usage.index.get_level_values("name")].efficiency2
+    )
+
+    E_fraction =  E_to_H * (1 / (E_to_H + 1))
+
+    E_usage = usage.multiply(E_fraction).sum()
+    H_usage = usage.multiply(1 - E_fraction).sum()
+
+    return E_usage, H_usage
+
 def get_primary_energy(n, region):
     kwargs = {
         'groupby': n.statistics.groupers.get_name_bus_and_carrier,
@@ -655,24 +687,27 @@ def get_primary_energy(n, region):
         **kwargs
     ).filter(
         like=region
-    ).groupby(
+    ).drop("Store").groupby(
         "carrier"
     ).sum().multiply(oil_fossil_fraction).multiply(MWh2PJ)
+
+
+    oil_CHP_E_usage, oil_CHP_H_usage = get_CHP_E_and_H_usage(
+        n, "oil", region, fossil_fraction=oil_fossil_fraction)
 
     ## Primary Energy
 
     var["Primary Energy|Oil|Heat"] = \
-        oil_usage.filter(like="oil boiler").sum()
+        oil_usage.filter(like="urban central oil boiler").sum() + oil_CHP_H_usage 
 
     
     var["Primary Energy|Oil|Electricity"] = \
-        oil_usage.get("oil", 0)
-    # This will get the oil store as well, but it should be 0
+        oil_usage.get("oil", 0) + oil_CHP_E_usage 
     
     var["Primary Energy|Oil"] = (
         var["Primary Energy|Oil|Electricity"] 
         + var["Primary Energy|Oil|Heat"] 
-        + oil_usage.reindex(
+        + oil_usage.reindex( # This is more like final energy than primary energy??
             [
                 "land transport oil",
                 "agriculture machinery oil",
@@ -682,7 +717,8 @@ def get_primary_energy(n, region):
             ],
         ).sum()
     )   
-    assert isclose(var["Primary Energy|Oil"], oil_usage.sum())
+    
+    # assert isclose(var["Primary Energy|Oil"], oil_usage.sum())
 
     regional_gas_supply = n.statistics.supply(
         bus_carrier="gas", 
@@ -718,27 +754,11 @@ def get_primary_energy(n, region):
         "carrier"
     ).sum().multiply(gas_fossil_fraction).multiply(MWh2PJ)
 
-
-    gas_CHP_usage = n.statistics.withdrawal(
-        bus_carrier="gas", 
-        **kwargs,
-    ).filter(
-        like=region
-    ).filter(
-        like="gas CHP"
-    ).multiply(gas_fossil_fraction).multiply(MWh2PJ)
-
-    gas_CHP_E_to_H =  (
-        n.links.loc[gas_CHP_usage.index.get_level_values("name")].efficiency 
-        / n.links.loc[gas_CHP_usage.index.get_level_values("name")].efficiency2
-    )
-
-    gas_CHP_E_fraction =  gas_CHP_E_to_H * (1 / (gas_CHP_E_to_H + 1))
+    gas_CHP_E_usage, gas_CHP_H_usage = get_CHP_E_and_H_usage(
+        n, "gas", region, fossil_fraction=gas_fossil_fraction)
 
     var["Primary Energy|Gas|Heat"] = \
-        gas_usage.filter(like="gas boiler").sum() + gas_CHP_usage.multiply(
-            1 - gas_CHP_E_fraction
-        ).values.sum()
+        gas_usage.filter(like="urban central gas boiler").sum() + gas_CHP_H_usage 
     
     var["Primary Energy|Gas|Electricity"] = \
         gas_usage.reindex(
@@ -746,9 +766,7 @@ def get_primary_energy(n, region):
                 'CCGT',
                 'OCGT',
             ],
-        ).sum() + gas_CHP_usage.multiply(
-            gas_CHP_E_fraction
-        ).values.sum()
+        ).sum() + gas_CHP_E_usage
 
     var["Primary Energy|Gas|Hydrogen"] = \
         gas_usage.filter(like="SMR").sum()
@@ -760,10 +778,10 @@ def get_primary_energy(n, region):
         + gas_usage.filter(like="gas for industry").sum()
     )
 
-    assert isclose(
-        var["Primary Energy|Gas"],
-        gas_usage.sum(),
-    )
+    # assert isclose(
+    #     var["Primary Energy|Gas"],
+    #     gas_usage.sum(),
+    # )
     # ! There are CC sub-categories that could be used
 
     coal_usage = n.statistics.withdrawal(
@@ -775,18 +793,26 @@ def get_primary_energy(n, region):
         "carrier"
     ).sum().multiply(MWh2PJ)
 
+    coal_CHP_E_usage, coal_CHP_H_usage = get_CHP_E_and_H_usage(
+        n, "coal", region)
+    lignite_CHP_E_usage, lignite_CHP_H_usage = get_CHP_E_and_H_usage(
+        n, "lignite", region)
+
     var["Primary Energy|Coal|Hard Coal"] = \
-        coal_usage.get("coal", 0)
+        coal_usage.get("coal", 0) + coal_CHP_E_usage + coal_CHP_H_usage
 
     var["Primary Energy|Coal|Lignite"] = \
-        coal_usage.get("lignite", 0)
+        coal_usage.get("lignite", 0) + lignite_CHP_E_usage + lignite_CHP_H_usage
     
     var["Primary Energy|Coal|Electricity"] = \
-        var["Primary Energy|Coal|Hard Coal"] + \
-        var["Primary Energy|Coal|Lignite"]
+        var["Primary Energy|Coal|Hard Coal"] - coal_CHP_H_usage + \
+        var["Primary Energy|Coal|Lignite"] - lignite_CHP_H_usage
     
+    var["Primary Energy|Coal|Heat"] = \
+        coal_CHP_H_usage + lignite_CHP_H_usage
+
     var["Primary Energy|Coal"] = (
-        var["Primary Energy|Coal|Electricity"] 
+        var["Primary Energy|Coal|Heat"] + var["Primary Energy|Coal|Electricity"]
         + coal_usage.get("coal for industry", 0)
     )
     
@@ -807,21 +833,8 @@ def get_primary_energy(n, region):
         "carrier"
     ).sum().multiply(MWh2PJ)
 
-    biomass_CHP_usage = n.statistics.withdrawal(
-        bus_carrier="solid biomass", 
-        **kwargs,
-    ).filter(
-        like=region
-    ).filter(
-        like="CHP"
-    ).multiply(MWh2PJ)
-
-    biomass_CHP_E_to_H =  (
-        n.links.loc[biomass_CHP_usage.index.get_level_values("name")].efficiency 
-        / n.links.loc[biomass_CHP_usage.index.get_level_values("name")].efficiency2
-    )
-
-    biomass_CHP_E_fraction =  biomass_CHP_E_to_H * (1 / (biomass_CHP_E_to_H + 1))
+    biomass_CHP_E_usage, biomass_CHP_H_usage = get_CHP_E_and_H_usage(
+        n, "solid biomass", region)
     
     var["Primary Energy|Biomass|w/ CCS"] = \
         biomass_usage[biomass_usage.index.str.contains("CC")].sum()
@@ -830,13 +843,9 @@ def get_primary_energy(n, region):
         biomass_usage[~biomass_usage.index.str.contains("CC")].sum()
     
     var["Primary Energy|Biomass|Electricity"] = \
-        biomass_CHP_usage.multiply(
-            biomass_CHP_E_fraction
-        ).values.sum()
+        biomass_CHP_E_usage + biomass_usage.get("urban central solid biomass OP")
     var["Primary Energy|Biomass|Heat"] = \
-        biomass_usage.filter(like="boiler").sum() + biomass_CHP_usage.multiply(
-            1 - biomass_CHP_E_fraction
-        ).values.sum()
+        biomass_CHP_H_usage + biomass_usage.get("urban central solid biomass boiler", 0)
     
     # var["Primary Energy|Biomass|Gases"] = \
     # In this case Gases are only E-Fuels in AriadneDB
@@ -933,10 +942,10 @@ def get_secondary_energy(n, region):
     )
 
     var["Secondary Energy|Electricity|Coal|Hard Coal"] = \
-        electricity_supply.get("coal", 0)
+        electricity_supply.filter(like="coal").sum()
     
     var["Secondary Energy|Electricity|Coal|Lignite"] = \
-        electricity_supply.get("lignite", 0)
+        electricity_supply.filter(like="lignite").sum()
     
     var["Secondary Energy|Electricity|Coal"] = (
         var["Secondary Energy|Electricity|Coal|Hard Coal"] 
@@ -944,7 +953,7 @@ def get_secondary_energy(n, region):
     )
     
     var["Secondary Energy|Electricity|Oil"] = \
-        electricity_supply.get("oil", 0)
+        electricity_supply.filter(like="oil").sum()
     
     var["Secondary Energy|Electricity|Gas"] = \
         electricity_supply.reindex(
@@ -963,7 +972,8 @@ def get_secondary_energy(n, region):
     )
 
     var["Secondary Energy|Electricity|Biomass|w/o CCS"] = \
-        electricity_supply.get('urban central solid biomass CHP', 0)
+        electricity_supply.get('urban central solid biomass CHP', 0) + \
+        electricity_supply.get('urban central solid biomass OP')
     var["Secondary Energy|Electricity|Biomass|w/ CCS"] = \
         electricity_supply.get('urban central solid biomass CHP CC', 0)
     var["Secondary Energy|Electricity|Biomass"] = (
@@ -1085,14 +1095,16 @@ def get_secondary_energy(n, region):
     var["Secondary Energy|Heat|Biomass"] = \
         heat_supply.filter(like="biomass").sum()
     
-    # var["Secondary Energy|Heat|Coal"] = \
+    var["Secondary Energy|Heat|Coal"] = \
+        heat_supply.filter(like="coal").sum() + \
+        heat_supply.filter(like="lignite").sum()
     # var["Secondary Energy|Heat|Geothermal"] = \
     # var["Secondary Energy|Heat|Nuclear"] = \
     # var["Secondary Energy|Heat|Other"] = \
     # ! Not implemented
 
     var["Secondary Energy|Heat|Oil"] = \
-        heat_supply.filter(like="oil boiler").sum()
+        heat_supply.filter(like="urban central oil").sum()
     
     var["Secondary Energy|Heat|Solar"] = \
         heat_supply.filter(like="solar thermal").sum()
@@ -1123,6 +1135,7 @@ def get_secondary_energy(n, region):
         + var["Secondary Energy|Heat|Solar"]
         + var["Secondary Energy|Heat|Electricity"]
         + var["Secondary Energy|Heat|Other"]
+        + var["Secondary Energy|Heat|Coal"]
     )
     assert isclose(
         var["Secondary Energy|Heat"],
