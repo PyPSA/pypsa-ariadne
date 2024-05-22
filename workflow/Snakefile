@@ -112,6 +112,7 @@ rule modify_cost_data:
         file_path="ariadne-data/costs/",
         file_name="costs_{planning_horizons}.csv",
         cost_horizon=config_provider("costs", "horizon"),
+        NEP=config_provider("costs", "NEP"),
     input:
         modifications=lambda w: (
             "ariadne-data/costs_2019-modifications.csv"
