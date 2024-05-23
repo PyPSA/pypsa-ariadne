@@ -33,6 +33,7 @@ CurrentPolicies:
   costs:
     horizon: "mean"
     NEP: 2023
+    transmission: "uc" # either overhead line ("ohl") or underground cable ("uc")
 
   limits_capacity_min:
     Generator:
@@ -126,6 +127,7 @@ KN2045_Bal_v4:
   costs:
     horizon: "mean"
     NEP: 2021
+    transmission: "ohl" # either overhead line ("ohl") or underground cable ("uc")
 
   # boundary condition of maximum volumes
   limits_volume_max:
@@ -183,6 +185,7 @@ KN2045_Elec_v4:
   costs:
     horizon: "mean"
     NEP: 2021
+    transmission: "ohl" # either overhead line ("ohl") or underground cable ("uc")
 
   limits_volume_max:
     # constrain electricity import in TWh
@@ -239,6 +242,7 @@ KN2045_H2_v4:
   costs:
     horizon: "mean"
     NEP: 2021
+    transmission: "ohl" # either overhead line ("ohl") or underground cable ("uc")
 
   limits_volume_max:
     # constrain electricity import in TWh
@@ -298,6 +302,7 @@ KN2045plus_EasyRide:
   costs:
     horizon: "optimist"
     NEP: 2021
+    transmission: "ohl" # either overhead line ("ohl") or underground cable ("uc")
 
   # boundary condition of maximum volumes
   limits_volume_max: # following the Bal scenario
@@ -379,6 +384,7 @@ KN2045plus_LowDemand:
   costs:
     horizon: "optimist"
     NEP: 2021
+    transmission: "ohl" # either overhead line ("ohl") or underground cable ("uc")
 
   # boundary condition of maximum volumes
   limits_volume_max: # Half of the Bal scenario
@@ -472,6 +478,7 @@ KN2045minus_WorstCase:
   costs:
     horizon: "pessimist"
     NEP: 2023
+    transmission: "uc" # either overhead line ("ohl") or underground cable ("uc")
 
   # boundary condition of maximum volumes
   limits_volume_max: # Half of the Bal scenario
@@ -553,6 +560,7 @@ KN2045minus_SupplyFocus:
   costs:
     horizon: "pessimist"
     NEP: 2023
+    transmission: "uc" # either overhead line ("ohl") or underground cable ("uc")
 
   co2_budget:
     2020: 0.800 # 20% reduction by 2020
