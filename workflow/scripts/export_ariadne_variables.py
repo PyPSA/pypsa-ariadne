@@ -199,7 +199,7 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
     var[cap_string + "Electricity|Biomass|w/o CCS"] = \
         capacities_biomass.reindex(
             ['urban central solid biomass CHP', 
-             'urban central solid biomass OP']).sum()
+             'solid biomass']).sum()
     
 
     var[cap_string + "Electricity|Biomass|Solids"] = \
@@ -843,7 +843,7 @@ def get_primary_energy(n, region):
         biomass_usage[~biomass_usage.index.str.contains("CC")].sum()
     
     var["Primary Energy|Biomass|Electricity"] = \
-        biomass_CHP_E_usage + biomass_usage.get("urban central solid biomass OP")
+        biomass_CHP_E_usage + biomass_usage.get("solid biomass")
     var["Primary Energy|Biomass|Heat"] = \
         biomass_CHP_H_usage + biomass_usage.get("urban central solid biomass boiler", 0)
     
@@ -973,7 +973,7 @@ def get_secondary_energy(n, region):
 
     var["Secondary Energy|Electricity|Biomass|w/o CCS"] = \
         electricity_supply.get('urban central solid biomass CHP', 0) + \
-        electricity_supply.get('urban central solid biomass OP')
+        electricity_supply.get('solid biomass')
     var["Secondary Energy|Electricity|Biomass|w/ CCS"] = \
         electricity_supply.get('urban central solid biomass CHP CC', 0)
     var["Secondary Energy|Electricity|Biomass"] = (
