@@ -5,6 +5,7 @@ from numpy import isclose
 import math
 import numpy as np
 import os
+import sys
 
 paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
 for path in paths:
@@ -2642,6 +2643,54 @@ def get_policy(n):
 
     var["Price|Carbon"] = \
         -n.global_constraints.loc["CO2Limit", "mu"] - n.global_constraints.loc["co2_limit-DE", "mu"]
+    
+    # Price|Carbon|ETS
+    # Price|Carbon|EU-wide Regulation Non-ETS
+    # Price|Carbon|National Climate Target
+    # Price|Carbon|National Climate Target Non-ETS
+
+    return var
+
+def get_trade(n, region):
+    var = pd.Series()
+
+    # Trade|Primary Energy|Biomass|Volume
+    # Trade|Secondary Energy|Electricity|Volume 
+    # Trade|Secondary Energy|Electricity|Volume
+    exporting_ac = n.lines.index[
+        (n.lines.carrier == "AC") & 
+        (n.lines.bus0.str[:2] == region) & 
+        (n.lines.bus1.str[:2] != region)  & 
+        (~n.lines.index.str.contains("reversed"))]
+    exporting_p_ac = n.lines_t.p0.loc[: , exporting_ac][n.lines_t.p0.loc[: , exporting_ac] > 0].multiply(n.snapshot_weightings.generators, axis=0)
+    
+    exporting_dc = n.links.index[
+        (n.links.carrier == "DC") & 
+        (n.links.bus0.str[:2] == region) & 
+        (n.links.bus1.str[:2] != region)  & 
+        (~n.links.index.str.contains("reversed"))]
+    exporting_p_dc = n.links_t.p0.loc[: , exporting_dc][n.links_t.p0.loc[: , exporting_dc] > 0].multiply(n.snapshot_weightings.generators, axis=0)
+    
+    var["Trade|Secondary Energy|Electricity|Volume"] = \
+        (np.nansum(exporting_p_ac.values) + np.nansum(exporting_p_dc.values)) / 1e6 * TWh2PJ
+
+    # Trade|Secondary Energy|Hydrogen|Volume
+    h2_carriers = ["H2 pipeline", "H2 pipeline (Kernnetz)", "H2 pipeline retrofitted"]
+    exporting_h2 = n.links.index[
+        (n.links.carrier.isin(h2_carriers)) & 
+        (n.links.bus0.str[:2] == region) & 
+        (n.links.bus1.str[:2] != region)  & 
+        (~n.links.index.str.contains("reversed"))]
+    exporting_p_h2 = n.links_t.p0.loc[: , exporting_h2][n.links_t.p0.loc[: , exporting_h2] > 0].multiply(n.snapshot_weightings.generators, axis=0)
+    
+    var["Trade|Secondary Energy|Hydrogen|Volume"] = \
+        np.nansum(exporting_p_h2.values) / 1e6 * TWh2PJ
+    
+    # Trade|Secondary Energy|Liquids|Hydrogen|Volume
+    # Trade|Secondary Energy|Gases|Hydrogen|Volume
+    # Trade|Primary Energy|Coal|Volume
+    # Trade|Primary Energy|Gas|Volume
+    # Trade|Primary Energy|Oil|Volume
 
     return var
 
@@ -2663,7 +2712,8 @@ def get_ariadne_var(n, industry_demand, energy_totals, costs, region):
             dg_cost_factor=snakemake.params.dg_cost_factor,
             length_factor=snakemake.params.length_factor
         ),
-        get_policy(n)
+        get_policy(n),
+        get_trade(n, region),
     ])
 
     return var

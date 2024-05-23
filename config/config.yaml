@@ -4,11 +4,11 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: "20240521fixshared"
+  prefix: "20240523exportAddVars"
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
-  - KN2045_Elec_v4
+  # - KN2045_Elec_v4
   # - KN2045_H2_v4
   # - KN2045plus_EasyRide
   # - KN2045plus_LowDemand
@@ -18,7 +18,7 @@ run:
     enable: true
     file: config/scenarios.automated.yaml
   shared_resources: 
-    policy: base #stops recalculating
+    policy: true #stops recalculating
     exclude:
       - existing_heating.csv # specify files which should not be shared between scenarios
       - costs
@@ -216,6 +216,7 @@ sector:
     2040: 0.29
     2045: 0.36
     2050: 0.43
+  solar_thermal: false
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#industry
 industry:
