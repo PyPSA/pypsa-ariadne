@@ -2644,9 +2644,14 @@ def get_policy(n):
     var["Price|Carbon"] = \
         -n.global_constraints.loc["CO2Limit", "mu"] - n.global_constraints.loc["co2_limit-DE", "mu"]
     
-    # Price|Carbon|ETS
+    var["Price|Carbon|ETS"] = \
+        -n.global_constraints.loc["CO2Limit", "mu"]
+    
     # Price|Carbon|EU-wide Regulation Non-ETS
-    # Price|Carbon|National Climate Target
+
+    var["Price|Carbon|National Climate Target"] = \
+        -n.global_constraints.loc["co2_limit-DE", "mu"]
+    
     # Price|Carbon|National Climate Target Non-ETS
 
     return var
@@ -2654,37 +2659,42 @@ def get_policy(n):
 def get_trade(n, region):
     var = pd.Series()
 
+    def get_net_export_links(n, region, carriers):
+        exporting = n.links.index[
+        (n.links.carrier.isin(carriers)) & 
+        (n.links.bus0.str[:2] == region) & 
+        (n.links.bus1.str[:2] != region)]
+        exporting_p = n.links_t.p0.loc[: , exporting].multiply(n.snapshot_weightings.generators, axis=0).values.sum()
+
+        importing = n.links.index[
+        (n.links.carrier.isin(carriers)) & 
+        (n.links.bus0.str[:2] != region) & 
+        (n.links.bus1.str[:2] == region)]
+        importing_p = n.links_t.p0.loc[: , importing].multiply(n.snapshot_weightings.generators, axis=0).values.sum()
+
+        return exporting_p - importing_p
+    
     # Trade|Primary Energy|Biomass|Volume
     # Trade|Secondary Energy|Electricity|Volume 
-    # Trade|Secondary Energy|Electricity|Volume
     exporting_ac = n.lines.index[
         (n.lines.carrier == "AC") & 
         (n.lines.bus0.str[:2] == region) & 
-        (n.lines.bus1.str[:2] != region)  & 
-        (~n.lines.index.str.contains("reversed"))]
-    exporting_p_ac = n.lines_t.p0.loc[: , exporting_ac][n.lines_t.p0.loc[: , exporting_ac] > 0].multiply(n.snapshot_weightings.generators, axis=0)
-    
-    exporting_dc = n.links.index[
-        (n.links.carrier == "DC") & 
-        (n.links.bus0.str[:2] == region) & 
-        (n.links.bus1.str[:2] != region)  & 
-        (~n.links.index.str.contains("reversed"))]
-    exporting_p_dc = n.links_t.p0.loc[: , exporting_dc][n.links_t.p0.loc[: , exporting_dc] > 0].multiply(n.snapshot_weightings.generators, axis=0)
-    
+        (n.lines.bus1.str[:2] != region)]
+    exporting_p_ac = n.lines_t.p0.loc[: , exporting_ac].multiply(n.snapshot_weightings.generators, axis=0).values.sum()
+
+    importing_ac = n.lines.index[
+        (n.lines.carrier == "AC") & 
+        (n.lines.bus0.str[:2] != region) & 
+        (n.lines.bus1.str[:2] == region)]
+    importing_p_ac = n.lines_t.p0.loc[: , importing_ac].multiply(n.snapshot_weightings.generators, axis=0).values.sum()
+
     var["Trade|Secondary Energy|Electricity|Volume"] = \
-        (np.nansum(exporting_p_ac.values) + np.nansum(exporting_p_dc.values)) / 1e6 * TWh2PJ
+        ((exporting_p_ac - importing_p_ac) + get_net_export_links(n, region, ["DC"])) / 1e6 * TWh2PJ
 
     # Trade|Secondary Energy|Hydrogen|Volume
     h2_carriers = ["H2 pipeline", "H2 pipeline (Kernnetz)", "H2 pipeline retrofitted"]
-    exporting_h2 = n.links.index[
-        (n.links.carrier.isin(h2_carriers)) & 
-        (n.links.bus0.str[:2] == region) & 
-        (n.links.bus1.str[:2] != region)  & 
-        (~n.links.index.str.contains("reversed"))]
-    exporting_p_h2 = n.links_t.p0.loc[: , exporting_h2][n.links_t.p0.loc[: , exporting_h2] > 0].multiply(n.snapshot_weightings.generators, axis=0)
-    
     var["Trade|Secondary Energy|Hydrogen|Volume"] = \
-        np.nansum(exporting_p_h2.values) / 1e6 * TWh2PJ
+        get_net_export_links(n, region, h2_carriers) / 1e6 * TWh2PJ
     
     # Trade|Secondary Energy|Liquids|Hydrogen|Volume
     # Trade|Secondary Energy|Gases|Hydrogen|Volume

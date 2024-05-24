@@ -193,7 +193,7 @@ if __name__ == "__main__":
         # Secondary Energy|Something|Something (exactly two pipes)
         select_regex="Secondary Energy\|[^|]*\|[^|]*$",
         # Not ending in Fossil or Renewables (i.e., categories)
-        drop_regex="^(?!.*(Fossil|Renewables|Losses|Price)).+"
+        drop_regex= "^(?!.*(Fossil|Renewables|Losses|Price|Volume)).+" 
     )
 
     side_by_side_plot(
@@ -333,3 +333,11 @@ if __name__ == "__main__":
         write_sum = True,
     )
 
+    within_plot(
+        df[df.index.get_level_values("Variable").str.startswith('Trade')], 
+        dfremind, 
+        title = "Trade", 
+        savepath=snakemake.output.trade,
+        unit="PJ/yr",
+    )
+    
