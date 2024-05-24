@@ -4,11 +4,11 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: "20240523mergemaster"
+  prefix: 20240524mastrchps
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
-  - KN2045_Elec_v4
+  # - KN2045_Elec_v4
   # - KN2045_H2_v4
   # - KN2045plus_EasyRide
   # - KN2045plus_LowDemand
@@ -83,6 +83,8 @@ enable:
   retrieve: false # set to false once initial data is retrieved
   retrieve_cutout: false # set to false once initial data is retrieved
 clustering:
+  # simplify_network:
+  #   to_substations: true
   focus_weights:
   # 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
     'DE': 0.3636 # 8/22
@@ -292,7 +294,11 @@ plotting:
     electricity: [AC, low_voltage]
 
 # overwrite in config.default.yaml
-powerplants_filter: (DateOut >= 2019 or DateOut != DateOut)
+#powerplants_filter: (DateOut >= 2019 or DateOut != DateOut)
+electricity:
+  powerplants_filter: (DateOut >= 2019 or DateOut != DateOut) and not (Country == "DE" and Set == "CHP")
+  custom_powerplants: True
+  custom_file: resources/german_chp.csv
 
 pypsa_eur:
   Bus:
