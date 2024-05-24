@@ -58,6 +58,14 @@ if __name__ == "__main__":
         f"costs_{new_year}-modifications.csv", 
         snakemake.input.modifications)
     modifications = pd.read_csv(new_filename, index_col=[0, 1]).sort_index()
+    if snakemake.params.NEP == 2021:
+        modifications = modifications.query("source != 'NEP2023'")
+    elif snakemake.params.NEP == 2023:
+        modifications = modifications.query("source != 'NEP2021'")
+    else:
+        logger.warning(f"NEP year {snakemake.params.NEP} is not in modifications file. Falling back to NEP2021.")
+        modifications = modifications.query("source != 'NEP2023'")
+
     costs.loc[modifications.index] = modifications
 
     print(costs.loc[modifications.index])
