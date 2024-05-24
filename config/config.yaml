@@ -4,10 +4,10 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: ""
+  prefix: 20240524mastrchps
   name:
-  - CurrentPolicies
-  # - KN2045_Bal_v4
+  # - CurrentPolicies
+  - KN2045_Bal_v4
   # - KN2045_Elec_v4
   # - KN2045_H2_v4
   # - KN2045plus_EasyRide
@@ -17,7 +17,12 @@ run:
   scenarios:
     enable: true
     file: config/scenarios.automated.yaml
-  shared_resources: true
+  shared_resources: 
+    policy: base #stops recalculating
+    exclude:
+      - existing_heating.csv # specify files which should not be shared between scenarios
+      - costs
+      - retrieve_cost # This is necessary to save retrieve_cost_data_{year}.log in the correct folder
   disable_progressbar: true
   debug_co2_limit: false
   debug_h2deriv_limit: false
@@ -78,6 +83,8 @@ enable:
   retrieve: false # set to false once initial data is retrieved
   retrieve_cutout: false # set to false once initial data is retrieved
 clustering:
+  # simplify_network:
+  #   to_substations: true
   focus_weights:
   # 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
     'DE': 0.3636 # 8/22
@@ -175,10 +182,11 @@ renewable:
     capacity_per_sqkm: 10
 
 costs:
-  version: v0.8.1
+  horizon: "mean" # "optimist", "pessimist" or "mean"
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
+  # solar_thermal: false
   district_heating:
     potential: 0.4
     progress:
@@ -287,7 +295,11 @@ plotting:
     electricity: [AC, low_voltage]
 
 # overwrite in config.default.yaml
-powerplants_filter: (DateOut >= 2019 or DateOut != DateOut)
+#powerplants_filter: (DateOut >= 2019 or DateOut != DateOut)
+electricity:
+  powerplants_filter: (DateOut >= 2019 or DateOut != DateOut) and not (Country == "DE" and Set == "CHP")
+  custom_powerplants: True
+  custom_file: resources/german_chp.csv
 
 pypsa_eur:
   Bus:
@@ -298,6 +310,8 @@ pypsa_eur:
   - onwind
   - offwind-ac
   - offwind-dc
+  - offwind-float
+  - solar-hsat
   - solar
   - ror
   StorageUnit:

@@ -1,6 +1,8 @@
-# SPDX-FileCopyrightText: : 2017-2023 The PyPSA-Eur Authors
+# SPDX-FileCopyrightText: : 2017-2024 The PyPSA-Eur Authors
 #
 # SPDX-License-Identifier: MIT
+
+from shutil import unpack_archive
 
 from snakemake.utils import min_version
 
@@ -21,12 +23,11 @@ configfile: "config/config.personal.yaml"
 run = config["run"]
 scenarios = get_scenarios(run) # global variable
 RDIR = get_rdir(run)
-
-shared_resources = run["shared_resources"]["policy"]
-exclude_from_shared = run["shared_resources"]["exclude"]
-logs = path_provider("logs/", RDIR, shared_resources, exclude_from_shared)
-benchmarks = path_provider("benchmarks/", RDIR, shared_resources, exclude_from_shared)
-resources = path_provider("resources/", RDIR, shared_resources, exclude_from_shared)
+policy = run["shared_resources"]["policy"]
+exclude = run["shared_resources"]["exclude"]
+logs = path_provider("logs/", RDIR, policy, exclude)
+benchmarks = path_provider("benchmarks/", RDIR, policy, exclude)
+resources = path_provider("resources/", RDIR, policy, exclude)
 
 RESULTS = "results/" + RDIR
 
@@ -94,39 +95,40 @@ rule retrieve_ariadne_database:
         "scripts/retrieve_ariadne_database.py"
 
 
-#if config["enable"]["retrieve"] and config["enable"].get("retrieve_cost_data", True):
-#
-#    use rule retrieve_cost_data from pypsaeur with:
-#        output:
-#            resources("costs_{year}-original.csv"),
+# def input_profile_offwind(w):
+#     return {
+#         f"profile_{tech}": resources(f"profile_{tech}.nc")
+#         for tech in ["offwind-ac", "offwind-dc"]
+#         if (tech in config["electricity"]["renewable_carriers"])
+#     }
 
-def input_profile_offwind(w):
-    return {
-        f"profile_{tech}": resources(f"profile_{tech}.nc")
-        for tech in ["offwind-ac", "offwind-dc"]
-        if (tech in config["electricity"]["renewable_carriers"])
-    }
+# use rule prepare_sector_network from pypsaeur with:
+#     input:
+#         unpack(input_profile_offwind),
+#         # **{k: v for k, v in rules.prepare_sector_network.input.items() if k != "costs"},
+# 	    # costs=resources("modified-costs_{planning_horizons}.csv"),
 
-use rule prepare_sector_network from pypsaeur with:
-    input:
-        unpack(input_profile_offwind),
-        **{k: v for k, v in rules.prepare_sector_network.input.items() if k != "costs"},
-	    costs=resources("modified-costs_{planning_horizons}.csv"),
 
 rule modify_cost_data:
+    params:
+        file_path="ariadne-data/costs/",
+        file_name="costs_{planning_horizons}.csv",
+        cost_horizon=config_provider("costs", "horizon"),
+        NEP=config_provider("costs", "NEP"),
     input:
-        costs=resources("costs_{planning_horizons}.csv"),
         modifications=lambda w: (
             "ariadne-data/costs_2019-modifications.csv"
-            if w.planning_horizons == "2020" and config["energy"]["energy_totals_year"] == 2019
+            if w.planning_horizons == "2020" and config_provider("energy", "energy_totals_year") == 2019
             else "ariadne-data/costs_{planning_horizons}-modifications.csv")
     output:
-        resources("modified-costs_{planning_horizons}.csv"),
+        resources("costs_{planning_horizons}.csv"),
     resources:
         mem_mb=1000
     script:
         "scripts/modify_cost_data.py"
 
+if config["enable"]["retrieve"] and config["enable"].get("retrieve_cost_data", True):
+    ruleorder: modify_cost_data > retrieve_cost_data
 
 rule modify_prenetwork:
     params:
@@ -143,11 +145,12 @@ rule modify_prenetwork:
         H2_transmission_efficiency=config_provider("sector", "transmission_efficiency", "H2 pipeline"),
         H2_retrofit=config_provider("sector", "H2_retrofit"),
         H2_retrofit_capacity_per_CH4=config_provider("sector", "H2_retrofit_capacity_per_CH4"),
+        transmission_costs=config_provider("costs", "transmission"),
     input:
         network=RESULTS
         + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
         wkn=resources("wasserstoff_kernnetz_elec_s{simpl}_{clusters}.csv") if config_provider("wasserstoff_kernnetz", "enable") else [],
-        costs=resources("modified-costs_{planning_horizons}.csv"),
+        costs=resources("costs_{planning_horizons}.csv"),
     output:
         network=RESULTS
         + "prenetworks-final/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc"
@@ -181,6 +184,41 @@ rule modify_existing_heating:
         mem_mb=1000
     script:
         "scripts/modify_existing_heating.py"
+
+
+rule retrieve_mastr:
+    input:
+        storage(
+            "https://zenodo.org/records/8225106/files/bnetza_open_mastr_2023-08-08_B.zip",
+            keep_local=True,
+        ),
+    params:
+        "data/mastr",
+    output:
+        "data/mastr/bnetza_open_mastr_2023-08-08_B_biomass.csv",
+        "data/mastr/bnetza_open_mastr_2023-08-08_B_combustion.csv",
+    run:
+        unpack_archive(input[0], params[0])
+
+
+rule build_existing_chp_de:
+    input:
+        mastr_biomass="data/mastr/bnetza_open_mastr_2023-08-08_B_biomass.csv",
+        mastr_combustion="data/mastr/bnetza_open_mastr_2023-08-08_B_combustion.csv",
+        plz_mapping=storage(
+            "https://raw.githubusercontent.com/WZBSocialScienceCenter/plz_geocoord/master/plz_geocoord.csv",
+            keep_local=True,
+        ),
+        busmap=resources("networks/base.nc"),
+    output:
+        german_chp=resources("german_chp.csv"),
+    script:
+        "scripts/build_existing_chp_de.py"
+
+use rule add_existing_baseyear from pypsaeur with:
+    input:
+        **rules.add_existing_baseyear.input,
+        custom_powerplants=resources("german_chp.csv"),
 
 use rule build_existing_heating_distribution from pypsaeur with:
     input:
@@ -281,7 +319,8 @@ rule export_ariadne_variables:
         template=resources("template_ariadne_database.xlsx"),
         industry_demands=expand(
             resources("industrial_energy_demand_elec_s{simpl}_{clusters}_{planning_horizons}.csv"),
-            **config["scenario"]
+            **config["scenario"],
+            allow_missing=True,
         ),
         networks=expand(
             RESULTS + "postnetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
@@ -289,8 +328,9 @@ rule export_ariadne_variables:
             allow_missing=True,
         ),
         costs=expand(
-            resources("modified-costs_{planning_horizons}.csv"),
+            resources("costs_{planning_horizons}.csv"),
             **config["scenario"],
+            allow_missing=True,
         ),
         industrial_production_per_country_tomorrow=expand(
             resources("industrial_production_per_country_tomorrow_{planning_horizons}-modified.csv"),
@@ -341,7 +381,7 @@ rule plot_ariadne_variables:
 
 rule ariadne_all:
     input:
-        expand(RESULTS + "graphs/costs.pdf", run=config["run"]["name"]),
+        expand(RESULTS + "graphs/costs.pdf", run=config_provider("run", "name")),
         expand(RESULTS + "ariadne/capacity_detailed.png", run=config_provider("run", "name")),
         exported_variables=expand(RESULTS + "ariadne/exported_variables_full.xlsx", run=config_provider("run", "name")),
     script:
