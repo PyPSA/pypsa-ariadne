@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: "20240521fixshared"
+  prefix: "20240523mergemaster"
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -22,6 +22,7 @@ run:
     exclude:
       - existing_heating.csv # specify files which should not be shared between scenarios
       - costs
+      - retrieve_cost # This is necessary to save retrieve_cost_data_{year}.log in the correct folder
   disable_progressbar: true
   debug_co2_limit: false
   debug_h2deriv_limit: false
@@ -183,6 +184,7 @@ costs:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
+  # solar_thermal: false
   district_heating:
     potential: 0.4
     progress:
@@ -301,6 +303,8 @@ pypsa_eur:
   - onwind
   - offwind-ac
   - offwind-dc
+  - offwind-float
+  - solar-hsat
   - solar
   - ror
   StorageUnit:

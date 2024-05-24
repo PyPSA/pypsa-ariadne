@@ -124,6 +124,8 @@ rule modify_cost_data:
     script:
         "scripts/modify_cost_data.py"
 
+if config["enable"]["retrieve"] and config["enable"].get("retrieve_cost_data", True):
+    ruleorder: modify_cost_data > retrieve_cost_data
 
 rule modify_prenetwork:
     params:
