@@ -842,7 +842,7 @@ def get_primary_energy(n, region):
         biomass_usage[~biomass_usage.index.str.contains("CC")].sum()
     
     var["Primary Energy|Biomass|Electricity"] = \
-        biomass_CHP_E_usage + biomass_usage.get("solid biomass")
+        biomass_CHP_E_usage + biomass_usage.get("solid biomass", 0)
     var["Primary Energy|Biomass|Heat"] = \
         biomass_CHP_H_usage + biomass_usage.get("urban central solid biomass boiler", 0)
     
@@ -972,7 +972,7 @@ def get_secondary_energy(n, region):
 
     var["Secondary Energy|Electricity|Biomass|w/o CCS"] = \
         electricity_supply.get('urban central solid biomass CHP', 0) + \
-        electricity_supply.get('solid biomass')
+        electricity_supply.get('solid biomass', 0)
     var["Secondary Energy|Electricity|Biomass|w/ CCS"] = \
         electricity_supply.get('urban central solid biomass CHP CC', 0)
     var["Secondary Energy|Electricity|Biomass"] = (
@@ -2789,6 +2789,7 @@ if __name__ == "__main__":
 
     yearly_dfs = []
     for i, year in enumerate(snakemake.params.planning_horizons):
+        print("Getting data for year {year}...".format(year=year))
         yearly_dfs.append(get_data(
             networks[i],
             industry_demands[i],
