@@ -314,11 +314,9 @@ def transmission_costs_from_modified_cost_data(n, costs, transmission, length_fa
     if n.links.loc[dc_b].empty:
         return
 
-    if transmission == "ohl":
-        # overhead line costs are assumed for links
+    if transmission == "overhead":
         links_costs = "HVDC overhead"
-    elif transmission == "uc":
-        # underground cable costs are assumed and links
+    elif transmission == "underground":
         links_costs = "HVDC submarine"
 
     costs = (
