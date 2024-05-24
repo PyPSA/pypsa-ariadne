@@ -310,7 +310,7 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         capacities_electricity.get("solar rooftop", 0)
     
     var[cap_string + "Electricity|Solar|PV|Open Field"] = \
-        capacities_electricity.get("solar") 
+        capacities_electricity.reindex(["solar", "solar-hsat"]).sum() 
 
     var[cap_string + "Electricity|Solar|PV"] = \
         var[[
@@ -325,10 +325,9 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         var[cap_string + "Electricity|Solar|PV"]
     
     var[cap_string + "Electricity|Wind|Offshore"] = \
-        capacities_electricity.get(
-            ["offwind", "offwind-ac", "offwind-dc"]
+        capacities_electricity.reindex(
+            ["offwind", "offwind-ac", "offwind-dc", "offwind-float"]
         ).sum()
-    # !: take care of "offwind" -> "offwind-ac"/"offwind-dc"
 
     var[cap_string + "Electricity|Wind|Onshore"] = \
         capacities_electricity.get("onwind")
@@ -532,7 +531,7 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
     ).multiply(MW2GW)
 
     var[cap_string + "Decentral Heat|Solar thermal"] = \
-        capacities_central_heat.filter(like="solar thermal").sum()
+        capacities_decentral_heat.filter(like="solar thermal").sum()
 
 
     capacities_h2 = cap_func(
@@ -997,9 +996,9 @@ def get_secondary_energy(n, region):
     var["Secondary Energy|Electricity|Solar"] = \
         electricity_supply.filter(like="solar").sum()
     var["Secondary Energy|Electricity|Wind|Offshore"] = \
-        electricity_supply.get("onwind")
-    var["Secondary Energy|Electricity|Wind|Onshore"] = \
         electricity_supply.filter(like="offwind").sum()
+    var["Secondary Energy|Electricity|Wind|Onshore"] = \
+        electricity_supply.get("onwind")       
     var["Secondary Energy|Electricity|Wind"] = (
         var["Secondary Energy|Electricity|Wind|Offshore"]
         + var["Secondary Energy|Electricity|Wind|Onshore"]
@@ -1668,7 +1667,9 @@ def get_emissions(n, region, _energy_totals):
         co2_emissions.reindex([
             "process emissions",
             "process emissions CC",
-        ]).sum()
+        ]).sum() + \
+        co2_emissions.get("industry methanol", 0)
+    # TODO not sure methanol emissions are right here
     
     # !!! We do not strictly separate fuel combustion emissions from
     # process emissions in industry, so some should go to:
@@ -1680,8 +1681,12 @@ def get_emissions(n, region, _energy_totals):
         ]).sum() - co2_negative_emissions.get(
             "solid biomass for industry CC", 
             0,
-        ) 
-       
+        )
+    
+    var["Emissions|CO2|Industry"] = \
+        var["Emissions|CO2|Energy|Demand|Industry"] + \
+        var["Emissions|CO2|Industrial Processes"] 
+
     var["Emissions|CO2|Energy|Demand|Residential and Commercial"] = (
         co2_emissions.filter(like="urban decentral").sum() 
         + co2_emissions.filter(like="rural" ).sum()
@@ -2769,6 +2774,19 @@ if __name__ == "__main__":
 
     networks = [pypsa.Network(n) for n in snakemake.input.networks]
 
+    if "debug" == "debug":# For debugging
+        n = networks[2]
+        c = costs[2]
+        region="DE"
+        cap_func=n.statistics.optimal_capacity
+        cap_string = "Optimal Capacity|"
+        dg_cost_factor=snakemake.params.dg_cost_factor    
+        kwargs = {
+            'groupby': n.statistics.groupers.get_bus_and_carrier,
+            'at_port': True,
+            'nice_names': False,
+        }
+
     yearly_dfs = []
     for i, year in enumerate(snakemake.params.planning_horizons):
         yearly_dfs.append(get_data(
@@ -2814,20 +2832,3 @@ if __name__ == "__main__":
         df.to_excel(writer, sheet_name="data", index=False)
         meta.to_frame().T.to_excel(writer, sheet_name="meta", index=False)
 
-
-    # For debugging
-    n = networks[2]
-    c = costs[2]
-    region="DE"
-    kwargs = {
-        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
-        'nice_names': False,
-    }
-    cap_func=n.statistics.optimal_capacity
-    dg_cost_factor=snakemake.params.dg_cost_factor    
-    
-    kwargs = {
-        'groupby': n.statistics.groupers.get_bus_and_carrier,
-        'at_port': True,
-        'nice_names': False,
-    }
