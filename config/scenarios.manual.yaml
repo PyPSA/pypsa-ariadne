@@ -30,6 +30,9 @@ CurrentPolicies:
     2045: 0.450
     2050: 0.450
 
+  co2_budget_uba:
+    enable: true
+
   costs:
     horizon: "mean"
 
@@ -122,6 +125,9 @@ KN2045_Bal_v4:
   iiasa_database:
     reference_scenario: 8Gt_Bal_v3
 
+  co2_budget_uba:
+    enable: true
+
   costs:
     horizon: "mean"
 
@@ -178,6 +184,9 @@ KN2045_Elec_v4:
   iiasa_database:
     reference_scenario: 8Gt_Elec_v3
 
+  co2_budget_uba:
+    enable: true
+
   costs:
     horizon: "mean"
 
@@ -232,6 +241,9 @@ KN2045_H2_v4:
 
   iiasa_database:
     reference_scenario: 8Gt_H2_v3
+
+  co2_budget_uba:
+    enable: true
 
   costs:
     horizon: "mean"
@@ -290,6 +302,9 @@ KN2045plus_EasyRide:
 # Verlagerung der energieintensiven Grundstoffindustrie
   iiasa_database:
     reference_scenario: 8Gt_EasyRide_v3 # TODO: wait for database
+
+  co2_budget_uba:
+    enable: true
 
   costs:
     horizon: "optimist"
@@ -370,6 +385,9 @@ KN2045plus_LowDemand:
 # innerhalb Deutschlands und knappe Importe EE möglich
   iiasa_database:
     reference_scenario: 8Gt_LowDemand_v3 # TODO: wait for database
+
+  co2_budget_uba:
+    enable: true    
 
   costs:
     horizon: "optimist"
@@ -463,6 +481,9 @@ KN2045minus_WorstCase:
     2045: 0.450
     2050: 0.450
 
+  co2_budget_uba:
+    enable: true
+
   costs:
     horizon: "pessimist"
 
@@ -554,6 +575,10 @@ KN2045minus_SupplyFocus:
     2040: 0.450
     2045: 0.450
     2050: 0.450
+
+  co2_budget_uba:
+    enable: true
+
   # boundary condition of maximum volumes
   limits_volume_max: # following the Bal scenario
     # constrain electricity import in TWh

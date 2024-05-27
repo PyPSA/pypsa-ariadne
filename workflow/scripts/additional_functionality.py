@@ -152,7 +152,7 @@ def electricity_import_limits(n, snapshots, investment_year, config):
         )
 
 
-def add_co2limit_country(n, limit_countries, snakemake, debug=False):
+def add_co2limit_country(n, snakemake, source, investment_year, debug=False):
     """
     Add a set of emissions limit constraints for specified countries.
 
@@ -170,7 +170,11 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
     nyears = nhours / 8760
 
     sectors = determine_emission_sectors(n.config['sector'])
-
+    if source == "uba":
+        uba_limit = snakemake.config["co2_budget_uba"]["target"][investment_year]
+        limit_countries = {"DE": uba_limit}
+    else:
+        limit_countries = snakemake.config["co2_budget_national"][investment_year]
     # convert MtCO2 to tCO2
     co2_totals = 1e6 * pd.read_csv(snakemake.input.co2_totals_name, index_col=0)
 
@@ -338,8 +342,12 @@ def additional_functionality(n, snapshots, snakemake):
 
     #force_boiler_profiles_existing_per_load(n)
     force_boiler_profiles_existing_per_boiler(n)
-
+    
     if snakemake.config["sector"]["co2_budget_national"]:
-        limit_countries = snakemake.config["co2_budget_national"][investment_year]
-        add_co2limit_country(n, limit_countries, snakemake,                  
+        if snakemake.config["co2_budget_uba"]["enable"]:
+            source = "uba"
+        else:
+            source = "ksg"
+        
+        add_co2limit_country(n, snakemake, source, investment_year,
             debug=snakemake.config["run"]["debug_co2_limit"])

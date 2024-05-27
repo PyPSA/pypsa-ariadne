@@ -130,6 +130,63 @@ def get_ksg_targets(df):
 
     return target_fractions_pypsa.round(3)
 
+def get_uba_targets(uba_projection, reference_scenario, df):
+    co2_ksg = (
+        df.loc["Emissions|CO2 incl Bunkers","Mt CO2/yr"]  
+        - df.loc["Emissions|CO2|Land-Use Change","Mt CO2-equiv/yr"]
+        - df.loc["Emissions|CO2|Energy|Demand|Bunkers","Mt CO2/yr"]
+    )
+
+    ghg_ksg = (
+        df.loc["Emissions|Kyoto Gases","Mt CO2-equiv/yr"]
+        - df.loc["Emissions|Kyoto Gases|Land-Use Change","Mt CO2-equiv/yr"]
+        # No Kyoto Gas emissions for Bunkers recorded in Ariadne DB
+    )
+    baseline_pypsa = 1052
+    nonco2 = ghg_ksg - co2_ksg
+
+    uba_target = (pd.Series(uba_projection) - nonco2).div(baseline_pypsa)
+
+    return uba_target[[2020, 2025, 2030, 2035, 2040, 2045]].round(3)
+
+
+
+def write_co2_budget(config, scenario, reference_scenario, df):
+    # absolute trajectory for DE emissions from uba in Mt CO2/yr
+    uba_projection = {
+        2020: 720,
+        2025: 650,
+        2030: 450,
+        2035: 310,
+        2040: 210,
+        2045: 180,
+    }
+    if scenario == "CurrentPolicies":
+        ksg_target_fractions = get_ksg_targets(
+            df.loc["REMIND-EU v1.1", "8Gt_Bal_v3"]
+        )
+        ksg_target_fractions[[2035, 2040, 2045]] = ksg_target_fractions[2030]
+        uba_target = get_uba_targets(uba_projection, "8Gt_Bal_v3", df.loc["REMIND-EU v1.1", "8Gt_Bal_v3"])
+    else:
+        ksg_target_fractions = get_ksg_targets(
+            df.loc["REMIND-EU v1.1", reference_scenario]
+        )
+        uba_target = get_uba_targets(uba_projection, reference_scenario, df.loc["REMIND-EU v1.1", reference_scenario])
+
+    config[scenario]["co2_budget_national"] = {}
+    for year, target in ksg_target_fractions.items():
+        config[scenario]["co2_budget_national"][year] = {}
+        target_value = float(ksg_target_fractions[2030]) if year > 2030 and scenario == "CurrentPolicies" else target
+        config[scenario]["co2_budget_national"][year]["DE"] = target_value
+
+    config[scenario]["co2_budget_uba"]["target"] = {}
+    for year, target in uba_target.items():
+        config[scenario]["co2_budget_uba"]["target"][year] = {}
+        config[scenario]["co2_budget_uba"]["target"][year] = float(uba_target[year])
+
+    return config
+
+
 
 def write_to_scenario_yaml(
         input, output, scenarios, df):
@@ -139,15 +196,6 @@ def write_to_scenario_yaml(
     config = yaml.load(file_path)
     for scenario in scenarios:
         reference_scenario = config[scenario]["iiasa_database"]["reference_scenario"]
-        if scenario == "CurrentPolicies":
-            ksg_target_fractions = get_ksg_targets(
-                df.loc["REMIND-EU v1.1", "8Gt_Bal_v3"]
-            )
-            ksg_target_fractions[[2035, 2040, 2045]] = ksg_target_fractions[2030]
-        else:
-            ksg_target_fractions = get_ksg_targets(
-                df.loc["REMIND-EU v1.1", reference_scenario]
-            )
 
         planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045] # for 2050 we still need data
 
@@ -191,12 +239,9 @@ def write_to_scenario_yaml(
         config[scenario]["industry"]["St_primary_fraction"] = {}
         for year in st_primary_fraction.columns:
             config[scenario]["industry"]["St_primary_fraction"][year] = round(st_primary_fraction.loc["Primary_Steel_Share", year].item(), 4)
-        config[scenario]["co2_budget_national"] = {}
-        for year, target in ksg_target_fractions.items():
-            config[scenario]["co2_budget_national"][year] = {}
-            target_value = float(ksg_target_fractions[2030]) if year > 2030 and scenario == "CurrentPolicies" else target
-            config[scenario]["co2_budget_national"][year]["DE"] = target_value
-
+        
+        config = write_co2_budget(config, scenario, reference_scenario, df)
+        
     # write back to yaml file
     yaml.dump(config, Path(output))
 
