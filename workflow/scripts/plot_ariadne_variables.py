@@ -202,7 +202,8 @@ if __name__ == "__main__":
         "Final Energy in PJ_yr",
         savepath=snakemake.output.final_energy,
         select_regex="Final Energy\|[^|]*$",
-        drop_regex="^(?!.*(Electricity|Price)).+"
+        rshift = 1.45,
+        drop_regex="^(?!.*(Price|Non-Energy Use)).+"
     )
 
     side_by_side_plot(
@@ -211,8 +212,8 @@ if __name__ == "__main__":
         "Detailed Final Energy in PJ_yr",
         savepath=snakemake.output.final_energy_detailed,
         select_regex="Final Energy\|[^|]*\|[^|]*$",
-        rshift = 1.45,
-        drop_regex="^(?!.*(Price)).+"
+        rshift = 1.7,
+        drop_regex="^(?!.*(Price|\|Solids\||Non-Energy Use\|)).+"
     )
 
     side_by_side_plot(

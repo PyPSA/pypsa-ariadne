@@ -953,7 +953,8 @@ def get_primary_energy(n, region):
         var["Primary Energy|Hydro"] +
         var["Primary Energy|Solar"] +
         var["Primary Energy|Wind"] +
-        var["Primary Energy|Nuclear"]
+        var["Primary Energy|Nuclear"] +
+        var["Primary Energy|Waste"]
     )
 
     return var
@@ -1342,6 +1343,15 @@ def get_secondary_energy(n, region):
 
     var["Secondary Energy Input|Hydrogen|Liquids"] = \
         hydrogen_withdrawal.get("Fischer-Tropsch", 0)
+    
+    var["Secondary Energy"] = (
+        var["Secondary Energy|Electricity"]
+        + var["Secondary Energy|Heat"]
+        + var["Secondary Energy|Hydrogen"]
+        + var["Secondary Energy|Gases"]
+        + var["Secondary Energy|Liquids"]
+        + var["Secondary Energy|Methanol"]
+    )
     
     return var
 
