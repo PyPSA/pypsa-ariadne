@@ -291,9 +291,6 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
     var[cap_string + "Electricity|Hydrogen"] = \
         var[cap_string + "Electricity|Hydrogen|FC"]
 
-    # var[cap_string + "Electricity|Non-Renewable Waste"] = 
-    # ! Not implemented
-
     var[cap_string + "Electricity|Nuclear"] = \
         capacities_electricity.get("nuclear", 0)
 
@@ -411,7 +408,7 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
             cap_string + "Electricity|Hydro",
             cap_string + "Electricity|Hydrogen",
             cap_string + "Electricity|Nuclear",
-            cap_string + "Electricity|Waste",
+            cap_string + "Electricity|Non-Renewable Waste",
             ]].sum()
 
     # Test if we forgot something
@@ -1638,6 +1635,11 @@ def get_emissions(n, region, _energy_totals):
     CHP_emissions = n.statistics.supply(
         bus_carrier="co2",**kwargs
     ).filter(like=region).filter(like="CHP").multiply(t2Mt)
+
+    # exclude waste CHPs because they are accounted separately
+    CHP_emissions = CHP_emissions[
+        ~CHP_emissions.index.get_level_values(
+            "carrier").str.contains("waste")]
 
     CHP_E_to_H =  (
         n.links.loc[CHP_emissions.index.get_level_values("name")].efficiency 
