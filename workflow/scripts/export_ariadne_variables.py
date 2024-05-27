@@ -5,7 +5,6 @@ from numpy import isclose
 import math
 import numpy as np
 import os
-from _helpers import mute_print
 import re
 
 paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
@@ -13,6 +12,7 @@ for path in paths:
     sys.path.insert(0, os.path.abspath(path))
 
 from prepare_sector_network import prepare_costs
+from _helpers import mute_print
 
 # Defining global varibales
 
