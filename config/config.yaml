@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240524mastrchps
+  prefix: 20240527wasteCHP
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -260,6 +260,16 @@ industry:
     2040: 0.12
     2045: 0.16
     2050: 0.20
+  HVC_environment_sequestration_fraction:
+    2020: 0.1
+    2025: 0.1
+    2030: 0.12
+    2035: 0.15
+    2040: 0.18
+    2045: 0.20
+    2050: 0.20
+  waste_to_energy: true
+  waste_to_energy_cc: true
 
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
