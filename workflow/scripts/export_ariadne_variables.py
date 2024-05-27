@@ -215,6 +215,8 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
     var[cap_string + "Electricity|Biomass"] = \
         var[cap_string + "Electricity|Biomass|Solids"]
 
+    var[cap_string + "Electricity|Non-Renewable Waste"] = \
+        capacities_electricity.filter(like="waste CHP").sum()
 
     var[cap_string + "Electricity|Coal|Hard Coal"] = \
         capacities_electricity.filter(like="coal").sum()                                             
@@ -409,6 +411,7 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
             cap_string + "Electricity|Hydro",
             cap_string + "Electricity|Hydrogen",
             cap_string + "Electricity|Nuclear",
+            cap_string + "Electricity|Waste",
             ]].sum()
 
     # Test if we forgot something
@@ -460,6 +463,9 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         var[cap_string + "Heat|Biomass"],
         capacities_central_heat.filter(like="biomass").sum()
     )
+
+    var[cap_string + "Heat|Non-Renewable Waste"] = \
+        capacities_central_heat.filter(like="waste CHP").sum()
     
     var[cap_string + "Heat|Resistive heater"] = \
         capacities_central_heat.filter(like="resistive heater").sum()
@@ -507,7 +513,8 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         var[cap_string + "Heat|Gas"] +
         var[cap_string + "Heat|Processes"] +
         #var[cap_string + "Heat|Hydrogen"] +
-        var[cap_string + "Heat|Heat pump"]
+        var[cap_string + "Heat|Heat pump"] +
+        var[cap_string + "Heat|Non-Renewable Waste"]
     )
 
     # This check requires further changes to n.statistics
@@ -783,6 +790,20 @@ def get_primary_energy(n, region):
     # )
     # ! There are CC sub-categories that could be used
 
+
+    waste_CHP_E_usage, waste_CHP_H_usage = get_CHP_E_and_H_usage(
+        n, "non-sequestered HVC", region)
+
+    var["Primary Energy|Waste|Electricity"] = \
+        waste_CHP_E_usage
+    var["Primary Energy|Waste|Heat"] = \
+        waste_CHP_H_usage
+    var["Primary Energy|Waste"] = (
+        var["Primary Energy|Waste|Electricity"]
+        + var["Primary Energy|Waste|Heat"]
+    )
+
+
     coal_usage = n.statistics.withdrawal(
         bus_carrier=["lignite", "coal"], 
         **kwargs,
@@ -1013,6 +1034,9 @@ def get_secondary_energy(n, region):
         electricity_supply.get("H2 Fuel Cell", 0)
     # ! Add H2 Turbines if they get implemented
 
+    var["Secondary Energy|Electricity|Waste"] = \
+        electricity_supply.filter(like="waste CHP").sum()
+
     var["Secondary Energy|Electricity|Curtailment"] = \
         n.statistics.curtailment(
             bus_carrier=["AC", "low voltage"], **kwargs
@@ -1065,6 +1089,7 @@ def get_secondary_energy(n, region):
         #+ var["Secondary Energy|Electricity|Transmission Losses"]
         #+ var["Secondary Energy|Electricity|Storage Losses"]
         + var["Secondary Energy|Electricity|Hydrogen"]
+        + var["Secondary Energy|Electricity|Waste"]
     )
 
     assert isclose(
@@ -1116,6 +1141,8 @@ def get_secondary_energy(n, region):
         var["Secondary Energy|Heat|Electricity|Heat Pumps"] 
         + var["Secondary Energy|Heat|Electricity|Resistive"] 
     )
+    var["Secondary Energy|Heat|Waste"] = \
+        heat_supply.filter(like="waste CHP").sum()
     var["Secondary Energy|Heat|Other"] = \
         heat_supply.reindex(
             [
@@ -1127,6 +1154,7 @@ def get_secondary_energy(n, region):
             ]
         ).sum()
     # TODO remember to specify in comments
+
     var["Secondary Energy|Heat"] = (
         var["Secondary Energy|Heat|Gas"]
         + var["Secondary Energy|Heat|Biomass"]
@@ -1135,6 +1163,7 @@ def get_secondary_energy(n, region):
         + var["Secondary Energy|Heat|Electricity"]
         + var["Secondary Energy|Heat|Other"]
         + var["Secondary Energy|Heat|Coal"]
+        + var["Secondary Energy|Heat|Waste"]
     )
     assert isclose(
         var["Secondary Energy|Heat"],
@@ -1563,6 +1592,16 @@ def get_final_energy(n, region, _industry_demand, _energy_totals):
     # var["Final Energy|Geothermal"] = \
     # ! Not implemented
 
+    waste_withdrawal = n.statistics.withdrawal(
+        bus_carrier=["non-sequestered HVC"], 
+        **kwargs,
+    ).filter(
+        like=region,
+    ).groupby("carrier").sum().multiply(MWh2PJ)
+
+    var["Final Energy|Waste"] = \
+        waste_withdrawal.filter(like="waste CHP").sum()
+
     var["Final Energy incl Non-Energy Use incl Bunkers"] = (
         var["Final Energy|Industry"]
         + var["Final Energy|Residential and Commercial"]
@@ -1794,7 +1833,11 @@ def get_emissions(n, region, _energy_totals):
         ).sum()
     
     var["Emissions|CO2|Supply|Non-Renewable Waste"] = \
-        co2_emissions.get("naphtha for industry")
+        co2_emissions.reindex([
+            "HVC to air",
+            "waste CHP",
+            "waste CHP CC",
+        ]).sum()
 
     # var["Emissions|CO2|Energy|Supply|Liquids"] = \
     # Our only Liquid production is Fischer-Tropsch
