@@ -3063,9 +3063,19 @@ def get_trade(n, region):
         get_net_export_links(n, region, h2_carriers) / 1e6 * TWh2PJ
     
     # Trade|Secondary Energy|Liquids|Hydrogen|Volume
+    var["Trade|Secondary Energy|Liquids|Hydrogen|Volume"] = \
+        get_net_export_links(n, "DE", ["renewable oil"]) / 1e6 * TWh2PJ
+
     # Trade|Secondary Energy|Gases|Hydrogen|Volume
     # Trade|Primary Energy|Coal|Volume
     # Trade|Primary Energy|Gas|Volume
+    kwargs = {
+        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
+        'nice_names': False,
+    }
+    var["Trade|Primary Energy|Gas|Volume"] = \
+        get_net_export_links(n, region, ["gas pipeline", "gas pipeline new"]) / 1e6 * TWh2PJ * _get_gas_fossil_fraction(n, region, kwargs)
+
     # Trade|Primary Energy|Oil|Volume
 
     return var

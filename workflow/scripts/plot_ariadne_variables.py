@@ -172,7 +172,7 @@ if __name__ == "__main__":
         "Detailed Primary Energy in PJ_yr",
         savepath=snakemake.output.primary_energy_detailed,
         select_regex="Primary Energy\|[^|]*\|[^|]*$",
-        drop_regex="^(?!.*(CCS|Price)).+"
+        drop_regex="^(?!.*(CCS|Price|Volume)).+"
     )
 
     side_by_side_plot(
