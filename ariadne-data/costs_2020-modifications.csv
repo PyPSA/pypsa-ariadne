@@ -1,7 +1,7 @@
 technology,parameter,value,unit,source,further description
-gas,fuel,11.2,EUR/MWh_th,Ariadne,
-oil,fuel,22.1982,EUR2020/MWh,Ariadne,"$2020 = 0.8775 EUR2020, 1bbl = 1.6998MWh"
-coal,fuel,5.7048,EUR2020/MWh,Ariadne,"$2020 = 0.8775 EUR2020, 1t = 8.06 MWh"
+gas,fuel,16.15,EUR/MWh_th,Ariadne,"plus carbon add on of 10.1725 €/MWh"
+oil,fuel,28.626,EUR2020/MWh,Ariadne,"$2020 = 0.8775 EUR2020, 1bbl = 1.6998MWh (plus carbon add on of 6.4275 €/MWh)"
+coal,fuel,14.107,EUR2020/MWh,Ariadne,"$2020 = 0.8775 EUR2020, 1t = 8.06 MWh (plus carbon add on of 8.4025 €/MWh)"
 electrolysis,investment,1450,EUR2020/kW_e,DEA,"linear interpolation of AEC 100 MW upper limit 2020 to 2050"
 decentral air-sourced heat pump,investment,1685,EUR2020/kW_th,https://ariadneprojekt.de/media/2024/01/Ariadne-Analyse_HeizkostenEmissionenGebaeude_Januar2024.pdf https://www.enpal.de/waermepumpe/kosten/ https://www.bdew.de/media/documents/BDEW-HKV_Altbau.pdf
 decentral ground-sourced heat pump,investment,2774,EUR2020/kW_th,https://ariadneprojekt.de/media/2024/01/Ariadne-Analyse_HeizkostenEmissionenGebaeude_Januar2024.pdf https://www.enpal.de/waermepumpe/kosten/ https://www.bdew.de/media/documents/BDEW-HKV_Altbau.pdf
@@ -12,3 +12,5 @@ HVDC overhead,investment,995,EUR2020/MW/km,NEP2021+NEP2023
 HVDC submarine,investment,3234,EUR2020/MW/km,NEP2021
 HVAC overhead,investment,1215,EUR2020/MW/km,NEP2023
 HVDC submarine,investment,3183,EUR2020/MW/km,NEP2023
+lignite,fuel,13.471,EUR/MWh_th,"DIW (2013): Current and propsective costs of electricity generation until 2050, http://hdl.handle.net/10419/80348 , pg. 80 text below figure 10, accessed: 2023-12-14.","Based on IEA 2011 data, 10 USD/t.  (plus carbon ad don of 10.1725 €/MWh"
+
