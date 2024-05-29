@@ -711,21 +711,8 @@ def get_primary_energy(n, region):
     var["Primary Energy|Oil|Electricity"] = \
         oil_usage.get("oil", 0) + oil_CHP_E_usage 
     
-    var["Primary Energy|Oil"] = (
-        var["Primary Energy|Oil|Electricity"] 
-        + var["Primary Energy|Oil|Heat"] 
-        + oil_usage.reindex( # This is more like final energy than primary energy??
-            [
-                "land transport oil",
-                "agriculture machinery oil",
-                "shipping oil",
-                "kerosene for aviation",
-                "naphtha for industry"
-            ],
-        ).sum()
-    )   
+    var["Primary Energy|Oil"] = oil_usage.sum()
     
-    # assert isclose(var["Primary Energy|Oil"], oil_usage.sum())
 
     regional_gas_supply = n.statistics.supply(
         bus_carrier="gas", 
@@ -778,18 +765,7 @@ def get_primary_energy(n, region):
     var["Primary Energy|Gas|Hydrogen"] = \
         gas_usage.filter(like="SMR").sum()
     
-    var["Primary Energy|Gas"] = (
-        var["Primary Energy|Gas|Heat"]
-        + var["Primary Energy|Gas|Electricity"]
-        + var["Primary Energy|Gas|Hydrogen"] 
-        + gas_usage.filter(like="gas for industry").sum()
-    )
-
-    # assert isclose(
-    #     var["Primary Energy|Gas"],
-    #     gas_usage.sum(),
-    # )
-    # ! There are CC sub-categories that could be used
+    var["Primary Energy|Gas"] = gas_usage.sum()
 
 
     waste_CHP_E_usage, waste_CHP_H_usage = get_CHP_E_and_H_usage(
@@ -871,23 +847,10 @@ def get_primary_energy(n, region):
     var["Primary Energy|Biomass|Heat"] = \
         biomass_CHP_H_usage + biomass_usage.get("urban central solid biomass boiler", 0)
     
-    # var["Primary Energy|Biomass|Gases"] = \
-    # In this case Gases are only E-Fuels in AriadneDB
-    # Not possibly in an easy way because biogas to gas goes to the
-    # gas bus, where it mixes with fossil imports
     
-    var["Primary Energy|Biomass"] = (
-        var["Primary Energy|Biomass|Electricity"]
-        + var["Primary Energy|Biomass|Heat"]
-        + biomass_usage.filter(like="solid biomass for industry").sum()
-        + biomass_usage.filter(like="biogas to gas").sum()
-    )
+    var["Primary Energy|Biomass"] = biomass_usage.sum()
     
         
-    # assert isclose(
-    #     var["Primary Energy|Biomass"],
-    #     biomass_usage.sum(),
-    # )
 
     var["Primary Energy|Nuclear"] = \
         n.statistics.withdrawal(
