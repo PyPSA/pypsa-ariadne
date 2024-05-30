@@ -200,8 +200,7 @@ def write_to_scenario_yaml(
         config[scenario]["co2_budget_national"] = {}
         for year, target in co2_budget_fractions.items():
             config[scenario]["co2_budget_national"][year] = {}
-            target_value = float(co2_budget_fractions[2030]) if year > 2030 and scenario == "CurrentPolicies" else target
-            config[scenario]["co2_budget_national"][year]["DE"] = target_value
+            config[scenario]["co2_budget_national"][year]["DE"] = target
 
     # write back to yaml file
     yaml.dump(config, Path(output))
