@@ -21,6 +21,8 @@ CurrentPolicies:
     # TODO: wait for REMod v1.0 to upload a first Trend scenario
     reference_scenario: Trend # CurrentPolicies once it's renamed
 
+  co2_budget_DE_source: UBA
+
   co2_budget:
     2020: 0.800 # 20% reduction by 2020
     2025: 0.600
@@ -123,6 +125,7 @@ KN2045_Bal_v4:
 
   iiasa_database:
     reference_scenario: 8Gt_Bal_v3
+  co2_budget_DE_source: KSG
 
   costs:
     horizon: "mean"
@@ -181,6 +184,7 @@ KN2045_Elec_v4:
 
   iiasa_database:
     reference_scenario: 8Gt_Elec_v3
+  co2_budget_DE_source: KSG
 
   costs:
     horizon: "mean"
@@ -238,6 +242,7 @@ KN2045_H2_v4:
 
   iiasa_database:
     reference_scenario: 8Gt_H2_v3
+  co2_budget_DE_source: KSG
 
   costs:
     horizon: "mean"
@@ -298,6 +303,7 @@ KN2045plus_EasyRide:
 # Verlagerung der energieintensiven Grundstoffindustrie
   iiasa_database:
     reference_scenario: 8Gt_EasyRide_v3 # TODO: wait for database
+  co2_budget_DE_source: KSG
 
   costs:
     horizon: "optimist"
@@ -380,6 +386,7 @@ KN2045plus_LowDemand:
 # innerhalb Deutschlands und knappe Importe EE möglich
   iiasa_database:
     reference_scenario: 8Gt_LowDemand_v3 # TODO: wait for database
+  co2_budget_DE_source: KSG
 
   costs:
     horizon: "optimist"
@@ -465,6 +472,8 @@ KN2045minus_WorstCase:
 # eher knapper Ausbau EE und EE Importe
   iiasa_database:
     reference_scenario: 8Gt_WorstCase_v3 # TODO: wait for database
+
+  co2_budget_DE_source: UBA
 
   co2_budget:
     2020: 0.800 # 20% reduction by 2020
@@ -561,6 +570,7 @@ KN2045minus_SupplyFocus:
     horizon: "pessimist"
     NEP: 2023
     transmission: "underground" # either overhead line ("overhead") or underground cable ("underground")
+  co2_budget_DE_source: UBA
 
   co2_budget:
     2020: 0.800 # 20% reduction by 2020
