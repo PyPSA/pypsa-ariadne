@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240527wasteCHP
+  prefix: 20240530biomassFixActive
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -328,3 +328,8 @@ pypsa_eur:
   - PHS
   - hydro
   Store: []
+
+must_run_biomass:
+  enable: true
+  p_min_pu: 0.7 
+  regions: ['DE']
