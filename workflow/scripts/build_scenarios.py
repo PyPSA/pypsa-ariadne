@@ -101,7 +101,7 @@ def get_co2_budget(df, source):
             [initial_years_co2, (1 - later_years_co2) * baseline_co2],
         )
     elif source == "UBA":
-        ## Vor Zielverfehlungsszenarien use UBA Projektionsbericht
+        ## For Zielverfehlungsszenarien use UBA Projektionsbericht
         targets_co2 = pd.Series(
             index = [2020, 2025, 2030, 2035, 2040, 2045, 2050],
             data = [813, 655, 455, 309, 210, 169, 157],
