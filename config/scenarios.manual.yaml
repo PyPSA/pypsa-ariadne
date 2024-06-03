@@ -341,32 +341,7 @@ KN2045plus_EasyRide:
         2035: 0
         2040: 0
         2045: 0
-  limits_capacity_min:
-    Generator:
-      onwind:
-        DE:
-          2020: 48
-          2025: 61
-          2030: 115 # Wind-an-Land Law
-          2035: 115 # not forcing more EE
-          2040: 115
-          2045: 115
-      offwind:
-        DE:
-          2020: 7.77
-          2025: 8
-          2030: 30 # Wind-auf-See Law
-          2035: 30 # not forcing more EE
-          2040: 30
-          2045: 30
-      solar:
-        DE:
-          2020: 59
-          2025: 101 
-          2030: 215 # PV strategy
-          2035: 215 # not forcing more EE
-          2040: 215
-          2045: 215
+
 
 KN2045plus_LowDemand:
 # Im Vergleich zu Easy Ride eher knappe EE Erzeugung 
@@ -423,32 +398,7 @@ KN2045plus_LowDemand:
         2035: 0
         2040: 0
         2045: 0
-  limits_capacity_min:
-    Generator:
-      onwind:
-        DE:
-          2020: 48
-          2025: 61
-          2030: 115 # Wind-an-Land Law
-          2035: 115 # not forcing more EE
-          2040: 115
-          2045: 115
-      offwind:
-        DE:
-          2020: 7.77
-          2025: 8
-          2030: 30 # Wind-auf-See Law
-          2035: 30 # not forcing more EE
-          2040: 30
-          2045: 30
-      solar:
-        DE:
-          2020: 59
-          2025: 101 
-          2030: 215 # PV strategy
-          2035: 215 # not forcing more EE
-          2040: 215
-          2045: 215
+
 
 KN2045minus_WorstCase:
 # Nachfrage nach Endenergie ist höher als in den Szenarien 1-3
