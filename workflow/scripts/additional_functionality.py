@@ -9,7 +9,7 @@ from xarray import DataArray
 logger = logging.getLogger(__name__)
 
 
-def add_min_limits(n, snapshots, investment_year, config):
+def add_min_limits(n, investment_year, config):
 
     for c in n.iterate_components(config["limits_capacity_min"]):
         logger.info(f"Adding minimum constraints for {c.list_name}")
@@ -24,8 +24,16 @@ def add_min_limits(n, snapshots, investment_year, config):
 
                 logger.info(f"Adding constraint on {c.name} {carrier} capacity in {ct} to be greater than {limit} MW")
 
-                existing_index = c.df.index[(c.df.index.str[:2] == ct) & (c.df.carrier.str[:len(carrier)] == carrier) & ~c.df.p_nom_extendable]
-                extendable_index = c.df.index[(c.df.index.str[:2] == ct) & (c.df.carrier.str[:len(carrier)] == carrier) & c.df.p_nom_extendable]
+                forbidden = ["solar thermal"]
+
+                existing_index = c.df.index[(c.df.index.str[:2] == ct) & 
+                                            (c.df.carrier.str[:len(carrier)] == carrier) &
+                                            ~c.df.carrier.isin(forbidden) & 
+                                            ~c.df.p_nom_extendable]
+                extendable_index = c.df.index[(c.df.index.str[:2] == ct) &
+                                              (c.df.carrier.str[:len(carrier)] == carrier) &
+                                              ~c.df.carrier.isin(forbidden) &
+                                              c.df.p_nom_extendable]
 
                 existing_capacity = c.df.loc[existing_index, "p_nom"].sum()
 
@@ -63,8 +71,16 @@ def add_max_limits(n, investment_year, config):
 
                 logger.info(f"Adding constraint on {c.name} {carrier} capacity in {ct} to be smaller than {limit} MW")
 
-                existing_index = c.df.index[(c.df.index.str[:2] == ct) & (c.df.carrier.str[:len(carrier)] == carrier) & ~c.df.p_nom_extendable]
-                extendable_index = c.df.index[(c.df.index.str[:2] == ct) & (c.df.carrier.str[:len(carrier)] == carrier) & c.df.p_nom_extendable]
+                forbidden = ["solar thermal"]
+
+                existing_index = c.df.index[(c.df.index.str[:2] == ct) &
+                                            (c.df.carrier.str[:len(carrier)] == carrier) &
+                                            ~c.df.carrier.isin(forbidden) &
+                                            ~c.df.p_nom_extendable]
+                extendable_index = c.df.index[(c.df.index.str[:2] == ct) &
+                                              (c.df.carrier.str[:len(carrier)] == carrier) &
+                                              ~c.df.carrier.isin(forbidden) &
+                                              c.df.p_nom_extendable]
 
                 existing_capacity = c.df.loc[existing_index, "p_nom"].sum()
 
@@ -75,10 +91,14 @@ def add_max_limits(n, investment_year, config):
                 lhs = p_nom.sum()
 
                 cname = f"capacity_maximum-{ct}-{c.name}-{carrier.replace(' ','-')}"
-
-                n.model.add_constraints(
-                    lhs >= limit - existing_capacity, name=f"GlobalConstraint-{cname}"
-                )
+                if limit == 0:
+                    n.model.add_constraints(
+                        lhs <= 0, name=f"GlobalConstraint-{cname}"
+                    )
+                else:
+                    n.model.add_constraints(
+                        lhs <= limit - existing_capacity, name=f"GlobalConstraint-{cname}"
+                    )
                 n.add(
                     "GlobalConstraint",
                     cname,
@@ -366,7 +386,9 @@ def additional_functionality(n, snapshots, snakemake):
 
     investment_year = int(snakemake.wildcards.planning_horizons[-4:])
 
-    add_min_limits(n, snapshots, investment_year, snakemake.config)
+    add_min_limits(n, investment_year, snakemake.config)
+
+    add_max_limits(n, investment_year, snakemake.config)
 
     h2_import_limits(n, snapshots, investment_year, snakemake.config)
     
