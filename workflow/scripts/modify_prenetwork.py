@@ -336,8 +336,8 @@ def must_run_biomass(n, p_min_pu, regions):
     """
     Set p_min_pu for biomass generators to the specified value.
     """
-    logger.info(f"Setting p_min_pu = {p_min_pu} for biomass generators")
-    links_i = n.links[(n.links.carrier == 'urban central solid biomass CHP') & (n.links.bus0.str.startswith(tuple(regions)))].index
+    logger.info(f"Must-run condition enabled: Setting p_min_pu = {p_min_pu} for biomass generators.")
+    links_i = n.links[(n.links.carrier == 'solid biomass') & (n.links.bus0.str.startswith(tuple(regions)))].index
     n.links.loc[links_i, "p_min_pu"] = p_min_pu
 
 
@@ -405,7 +405,7 @@ if __name__ == "__main__":
     # change to NEP21 costs
     transmission_costs_from_modified_cost_data(n, costs_loaded, snakemake.params.transmission_costs, snakemake.params.length_factor)
 
-    if snakemake.config["must_run_biomass"]["enable"]:
-        must_run_biomass(n, snakemake.config["must_run_biomass"]["p_min_pu"], snakemake.config["must_run_biomass"]["regions"])
+    if snakemake.params.biomass_must_run["enable"]:
+        must_run_biomass(n, snakemake.params.biomass_must_run["p_min_pu"], snakemake.params.biomass_must_run["regions"])
 
     n.export_to_netcdf(snakemake.output.network)
