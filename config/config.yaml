@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: max_RE_cap
+  prefix: 20240603max_RE_cap
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -117,16 +117,16 @@ limits_capacity_max:
   Generator:
     onwind:
       DE:
-        2020: 0
+        2020: 54
         2025: 69
     offwind:
       DE:
-        2020: 0
+        2020: 8
         2025: 8
     solar:
       DE:
-        2020: 0
-        2025: 101 # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW, assuming at least 1/3 of difference reached in 2025
+        2020: 54
+        2025: 110 # EEG2023; assumes for 2026: 128 GW, assuming a fair share reached by end of 2025
 
 limits_capacity_min:
     Generator:
@@ -145,6 +145,9 @@ limits_capacity_min:
           2045: 70 #70 Wind-auf-See Law
       solar:
         DE:
+          # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW, 
+          # assuming at least 1/3 of difference reached in 2025
+          2025: 101 
           2030: 215 # PV strategy
           2035: 309
           2040: 400 # PV strategy

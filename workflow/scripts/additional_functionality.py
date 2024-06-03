@@ -69,7 +69,6 @@ def add_max_limits(n, investment_year, config):
                     continue
                 limit = 1e3*config["limits_capacity_max"][c.name][carrier][ct][investment_year]
 
-                logger.info(f"Adding constraint on {c.name} {carrier} capacity in {ct} to be smaller than {limit} MW")
 
                 forbidden = ["solar thermal"]
 
@@ -85,16 +84,18 @@ def add_max_limits(n, investment_year, config):
                 existing_capacity = c.df.loc[existing_index, "p_nom"].sum()
 
                 logger.info(f"Existing {c.name} {carrier} capacity in {ct}: {existing_capacity} MW")
+                logger.info(f"Adding constraint on {c.name} {carrier} capacity in {ct} to be smaller than {limit} MW")
 
                 p_nom = n.model[c.name + "-p_nom"].loc[extendable_index]
 
                 lhs = p_nom.sum()
 
                 cname = f"capacity_maximum-{ct}-{c.name}-{carrier.replace(' ','-')}"
-                if limit == 0:
+                if limit - existing_capacity <= 0:
                     n.model.add_constraints(
                         lhs <= 0, name=f"GlobalConstraint-{cname}"
                     )
+                    logger.warning(f"Existing capacity in {ct} for carrier {carrier} already exceeds the limit of {limit} MW. Limiting capacity expansion for this investment period to 0.")
                 else:
                     n.model.add_constraints(
                         lhs <= limit - existing_capacity, name=f"GlobalConstraint-{cname}"
