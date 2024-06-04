@@ -3048,7 +3048,7 @@ def get_trade(n, region):
     importing_p_ac = n.lines_t.p0.loc[: , importing_ac].clip(lower=0).multiply(n.snapshot_weightings.generators, axis=0).values.sum() \
         - n.lines_t.p0.loc[: , exporting_ac].clip(upper=0).multiply(n.snapshot_weightings.generators, axis=0).values.sum()
 
-    imports_dc, exports_dc = get_export_import_links(n, region, ["DC"])
+    exports_dc, imports_dc = get_export_import_links(n, region, ["DC"])
 
     var["Trade|Secondary Energy|Electricity|Volume"] = \
         ((exporting_p_ac - importing_p_ac) + (imports_dc - exports_dc)) * MWh2PJ 
