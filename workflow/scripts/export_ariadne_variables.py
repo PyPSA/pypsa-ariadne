@@ -1793,10 +1793,10 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
         + var["Final Energy|Agriculture|Liquids"]
     )
 
-    assert isclose(
-        var["Final Energy|Agriculture"],
-        energy_totals.get("total agriculture")
-    ) 
+    # assert isclose(
+    #     var["Final Energy|Agriculture"],
+    #     energy_totals.get("total agriculture")
+    # ) 
     # It's nice to do these double checks, but it's less
     # straightforward for the other categories
     # !!! TODO this assert is temporarily disbaled because of https://github.com/PyPSA/pypsa-eur/issues/985
