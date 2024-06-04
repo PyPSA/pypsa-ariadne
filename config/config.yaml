@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240603max_RE_cap
+  prefix: 20240603postdiscretize
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -288,6 +288,27 @@ solving:
   mem_mb: 40000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
   options:
     load_shedding: false
+    skip_iterations: false # settings for post-discretization: false
+    min_iterations: 1 # settings for post-discretization: 1
+    max_iterations: 1 # settings for post-discretization: 1
+    post_discretization:
+      enable: true
+      line_unit_size: 1700
+      line_threshold: 0.3
+      link_unit_size:
+        DC: 2000
+        gas pipeline: 1500
+        gas pipeline new: 1500
+        H2 pipeline: 1200
+        H2 pipeline (Kernnetz): 1200
+        H2 pipeline retrofitted: 1200
+      link_threshold:
+        DC: 0.3
+        gas pipeline: 0.3
+        gas pipeline new: 0.3
+        H2 pipeline: 0.3
+        H2 pipeline (Kernnetz): 0.3
+        H2 pipeline retrofitted: 0.3
   # solver:
   #   options: gurobi-numeric-focus
   # solver_options:

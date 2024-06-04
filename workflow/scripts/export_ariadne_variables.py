@@ -2780,22 +2780,20 @@ def get_prices(n, region):
     return var
 
     
-def get_discretized_value(value, disc_int):
+def get_discretized_value(value, disc_int, build_threshold=0.3):
 
         if value == 0.0:
             return value
 
         add = value - value % disc_int
         value = value % disc_int
-        discrete = disc_int if value > 0.3 * disc_int else 0.0
+        discrete = disc_int if value > build_threshold * disc_int else 0.0
 
         return add + discrete
 
-def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1.0):
-    kwargs = {
-        'groupby': n_pre.statistics.groupers.get_name_bus_and_carrier,
-        'nice_names': False,
-    }
+def get_investments(n, costs, region, dg_cost_factor=1.0, length_factor=1.0):
+    # TODO gap between years should be read from config
+    # TODO Discretization units should be read from config 
     var = pd.Series()
 
     # capacities_electricity = n.statistics.expanded_capacity(
@@ -2837,11 +2835,11 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1
     ]
     dc_expansion = dc_links.p_nom_opt.apply(
             lambda x: get_discretized_value(x, 2000)
-        ) - n_pre.links.loc[dc_links.index].p_nom_min.apply(
+        ) - n.links.loc[dc_links.index].p_nom_min.apply(
             lambda x: get_discretized_value(x, 2000)
         )
         
-    dc_new = (dc_expansion > 0) & (n_pre.links.loc[dc_links.index].p_nom_min > 10)
+    dc_new = (dc_expansion > 0) & (n.links.loc[dc_links.index].p_nom_min > 10)
 
     dc_investments = dc_links.length * length_factor * (
         (1 - dc_links.underwater_fraction) 
@@ -2857,14 +2855,14 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1
     ac_lines = n.lines[(n.lines.bus0 + n.lines.bus1).str.contains(region)]
     ac_expansion = ac_lines.s_nom_opt.apply(
             lambda x: get_discretized_value(x, 1700)
-        ) - n_pre.lines.loc[ac_lines.index].s_nom_min.apply(
+        ) - n.lines.loc[ac_lines.index].s_nom_min.apply(
             lambda x: get_discretized_value(x, 1700)
         )
     ac_investments = ac_lines.length * length_factor *  ac_expansion * costs.at["HVAC overhead", "investment"]
     var["Investment|Energy Supply|Electricity|Transmission|AC"] = \
-        ac_investments.sum()    
+        ac_investments.sum() / 5   
     var["Investment|Energy Supply|Electricity|Transmission|DC"] = \
-        dc_investments.sum() 
+        dc_investments.sum() / 5
     
     var["Investment|Energy Supply|Electricity|Transmission"] = \
     var["Investment|Energy Supply|Electricity|Transmission|AC"] + \
@@ -2886,7 +2884,7 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1
         * dg_cost_factor
     )
     var["Investment|Energy Supply|Electricity|Distribution"] = \
-        dg_investment
+        dg_investment / 5
     
     var["Investment|Energy Supply|Electricity|Transmission and Distribution"] = \
         var["Investment|Energy Supply|Electricity|Distribution"] + \
@@ -2910,7 +2908,7 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1
     )
 
     var["Investment|Energy Supply|Hydrogen|Transmission"] = \
-        h2_costs.sum()
+        h2_costs.sum() / 5
 
 
     gas_links = n.links[
@@ -2933,7 +2931,7 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1
     )
 
     var["Investment|Energy Supply|Gas|Transmission"] = \
-        gas_costs.sum()
+        gas_costs.sum() / 5
 
     # var["Investment|Energy Supply|Electricity|Electricity Storage"] = \ 
     # var["Investment|Energy Supply|Hydrogen|Fossil"] = \ 
@@ -3080,7 +3078,7 @@ def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
         get_prices(n,region), 
         get_emissions(n, region, energy_totals),
         get_investments(
-            n, n, costs, region,
+            n, costs, region,
             dg_cost_factor=snakemake.params.dg_cost_factor,
             length_factor=snakemake.params.length_factor
         ),
