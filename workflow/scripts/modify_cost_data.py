@@ -103,6 +103,4 @@ if __name__ == "__main__":
         logger.warning(f"Adding carbon component according to a co2 price of {co2_price} €/t to fossil fuel costs.")
         costs = carbon_component_fossils(costs, co2_price)
 
-    print(costs.at[("gas", "fuel"), "value"])
-    print(costs.at[("gas", "fuel"), "further description"])
     costs.to_csv(snakemake.output[0])
