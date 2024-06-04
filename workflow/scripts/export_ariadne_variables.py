@@ -2973,7 +2973,7 @@ def get_policy(n):
     var["Price|Carbon"] = \
         -n.global_constraints.loc["CO2Limit", "mu"] - n.global_constraints.loc["co2_limit-DE", "mu"]
     
-    var["Price|Carbon|ETS"] = \
+    var["Price|Carbon|EU-wide Regulation All Sectors"] = \
         -n.global_constraints.loc["CO2Limit", "mu"]
     
     # Price|Carbon|EU-wide Regulation Non-ETS
@@ -3001,7 +3001,7 @@ def get_trade(n, region):
         (n.links.bus1.str[:2] == region)]
         importing_p = n.links_t.p0.loc[: , importing].multiply(n.snapshot_weightings.generators, axis=0).values.sum()
 
-        return exporting_p - importing_p
+        return (exporting_p - importing_p) * MWh2PJ
     
     # Trade|Primary Energy|Biomass|Volume
     # Trade|Secondary Energy|Electricity|Volume 
@@ -3018,16 +3018,16 @@ def get_trade(n, region):
     importing_p_ac = n.lines_t.p0.loc[: , importing_ac].multiply(n.snapshot_weightings.generators, axis=0).values.sum()
 
     var["Trade|Secondary Energy|Electricity|Volume"] = \
-        ((exporting_p_ac - importing_p_ac) + get_net_export_links(n, region, ["DC"])) / 1e6 * TWh2PJ
+        ((exporting_p_ac - importing_p_ac) * MWh2PJ + get_net_export_links(n, region, ["DC"])) 
 
     # Trade|Secondary Energy|Hydrogen|Volume
     h2_carriers = ["H2 pipeline", "H2 pipeline (Kernnetz)", "H2 pipeline retrofitted"]
     var["Trade|Secondary Energy|Hydrogen|Volume"] = \
-        get_net_export_links(n, region, h2_carriers) / 1e6 * TWh2PJ
+        get_net_export_links(n, region, h2_carriers)
     
     # Trade|Secondary Energy|Liquids|Hydrogen|Volume
     var["Trade|Secondary Energy|Liquids|Hydrogen|Volume"] = \
-        get_net_export_links(n, "DE", ["renewable oil"]) / 1e6 * TWh2PJ
+        get_net_export_links(n, "DE", ["renewable oil"])
 
     # Trade|Secondary Energy|Gases|Hydrogen|Volume
     # Trade|Primary Energy|Coal|Volume
@@ -3037,7 +3037,7 @@ def get_trade(n, region):
         'nice_names': False,
     }
     var["Trade|Primary Energy|Gas|Volume"] = \
-        get_net_export_links(n, region, ["gas pipeline", "gas pipeline new"]) / 1e6 * TWh2PJ * _get_gas_fossil_fraction(n, region, kwargs)
+        get_net_export_links(n, region, ["gas pipeline", "gas pipeline new"]) * _get_gas_fossil_fraction(n, region, kwargs)
 
     # Trade|Primary Energy|Oil|Volume
 
@@ -3178,6 +3178,7 @@ if __name__ == "__main__":
     networks = [pypsa.Network(n) for n in snakemake.input.networks]
 
     if "debug" == "debug":# For debugging
+        var = pd.Series()
         n = networks[2]
         c = costs[2]
         region="DE"
@@ -3236,21 +3237,3 @@ if __name__ == "__main__":
     with pd.ExcelWriter(snakemake.output.exported_variables) as writer:
         df.to_excel(writer, sheet_name="data", index=False)
         meta.to_frame().T.to_excel(writer, sheet_name="meta", index=False)
-
-
-    # For debugging
-    n = networks[2]
-    c = costs[2]
-    region="DE"
-    kwargs = {
-        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
-        'nice_names': False,
-    }
-    cap_func=n.statistics.optimal_capacity
-    dg_cost_factor=snakemake.params.dg_cost_factor    
-    
-    kwargs = {
-        'groupby': n.statistics.groupers.get_bus_and_carrier,
-        'at_port': True,
-        'nice_names': False,
-    }
