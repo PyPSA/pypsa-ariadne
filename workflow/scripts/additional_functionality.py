@@ -24,14 +24,13 @@ def add_min_limits(n, investment_year, config):
 
                 logger.info(f"Adding constraint on {c.name} {carrier} capacity in {ct} to be greater than {limit} MW")
 
-                existing_index = c.df.index[(c.df.index.str[:2] == ct) & 
-                                            (c.df.carrier.str[:len(carrier)] == carrier) &
-                                            ~c.df.carrier.str.contains("thermal") & # exclude solar thermal
-                                            ~c.df.p_nom_extendable]
-                extendable_index = c.df.index[(c.df.index.str[:2] == ct) &
-                                              (c.df.carrier.str[:len(carrier)] == carrier) &
-                                              ~c.df.carrier.str.contains("thermal") & # exclude solar thermal
-                                              c.df.p_nom_extendable]
+                valid_components = (
+                    (c.df.index.str[:2] == ct) &
+                    (c.df.carrier.str[:len(carrier)] == carrier) &
+                    ~c.df.carrier.str.contains("thermal")) # exclude solar thermal
+                
+                existing_index = c.df.index[valid_components & ~c.df.p_nom_extendable]
+                extendable_index = c.df.index[valid_components & c.df.p_nom_extendable]
 
                 existing_capacity = c.df.loc[existing_index, "p_nom"].sum()
 
@@ -67,14 +66,13 @@ def add_max_limits(n, investment_year, config):
                     continue
                 limit = 1e3*config["limits_capacity_max"][c.name][carrier][ct][investment_year]
 
-                existing_index = c.df.index[(c.df.index.str[:2] == ct) &
-                                            (c.df.carrier.str[:len(carrier)] == carrier) &
-                                            ~c.df.carrier.str.contains("thermal") & # exclude solar thermal
-                                            ~c.df.p_nom_extendable]
-                extendable_index = c.df.index[(c.df.index.str[:2] == ct) &
-                                              (c.df.carrier.str[:len(carrier)] == carrier) &
-                                              ~c.df.carrier.str.contains("thermal") & # exclude solar thermal
-                                              c.df.p_nom_extendable]
+                valid_components = (
+                    (c.df.index.str[:2] == ct) &
+                    (c.df.carrier.str[:len(carrier)] == carrier) &
+                    ~c.df.carrier.str.contains("thermal")) # exclude solar thermal
+                
+                existing_index = c.df.index[valid_components & ~c.df.p_nom_extendable]
+                extendable_index = c.df.index[valid_components & c.df.p_nom_extendable]
 
                 existing_capacity = c.df.loc[existing_index, "p_nom"].sum()
 
