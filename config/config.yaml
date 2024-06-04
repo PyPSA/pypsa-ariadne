@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 240522postDiscretizeAll
+  prefix: 20240603postdiscretize
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -22,6 +22,7 @@ run:
     exclude:
       - existing_heating.csv # specify files which should not be shared between scenarios
       - costs
+      - retrieve_cost # This is necessary to save retrieve_cost_data_{year}.log in the correct folder
   disable_progressbar: true
   debug_co2_limit: false
   debug_h2deriv_limit: false
@@ -82,6 +83,8 @@ enable:
   retrieve: false # set to false once initial data is retrieved
   retrieve_cutout: false # set to false once initial data is retrieved
 clustering:
+  # simplify_network:
+  #   to_substations: true
   focus_weights:
   # 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
     'DE': 0.3636 # 8/22
@@ -110,20 +113,31 @@ co2_budget:
   2045: 0.050
   2050: 0.000 # climate-neutral by 2050
 
+limits_capacity_max:
+  Generator:
+    onwind:
+      DE:
+        2020: 54
+        2025: 69
+    offwind:
+      DE:
+        2020: 8
+        2025: 8
+    solar:
+      DE:
+        2020: 54
+        2025: 110 # EEG2023; assumes for 2026: 128 GW, assuming a fair share reached by end of 2025
+
 limits_capacity_min:
     Generator:
       onwind:
         DE:
-          2020: 48
-          2025: 61
           2030: 115 # Wind-an-Land Law
           2035: 157 # Wind-an-Land Law
           2040: 160 # Wind-an-Land Law
           2045: 160
       offwind:
         DE:
-          2020: 7.77
-          2025: 8
           2030: 30 # Wind-auf-See Law
           2035: 40 # 40 Wind-auf-See Law
           # assuming at least 1/3 of difference reached in 2040
@@ -131,7 +145,6 @@ limits_capacity_min:
           2045: 70 #70 Wind-auf-See Law
       solar:
         DE:
-          2020: 59
           # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW, 
           # assuming at least 1/3 of difference reached in 2025
           2025: 101 
@@ -183,6 +196,7 @@ costs:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
+  # solar_thermal: false
   district_heating:
     potential: 0.4
     progress:
@@ -219,6 +233,7 @@ sector:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#industry
 industry:
+  ammonia: false
   St_primary_fraction:
     2020: 0.6
     2025: 0.55
@@ -255,6 +270,16 @@ industry:
     2040: 0.12
     2045: 0.16
     2050: 0.20
+  HVC_environment_sequestration_fraction:
+    2020: 0.1
+    2025: 0.1
+    2030: 0.12
+    2035: 0.15
+    2040: 0.18
+    2045: 0.20
+    2050: 0.20
+  waste_to_energy: true
+  waste_to_energy_cc: true
 
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
@@ -311,7 +336,11 @@ plotting:
     electricity: [AC, low_voltage]
 
 # overwrite in config.default.yaml
-powerplants_filter: (DateOut >= 2019 or DateOut != DateOut)
+#powerplants_filter: (DateOut >= 2019 or DateOut != DateOut)
+electricity:
+  powerplants_filter: (DateOut >= 2019 or DateOut != DateOut) and not (Country == "DE" and Set == "CHP")
+  custom_powerplants: True
+  custom_file: resources/german_chp.csv
 
 pypsa_eur:
   Bus:
@@ -322,9 +351,16 @@ pypsa_eur:
   - onwind
   - offwind-ac
   - offwind-dc
+  - offwind-float
+  - solar-hsat
   - solar
   - ror
   StorageUnit:
   - PHS
   - hydro
   Store: []
+
+must_run_biomass:
+  enable: true
+  p_min_pu: 0.7 
+  regions: ['DE']
