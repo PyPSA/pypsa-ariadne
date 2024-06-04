@@ -378,6 +378,7 @@ rule plot_ariadne_variables:
         policy_carbon = RESULTS + "ariadne/policy_carbon.png",
         investment_energy_supply = RESULTS + "ariadne/investment_energy_supply.png",
         elec_val_2020 = RESULTS + "ariadne/elec_val_2020.png",
+        trade = RESULTS + "ariadne/trade.png",
     script:
         "scripts/plot_ariadne_variables.py"
 
