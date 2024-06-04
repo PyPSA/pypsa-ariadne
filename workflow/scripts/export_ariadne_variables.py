@@ -1438,8 +1438,16 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
 
     var["Final Energy|Non-Energy Use|Hydrogen"] = H2_for_NH3 * MWh2PJ
 
-    var["Final Energy|Non-Energy Use"] = (non_energy_natural_gas + H2_for_NH3 + non_energy_naphtha + CH4_for_MeOH) * MWh2PJ
+    var["Final Energy|Non-Energy Use"] = \
+        (non_energy_natural_gas + CH4_for_MeOH + CH4_for_NH3 + non_energy_naphtha + H2_for_NH3) * MWh2PJ
 
+    assert isclose(
+        var["Final Energy|Non-Energy Use"],
+        var["Final Energy|Non-Energy Use|Gases"]
+        + var["Final Energy|Non-Energy Use|Liquids"]
+        + var["Final Energy|Non-Energy Use|Solids"]
+        + var["Final Energy|Non-Energy Use|Hydrogen"]
+    )
 
     energy_totals = _energy_totals.loc[region[0:2]]
 
@@ -1560,7 +1568,10 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
             "Final Energy|Industry excl Non-Energy Use|Liquids",
             "Final Energy|Industry excl Non-Energy Use|Solids",
         ]).sum()
-
+    assert isclose(
+        var["Final Energy|Industry"] - var["Final Energy|Non-Energy Use"],
+        var["Final Energy|Industry excl Non-Energy Use"] 
+    )
     # Final energy is delivered to the consumers
     low_voltage_electricity = n.statistics.withdrawal(
         bus_carrier="low voltage", 
@@ -1747,7 +1758,7 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
         * international_aviation_fraction
     )
 
-
+    # TODO Navigation hydrogen
     var["Final Energy|Bunkers|Navigation"] = \
     var["Final Energy|Bunkers|Navigation|Liquids"] = (
         sum_load(n, ["shipping oil", "shipping methanol"], region)
@@ -1782,32 +1793,21 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
         + var["Final Energy|Agriculture|Liquids"]
     )
 
-    # assert isclose(
-    #     var["Final Energy|Agriculture"],
-    #     energy_totals.get("total agriculture")
-    # ) 
+    assert isclose(
+        var["Final Energy|Agriculture"],
+        energy_totals.get("total agriculture")
+    ) 
     # It's nice to do these double checks, but it's less
     # straightforward for the other categories
     # !!! TODO this assert is temporarily disbaled because of https://github.com/PyPSA/pypsa-eur/issues/985
 
-    # var["Final Energy"] = \
-    # var["Final Energy incl Non-Energy Use incl Bunkers"] = \
 
-    #var["Final Energy|Non-Energy Use|Liquids"] = \
-    #var["Final Energy|Non-Energy Use"] = \
-    #    industry_demand.get("naphtha") # This is essentially plastics
-    # Not sure if this is correct here
-
-    # var["Final Energy|Non-Energy Use|Gases"] = \
-    # var["Final Energy|Non-Energy Use|Solids"] = \
-    # var["Final Energy|Non-Energy Use|Hydrogen"] = \
-    # ! Not implemented 
 
     var["Final Energy|Electricity"] = (
         var["Final Energy|Agriculture|Electricity"]
         + var["Final Energy|Residential and Commercial|Electricity"]
         + var["Final Energy|Transportation|Electricity"]
-        + var["Final Energy|Industry|Electricity"]
+        + var["Final Energy|Industry excl Non-Energy Use|Electricity"]
     )
     
 
@@ -1816,36 +1816,49 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
     var["Final Energy|Solids"] = (
         # var["Final Energy|Agriculture|Solids"]
         var["Final Energy|Residential and Commercial|Solids"]
-        + var["Final Energy|Industry|Solids"]
+        + var["Final Energy|Industry excl Non-Energy Use|Solids"]
     )
 
     var["Final Energy|Solids|Biomass"] = (
         var["Final Energy|Residential and Commercial|Solids|Biomass"]
-        + var["Final Energy|Industry|Solids|Biomass"]
+        + var["Final Energy|Industry excl Non-Energy Use|Solids|Biomass"]
     )
 
-    var["Final Energy|Solids|Biomass"] = \
-        var["Final Energy|Industry|Solids|Coal"]
+    var["Final Energy|Solids|Coal"] = \
+        var["Final Energy|Industry excl Non-Energy Use|Solids|Coal"]
 
     var["Final Energy|Gases"] = (
         var["Final Energy|Residential and Commercial|Gases"]
-        + var["Final Energy|Industry|Gases"]
+        + var["Final Energy|Industry excl Non-Energy Use|Gases"]
     )
+
+    var["Final Energy|Gases|Natural Gas"] = \
+        var["Final Energy|Gases"] * gas_fossil_fraction
+    
 
     var["Final Energy|Liquids"] = (
         var["Final Energy|Agriculture|Liquids"]
         + var["Final Energy|Residential and Commercial|Liquids"]
         + var["Final Energy|Transportation|Liquids"]
-        + var["Final Energy|Industry|Liquids"]
+        + var["Final Energy|Industry excl Non-Energy Use|Liquids"]
     )
+
+    var["Final Energy|Liquids|Petroleum"] = \
+        var["Final Energy|Liquids"] * oil_fossil_fraction
+    
+    var["Final Energy|Liquids|Efuel"] = \
+        var["Final Energy|Liquids"] * (1 - oil_fossil_fraction)
 
     var["Final Energy|Heat"] = (
         var["Final Energy|Agriculture|Heat"]
         + var["Final Energy|Residential and Commercial|Heat"]
-        + var["Final Energy|Industry|Heat"]
+        + var["Final Energy|Industry excl Non-Energy Use|Heat"]
     )
     # var["Final Energy|Solar"] = \
-    # var["Final Energy|Hydrogen"] = \
+    var["Final Energy|Hydrogen"] = \
+        var["Final Energy|Transportation|Hydrogen"] + \
+        var["Final Energy|Industry excl Non-Energy Use|Hydrogen"]
+    
 
     # var["Final Energy|Geothermal"] = \
     # ! Not implemented
@@ -1868,6 +1881,13 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
         + var["Final Energy|Bunkers"]
     )
         
+    var["Final Energy"] = (
+        var["Final Energy|Industry excl Non-Energy Use"]
+        + var["Final Energy|Residential and Commercial"]
+        + var["Final Energy|Agriculture"]
+        + var["Final Energy|Transportation"]
+    )
+
 
     # The general problem with final energy is that for most of these categories
     # feedstocks shouls be excluded (i.e., non-energy use)
@@ -2555,6 +2575,8 @@ def get_prices(n, region):
 
     # Price|Final Energy|Transportation|Liquids|Efuel
 
+
+    # TODO THIS SEEMS INCORRECT
     df = pd.DataFrame({c: price_load(n, c, region) for c in \
                        ["kerosene for aviation", "shipping methanol", "shipping oil"]})
     
@@ -3177,8 +3199,11 @@ if __name__ == "__main__":
 
     if "debug" == "debug":# For debugging
         var = pd.Series()
-        n = networks[2]
-        c = costs[2]
+        idx = 2
+        n = networks[idx]
+        c = costs[idx]
+        _industry_demand = industry_demands[idx]
+        _energy_totals = energy_totals.copy()
         region="DE"
         cap_func=n.statistics.optimal_capacity
         cap_string = "Optimal Capacity|"
