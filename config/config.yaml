@@ -360,7 +360,13 @@ pypsa_eur:
   - hydro
   Store: []
 
+
+co2_price_add_on_fossils:
+  2020: 25 
+  2025: 60
+  
 must_run_biomass:
   enable: true
   p_min_pu: 0.7 
   regions: ['DE']
+

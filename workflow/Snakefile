@@ -115,6 +115,8 @@ rule modify_cost_data:
         file_name="costs_{planning_horizons}.csv",
         cost_horizon=config_provider("costs", "horizon"),
         NEP=config_provider("costs", "NEP"),
+        planning_horizons=config_provider("scenario", "planning_horizons"),
+        co2_price_add_on_fossils = config_provider("co2_price_add_on_fossils"),
     input:
         modifications=lambda w: (
             "ariadne-data/costs_2019-modifications.csv"
@@ -316,6 +318,7 @@ rule export_ariadne_variables:
         hours=config_provider("clustering","temporal","resolution_sector"),
         costs=config_provider("costs"),
         energy_totals_year=config_provider("energy", "energy_totals_year"),
+        co2_price_add_on_fossils = config_provider("co2_price_add_on_fossils"),
     input:
         template=resources("template_ariadne_database.xlsx"),
         industry_demands=expand(
