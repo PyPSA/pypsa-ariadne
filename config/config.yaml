@@ -338,3 +338,8 @@ pypsa_eur:
   - PHS
   - hydro
   Store: []
+
+must_run_biomass:
+  enable: true
+  p_min_pu: 0.7 
+  regions: ['DE']

@@ -6,6 +6,7 @@ import math
 import numpy as np
 import os
 import re
+import sys
 
 paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
 for path in paths:
@@ -2971,6 +2972,74 @@ def get_policy(n):
 
     var["Price|Carbon"] = \
         -n.global_constraints.loc["CO2Limit", "mu"] - n.global_constraints.loc["co2_limit-DE", "mu"]
+    
+    var["Price|Carbon|EU-wide Regulation All Sectors"] = \
+        -n.global_constraints.loc["CO2Limit", "mu"]
+    
+    # Price|Carbon|EU-wide Regulation Non-ETS
+
+    var["Price|Carbon|National Climate Target"] = \
+        -n.global_constraints.loc["co2_limit-DE", "mu"]
+    
+    # Price|Carbon|National Climate Target Non-ETS
+
+    return var
+
+def get_trade(n, region):
+    var = pd.Series()
+
+    def get_net_export_links(n, region, carriers):
+        exporting = n.links.index[
+        (n.links.carrier.isin(carriers)) & 
+        (n.links.bus0.str[:2] == region) & 
+        (n.links.bus1.str[:2] != region)]
+        exporting_p = n.links_t.p0.loc[: , exporting].multiply(n.snapshot_weightings.generators, axis=0).values.sum()
+
+        importing = n.links.index[
+        (n.links.carrier.isin(carriers)) & 
+        (n.links.bus0.str[:2] != region) & 
+        (n.links.bus1.str[:2] == region)]
+        importing_p = n.links_t.p0.loc[: , importing].multiply(n.snapshot_weightings.generators, axis=0).values.sum()
+
+        return (exporting_p - importing_p) * MWh2PJ
+    
+    # Trade|Primary Energy|Biomass|Volume
+    # Trade|Secondary Energy|Electricity|Volume 
+    exporting_ac = n.lines.index[
+        (n.lines.carrier == "AC") & 
+        (n.lines.bus0.str[:2] == region) & 
+        (n.lines.bus1.str[:2] != region)]
+    exporting_p_ac = n.lines_t.p0.loc[: , exporting_ac].multiply(n.snapshot_weightings.generators, axis=0).values.sum()
+
+    importing_ac = n.lines.index[
+        (n.lines.carrier == "AC") & 
+        (n.lines.bus0.str[:2] != region) & 
+        (n.lines.bus1.str[:2] == region)]
+    importing_p_ac = n.lines_t.p0.loc[: , importing_ac].multiply(n.snapshot_weightings.generators, axis=0).values.sum()
+
+    var["Trade|Secondary Energy|Electricity|Volume"] = \
+        ((exporting_p_ac - importing_p_ac) * MWh2PJ + get_net_export_links(n, region, ["DC"])) 
+
+    # Trade|Secondary Energy|Hydrogen|Volume
+    h2_carriers = ["H2 pipeline", "H2 pipeline (Kernnetz)", "H2 pipeline retrofitted"]
+    var["Trade|Secondary Energy|Hydrogen|Volume"] = \
+        get_net_export_links(n, region, h2_carriers)
+    
+    # Trade|Secondary Energy|Liquids|Hydrogen|Volume
+    var["Trade|Secondary Energy|Liquids|Hydrogen|Volume"] = \
+        get_net_export_links(n, "DE", ["renewable oil"])
+
+    # Trade|Secondary Energy|Gases|Hydrogen|Volume
+    # Trade|Primary Energy|Coal|Volume
+    # Trade|Primary Energy|Gas|Volume
+    kwargs = {
+        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
+        'nice_names': False,
+    }
+    var["Trade|Primary Energy|Gas|Volume"] = \
+        get_net_export_links(n, region, ["gas pipeline", "gas pipeline new"]) * _get_gas_fossil_fraction(n, region, kwargs)
+
+    # Trade|Primary Energy|Oil|Volume
 
     return var
 
@@ -3016,6 +3085,7 @@ def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
             length_factor=snakemake.params.length_factor
         ),
         get_policy(n),
+        get_trade(n, region),
     ])
 
     return var
@@ -3108,6 +3178,7 @@ if __name__ == "__main__":
     networks = [pypsa.Network(n) for n in snakemake.input.networks]
 
     if "debug" == "debug":# For debugging
+        var = pd.Series()
         n = networks[2]
         c = costs[2]
         region="DE"
@@ -3166,4 +3237,3 @@ if __name__ == "__main__":
     with pd.ExcelWriter(snakemake.output.exported_variables) as writer:
         df.to_excel(writer, sheet_name="data", index=False)
         meta.to_frame().T.to_excel(writer, sheet_name="meta", index=False)
-
