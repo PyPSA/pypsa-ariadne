@@ -15,7 +15,7 @@ run:
   # - KN2045minus_WorstCase
   # - KN2045minus_SupplyFocus
   scenarios:
-    enable: true
+    enable: base
     file: config/scenarios.automated.yaml
   shared_resources: 
     policy: true #stops recalculating
@@ -220,7 +220,6 @@ sector:
     2040: 0.29
     2045: 0.36
     2050: 0.43
-  solar_thermal: false
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#industry
 industry:
