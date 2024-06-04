@@ -15,10 +15,10 @@ run:
   # - KN2045minus_WorstCase
   # - KN2045minus_SupplyFocus
   scenarios:
-    enable: base
+    enable: true
     file: config/scenarios.automated.yaml
   shared_resources: 
-    policy: true #stops recalculating
+    policy: base #stops recalculating
     exclude:
       - existing_heating.csv # specify files which should not be shared between scenarios
       - costs
