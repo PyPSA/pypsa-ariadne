@@ -3003,11 +3003,17 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1
     # var["Investment|Industry"] = \  
     return var
 
-def get_policy(n):
+def get_policy(n, investment_year):
     var = pd.Series()
-
+    
+    # add carbon component to fossil fuels if specified
+    if investment_year in snakemake.params.co2_price_add_on_fossils.keys():
+        co2_price_add_on  = snakemake.params.co2_price_add_on_fossils[investment_year]
+    else:
+        co2_price_add_on = 0.0
+        
     var["Price|Carbon"] = \
-        -n.global_constraints.loc["CO2Limit", "mu"] - n.global_constraints.loc["co2_limit-DE", "mu"]
+        -n.global_constraints.loc["CO2Limit", "mu"] - n.global_constraints.loc["co2_limit-DE", "mu"] + co2_price_add_on
 
     return var
 
@@ -3052,7 +3058,7 @@ def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
             dg_cost_factor=snakemake.params.dg_cost_factor,
             length_factor=snakemake.params.length_factor
         ),
-        get_policy(n),
+        get_policy(n, year),
     ])
 
     return var

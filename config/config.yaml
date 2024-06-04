@@ -328,3 +328,7 @@ pypsa_eur:
   - PHS
   - hydro
   Store: []
+
+co2_price_add_on_fossils:
+  2020: 25 
+  2025: 60
