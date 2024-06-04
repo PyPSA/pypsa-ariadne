@@ -6,6 +6,7 @@ import math
 import numpy as np
 import os
 import re
+import sys
 
 paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
 for path in paths:
@@ -711,21 +712,8 @@ def get_primary_energy(n, region):
     var["Primary Energy|Oil|Electricity"] = \
         oil_usage.get("oil", 0) + oil_CHP_E_usage 
     
-    var["Primary Energy|Oil"] = (
-        var["Primary Energy|Oil|Electricity"] 
-        + var["Primary Energy|Oil|Heat"] 
-        + oil_usage.reindex( # This is more like final energy than primary energy??
-            [
-                "land transport oil",
-                "agriculture machinery oil",
-                "shipping oil",
-                "kerosene for aviation",
-                "naphtha for industry"
-            ],
-        ).sum()
-    )   
+    var["Primary Energy|Oil"] = oil_usage.sum()
     
-    # assert isclose(var["Primary Energy|Oil"], oil_usage.sum())
 
     regional_gas_supply = n.statistics.supply(
         bus_carrier="gas", 
@@ -778,18 +766,7 @@ def get_primary_energy(n, region):
     var["Primary Energy|Gas|Hydrogen"] = \
         gas_usage.filter(like="SMR").sum()
     
-    var["Primary Energy|Gas"] = (
-        var["Primary Energy|Gas|Heat"]
-        + var["Primary Energy|Gas|Electricity"]
-        + var["Primary Energy|Gas|Hydrogen"] 
-        + gas_usage.filter(like="gas for industry").sum()
-    )
-
-    # assert isclose(
-    #     var["Primary Energy|Gas"],
-    #     gas_usage.sum(),
-    # )
-    # ! There are CC sub-categories that could be used
+    var["Primary Energy|Gas"] = gas_usage.sum()
 
 
     waste_CHP_E_usage, waste_CHP_H_usage = get_CHP_E_and_H_usage(
@@ -871,23 +848,10 @@ def get_primary_energy(n, region):
     var["Primary Energy|Biomass|Heat"] = \
         biomass_CHP_H_usage + biomass_usage.get("urban central solid biomass boiler", 0)
     
-    # var["Primary Energy|Biomass|Gases"] = \
-    # In this case Gases are only E-Fuels in AriadneDB
-    # Not possibly in an easy way because biogas to gas goes to the
-    # gas bus, where it mixes with fossil imports
     
-    var["Primary Energy|Biomass"] = (
-        var["Primary Energy|Biomass|Electricity"]
-        + var["Primary Energy|Biomass|Heat"]
-        + biomass_usage.filter(like="solid biomass for industry").sum()
-        + biomass_usage.filter(like="biogas to gas").sum()
-    )
+    var["Primary Energy|Biomass"] = biomass_usage.sum()
     
         
-    # assert isclose(
-    #     var["Primary Energy|Biomass"],
-    #     biomass_usage.sum(),
-    # )
 
     var["Primary Energy|Nuclear"] = \
         n.statistics.withdrawal(
@@ -2816,22 +2780,20 @@ def get_prices(n, region):
     return var
 
     
-def get_discretized_value(value, disc_int):
+def get_discretized_value(value, disc_int, build_threshold=0.3):
 
         if value == 0.0:
             return value
 
         add = value - value % disc_int
         value = value % disc_int
-        discrete = disc_int if value > 0.3 * disc_int else 0.0
+        discrete = disc_int if value > build_threshold * disc_int else 0.0
 
         return add + discrete
 
-def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1.0):
-    kwargs = {
-        'groupby': n_pre.statistics.groupers.get_name_bus_and_carrier,
-        'nice_names': False,
-    }
+def get_investments(n, costs, region, dg_cost_factor=1.0, length_factor=1.0):
+    # TODO gap between years should be read from config
+    # TODO Discretization units should be read from config 
     var = pd.Series()
 
     # capacities_electricity = n.statistics.expanded_capacity(
@@ -2873,11 +2835,11 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1
     ]
     dc_expansion = dc_links.p_nom_opt.apply(
             lambda x: get_discretized_value(x, 2000)
-        ) - n_pre.links.loc[dc_links.index].p_nom_min.apply(
+        ) - n.links.loc[dc_links.index].p_nom_min.apply(
             lambda x: get_discretized_value(x, 2000)
         )
         
-    dc_new = (dc_expansion > 0) & (n_pre.links.loc[dc_links.index].p_nom_min > 10)
+    dc_new = (dc_expansion > 0) & (n.links.loc[dc_links.index].p_nom_min > 10)
 
     dc_investments = dc_links.length * length_factor * (
         (1 - dc_links.underwater_fraction) 
@@ -2893,14 +2855,14 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1
     ac_lines = n.lines[(n.lines.bus0 + n.lines.bus1).str.contains(region)]
     ac_expansion = ac_lines.s_nom_opt.apply(
             lambda x: get_discretized_value(x, 1700)
-        ) - n_pre.lines.loc[ac_lines.index].s_nom_min.apply(
+        ) - n.lines.loc[ac_lines.index].s_nom_min.apply(
             lambda x: get_discretized_value(x, 1700)
         )
     ac_investments = ac_lines.length * length_factor *  ac_expansion * costs.at["HVAC overhead", "investment"]
     var["Investment|Energy Supply|Electricity|Transmission|AC"] = \
-        ac_investments.sum()    
+        ac_investments.sum() / 5   
     var["Investment|Energy Supply|Electricity|Transmission|DC"] = \
-        dc_investments.sum() 
+        dc_investments.sum() / 5
     
     var["Investment|Energy Supply|Electricity|Transmission"] = \
     var["Investment|Energy Supply|Electricity|Transmission|AC"] + \
@@ -2922,7 +2884,7 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1
         * dg_cost_factor
     )
     var["Investment|Energy Supply|Electricity|Distribution"] = \
-        dg_investment
+        dg_investment / 5
     
     var["Investment|Energy Supply|Electricity|Transmission and Distribution"] = \
         var["Investment|Energy Supply|Electricity|Distribution"] + \
@@ -2946,7 +2908,7 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1
     )
 
     var["Investment|Energy Supply|Hydrogen|Transmission"] = \
-        h2_costs.sum()
+        h2_costs.sum() / 5
 
 
     gas_links = n.links[
@@ -2969,7 +2931,7 @@ def get_investments(n_pre, n, costs, region, dg_cost_factor=1.0, length_factor=1
     )
 
     var["Investment|Energy Supply|Gas|Transmission"] = \
-        gas_costs.sum()
+        gas_costs.sum() / 5
 
     # var["Investment|Energy Supply|Electricity|Electricity Storage"] = \ 
     # var["Investment|Energy Supply|Hydrogen|Fossil"] = \ 
@@ -3014,6 +2976,74 @@ def get_policy(n, investment_year):
         
     var["Price|Carbon"] = \
         -n.global_constraints.loc["CO2Limit", "mu"] - n.global_constraints.loc["co2_limit-DE", "mu"] + co2_price_add_on
+    
+    var["Price|Carbon|EU-wide Regulation All Sectors"] = \
+        -n.global_constraints.loc["CO2Limit", "mu"] + co2_price_add_on
+    
+    # Price|Carbon|EU-wide Regulation Non-ETS
+
+    var["Price|Carbon|National Climate Target"] = \
+        -n.global_constraints.loc["co2_limit-DE", "mu"]
+    
+    # Price|Carbon|National Climate Target Non-ETS
+
+    return var
+
+def get_trade(n, region):
+    var = pd.Series()
+
+    def get_net_export_links(n, region, carriers):
+        exporting = n.links.index[
+        (n.links.carrier.isin(carriers)) & 
+        (n.links.bus0.str[:2] == region) & 
+        (n.links.bus1.str[:2] != region)]
+        exporting_p = n.links_t.p0.loc[: , exporting].multiply(n.snapshot_weightings.generators, axis=0).values.sum()
+
+        importing = n.links.index[
+        (n.links.carrier.isin(carriers)) & 
+        (n.links.bus0.str[:2] != region) & 
+        (n.links.bus1.str[:2] == region)]
+        importing_p = n.links_t.p0.loc[: , importing].multiply(n.snapshot_weightings.generators, axis=0).values.sum()
+
+        return (exporting_p - importing_p) * MWh2PJ
+    
+    # Trade|Primary Energy|Biomass|Volume
+    # Trade|Secondary Energy|Electricity|Volume 
+    exporting_ac = n.lines.index[
+        (n.lines.carrier == "AC") & 
+        (n.lines.bus0.str[:2] == region) & 
+        (n.lines.bus1.str[:2] != region)]
+    exporting_p_ac = n.lines_t.p0.loc[: , exporting_ac].multiply(n.snapshot_weightings.generators, axis=0).values.sum()
+
+    importing_ac = n.lines.index[
+        (n.lines.carrier == "AC") & 
+        (n.lines.bus0.str[:2] != region) & 
+        (n.lines.bus1.str[:2] == region)]
+    importing_p_ac = n.lines_t.p0.loc[: , importing_ac].multiply(n.snapshot_weightings.generators, axis=0).values.sum()
+
+    var["Trade|Secondary Energy|Electricity|Volume"] = \
+        ((exporting_p_ac - importing_p_ac) * MWh2PJ + get_net_export_links(n, region, ["DC"])) 
+
+    # Trade|Secondary Energy|Hydrogen|Volume
+    h2_carriers = ["H2 pipeline", "H2 pipeline (Kernnetz)", "H2 pipeline retrofitted"]
+    var["Trade|Secondary Energy|Hydrogen|Volume"] = \
+        get_net_export_links(n, region, h2_carriers)
+    
+    # Trade|Secondary Energy|Liquids|Hydrogen|Volume
+    var["Trade|Secondary Energy|Liquids|Hydrogen|Volume"] = \
+        get_net_export_links(n, "DE", ["renewable oil"])
+
+    # Trade|Secondary Energy|Gases|Hydrogen|Volume
+    # Trade|Primary Energy|Coal|Volume
+    # Trade|Primary Energy|Gas|Volume
+    kwargs = {
+        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
+        'nice_names': False,
+    }
+    var["Trade|Primary Energy|Gas|Volume"] = \
+        get_net_export_links(n, region, ["gas pipeline", "gas pipeline new"]) * _get_gas_fossil_fraction(n, region, kwargs)
+
+    # Trade|Primary Energy|Oil|Volume
 
     return var
 
@@ -3054,11 +3084,12 @@ def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
         get_prices(n,region), 
         get_emissions(n, region, energy_totals),
         get_investments(
-            n, n, costs, region,
+            n, costs, region,
             dg_cost_factor=snakemake.params.dg_cost_factor,
             length_factor=snakemake.params.length_factor
         ),
         get_policy(n, year),
+        get_trade(n, region),
     ])
 
     return var
@@ -3151,6 +3182,7 @@ if __name__ == "__main__":
     networks = [pypsa.Network(n) for n in snakemake.input.networks]
 
     if "debug" == "debug":# For debugging
+        var = pd.Series()
         n = networks[2]
         c = costs[2]
         region="DE"
@@ -3209,4 +3241,3 @@ if __name__ == "__main__":
     with pd.ExcelWriter(snakemake.output.exported_variables) as writer:
         df.to_excel(writer, sheet_name="data", index=False)
         meta.to_frame().T.to_excel(writer, sheet_name="meta", index=False)
-
