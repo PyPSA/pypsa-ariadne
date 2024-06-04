@@ -107,8 +107,6 @@ CurrentPolicies:
         2040: 0
         2045: 0
 
-
- 
 KN2045_Bal_v4:
 # Ausgewogener Mix an Technologien zur Dekarbonisierung der Sektoren
 # Breites Energieträgerportfolio in der Endenergie (Strom, Wasserstoff, synthetische Kraftstoffe)
@@ -124,9 +122,6 @@ KN2045_Bal_v4:
     horizon: "mean"
     NEP: 2021
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
-
-  costs:
-    horizon: "mean"
 
   # boundary condition of maximum volumes
   limits_volume_max:
@@ -186,9 +181,6 @@ KN2045_Elec_v4:
     horizon: "mean"
     NEP: 2021
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
-
-  costs:
-    horizon: "mean"
 
   limits_volume_max:
     # constrain electricity import in TWh

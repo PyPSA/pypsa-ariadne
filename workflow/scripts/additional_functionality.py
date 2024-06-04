@@ -45,14 +45,15 @@ def add_min_limits(n, investment_year, config):
                 n.model.add_constraints(
                     lhs >= limit - existing_capacity, name=f"GlobalConstraint-{cname}"
                 )
-                n.add(
-                    "GlobalConstraint",
-                    cname,
-                    constant=limit,
-                    sense=">=",
-                    type="",
-                    carrier_attribute="",
-                )
+                if cname not in n.global_constraints.index:
+                    n.add(
+                        "GlobalConstraint",
+                        cname,
+                        constant=limit,
+                        sense=">=",
+                        type="",
+                        carrier_attribute="",
+                    )
                 
 def add_max_limits(n, investment_year, config):
 
@@ -93,14 +94,15 @@ def add_max_limits(n, investment_year, config):
                     n.model.add_constraints(
                         lhs <= limit - existing_capacity, name=f"GlobalConstraint-{cname}"
                     )
-                n.add(
-                    "GlobalConstraint",
-                    cname,
-                    constant=limit,
-                    sense="<=",
-                    type="",
-                    carrier_attribute="",
-                )
+                if cname not in n.global_constraints.index:
+                    n.add(
+                        "GlobalConstraint",
+                        cname,
+                        constant=limit,
+                        sense="<=",
+                        type="",
+                        carrier_attribute="",
+                    )
 
 
 def h2_import_limits(n, snapshots, investment_year, config):
