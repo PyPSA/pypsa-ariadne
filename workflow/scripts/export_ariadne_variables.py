@@ -3014,20 +3014,23 @@ def get_policy(n, investment_year):
 def get_trade(n, region):
     var = pd.Series()
 
-    def get_net_export_links(n, region, carriers):
+    def get_export_import_links(n, region, carriers):
         exporting = n.links.index[
         (n.links.carrier.isin(carriers)) & 
         (n.links.bus0.str[:2] == region) & 
         (n.links.bus1.str[:2] != region)]
-        exporting_p = n.links_t.p0.loc[: , exporting].multiply(n.snapshot_weightings.generators, axis=0).values.sum()
-
+        
         importing = n.links.index[
         (n.links.carrier.isin(carriers)) & 
         (n.links.bus0.str[:2] != region) & 
         (n.links.bus1.str[:2] == region)]
-        importing_p = n.links_t.p0.loc[: , importing].multiply(n.snapshot_weightings.generators, axis=0).values.sum()
+        
+        exporting_p = n.links_t.p0.loc[: , exporting].clip(lower=0).multiply(n.snapshot_weightings.generators, axis=0).values.sum() \
+            - n.links_t.p0.loc[: , importing].clip(upper=0).multiply(n.snapshot_weightings.generators, axis=0).values.sum()
+        importing_p = n.links_t.p0.loc[: , importing].clip(lower=0).multiply(n.snapshot_weightings.generators, axis=0).values.sum() \
+            - n.links_t.p0.loc[: , exporting].clip(upper=0).multiply(n.snapshot_weightings.generators, axis=0).values.sum()
 
-        return (exporting_p - importing_p) * MWh2PJ
+        return exporting_p, importing_p
     
     # Trade|Primary Energy|Biomass|Volume
     # Trade|Secondary Energy|Electricity|Volume 
@@ -3035,25 +3038,43 @@ def get_trade(n, region):
         (n.lines.carrier == "AC") & 
         (n.lines.bus0.str[:2] == region) & 
         (n.lines.bus1.str[:2] != region)]
-    exporting_p_ac = n.lines_t.p0.loc[: , exporting_ac].multiply(n.snapshot_weightings.generators, axis=0).values.sum()
-
+    
     importing_ac = n.lines.index[
         (n.lines.carrier == "AC") & 
         (n.lines.bus0.str[:2] != region) & 
         (n.lines.bus1.str[:2] == region)]
-    importing_p_ac = n.lines_t.p0.loc[: , importing_ac].multiply(n.snapshot_weightings.generators, axis=0).values.sum()
+    exporting_p_ac = n.lines_t.p0.loc[: , exporting_ac].clip(lower=0).multiply(n.snapshot_weightings.generators, axis=0).values.sum() \
+        - n.lines_t.p0.loc[: , importing_ac].clip(upper=0).multiply(n.snapshot_weightings.generators, axis=0).values.sum()
+    importing_p_ac = n.lines_t.p0.loc[: , importing_ac].clip(lower=0).multiply(n.snapshot_weightings.generators, axis=0).values.sum() \
+        - n.lines_t.p0.loc[: , exporting_ac].clip(upper=0).multiply(n.snapshot_weightings.generators, axis=0).values.sum()
+
+    exports_dc, imports_dc = get_export_import_links(n, region, ["DC"])
 
     var["Trade|Secondary Energy|Electricity|Volume"] = \
-        ((exporting_p_ac - importing_p_ac) * MWh2PJ + get_net_export_links(n, region, ["DC"])) 
+        ((exporting_p_ac - importing_p_ac) + (imports_dc - exports_dc)) * MWh2PJ 
+    var["Trade|Secondary Energy|Electricity|Volume|Imports"] = \
+        (importing_p_ac + imports_dc) * MWh2PJ
+    var["Trade|Secondary Energy|Electricity|Volume|Exports"] = \
+        (exporting_p_ac + exports_dc) * MWh2PJ
 
     # Trade|Secondary Energy|Hydrogen|Volume
     h2_carriers = ["H2 pipeline", "H2 pipeline (Kernnetz)", "H2 pipeline retrofitted"]
+    exports_h2, imports_h2 = get_export_import_links(n, region, h2_carriers)
     var["Trade|Secondary Energy|Hydrogen|Volume"] = \
-        get_net_export_links(n, region, h2_carriers)
+        (exports_h2 - imports_h2) * MWh2PJ
+    var["Trade|Secondary Energy|Hydrogen|Volume|Imports"] = \
+        imports_h2 * MWh2PJ
+    var["Trade|Secondary Energy|Hydrogen|Volume|Exports"] = \
+        exports_h2 * MWh2PJ
     
     # Trade|Secondary Energy|Liquids|Hydrogen|Volume
+    exports_oil_renew, imports_oil_renew = get_export_import_links(n, region, ["renewable oil"])
     var["Trade|Secondary Energy|Liquids|Hydrogen|Volume"] = \
-        get_net_export_links(n, "DE", ["renewable oil"])
+        (exports_oil_renew - imports_oil_renew) * MWh2PJ
+    var["Trade|Secondary Energy|Liquids|Hydrogen|Volume|Imports"] = \
+        imports_oil_renew * MWh2PJ
+    var["Trade|Secondary Energy|Liquids|Hydrogen|Volume|Exports"] = \
+        exports_oil_renew * MWh2PJ
 
     # Trade|Secondary Energy|Gases|Hydrogen|Volume
     # Trade|Primary Energy|Coal|Volume
@@ -3062,8 +3083,13 @@ def get_trade(n, region):
         'groupby': n.statistics.groupers.get_name_bus_and_carrier,
         'nice_names': False,
     }
+    exports_gas, imports_gas = get_export_import_links(n, region, ["gas pipeline", "gas pipeline new"])
     var["Trade|Primary Energy|Gas|Volume"] = \
-        get_net_export_links(n, region, ["gas pipeline", "gas pipeline new"]) * _get_gas_fossil_fraction(n, region, kwargs)
+        ((exports_gas - imports_gas) * MWh2PJ) * _get_gas_fossil_fraction(n, region, kwargs)
+    var["Trade|Primary Energy|Gas|Volume|Imports"] = \
+        imports_gas * MWh2PJ * _get_gas_fossil_fraction(n, region, kwargs)
+    var["Trade|Primary Energy|Gas|Volume|Exports"] = \
+        exports_gas * MWh2PJ * _get_gas_fossil_fraction(n, region, kwargs)
 
     # Trade|Primary Energy|Oil|Volume
 
