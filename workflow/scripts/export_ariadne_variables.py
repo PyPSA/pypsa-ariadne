@@ -1319,89 +1319,17 @@ def get_secondary_energy(n, region):
     
     return var
 
-def load_idees_data(sector, country):
-    sheet_names = {
-        "Iron and steel": "ISI",
-        "Chemicals Industry": "CHI",
-        "Non-metallic mineral products": "NMM",
-        "Pulp, paper and printing": "PPA",
-        "Food, beverages and tobacco": "FBT",
-        "Non Ferrous Metals": "NFM",
-        "Transport Equipment": "TRE",
-        "Machinery Equipment": "MAE",
-        "Textiles and leather": "TEL",
-        "Wood and wood products": "WWP",
-        "Other Industrial Sectors": "OIS",
-        }
-    year=2015
-    suffixes = {"out": "", "fec": "_fec", "ued": "_ued", "emi": "_emi"}
-    sheets = {k: sheet_names[sector] + v for k, v in suffixes.items()}
 
-    def usecols(x):
-        return isinstance(x, str) or x == year
-
-    with mute_print():
-        idees = pd.read_excel(
-            f"{snakemake.input.idees}/JRC-IDEES-2015_Industry_{country}.xlsx",
-            sheet_name=list(sheets.values()),
-            index_col=0,
-            header=0,
-            usecols=usecols,
-        )
-
-    for k, v in sheets.items():
-        idees[k] = idees.pop(v).squeeze()
-
-    return idees
-
-def get_final_energy(n, region, _industry_demand, _energy_totals, year):
-
-    kwargs = {
-        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
-        'nice_names': False,
-    }
+def get_final_energy(n, region, _industry_demand, _energy_totals, _sector_ratios, _industry_production):
 
     var = pd.Series()
-
-    # read in shares of non-energy use [ktoe]
-    sector = "Chemicals Industry"
-    idees = load_idees_data(sector, country="DE")
-
-    subsector = "Chemicals: Feedstock (energy used as raw material)"
-    s_fec = idees["fec"][13:22]
-    assert s_fec.index[0] == subsector
-
-    # LPG and other feedstock materials are assimilated to naphtha
-    # since they will be produced through Fischer-Tropsh process
-    sel = ["Solids", "Refinery gas", "LPG",
-        "Diesel oil", "Residual fuel oil", "Other liquids"]
-    
-    naphtha = (s_fec["Naphtha"] + s_fec[sel].sum()) * toe_to_MWh *1e3 # MWh
-    natural_gas = s_fec["Natural gas"] * toe_to_MWh * 1e3 # MWh
-
-    # read in industrial production of 2015 [kt/a]
-    industrial_production = pd.read_csv(snakemake.input.industrial_production, index_col=0)
-    ammonia_region = industrial_production.loc[region, "Ammonia"]
-    MeOH_region = industrial_production.loc[region, "Methanol"]
-
-    # subtracting natural gas demand for ammonia and methanol production
-    natural_gas -= ammonia_region * config["industry"]["MWh_CH4_per_tNH3_SMR"] * 1e3 # MWh
-    natural_gas -= MeOH_region * config["industry"]["MWh_CH4_per_tMeOH"] * 1e3 # MWh
-
-    # adjust demand for non-energy use with recycling rate
-    non_energy_naphtha = naphtha * config["industry"]["HVC_primary_fraction"][year]
-    non_energy_natural_gas = natural_gas * config["industry"]["HVC_primary_fraction"][year]
-
-    # read in production volume for the time horizon
-    years = [int(re.search(r'(\d{4})-modified\.csv', filename).group(1)) for filename in snakemake.input.industrial_production_per_country_tomorrow]
-    index = next((idx for idx, y in enumerate(years) if y == year), None)
-    production = pd.read_csv(snakemake.input.industrial_production_per_country_tomorrow[index], index_col=0) # kton/a
 
     kwargs = {
             'groupby': n.statistics.groupers.get_name_bus_and_carrier,
             'nice_names': False,
         }
     h2_fossil_fraction = _get_h2_fossil_fraction(n, region, kwargs)
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
 
     if config["industry"]["ammonia"]:
         # MWh/a
@@ -1409,37 +1337,38 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
             bus_carrier="NH3", **kwargs
             ).groupby("carrier").sum()["Haber-Bosch"]
         
-        CH4_for_NH3 = Haber_Bosch_NH3 * h2_fossil_fraction * config["industry"]["MWh_CH4_per_tNH3_SMR"] / config["industry"]["MWh_NH3_per_tNH3"]
-        H2_for_NH3 = Haber_Bosch_NH3 * (1 - h2_fossil_fraction) / config["industry"]["MWh_H2_per_tNH3_electrolysis"]
+        CH4_for_NH3 = Haber_Bosch_NH3 * h2_fossil_fraction * config["industry"]["MWh_CH4_per_tNH3_SMR"] / config["industry"]["MWh_NH3_per_tNH3"] * MWh2PJ
+        H2_for_NH3 = Haber_Bosch_NH3 * (1 - h2_fossil_fraction) / config["industry"]["MWh_H2_per_tNH3_electrolysis"] * MWh2PJ
+        subcategories = ["HVC", "Methanol", "Chlorine"]
 
     else:
-        # t/a
-        ammonia_prod = production.loc[region, "Ammonia"] * 1e3
-        # MWh/a
-        CH4_for_NH3 = ammonia_prod * h2_fossil_fraction * config["industry"]["MWh_CH4_per_tNH3_SMR"]
-        H2_for_NH3 = ammonia_prod * (1 - h2_fossil_fraction) * config["industry"]["MWh_H2_per_tNH3_electrolysis"]
+        CH4_for_NH3 = 0
+        H2_for_NH3 = 0
+        subcategories = ["HVC", "Methanol", "Chlorine", "Ammonia"]
 
-    # for MeOH only CH4 is needed
-    CH4_for_MeOH = production.loc[region, "Methanol"] * config["industry"]["MWh_CH4_per_tMeOH"] * 1e3
+    carrier = ["hydrogen", "methane", "naphtha"]
+
+    ip = _industry_production.loc[region, subcategories] # kt/a
+    sr = _sector_ratios["DE"].loc[carrier,subcategories] # MWh/tMaterial 
+    non_energy = sr.multiply(ip).sum(axis=1) * 1e3 * MWh2PJ
 
     # write var
-    var["Final Energy|Non-Energy Use|Gases"] = (non_energy_natural_gas + CH4_for_MeOH + CH4_for_NH3) * MWh2PJ
+    var["Final Energy|Non-Energy Use|Gases"] = non_energy.methane + CH4_for_NH3
 
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
+    var["Final Energy|Non-Energy Use|Liquids"] = non_energy.naphtha
 
-    var["Final Energy|Non-Energy Use|Liquids"] = non_energy_naphtha * MWh2PJ
-    var["Final Energy|Non-Energy Use|Liquids|Petroleum"] = non_energy_naphtha * MWh2PJ * oil_fossil_fraction
-    var["Final Energy|Non-Energy Use|Liquids|Efuel"] = non_energy_naphtha * MWh2PJ * (1 - oil_fossil_fraction)
+    var["Final Energy|Non-Energy Use|Liquids|Petroleum"] = non_energy.naphtha * oil_fossil_fraction
+    var["Final Energy|Non-Energy Use|Liquids|Efuel"] = non_energy.naphtha * (1 - oil_fossil_fraction)
     var["Final Energy|Non-Energy Use|Liquids|Biomass"] = 0
 
     var["Final Energy|Non-Energy Use|Solids"] = 0
     var["Final Energy|Non-Energy Use|Solids|Coal"] = 0
     var["Final Energy|Non-Energy Use|Solids|Biomass"] = 0
 
-    var["Final Energy|Non-Energy Use|Hydrogen"] = H2_for_NH3 * MWh2PJ
+    var["Final Energy|Non-Energy Use|Hydrogen"] = (non_energy.hydrogen + H2_for_NH3)
 
     var["Final Energy|Non-Energy Use"] = \
-        (non_energy_natural_gas + CH4_for_MeOH + CH4_for_NH3 + non_energy_naphtha + H2_for_NH3) * MWh2PJ
+        non_energy.sum() + CH4_for_NH3 + H2_for_NH3
 
     assert isclose(
         var["Final Energy|Non-Energy Use"],
@@ -1588,7 +1517,6 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
                 # Excluding chargers (battery and EV)
             )
         ].sum()
-
     # urban decentral heat and rural heat are delivered as different forms of energy
     # (gas, oil, biomass, ...)
     decentral_heat_withdrawal = n.statistics.withdrawal(
@@ -3117,7 +3045,7 @@ def get_production(region, year):
 
     return var
 
-def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
+def get_ariadne_var(n, industry_demand, energy_totals, sector_ratios, industry_production, costs, region, year):
 
     var = pd.concat([
         get_capacities(n, region),
@@ -3128,7 +3056,7 @@ def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
         get_production(region, year),
         get_primary_energy(n, region),
         get_secondary_energy(n, region),
-        get_final_energy(n, region, industry_demand, energy_totals, year),
+        get_final_energy(n, region, industry_demand, energy_totals, sector_ratios, industry_production),
         get_prices(n,region), 
         get_emissions(n, region, energy_totals),
         get_investments(
@@ -3145,11 +3073,11 @@ def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
 
 # uses the global variables model, scenario and var2unit. For now.
 def get_data(
-        n, industry_demand, energy_totals, costs, region, year,
+        n, industry_demand, energy_totals, sector_ratios, industry_production, costs, region, year,
         version="0.10", scenario="test",
     ):
     
-    var = get_ariadne_var(n, industry_demand, energy_totals, costs, region, year)
+    var = get_ariadne_var(n, industry_demand, energy_totals, sector_ratios, industry_production, costs, region, year)
 
     data = []
     for v in var.index:
@@ -3214,6 +3142,22 @@ if __name__ == "__main__":
         level="year",
     ).multiply(TWh2PJ)
 
+    sector_ratios = [
+        pd.read_csv(
+            in_sec_ratio,
+            header=[0,1],
+            index_col=0,
+        ).rename_axis("carrier")
+        for in_sec_ratio in snakemake.input.industry_sector_ratios
+    ]
+    industry_production = [
+        pd.read_csv(
+            in_ind_prod,
+            index_col="kton/a",
+        ).rename_axis("country")
+        for in_ind_prod in snakemake.input.industrial_production_per_country_tomorrow
+    ]
+
     nhours = int(snakemake.params.hours[:-1])
     nyears = nhours / 8760
 
@@ -3253,6 +3197,8 @@ if __name__ == "__main__":
             networks[i],
             industry_demands[i],
             energy_totals,
+            sector_ratios[i],
+            industry_production[i],
             costs[i],
             "DE",
             year=year,
