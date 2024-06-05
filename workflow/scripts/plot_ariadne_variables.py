@@ -224,7 +224,7 @@ if __name__ == "__main__":
         "Detailed Primary Energy in PJ_yr",
         savepath=snakemake.output.primary_energy_detailed,
         select_regex="Primary Energy\|[^|]*\|[^|]*$",
-        drop_regex="^(?!.*(CCS|Price)).+"
+        drop_regex="^(?!.*(CCS|Price|Volume)).+"
     )
 
     side_by_side_plot(
@@ -245,7 +245,7 @@ if __name__ == "__main__":
         # Secondary Energy|Something|Something (exactly two pipes)
         select_regex="Secondary Energy\|[^|]*\|[^|]*$",
         # Not ending in Fossil or Renewables (i.e., categories)
-        drop_regex="^(?!.*(Fossil|Renewables|Losses|Price)).+"
+        drop_regex= "^(?!.*(Fossil|Renewables|Losses|Price|Volume)).+" 
     )
 
     side_by_side_plot(
@@ -388,3 +388,11 @@ if __name__ == "__main__":
 
     elec_val_plot(df, savepath=snakemake.output.elec_val_2020)
 
+    within_plot(
+        df[df.index.get_level_values("Variable").str.startswith('Trade')], 
+        dfremind, 
+        title = "Trade", 
+        savepath=snakemake.output.trade,
+        unit="PJ/yr",
+    )
+    

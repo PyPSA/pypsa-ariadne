@@ -77,55 +77,62 @@ def get_primary_steel_share(df, planning_horizons):
     
     return primary_steel_share.set_index(pd.Index(["Primary_Steel_Share"]))
 
-def get_ksg_targets(df):
+def get_co2_budget(df, source):
     # relative to the DE emissions in 1990 *including bunkers*; also
     # account for non-CO2 GHG and allow extra room for international
     # bunkers which are excluded from the national targets
 
     # Baseline emission in DE in 1990 in Mt as understood by the KSG and by PyPSA
-    baseline_ksg = 1251
+    baseline_co2 = 1251
     baseline_pypsa = 1052
+    if source == "KSG":
+        ## GHG targets according to KSG
+        initial_years_co2 = pd.Series(
+            index = [2020, 2025, 2030],
+            data = [813, 643, 438],
+        )
 
-    ## GHG targets according to KSG
-    initial_years_ksg = pd.Series(
-        index = [2020, 2025, 2030],
-        data = [813, 643, 438],
-    )
+        later_years_co2 = pd.Series(
+            index = [2035, 2040, 2045, 2050],
+            data = [0.77, 0.88, 1.0, 1.0],
+        )
 
-    later_years_ksg = pd.Series(
-        index = [2035, 2040, 2045, 2050],
-        data = [0.77, 0.88, 1.0, 1.0],
-    )
-
-    targets_ksg = pd.concat(
-        [initial_years_ksg, (1 - later_years_ksg) * baseline_ksg],
-    )
-
+        targets_co2 = pd.concat(
+            [initial_years_co2, (1 - later_years_co2) * baseline_co2],
+        )
+    elif source == "UBA":
+        ## For Zielverfehlungsszenarien use UBA Projektionsbericht
+        targets_co2 = pd.Series(
+            index = [2020, 2025, 2030, 2035, 2040, 2045, 2050],
+            data = [813, 655, 455, 309, 210, 169, 157],
+        )
+    else:
+        raise ValueError("Invalid source for CO2 budget.")
     ## Compute nonco2 from Ariadne-Leitmodell (REMIND)
 
-    co2_ksg = (
+    co2 = (
         df.loc["Emissions|CO2 incl Bunkers","Mt CO2/yr"]  
         - df.loc["Emissions|CO2|Land-Use Change","Mt CO2-equiv/yr"]
         - df.loc["Emissions|CO2|Energy|Demand|Bunkers","Mt CO2/yr"]
     )
 
-    ghg_ksg = (
+    ghg = (
         df.loc["Emissions|Kyoto Gases","Mt CO2-equiv/yr"]
         - df.loc["Emissions|Kyoto Gases|Land-Use Change","Mt CO2-equiv/yr"]
         # No Kyoto Gas emissions for Bunkers recorded in Ariadne DB
     )
 
-    nonco2 = ghg_ksg - co2_ksg
+    nonco2 = ghg - co2
 
     ## PyPSA disregards nonco2 GHG emissions, but includes bunkers
 
     targets_pypsa = (
-        targets_ksg - nonco2 
+        targets_co2 - nonco2 
         + df.loc["Emissions|CO2|Energy|Demand|Bunkers","Mt CO2/yr"]
     )
 
     target_fractions_pypsa = (
-        targets_pypsa.loc[targets_ksg.index] / baseline_pypsa
+        targets_pypsa.loc[targets_co2.index] / baseline_pypsa
     )
 
     return target_fractions_pypsa.round(3)
@@ -140,14 +147,13 @@ def write_to_scenario_yaml(
     for scenario in scenarios:
         reference_scenario = config[scenario]["iiasa_database"]["reference_scenario"]
         if scenario == "CurrentPolicies":
-            ksg_target_fractions = get_ksg_targets(
-                df.loc["REMIND-EU v1.1", "8Gt_Bal_v3"]
-            )
-            ksg_target_fractions[[2035, 2040, 2045]] = ksg_target_fractions[2030]
-        else:
-            ksg_target_fractions = get_ksg_targets(
-                df.loc["REMIND-EU v1.1", reference_scenario]
-            )
+            reference_scenario = "8Gt_Bal_v3" # hotfix until DB is updated
+        co2_budget_source = config[scenario]["co2_budget_DE_source"]
+
+        co2_budget_fractions = get_co2_budget(
+            df.loc["REMIND-EU v1.1", "8Gt_Bal_v3"],
+            co2_budget_source
+        )
 
         planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045] # for 2050 we still need data
 
@@ -192,10 +198,9 @@ def write_to_scenario_yaml(
         for year in st_primary_fraction.columns:
             config[scenario]["industry"]["St_primary_fraction"][year] = round(st_primary_fraction.loc["Primary_Steel_Share", year].item(), 4)
         config[scenario]["co2_budget_national"] = {}
-        for year, target in ksg_target_fractions.items():
+        for year, target in co2_budget_fractions.items():
             config[scenario]["co2_budget_national"][year] = {}
-            target_value = float(ksg_target_fractions[2030]) if year > 2030 and scenario == "CurrentPolicies" else target
-            config[scenario]["co2_budget_national"][year]["DE"] = target_value
+            config[scenario]["co2_budget_national"][year]["DE"] = target
 
     # write back to yaml file
     yaml.dump(config, Path(output))
@@ -225,7 +230,7 @@ if __name__ == "__main__":
         :,
         "Deutschland"]
     
-    scenarios = snakemake.params.scenario_name
+    scenarios = snakemake.params.scenarios
 
     input = snakemake.input.scenario_yaml
     output = snakemake.output.scenario_yaml

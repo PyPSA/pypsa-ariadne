@@ -3,6 +3,33 @@ import pandas as pd
 import re
 import os
 import logging
+import numpy as np
+
+def carbon_component_fossils(costs, co2_price):
+    """
+    Add carbon component to fossil fuel costs
+    """
+
+    carriers= ["gas", "oil", "lignite", "coal"]
+    # specific emissions in tons CO2/MWh according to n.links[n.links.carrier =="your_carrier].efficiency2.unique().item()
+    specific_emisisons = {
+        "oil" : 0.2571,
+        "gas" : 0.198, # OCGT
+        "coal" : 0.3361,
+        "lignite" : 0.4069,
+    }
+    
+    for c in carriers:
+        carbon_add_on = specific_emisisons[c] * co2_price
+        costs.at[(c, "fuel"), "value"] += carbon_add_on
+        add_str = f" (added carbon component of {round(carbon_add_on,4)} €/MWh according to co2 price of {co2_price} €/t co2 and carbon intensity of {specific_emisisons[c]} t co2/MWh)"
+        if pd.isna(costs.at[(c, "fuel"), "further description"]):
+            costs.at[(c, "fuel"), "further description"] = add_str
+        else:
+            costs.at[(c, "fuel"), "further description"] = str(costs.at[(c, "fuel"), "further description"]) + add_str
+
+    return costs
+
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -13,10 +40,10 @@ if __name__ == "__main__":
         from _helpers import mock_snakemake
         snakemake = mock_snakemake(
             "modify_cost_data",
-            planning_horizons="2030",
+            planning_horizons="2020",
             file_path="../data/costs/",
-            file_name="costs_2030.csv",
-            cost_horizon="pessimist",
+            file_name="costs_2020.csv",
+            cost_horizon="mean",
             run="KN2045_Bal_v4"
             )
     logger = logging.getLogger(__name__)
@@ -65,9 +92,15 @@ if __name__ == "__main__":
     else:
         logger.warning(f"NEP year {snakemake.params.NEP} is not in modifications file. Falling back to NEP2021.")
         modifications = modifications.query("source != 'NEP2023'")
-
+        
     costs.loc[modifications.index] = modifications
-
     print(costs.loc[modifications.index])
+
+    # add carbon component to fossil fuel costs
+    investment_year = int(snakemake.wildcards.planning_horizons[-4:])
+    if investment_year in snakemake.params.co2_price_add_on_fossils.keys():
+        co2_price  = snakemake.params.co2_price_add_on_fossils[investment_year]
+        logger.warning(f"Adding carbon component according to a co2 price of {co2_price} €/t to fossil fuel costs.")
+        costs = carbon_component_fossils(costs, co2_price)
 
     costs.to_csv(snakemake.output[0])
