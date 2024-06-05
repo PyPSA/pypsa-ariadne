@@ -1351,7 +1351,6 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, _sector_ratios
     ip = _industry_production.loc[region, subcategories] # kt/a
     sr = _sector_ratios["DE"].loc[carrier,subcategories] # MWh/tMaterial 
     non_energy = sr.multiply(ip).sum(axis=1) * 1e3 * MWh2PJ
-    non_energy = non_energy
 
     # write var
     var["Final Energy|Non-Energy Use|Gases"] = non_energy.methane + CH4_for_NH3
@@ -1518,8 +1517,6 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, _sector_ratios
                 # Excluding chargers (battery and EV)
             )
         ].sum()
-    var = var.round(3)
-    var = var.clip(lower=0)
     # urban decentral heat and rural heat are delivered as different forms of energy
     # (gas, oil, biomass, ...)
     decentral_heat_withdrawal = n.statistics.withdrawal(
