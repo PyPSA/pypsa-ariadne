@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240603postdiscretize
+  prefix: 20240605newdb
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -29,20 +29,22 @@ run:
   debug_unravel_oilbus: false
 
 iiasa_database:
-  db_name: ariadne_intern
+  db_name: ariadne2_intern
   leitmodelle:
     - REMIND-EU v1.1
     - REMod v1.0
-    - TIMES PanEU v1.0
+    - Aladin v1
     - FORECAST v1.0
-    - DEMO v1
   scenarios:
-    # - CurrentPolicies
-    - Trend
-    - 8Gt_Bal_v3
-    - 8Gt_Elec_v3
-    - 8Gt_H2_v3
-  reference_scenario: 8Gt_Bal_v3
+    - CurrentPolicies
+    - KN2045_Elec_v4
+    - KN2045_H2_v4
+    - KN2045_Bal_v4
+    - KN2045plus_EasyRide
+    - KN2045plus_LowDemand
+    - KN2045minus_WorstCase
+    - KN2045minus_SupplyFocus
+  reference_scenario: KN2045_Bal_v4
   region: Deutschland
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight

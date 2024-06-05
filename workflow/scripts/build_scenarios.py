@@ -13,8 +13,8 @@ import os
 
 def get_transport_shares(df, planning_horizons):
     # Get share of vehicles for transport sector - neglecting heavy duty vehicles
-    total_transport = df.loc["DEMO v1", "Stock|Transportation|LDV"]
-    tech_transport = df.loc["DEMO v1"].loc[[ 
+    total_transport = df.loc["Aladin v1", "Stock|Transportation|LDV"]
+    tech_transport = df.loc["Aladin v1"].loc[[ 
         "Stock|Transportation|LDV|ICE",
         "Stock|Transportation|LDV|BEV",
         "Stock|Transportation|LDV|PHEV",
@@ -27,12 +27,12 @@ def get_transport_shares(df, planning_horizons):
     # Get share of Navigation fuels from corresponding "Ariadne Leitmodell"
     total_navigation = \
         df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation"] + \
-        df.loc["DEMO v1", "Final Energy|Transportation|Domestic Navigation"]
+        df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation"]
     navigation_liquid = \
         df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation|Liquids"] + \
-        df.loc["DEMO v1", "Final Energy|Transportation|Domestic Navigation|Liquids"]
+        df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation|Liquids"]
     
-    navigation_h2 = df.loc["DEMO v1", "Final Energy|Transportation|Domestic Navigation|Hydrogen"]    
+    navigation_h2 = df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation|Hydrogen"]    
 
     h2_share = navigation_h2 / total_navigation
     liquid_share = navigation_liquid / total_navigation
@@ -46,13 +46,13 @@ def get_transport_shares(df, planning_horizons):
     return transport_share, naval_share
 
 def get_transport_growth(df, planning_horizons):
-    # Aviation growth factor - using REMIND-EU v1.1 since DEMO v1 does not include bunkers
+    # Aviation growth factor - using REMIND-EU v1.1 since Aladin v1 does not include bunkers
     aviation_model = "REMIND-EU v1.1"
     aviation = df.loc[aviation_model,"Final Energy|Bunkers|Aviation", "PJ/yr"]
     aviation_growth_factor = aviation / aviation[2020]
 
-    # Transport growth factor - using DEMO v1
-    transport_model = "DEMO v1"
+    # Transport growth factor - using REMIND until Aladin v1 uploads variables
+    transport_model = "REMIND-EU v1.1"
     freight = df.loc[transport_model, "Energy Service|Transportation|Freight|Road", "bn tkm/yr"]
     person = df.loc[transport_model, "Energy Service|Transportation|Passenger|Road", "bn pkm/yr"]
     freight_PJ = df.loc[transport_model, "Final Energy|Transportation|Truck", "PJ/yr"]

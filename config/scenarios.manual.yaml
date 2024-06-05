@@ -9,7 +9,7 @@ CurrentPolicies:
 # fixing CO2 budget at 2030 value for 2035-2050
 # reducing VRE targets in 2030 to 75% of the target (following REMIND)
 # not forcing H2 production
-# orient transport transformation from REMod v1.0 (currently is DEMO)
+# orient transport transformation from Aladin v1 (currently is DEMO)
 # industry transformation towards FORECAST results
 # consider not assuming Kernnetz
 
@@ -18,8 +18,8 @@ CurrentPolicies:
     enable: true
 
   iiasa_database:
-    # TODO: wait for REMod v1.0 to upload a first Trend scenario
-    reference_scenario: Trend # CurrentPolicies once it's renamed
+    # TODO: wait for Aladin v1 to upload a first Trend scenario
+    reference_scenario: CurrentPolicies
 
   co2_budget_DE_source: UBA
 
@@ -117,7 +117,7 @@ KN2045_Bal_v4:
 # dient als Referenzszenario in der Familie der Ariadne-Szenarien
 
   iiasa_database:
-    reference_scenario: 8Gt_Bal_v3
+    reference_scenario: KN2045_Bal_v4
   co2_budget_DE_source: KSG
 
   costs:
@@ -176,7 +176,7 @@ KN2045_Elec_v4:
 # Importe erneuerbar erzeugter Energien auf mittlerem Niveau
 
   iiasa_database:
-    reference_scenario: 8Gt_Elec_v3
+    reference_scenario: KN2045_Elec_v4
   co2_budget_DE_source: KSG
 
   costs:
@@ -234,7 +234,7 @@ KN2045_H2_v4:
 # Ausbau der erneuerbaren Stromerzeugung erreicht politisch gesetzte Ziele
 
   iiasa_database:
-    reference_scenario: 8Gt_H2_v3
+    reference_scenario: KN2045_H2_v4
   co2_budget_DE_source: KSG
 
   costs:
@@ -296,7 +296,7 @@ KN2045plus_EasyRide:
 # EE weiterhin auskömmlich nur werden die Ausbauziele evtl. nicht voll ausgeschöpft
 # Verlagerung der energieintensiven Grundstoffindustrie
   iiasa_database:
-    reference_scenario: 8Gt_EasyRide_v3 # TODO: wait for database
+    reference_scenario: KN2045plus_EasyRide # TODO: wait for database
   co2_budget_DE_source: KSG
 
   costs:
@@ -354,7 +354,7 @@ KN2045plus_LowDemand:
 # Im Vergleich zu Easy Ride eher knappe EE Erzeugung 
 # innerhalb Deutschlands und knappe Importe EE möglich
   iiasa_database:
-    reference_scenario: 8Gt_LowDemand_v3 # TODO: wait for database
+    reference_scenario: KN2045plus_LowDemand # TODO: wait for database
   co2_budget_DE_source: KSG
 
   costs:
@@ -414,7 +414,7 @@ KN2045minus_WorstCase:
 # Verfehlen der Reduktionsziele in 2030 und 2045
 # eher knapper Ausbau EE und EE Importe
   iiasa_database:
-    reference_scenario: 8Gt_WorstCase_v3 # TODO: wait for database
+    reference_scenario: KN2045minus_WorstCase
 
   co2_budget_DE_source: UBA
 
@@ -502,7 +502,7 @@ KN2045minus_SupplyFocus:
 # Nachfrage genau so hoch wie in Szenario WorstCase
 # Ausbau EE und EE Importe jetzt aber auskömmlich
   iiasa_database:
-    reference_scenario: 8Gt_WorstCase_v3 # TODO: wait for database
+    reference_scenario: KN2045minus_SupplyFocus
 
   costs:
     horizon: "pessimist"
