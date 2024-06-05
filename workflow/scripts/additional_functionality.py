@@ -191,13 +191,19 @@ def electricity_import_limits(n, snapshots, investment_year, config):
 
         logger.info(f"limiting electricity imports in {ct} to {limit/1e6} TWh/a")
 
-        incoming = n.links.index[((n.links.carrier == "DC") | (n.links.carrier == "AC")) & (n.links.bus0.str[:2] != ct) & (n.links.bus1.str[:2] == ct)]
-        outgoing = n.links.index[((n.links.carrier == "DC") | (n.links.carrier == "AC")) & (n.links.bus0.str[:2] == ct) & (n.links.bus1.str[:2] != ct)]
+        incoming_line = n.lines.index[(n.lines.carrier == "AC") & (n.lines.bus0.str[:2] != ct) & (n.lines.bus1.str[:2] == ct)]
+        outgoing_line = n.lines.index[(n.lines.carrier == "AC") & (n.lines.bus0.str[:2] == ct) & (n.lines.bus1.str[:2] != ct)]
+        
+        incoming_link = n.links.index[((n.links.carrier == "DC") | (n.links.carrier == "AC")) & (n.links.bus0.str[:2] != ct) & (n.links.bus1.str[:2] == ct)]
+        outgoing_link = n.links.index[((n.links.carrier == "DC") | (n.links.carrier == "AC")) & (n.links.bus0.str[:2] == ct) & (n.links.bus1.str[:2] != ct)]
 
-        incoming_p = (n.model["Link-p"].loc[:, incoming]*n.snapshot_weightings.generators).sum()
-        outgoing_p = (n.model["Link-p"].loc[:, outgoing]*n.snapshot_weightings.generators).sum()
+        incoming_line_p = (n.model["Line-s"].loc[:, incoming_line]*n.snapshot_weightings.generators).sum()
+        outgoing_line_p = (n.model["Line-s"].loc[:, outgoing_line]*n.snapshot_weightings.generators).sum()
 
-        lhs = incoming_p - outgoing_p
+        incoming_link_p = (n.model["Link-p"].loc[:, incoming_link]*n.snapshot_weightings.generators).sum()
+        outgoing_link_p = (n.model["Link-p"].loc[:, outgoing_link]*n.snapshot_weightings.generators).sum()
+
+        lhs = (incoming_link_p - outgoing_link_p) + (incoming_line_p - outgoing_line_p)
 
         cname = f"Electricity_import_limit-{ct}"
 
