@@ -4,7 +4,8 @@
 # SPDX-License-Identifier: MIT
 
 # This script reads in data from the IIASA database to create the scenario.yaml file
-
+import logging
+logger = logging.getLogger(__name__)
 
 import ruamel.yaml
 from pathlib import Path
@@ -74,6 +75,11 @@ def get_primary_steel_share(df, planning_horizons):
     
     primary_steel_share = primary_steel / total_steel
     primary_steel_share = primary_steel_share[planning_horizons]
+
+    if model == "FORECAST v1.0" and planning_horizons[0] == 2020:
+        logger.warning("FORECAST v1.0 does not have data for 2020. Using 2021 data for Production|Steel instead.")
+        primary_steel_share[2020] = primary_steel[2021] / total_steel[2021]
+
     
     return primary_steel_share.set_index(pd.Index(["Primary_Steel_Share"]))
 
