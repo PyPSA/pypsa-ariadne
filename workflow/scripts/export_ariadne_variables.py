@@ -1735,10 +1735,14 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
             sum_load(n, "kerosene for aviation", region) 
             * (1 - international_aviation_fraction)
         ) + (
-            sum_load(n, ["shipping oil", "shipping methanol"], region)
+            sum_load(n, "shipping oil", region)
             * (1 - international_navigation_fraction)
         )
     )
+
+    var["Final Energy|Transportation|Methanol"] = \
+        sum_load(n, "shipping methanol", region) * (1 - international_navigation_fraction)
+    
     # var["Final Energy|Transportation|Liquids|Biomass"] = \
     # var["Final Energy|Transportation|Liquids|Synthetic Fossil"] = \
     var["Final Energy|Transportation|Liquids|Petroleum"] = (
@@ -1759,11 +1763,18 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
     )
 
     # TODO Navigation hydrogen
-    var["Final Energy|Bunkers|Navigation"] = \
+    
     var["Final Energy|Bunkers|Navigation|Liquids"] = (
-        sum_load(n, ["shipping oil", "shipping methanol"], region)
+        sum_load(n, "shipping oil", region)
         * international_navigation_fraction
     )
+    var["Final Energy|Bunkers|Navigation|Methanol"] = \
+        sum_load(n, "shipping methanol", region) * international_navigation_fraction
+
+
+    var["Final Energy|Bunkers|Navigation"] = \
+        var["Final Energy|Bunkers|Navigation|Liquids"] \
+        + var["Final Energy|Bunkers|Navigation|Methanol"]
 
     # var["Final Energy|Bunkers|Navigation|Gases"] = \
     # ! Not implemented
@@ -1778,6 +1789,7 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
         var["Final Energy|Transportation|Electricity"]
         + var["Final Energy|Transportation|Liquids"]
         + var["Final Energy|Transportation|Hydrogen"]
+        + var["Final Energy|Transportation|Methanol"]
     )
     
     var["Final Energy|Agriculture|Electricity"] = \
