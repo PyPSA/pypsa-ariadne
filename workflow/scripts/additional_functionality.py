@@ -194,8 +194,8 @@ def electricity_import_limits(n, snapshots, investment_year, config):
         incoming_line = n.lines.index[(n.lines.carrier == "AC") & (n.lines.bus0.str[:2] != ct) & (n.lines.bus1.str[:2] == ct)]
         outgoing_line = n.lines.index[(n.lines.carrier == "AC") & (n.lines.bus0.str[:2] == ct) & (n.lines.bus1.str[:2] != ct)]
         
-        incoming_link = n.links.index[((n.links.carrier == "DC") | (n.links.carrier == "AC")) & (n.links.bus0.str[:2] != ct) & (n.links.bus1.str[:2] == ct)]
-        outgoing_link = n.links.index[((n.links.carrier == "DC") | (n.links.carrier == "AC")) & (n.links.bus0.str[:2] == ct) & (n.links.bus1.str[:2] != ct)]
+        incoming_link = n.links.index[(n.links.carrier == "DC") & (n.links.bus0.str[:2] != ct) & (n.links.bus1.str[:2] == ct)]
+        outgoing_link = n.links.index[(n.links.carrier == "DC") & (n.links.bus0.str[:2] == ct) & (n.links.bus1.str[:2] != ct)]
 
         incoming_line_p = (n.model["Line-s"].loc[:, incoming_line]*n.snapshot_weightings.generators).sum()
         outgoing_line_p = (n.model["Line-s"].loc[:, outgoing_line]*n.snapshot_weightings.generators).sum()

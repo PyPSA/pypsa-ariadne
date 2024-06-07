@@ -122,10 +122,10 @@ def within_plot(df, df2,
 def elec_val_plot(df, savepath):
     # electricity validation for 2020
     elec_capacities = pd.DataFrame(index=["ror", "hydro", "battery", "biomass", "nuclear", "lignite", "coal", "oil", "gas", "wind_onshore", "wind_offshore", "solar"])
-    elec_generation = pd.DataFrame(index=["ror", "hydro", "battery", "biomass", "nuclear", "lignite", "coal", "oil", "gas", "wind", "solar"])
+    elec_generation = pd.DataFrame(index=["net exports", "ror", "hydro", "battery", "biomass", "nuclear", "lignite", "coal", "oil", "gas", "wind", "solar", "sum_real-sum_pypsa"])
 
     elec_capacities["real"] = [4.94, 9.69, 2.4, 8.72, 8.11, 20.86, 23.74, 4.86, 32.54, 54.25, 7.86, 54.36] # https://energy-charts.info/charts/installed_power/chart.htm?l=en&c=DE&year=2020
-    elec_generation["real"] = [np.nan, 18.7, np.nan, 45, 64, 91, 43, 4.7, 95, 132, 50] # https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Energie/Erzeugung/Tabellen/bruttostromerzeugung.html
+    elec_generation["real"] = [18.9, np.nan, 18.7, np.nan, 45, 64, 91, 43, 4.7, 95, 132, 50, np.nan] # https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Energie/Erzeugung/Tabellen/bruttostromerzeugung.html
     elec_capacities["pypsa"] = [
         0,
         df.loc[("Capacity|Electricity|Hydro", "GW"), "2020"],
@@ -142,6 +142,7 @@ def elec_val_plot(df, savepath):
     ]
 
     elec_generation["pypsa"] = [
+        df.loc[("Trade|Secondary Energy|Electricity|Volume", "PJ/yr"), "2020"] / 3.6,
         0,
         df.loc[("Secondary Energy|Electricity|Hydro", "PJ/yr"), "2020"] / 3.6,
         0,
@@ -153,8 +154,13 @@ def elec_val_plot(df, savepath):
         df.loc[("Secondary Energy|Electricity|Gas", "PJ/yr"), "2020"] / 3.6,
         df.loc[("Secondary Energy|Electricity|Wind", "PJ/yr"), "2020"] / 3.6,
         df.loc[("Secondary Energy|Electricity|Solar", "PJ/yr"), "2020"] / 3.6,
+        np.nan
     ]
 
+    #elec_generation.loc["sum/10"] = elec_generation.sum().div(10)
+    elec_generation.loc["sum_real-sum_pypsa", "sum_real-sum_pypsa"] = elec_generation.sum()["real"] - elec_generation.sum()["pypsa"]
+    
+    
     fig, axes = plt.subplots(1, 2, figsize=(10, 5))
     elec_capacities.plot(kind="bar", ax=axes[0])
     axes[0].set_ylabel("GW")

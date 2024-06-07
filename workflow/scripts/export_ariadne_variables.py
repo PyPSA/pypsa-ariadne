@@ -2991,7 +2991,7 @@ def get_trade(n, region):
     exports_dc, imports_dc = get_export_import_links(n, region, ["DC"])
 
     var["Trade|Secondary Energy|Electricity|Volume"] = \
-        ((exporting_p_ac - importing_p_ac) + (imports_dc - exports_dc)) * MWh2PJ 
+        ((exporting_p_ac - importing_p_ac) + (exports_dc - imports_dc)) * MWh2PJ 
     var["Trade|Secondary Energy|Electricity|Volume|Imports"] = \
         (importing_p_ac + imports_dc) * MWh2PJ
     var["Trade|Secondary Energy|Electricity|Volume|Exports"] = \
