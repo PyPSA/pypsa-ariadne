@@ -289,6 +289,7 @@ solving:
   runtime: 12h
   mem_mb: 70000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
   options:
+    assign_all_duals: true
     load_shedding: false
     skip_iterations: false # settings for post-discretization: false
     min_iterations: 1 # settings for post-discretization: 1
