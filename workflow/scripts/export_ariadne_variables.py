@@ -165,10 +165,18 @@ def get_capacity_additions_simple(n, region):
                      index = "Capacity Additions" + caps.index.str[8:])
 
 def get_capacity_additions(n, region):
-    def _f(*args, **kwargs):
-        return n.statistics.optimal_capacity(*args, **kwargs).sub(
-            n.statistics.installed_capacity(*args, **kwargs), fill_value=0)
-    return _get_capacities(n, region, _f, cap_string="Capacity Additions Sub|")
+    def _f(**kwargs):
+        return n.statistics.optimal_capacity(**kwargs).sub(
+            n.statistics.installed_capacity(**kwargs), fill_value=0)
+    return _get_capacities(n, region, _f, cap_string="Capacity Additions|")
+
+
+def get_investments(n, costs, region):
+    def _f(**kwargs):
+        return n.statistics.optimal_capacity(**kwargs).sub(
+            n.statistics.installed_capacity(**kwargs), fill_value=0)
+    return _get_capacities(n, region, _f, cap_string="Investments|", costs=costs)
+
 
 def get_capacity_additions_nstat(n, region):
     def _f(*args, **kwargs):
@@ -176,7 +184,58 @@ def get_capacity_additions_nstat(n, region):
         return n.statistics.expanded_capacity(*args, **kwargs)
     return _get_capacities(n, region, _f, cap_string="Capacity Additions Nstat|")
 
-def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
+
+costs_dict = {
+    'BEV charger': None,
+    'CCGT': 'CCGT',
+    'DAC': 'direct air capture',
+    'H2 Electrolysis': 'electrolysis',
+    'H2 Fuel Cell': 'fuel cell',
+    'OCGT': 'OCGT',
+    'PHS': 'PHS',
+    'V2G': None,
+    'battery charger': 'battery inverter',
+    'battery discharger': 'battery inverter',
+    'coal': 'coal',
+    'gas pipeline': 'CH4 (g) pipeline',
+    'home battery charger': 'home battery inverter',
+    'home battery discharger': 'home battery inverter',
+    'hydro': 'hydro',
+    'lignite': 'lignite',
+    'methanolisation': 'methanolisation',
+    'offwind-ac': 'offwind', # TODO add grid connection cost
+    'offwind-dc': 'offwind',# TODO add grid connection cost
+    'offwind-float': 'offwind-float',# TODO add grid connection cost
+    'oil': 'oil',
+    'onwind': 'onwind',
+    'ror': 'ror',
+    'rural air heat pump': 'decentral air-sourced heat pump',
+    'rural ground heat pump': 'decentral ground-sourced heat pump',
+    'rural resistive heater': 'decentral resistive heater',
+    'rural solar thermal': 'decentral solar thermal',
+    'solar': 'solar-utility', # TODO add grid connection cost
+    'solar rooftop': 'solar-rooftop', # TODO add grid connection cost
+    'solar-hsat': 'solar-utility single-axis tracking', # TODO add grid connection cost
+    'solid biomass': 'central solid biomass CHP',
+    'urban central air heat pump': 'central air-sourced heat pump',
+    'urban central coal CHP': 'central coal CHP',
+    'urban central gas CHP': 'central gas CHP',
+    'urban central gas CHP CC': 'central gas CHP',
+    'urban central lignite CHP': 'central coal CHP',
+    'urban central oil CHP': 'central gas CHP',
+    'urban central resistive heater': 'central resistive heater',
+    'urban central solar thermal': 'central solar thermal',
+    'urban central solid biomass CHP': 'central solid biomass CHP',
+    'urban central solid biomass CHP CC': 'central solid biomass CHP CC',
+    'urban decentral air heat pump': 'decentral air-sourced heat pump',
+    'urban decentral resistive heater': 'decentral resistive heater',
+    'urban decentral solar thermal': 'decentral solar thermal',
+    'waste CHP': 'waste CHP',
+    'waste CHP CC': 'waste CHP CC',
+}
+
+
+def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
 
     kwargs = {
         'groupby': n.statistics.groupers.get_bus_and_carrier,
@@ -194,7 +253,21 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         # transmission capacities
         ["AC", "DC", "electricity distribution grid"],
         errors="ignore",
-    ).multiply(MW2GW)
+    )
+
+    if cap_string.startswith("Investments"):
+        technology_investments = [
+            0 if costs_dict.get(key) is None else
+             costs.at[costs_dict.get(key), "investment"] 
+             for key in capacities_electricity.index] 
+        
+        capacities_electricity = \
+            capacities_electricity.div(5).multiply(technology_investments)
+    else:
+        capacities_electricity = \
+            capacities_electricity.multiply(MW2GW)
+
+        
 
     capacities_biomass = capacities_electricity.filter(like="biomass")
 
@@ -289,12 +362,9 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
     # var[cap_string + "Electricity|Hydrogen|OC"] = 
     # Q: "H2-turbine"
     # Q: What about retrofitted gas power plants? -> Lisa
-
-    var[cap_string + "Electricity|Hydrogen|FC"] = \
-        capacities_electricity.get("H2 Fuel Cell")
-
     var[cap_string + "Electricity|Hydrogen"] = \
-        var[cap_string + "Electricity|Hydrogen|FC"]
+    var[cap_string + "Electricity|Hydrogen|FC"] = \
+        capacities_electricity.get("H2 Fuel Cell", 0)
 
     var[cap_string + "Electricity|Nuclear"] = \
         capacities_electricity.get("nuclear", 0)
@@ -588,7 +658,7 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
     ).filter(like=region).groupby("carrier").sum().multiply(MW2GW)
 
     var[cap_string + "Hydrogen|Reservoir"] = \
-        storage_capacities.get("H2")
+        storage_capacities.get("H2", 0)
 
 
 
@@ -2825,7 +2895,7 @@ def get_discretized_value(value, disc_int, build_threshold=0.3):
 
         return add + discrete
 
-def get_investments(n, costs, region, dg_cost_factor=1.0, length_factor=1.0):
+def get_grid_investments(n, costs, region, dg_cost_factor=1.0, length_factor=1.0):
     # TODO gap between years should be read from config
     # TODO Discretization units should be read from config 
     var = pd.Series()
@@ -3101,9 +3171,10 @@ def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
 
     var = pd.concat([
         get_capacities(n, region),
-        get_capacity_additions_simple(n,region),
+        #get_capacity_additions_simple(n,region),
         #get_installed_capacities(n,region),
-        #get_capacity_additions(n, region),
+        get_capacity_additions(n, region),
+        get_investments(n, costs, region),
         #get_capacity_additions_nstat(n, region),
         get_production(region, year),
         get_primary_energy(n, region),
@@ -3111,7 +3182,7 @@ def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
         get_final_energy(n, region, industry_demand, energy_totals, year),
         get_prices(n,region), 
         get_emissions(n, region, energy_totals),
-        get_investments(
+        get_grid_investments(
             n, costs, region,
             dg_cost_factor=snakemake.params.dg_cost_factor,
             length_factor=snakemake.params.length_factor
