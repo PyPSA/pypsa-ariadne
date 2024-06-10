@@ -3,22 +3,15 @@
 #
 # SPDX-License-Identifier: MIT
 CurrentPolicies:
-# Trend Szenario
-# Suggestion (Tom): "policy from 2030 is frozen"
-# conservative development after 2030
-# fixing CO2 budget at 2030 value for 2035-2050
-# reducing VRE targets in 2030 to 75% of the target (following REMIND)
-# not forcing H2 production
-# orient transport transformation from Aladin v1 (currently is DEMO)
-# industry transformation towards FORECAST results
-# consider not assuming Kernnetz
+# UBA CO2 pathway instead of KSG targets
+# Europen CO2 pathway fixed at 2030 for 2035-2050
+# Kernnetz is not assumed to be built
+# Not forcing renewables after 2030
 
-  # Kernnetz is not assumed to be built
   wasserstoff_kernnetz:
-    enable: true
+    enable: false
 
   iiasa_database:
-    # TODO: wait for Aladin v1 to upload a first Trend scenario
     reference_scenario: CurrentPolicies
 
   co2_budget_DE_source: UBA
@@ -64,7 +57,7 @@ CurrentPolicies:
     # constrain electricity import in TWh
     electricity_import:
       DE:
-        2020: 0
+        2020: -20
         2025: 0
         2030: 0
         2035: 40
@@ -122,7 +115,7 @@ KN2045_Bal_v4:
 
   costs:
     horizon: "mean"
-    NEP: 2021
+    NEP: 2023
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
 
   # boundary condition of maximum volumes
@@ -130,7 +123,7 @@ KN2045_Bal_v4:
     # constrain electricity import in TWh
     electricity_import:
       DE:
-        2020: 0
+        2020: -20
         2025: 0
         2030: 0
         2035: 40
@@ -169,6 +162,7 @@ KN2045_Bal_v4:
         2035: 0
         2040: 0
         2045: 0
+
 KN2045_Elec_v4:
 # Fokus auf dem Hochlauf von Technologien zur direkten Elektrifizierung der Sektoren
 # Strom als präferierter Energieträger in der Endenergie, andere Energieträger ergänzend, wo nötig (Wasserstoff, synthetische Kraftstoffe)
@@ -181,14 +175,14 @@ KN2045_Elec_v4:
 
   costs:
     horizon: "mean"
-    NEP: 2021
+    NEP: 2023
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
 
   limits_volume_max:
     # constrain electricity import in TWh
     electricity_import:
       DE:
-        2020: 0
+        2020: -20
         2025: 0
         2030: 0
         2035: 50
@@ -227,6 +221,7 @@ KN2045_Elec_v4:
         2035: 0
         2040: 0
         2045: 0
+
 KN2045_H2_v4:
 # Fokus stärker auf dem Hochlauf von Technologien zur indirekten Elektrifizierung der Sektoren
 # Verstärkter Einsatz von Wasserstoff und synthetischen Kraftstoffen - erneuerbar erzeugt und auch importiert
@@ -239,19 +234,20 @@ KN2045_H2_v4:
 
   costs:
     horizon: "mean"
-    NEP: 2021
+    NEP: 2023
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
 
   limits_volume_max:
     # constrain electricity import in TWh
     electricity_import:
       DE:
-        2020: 0
+        2020: -20
         2025: 0
         2030: 0
         2035: 30
         2040: 70
         2045: 100 # scenario guidelines
+
     # constrain hydrogen import in TWh
     h2_import:
       DE:
@@ -301,7 +297,7 @@ KN2045plus_EasyRide:
 
   costs:
     horizon: "optimist"
-    NEP: 2021
+    NEP: 2023
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
 
   # boundary condition of maximum volumes
@@ -309,7 +305,7 @@ KN2045plus_EasyRide:
     # constrain electricity import in TWh
     electricity_import:
       DE:
-        2020: 0
+        2020: -20
         2025: 0
         2030: 0
         2035: 40
@@ -359,7 +355,7 @@ KN2045plus_LowDemand:
 
   costs:
     horizon: "optimist"
-    NEP: 2021
+    NEP: 2023
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
 
   # boundary condition of maximum volumes
@@ -367,7 +363,7 @@ KN2045plus_LowDemand:
     # constrain electricity import in TWh
     electricity_import:
       DE:
-        2020: 0
+        2020: -20
         2025: 0
         2030: 0
         2035: 20
@@ -437,7 +433,7 @@ KN2045minus_WorstCase:
     # constrain electricity import in TWh
     electricity_import:
       DE:
-        2020: 0
+        2020: -20
         2025: 0
         2030: 0
         2035: 20
@@ -523,7 +519,7 @@ KN2045minus_SupplyFocus:
     # constrain electricity import in TWh
     electricity_import:
       DE:
-        2020: 0
+        2020: -20
         2025: 0
         2030: 0
         2035: 40
