@@ -31,10 +31,6 @@ resources = path_provider("resources/", RDIR, policy, exclude)
 
 RESULTS = "results/" + RDIR
 
-envvars:
-    "IIASA_USERNAME",
-    "IIASA_PASSWORD"
-
 wildcard_constraints:
     simpl="[a-zA-Z0-9]*",
     clusters="[0-9]+(m|c)?|all",
