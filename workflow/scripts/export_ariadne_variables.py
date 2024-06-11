@@ -3167,6 +3167,96 @@ def get_production(region, year):
 
     return var
 
+def get_operational_and_capital_costs(year):
+    ''''
+    This function reads in the cost data from the costs.csv file and
+    brings it into the database format.
+    '''
+    var = pd.Series()
+    ind = snakemake.params.planning_horizons.index(year)
+    costs = prepare_costs(
+        snakemake.input.costs[ind],
+        snakemake.params.costs,
+        nyears=1,
+    )
+
+    sector_dict = {
+        "BEV charger": "Electricity",
+        "CCGT": "Electricity",
+        "DAC": "Gases",
+        "H2 Electrolysis": "Hydrogen",
+        "H2 Fuel Cell": "Electricity",
+        "OCGT": "Electricity",
+        "PHS": "Electricity",
+        "V2G": "Electricity",
+        "battery charger": "Electricity",
+        "battery discharger": "Electricity",
+        "coal": "Electricity",
+        "gas pipeline": "Gases",
+        "home battery charger": "Electricity",
+        "home battery discharger": "Electricity",
+        "hydro": "Electricity",
+        "lignite": "Electricity",
+        "methanolisation": "Liquids",
+        "offwind-ac": "Electricity",
+        "offwind-dc": "Electricity",
+        "offwind-float": "Electricity",
+        "oil": "Electricity",
+        "onwind": "Electricity",
+        "ror": "Electricity",
+        "rural air heat pump": "Heat",
+        "rural ground heat pump": "Heat",
+        "rural resistive heater": "Heat",
+        "rural solar thermal": "Heat",
+        "solar": "Electricity",
+        "solar rooftop": "Electricity",
+        "solar-hsat": "Electricity",
+        "solid biomass": "Heat",
+        "urban central air heat pump": "Heat",
+        "urban central coal CHP": "Heat",
+        "urban central gas CHP": "Heat",
+        "urban central gas CHP CC": "Heat",
+        "urban central lignite CHP": "Heat",
+        "urban central oil CHP": "Heat",
+        "urban central resistive heater": "Heat",
+        "urban central solar thermal": "Heat",
+        "urban central solid biomass CHP": "Heat",
+        "urban central solid biomass CHP CC": "Heat",
+        "urban decentral air heat pump": "Heat",
+        "urban decentral resistive heater": "Heat",
+        "urban decentral solar thermal": "Heat",
+        "waste CHP": "Heat",
+        "waste CHP CC": "Heat",
+    }
+
+    grid_connection = [
+        "offwind-ac",
+        "offwind-dc",
+        "offwind-float",
+        "solar",
+        "solar-hsat",
+    ]
+
+    for key, tech in costs_dict.items():
+        if tech is None:
+            continue
+        sector = sector_dict[key]
+
+        FOM = "OM Cost|Fixed" + "|" + sector + "|" + tech
+        VOM = "OM Cost|Variable" + "|" + sector + "|" + tech
+        capital = "Capital Cost" + "|" + sector + "|" + tech
+
+        var[FOM] = costs.at[tech, "fixed"] / 1e3 # EUR/MW -> EUR/kW
+        var[VOM] = costs.at[tech, "VOM"] / MWh2GJ # EUR/MWh -> EUR/GJ
+        var[capital] = costs.at[tech, "investment"] / 1e3 # EUR/MW -> EUR/kW
+
+        if key in grid_connection:
+            var[FOM] += costs.at["electricity grid connection", "fixed"] / 1e3
+            var[capital] += costs.at["electricity grid connection", "investment"] / 1e3
+
+    return var
+
+
 def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
 
     var = pd.concat([
@@ -3189,6 +3279,7 @@ def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
         ),
         get_policy(n),
         get_trade(n, region),
+        get_operational_and_capital_costs(year),
     ])
 
     return var
