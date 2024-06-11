@@ -30,14 +30,21 @@ def get_transport_shares(df, planning_horizons):
         df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation"] + \
         df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation"]
     navigation_liquid = \
-        df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation|Liquids"] + \
-        df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation|Liquids"]
-    
+        df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation|Liquids|Petroleum"] + \
+        df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation|Liquids|Petroleum"]
+
+    navigation_meoh = \
+        df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation|Liquids|Biomass"] + \
+        df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation|Liquids|Efuel"] + \
+        df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation|Liquids|Biomass"] + \
+        df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation|Liquids|Synthetic Fossil"] + \
+        df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation|Liquids|Efuel"]
+
     navigation_h2 = df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation|Hydrogen"]    
 
     h2_share = navigation_h2 / total_navigation
     liquid_share = navigation_liquid / total_navigation
-    methanol_share = (1 - h2_share - liquid_share).round(6)
+    methanol_share = navigation_meoh / total_navigation
     
     naval_share = pd.concat(
             [liquid_share, h2_share, methanol_share]).set_index(
