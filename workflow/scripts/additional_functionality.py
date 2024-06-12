@@ -367,12 +367,8 @@ def add_h2_derivate_limit(n, snapshots, investment_year, config):
 
         logger.info(f"limiting H2 derivate imports in {ct} to {limit/1e6} TWh/a")
 
-        oil_meoh_in = n.links.loc[["EU renewable oil -> DE oil", "EU methanol -> DE methanol"]].index
-        gas_in = n.links[(n.links.bus0.str[:2] != ct) & (n.links.bus1.str[:2] == ct) & (n.links.index.str.contains("pipeline"))].index
-        incoming = oil_meoh_in.union(gas_in)
-        gas_out = n.links[(n.links.bus0.str[:2] == ct) & (n.links.bus1.str[:2] != ct) & (n.links.index.str.contains("pipeline"))].index
-        oil_meoh_out = n.links.loc[["DE renewable oil -> EU oil", "DE methanol -> EU methanol"]].index
-        outgoing = oil_meoh_out.union(gas_out)
+        incoming = n.links.loc[["EU renewable oil -> DE oil", "EU methanol -> DE methanol"]].index
+        outgoing = n.links.loc[["DE renewable oil -> EU oil", "DE methanol -> EU methanol"]].index
 
         incoming_p = (n.model["Link-p"].loc[:, incoming]*n.snapshot_weightings.generators).sum()
         outgoing_p = (n.model["Link-p"].loc[:, outgoing]*n.snapshot_weightings.generators).sum()

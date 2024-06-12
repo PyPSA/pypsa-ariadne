@@ -25,33 +25,7 @@ def get_transport_shares(df, planning_horizons):
     transport_share = transport_share[planning_horizons]
     transport_share.set_index(pd.Index(["ICE", "BEV", "PHEV"]), inplace=True)
 
-    # Get share of Navigation fuels from corresponding "Ariadne Leitmodell"
-    total_navigation = \
-        df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation"] + \
-        df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation"]
-    navigation_liquid = \
-        df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation|Liquids|Petroleum"] + \
-        df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation|Liquids|Petroleum"]
-
-    navigation_meoh = \
-        df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation|Liquids|Biomass"] + \
-        df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation|Liquids|Efuel"] + \
-        df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation|Liquids|Biomass"] + \
-        df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation|Liquids|Synthetic Fossil"] + \
-        df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation|Liquids|Efuel"]
-
-    navigation_h2 = df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation|Hydrogen"]    
-
-    h2_share = navigation_h2 / total_navigation
-    liquid_share = navigation_liquid / total_navigation
-    methanol_share = navigation_meoh / total_navigation
-    
-    naval_share = pd.concat(
-            [liquid_share, h2_share, methanol_share]).set_index(
-            pd.Index(["Oil", "H2", "MeOH"])
-        )[planning_horizons]
-
-    return transport_share, naval_share
+    return transport_share
 
 def get_transport_growth(df, planning_horizons):
     # Aviation growth factor - using REMIND-EU v1.1 since Aladin v1 does not include bunkers
@@ -168,7 +142,7 @@ def write_to_scenario_yaml(
         
         planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045] # for 2050 we still need data
 
-        transport_share, naval_share = get_transport_shares(
+        transport_share = get_transport_shares(
             df.loc[:, reference_scenario, :],
             planning_horizons,
         )
@@ -180,11 +154,6 @@ def write_to_scenario_yaml(
             'BEV': 'land_transport_electric_share',
             'ICE': 'land_transport_ice_share'
         }
-        mapping_navigation = {
-            'H2': 'shipping_hydrogen_share',
-            'MeOH': 'shipping_methanol_share',
-            'Oil': 'shipping_oil_share',
-        }
 
         config[scenario]["sector"] = {}
         for key, sector_mapping in mapping_transport.items():
@@ -192,10 +161,6 @@ def write_to_scenario_yaml(
             for year in transport_share.columns:
                 config[scenario]["sector"][sector_mapping][year] = round(transport_share.loc[key, year].item(), 4)
 
-        for key, sector_mapping in mapping_navigation.items():
-            config[scenario]["sector"][sector_mapping] = {}
-            for year in naval_share.columns:
-                config[scenario]["sector"][sector_mapping][year] = round(naval_share.loc[key, year].item(), 4)
         config[scenario]["sector"]["land_transport_demand_factor"] = {}
         config[scenario]["sector"]["aviation_demand_factor"] = {}
         for year in planning_horizons:
