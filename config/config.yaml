@@ -4,12 +4,12 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240610highSpatial
+  prefix: 20240610highSpatialConfig
   name:
-  # - CurrentPolicies
+  - CurrentPolicies
   - KN2045_Bal_v4
-  # - KN2045_Elec_v4
-  # - KN2045_H2_v4
+  #- KN2045_Elec_v4
+  #- KN2045_H2_v4
   # - KN2045plus_EasyRide
   # - KN2045plus_LowDemand
   # - KN2045minus_WorstCase
@@ -58,7 +58,7 @@ scenario:
   ll:
   - vopt
   clusters:
-  - 44
+  - 22 #current options: 22, 44
   opts:
   - ''
   sector_opts:
@@ -88,22 +88,38 @@ clustering:
   # simplify_network:
   #   to_substations: true
   focus_weights:
-    # 44 nodes: 30 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn" (high spatial)
-    'DE': 0.6818 # 30/44 ## 0.3636 # 8/22
-    'AT': 0.0227 #  1/44 ## 0.0455 # 1/22
-    'BE': 0.0227 ## 0.0455 
-    'CH': 0.0227 ## 0.0455
-    'CZ': 0.0227 ## 0.0455
-    'DK': 0.0455 # 2/44 ## 0.0909 # 2/22
-    'FR': 0.0227 ## 0.0454
-    'GB': 0.0455 ## 0.0909 # 2/22
-    'LU': 0.0227 ## 0.0454
-    'NL': 0.0227 ## 0.0454
-    'NO': 0.0227 ## 0.0454
-    'PL': 0.0227 ## 0.0454
-    'SE': 0.0227 ## 0.0454
+    # 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn" (high spatial)
+    'DE': 0.3636 # 8/22
+    'AT': 0.0455 # 1/22
+    'BE': 0.0455 
+    'CH': 0.0455
+    'CZ': 0.0455
+    'DK': 0.0909 # 2/22
+    'FR': 0.0454
+    'GB': 0.0909 # 2/22
+    'LU': 0.0454
+    'NL': 0.0454
+    'NO': 0.0454
+    'PL': 0.0454
+    'SE': 0.0454
+# # high spatial resolution: change clusters to 44
+#   focus_weights:
+#   # 44 nodes: 30 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn" (high spatial)  
+#     'DE': 0.6818 # 30/44 
+#     'AT': 0.0227 #  1/44 
+#     'BE': 0.0227 
+#     'CH': 0.0227 
+#     'CZ': 0.0227 
+#     'DK': 0.0455 # 2/44 
+#     'FR': 0.0227 
+#     'GB': 0.0455 
+#     'LU': 0.0227 
+#     'NL': 0.0227 
+#     'NO': 0.0227 
+#     'PL': 0.0227 
+#     'SE': 0.0227 
   temporal:
-    resolution_sector: 780H
+    resolution_sector: 365H
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:
