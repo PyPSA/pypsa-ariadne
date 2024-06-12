@@ -88,7 +88,7 @@ clustering:
   # simplify_network:
   #   to_substations: true
   focus_weights:
-    # 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn" (high spatial)
+    # 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
     'DE': 0.3636 # 8/22
     'AT': 0.0455 # 1/22
     'BE': 0.0455 
