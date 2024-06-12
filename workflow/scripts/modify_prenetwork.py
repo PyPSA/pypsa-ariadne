@@ -45,6 +45,8 @@ def fix_new_boiler_profiles(n):
         return
 
     boiler_loads = n.links.loc[decentral_boilers,"bus1"]
+    boiler_loads = boiler_loads[boiler_loads.isin(n.loads_t.p_set.columns)]
+    decentral_boilers = boiler_loads.index
     boiler_profiles_pu = n.loads_t.p_set[boiler_loads].div(n.loads_t.p_set[boiler_loads].max(),axis=1)
     boiler_profiles_pu.columns = decentral_boilers
 
@@ -353,12 +355,12 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "modify_prenetwork",
             simpl="",
-            clusters=22,
+            clusters=44,
             opts="",
-            ll="v1.2",
-            sector_opts="365H-T-H-B-I-A-solar+p3-linemaxext15",
-            planning_horizons="2040",
-            run="KN2045_H2_v4"
+            ll="vopt",
+            sector_opts= "None",
+            planning_horizons="2020",
+            run="KN2045_Bal_v4"
         )
 
     logger.info("Adding Ariadne-specific functionality")
