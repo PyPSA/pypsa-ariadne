@@ -6,10 +6,10 @@
 run:
   prefix: 20240610highSpatialConfig
   name:
-  - CurrentPolicies
+  # - CurrentPolicies
   - KN2045_Bal_v4
-  #- KN2045_Elec_v4
-  #- KN2045_H2_v4
+  # - KN2045_Elec_v4
+  # - KN2045_H2_v4
   # - KN2045plus_EasyRide
   # - KN2045plus_LowDemand
   # - KN2045minus_WorstCase
@@ -214,7 +214,7 @@ costs:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
-  solar_thermal: false
+  # solar_thermal: false
   district_heating:
     potential: 0.4
     progress:
