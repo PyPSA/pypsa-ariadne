@@ -13,6 +13,7 @@ CurrentPolicies:
 
   iiasa_database:
     reference_scenario: CurrentPolicies
+    fallback_reference_scenario: CurrentPolicies # if the reference scenario is not available (due to late uploads)
 
   co2_budget_DE_source: UBA
 
@@ -111,6 +112,7 @@ KN2045_Bal_v4:
 
   iiasa_database:
     reference_scenario: KN2045_Bal_v4
+    fallback_reference_scenario: KN2045_Bal_v4
   co2_budget_DE_source: KSG
 
   costs:
@@ -171,6 +173,7 @@ KN2045_Elec_v4:
 
   iiasa_database:
     reference_scenario: KN2045_Elec_v4
+    fallback_reference_scenario: KN2045_Elec_v4
   co2_budget_DE_source: KSG
 
   costs:
@@ -230,6 +233,7 @@ KN2045_H2_v4:
 
   iiasa_database:
     reference_scenario: KN2045_H2_v4
+    fallback_reference_scenario: KN2045_H2_v4
   co2_budget_DE_source: KSG
 
   costs:
@@ -293,6 +297,7 @@ KN2045plus_EasyRide:
 # Verlagerung der energieintensiven Grundstoffindustrie
   iiasa_database:
     reference_scenario: KN2045plus_EasyRide # TODO: wait for database
+    fallback_reference_scenario: KN2045_Bal_v4
   co2_budget_DE_source: KSG
 
   costs:
@@ -351,6 +356,7 @@ KN2045plus_LowDemand:
 # innerhalb Deutschlands und knappe Importe EE möglich
   iiasa_database:
     reference_scenario: KN2045plus_LowDemand # TODO: wait for database
+    fallback_reference_scenario: KN2045_Bal_v4
   co2_budget_DE_source: KSG
 
   costs:
@@ -411,6 +417,7 @@ KN2045minus_WorstCase:
 # eher knapper Ausbau EE und EE Importe
   iiasa_database:
     reference_scenario: KN2045minus_WorstCase
+    fallback_reference_scenario: CurrentPolicies
 
   co2_budget_DE_source: UBA
 
@@ -499,6 +506,7 @@ KN2045minus_SupplyFocus:
 # Ausbau EE und EE Importe jetzt aber auskömmlich
   iiasa_database:
     reference_scenario: KN2045minus_SupplyFocus
+    fallback_reference_scenario: CurrentPolicies
 
   costs:
     horizon: "pessimist"
