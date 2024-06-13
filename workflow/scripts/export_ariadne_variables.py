@@ -186,6 +186,7 @@ def get_capacity_additions_nstat(n, region):
 
 
 costs_dict = {
+    # capacities electricity
     'BEV charger': None,
     'CCGT': 'CCGT',
     'DAC': 'direct air capture',
@@ -232,6 +233,24 @@ costs_dict = {
     'urban decentral solar thermal': 'decentral solar thermal',
     'waste CHP': 'waste CHP',
     'waste CHP CC': 'waste CHP CC',
+}
+
+storage_costs_dict = {
+    'H2': None,
+    'Li ion': None,
+    'PHS': None,
+    'battery': 'battery storage',
+    'biogas': None,
+    'co2 sequestered': None,
+    'co2 stored': None,
+    'gas': 'gas storage',
+    'home battery': 'home battery storage',
+    'hydro': None,
+    'oil': 0.02,
+    'rural water tanks': 'decentral water tank storage',
+    'solid biomass': None,
+    'urban central water tanks': 'central water tank storage',
+    'urban decentral water tanks': 'decentral water tank storage',
 }
 
 
