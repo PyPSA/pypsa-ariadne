@@ -119,6 +119,64 @@ def within_plot(df, df2,
 
     return fig 
 
+def elec_val_plot(df, savepath):
+    # electricity validation for 2020
+    elec_capacities = pd.DataFrame(index=["ror", "hydro", "battery", "biomass", "nuclear", "lignite", "coal", "oil", "gas", "wind_onshore", "wind_offshore", "solar"])
+    elec_generation = pd.DataFrame(index=["net exports", "ror", "hydro", "battery", "biomass", "nuclear", "lignite", "coal", "oil", "gas", "wind", "solar", "sum_real-sum_pypsa"])
+
+    elec_capacities["real"] = [4.94, 9.69, 2.4, 8.72, 8.11, 20.86, 23.74, 4.86, 32.54, 54.25, 7.86, 54.36] # https://energy-charts.info/charts/installed_power/chart.htm?l=en&c=DE&year=2020
+    elec_generation["real"] = [18.9, np.nan, 18.7, np.nan, 45, 64, 91, 43, 4.7, 95, 132, 50, np.nan] # https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Energie/Erzeugung/Tabellen/bruttostromerzeugung.html
+    elec_capacities["pypsa"] = [
+        0,
+        df.loc[("Capacity|Electricity|Hydro", "GW"), "2020"],
+        0,
+        df.loc[("Capacity|Electricity|Biomass", "GW"), "2020"],
+        df.loc[("Capacity|Electricity|Nuclear", "GW"), "2020"],
+        df.loc[("Capacity|Electricity|Coal|Lignite", "GW"), "2020"],
+        df.loc[("Capacity|Electricity|Coal|Hard Coal", "GW"), "2020"],
+        df.loc[("Capacity|Electricity|Oil", "GW"), "2020"],
+        df.loc[("Capacity|Electricity|Gas", "GW"), "2020"],
+        df.loc[("Capacity|Electricity|Wind|Onshore", "GW"), "2020"],
+        df.loc[("Capacity|Electricity|Wind|Offshore", "GW"), "2020"],
+        df.loc[("Capacity|Electricity|Solar", "GW"), "2020"],
+    ]
+
+    elec_generation["pypsa"] = [
+        df.loc[("Trade|Secondary Energy|Electricity|Volume", "PJ/yr"), "2020"] / 3.6,
+        0,
+        df.loc[("Secondary Energy|Electricity|Hydro", "PJ/yr"), "2020"] / 3.6,
+        0,
+        df.loc[("Secondary Energy|Electricity|Biomass", "PJ/yr"), "2020"] / 3.6,
+        df.loc[("Secondary Energy|Electricity|Nuclear", "PJ/yr"), "2020"] / 3.6,
+        df.loc[("Secondary Energy|Electricity|Coal|Lignite", "PJ/yr"), "2020"] / 3.6,
+        df.loc[("Secondary Energy|Electricity|Coal|Hard Coal", "PJ/yr"), "2020"] / 3.6,
+        df.loc[("Secondary Energy|Electricity|Oil", "PJ/yr"), "2020"] / 3.6,
+        df.loc[("Secondary Energy|Electricity|Gas", "PJ/yr"), "2020"] / 3.6,
+        df.loc[("Secondary Energy|Electricity|Wind", "PJ/yr"), "2020"] / 3.6,
+        df.loc[("Secondary Energy|Electricity|Solar", "PJ/yr"), "2020"] / 3.6,
+        np.nan
+    ]
+
+    #elec_generation.loc["sum/10"] = elec_generation.sum().div(10)
+    elec_generation.loc["sum_real-sum_pypsa", "sum_real-sum_pypsa"] = elec_generation.sum()["real"] - elec_generation.sum()["pypsa"]
+    
+    
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+    elec_capacities.plot(kind="bar", ax=axes[0])
+    axes[0].set_ylabel("GW")
+    axes[0].set_title("Installed Capacities Germany 2020")
+
+    elec_generation.plot(kind="bar", ax=axes[1])
+    axes[1].set_ylabel("TWh")
+    axes[1].set_title("Electricity Generation Germany 2020")
+
+    plt.tight_layout()
+    plt.close()
+    fig.savefig(savepath, bbox_inches="tight")
+
+    return fig
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
@@ -172,7 +230,7 @@ if __name__ == "__main__":
         "Detailed Primary Energy in PJ_yr",
         savepath=snakemake.output.primary_energy_detailed,
         select_regex="Primary Energy\|[^|]*\|[^|]*$",
-        drop_regex="^(?!.*(CCS|Price)).+"
+        drop_regex="^(?!.*(CCS|Price|Volume)).+"
     )
 
     side_by_side_plot(
@@ -193,7 +251,7 @@ if __name__ == "__main__":
         # Secondary Energy|Something|Something (exactly two pipes)
         select_regex="Secondary Energy\|[^|]*\|[^|]*$",
         # Not ending in Fossil or Renewables (i.e., categories)
-        drop_regex="^(?!.*(Fossil|Renewables|Losses|Price)).+"
+        drop_regex= "^(?!.*(Fossil|Renewables|Losses|Price|Volume)).+" 
     )
 
     side_by_side_plot(
@@ -202,7 +260,8 @@ if __name__ == "__main__":
         "Final Energy in PJ_yr",
         savepath=snakemake.output.final_energy,
         select_regex="Final Energy\|[^|]*$",
-        drop_regex="^(?!.*(Electricity|Price)).+"
+        rshift = 1.45,
+        drop_regex="^(?!.*(Price|Non-Energy Use)).+"
     )
 
     side_by_side_plot(
@@ -211,8 +270,8 @@ if __name__ == "__main__":
         "Detailed Final Energy in PJ_yr",
         savepath=snakemake.output.final_energy_detailed,
         select_regex="Final Energy\|[^|]*\|[^|]*$",
-        rshift = 1.45,
-        drop_regex="^(?!.*(Price)).+"
+        rshift = 1.7,
+        drop_regex="^(?!.*(Price|\|Solids\||Non-Energy Use\|)).+"
     )
 
     side_by_side_plot(
@@ -333,3 +392,13 @@ if __name__ == "__main__":
         write_sum = True,
     )
 
+    elec_val_plot(df, savepath=snakemake.output.elec_val_2020)
+
+    within_plot(
+        df[df.index.get_level_values("Variable").str.startswith('Trade')], 
+        dfremind, 
+        title = "Trade", 
+        savepath=snakemake.output.trade,
+        unit="PJ/yr",
+    )
+    

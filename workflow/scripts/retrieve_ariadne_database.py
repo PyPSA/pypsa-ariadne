@@ -12,7 +12,7 @@ if __name__ == "__main__":
         snakemake = mock_snakemake("retrieve_ariadne_database")
     
     db = pyam.read_iiasa(
-        "ariadne_intern",
+        snakemake.params.db_name,
         model=snakemake.params.leitmodelle,
         scenario=snakemake.params.scenarios, 
         # Download only the most recent iterations of scenarios
