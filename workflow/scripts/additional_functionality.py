@@ -309,6 +309,8 @@ def force_boiler_profiles_existing_per_load(n):
         return
 
     boiler_loads = n.links.loc[decentral_boilers,"bus1"]
+    boiler_loads = boiler_loads[boiler_loads.isin(n.loads_t.p_set.columns)]
+    decentral_boilers = boiler_loads.index
     boiler_profiles_pu = n.loads_t.p_set[boiler_loads].div(n.loads_t.p_set[boiler_loads].max(),axis=1)
     boiler_profiles_pu.columns = decentral_boilers
     boiler_profiles = DataArray(boiler_profiles_pu.multiply(n.links.loc[decentral_boilers,"p_nom"],axis=1))
@@ -345,6 +347,8 @@ def force_boiler_profiles_existing_per_boiler(n):
         return
 
     boiler_loads = n.links.loc[decentral_boilers,"bus1"]
+    boiler_loads = boiler_loads[boiler_loads.isin(n.loads_t.p_set.columns)]
+    decentral_boilers = boiler_loads.index
     boiler_profiles_pu = n.loads_t.p_set[boiler_loads].div(n.loads_t.p_set[boiler_loads].max(),axis=1)
     boiler_profiles_pu.columns = decentral_boilers
     boiler_profiles = DataArray(boiler_profiles_pu.multiply(n.links.loc[decentral_boilers,"p_nom"],axis=1))
