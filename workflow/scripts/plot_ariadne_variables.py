@@ -211,7 +211,7 @@ if __name__ == "__main__":
         snakemake.input.ariadne_database,
         index_col=["model", "scenario", "region", "variable", "unit"]
     ).loc[
-        leitmodell, snakemake.params.iiasa_scenario, "Deutschland"
+        leitmodell, snakemake.params.fallback_reference_scenario, "Deutschland"
     ][df.columns]
     dfremind.index.names = df.index.names
 

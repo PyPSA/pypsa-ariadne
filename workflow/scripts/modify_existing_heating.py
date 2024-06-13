@@ -12,7 +12,7 @@ ariadne = pd.read_csv(
     index_col=["model", "scenario", "region", "variable", "unit"]
 ).loc[
     leitmodell,
-    snakemake.params.iiasa_reference_scenario,
+    snakemake.params.fallback_reference_scenario,
     "Deutschland",        
     :,
     "million",

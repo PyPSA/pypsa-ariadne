@@ -152,21 +152,24 @@ def write_to_scenario_yaml(
     config = yaml.load(file_path)
     for scenario in scenarios:
         reference_scenario = config[scenario]["iiasa_database"]["reference_scenario"]
+        fallback_reference_scenario = config[scenario]["iiasa_database"]["fallback_reference_scenario"]
+        if reference_scenario == "KN2045plus_EasyRide":
+            fallback_reference_scenario = reference_scenario
         co2_budget_source = config[scenario]["co2_budget_DE_source"]
 
         co2_budget_fractions = get_co2_budget(
-            df.loc["REMIND-EU v1.1", reference_scenario],
+            df.loc["REMIND-EU v1.1", fallback_reference_scenario],
             co2_budget_source
         )
         
         planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045] # for 2050 we still need data
 
         transport_share, naval_share = get_transport_shares(
-            df.loc[:, reference_scenario, :],
+            df.loc[:, fallback_reference_scenario, :],
             planning_horizons,
         )
         
-        aviation_demand_factor, land_transport_demand_factor = get_transport_growth(df.loc[:, reference_scenario, :], planning_horizons)
+        aviation_demand_factor, land_transport_demand_factor = get_transport_growth(df.loc[:, fallback_reference_scenario, :], planning_horizons)
 
         mapping_transport = {
             'PHEV': 'land_transport_fuel_cell_share',
