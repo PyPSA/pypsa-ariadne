@@ -135,7 +135,6 @@ rule modify_prenetwork:
         costs=config_provider("costs"),
         max_hours=config_provider("electricity", "max_hours"),
         length_factor=config_provider("lines", "length_factor"),
-        scenario=config_provider("iiasa_database", "reference_scenario"),
         technology_occurrence=config_provider("first_technology_occurrence"),
         fossil_boiler_ban=config_provider("new_decentral_fossil_boiler_ban"),
         coal_ban=config_provider("coal_generation_ban"),
@@ -175,6 +174,7 @@ use rule solve_sector_network_myopic from pypsaeur with:
 rule modify_existing_heating:
     params:
         iiasa_reference_scenario=config_provider("iiasa_database", "reference_scenario"),
+        fallback_reference_scenario=config_provider("iiasa_database", "fallback_reference_scenario"),
     input:
         ariadne=resources("ariadne_database.csv"),
         existing_heating="data/existing_infrastructure/existing_heating_raw.csv",
@@ -308,7 +308,6 @@ rule download_ariadne_template:
 
 rule export_ariadne_variables:
     params:
-        iiasa_scenario=config_provider("iiasa_database", "reference_scenario"),
         length_factor=config_provider("lines", "length_factor"),
         dg_cost_factor=config_provider("sector", "electricity_distribution_grid_cost_factor"),
         planning_horizons = config_provider("scenario","planning_horizons"),
@@ -357,6 +356,7 @@ rule export_ariadne_variables:
 rule plot_ariadne_variables:
     params:
         iiasa_scenario=config_provider("iiasa_database", "reference_scenario"),
+        fallback_reference_scenario=config_provider("iiasa_database", "fallback_reference_scenario"),
     input:
         exported_variables_full=RESULTS + "ariadne/exported_variables_full.xlsx",
         ariadne_database=resources("ariadne_database.csv"),
