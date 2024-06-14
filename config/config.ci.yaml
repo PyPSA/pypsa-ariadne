@@ -6,14 +6,14 @@
 run:
   prefix: 20240613scenariosredefined
   name:
-  - CurrentPolicies
+  # - CurrentPolicies
   - KN2045_Bal_v4
-  - KN2045_Elec_v4
-  - KN2045_H2_v4
-  - KN2045plus_EasyRide
-  - KN2045plus_LowDemand
-  - KN2045minus_WorstCase
-  - KN2045minus_SupplyFocus
+  # - KN2045_Elec_v4
+  # - KN2045_H2_v4
+  # - KN2045plus_EasyRide
+  # - KN2045plus_LowDemand
+  # - KN2045minus_WorstCase
+  # - KN2045minus_SupplyFocus
   scenarios:
     enable: true
     file: config/scenarios.automated.yaml
@@ -81,9 +81,7 @@ existing_capacities:
 countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'PL', 'SE']
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
-enable:
-  retrieve: false # set to false once initial data is retrieved
-  retrieve_cutout: false # set to false once initial data is retrieved
+
 clustering:
   # simplify_network:
   #   to_substations: true
@@ -223,7 +221,7 @@ costs:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
-  # solar_thermal: false
+  solar_thermal: false
   district_heating:
     potential: 0.4
     progress:
@@ -316,11 +314,11 @@ solving:
   options:
     assign_all_duals: true
     load_shedding: false
-    skip_iterations: false # settings for post-discretization: false
+    skip_iterations: true # settings for post-discretization: false
     min_iterations: 1 # settings for post-discretization: 1
     max_iterations: 1 # settings for post-discretization: 1
     post_discretization:
-      enable: true
+      enable: false
       line_unit_size: 1700
       line_threshold: 0.3
       link_unit_size:
