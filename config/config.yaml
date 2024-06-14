@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240605newdb
+  prefix: H2_ready_GT
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -18,7 +18,7 @@ run:
     enable: true
     file: config/scenarios.automated.yaml
   shared_resources: 
-    policy: base #stops recalculating
+    policy: true #stops recalculating
     exclude:
       - existing_heating.csv # specify files which should not be shared between scenarios
       - costs
@@ -185,6 +185,7 @@ electricity:
   H2_retrofit_plants:
     enable: true
     year: 2020
+    force: 2035
 
 first_technology_occurrence:
   Link:
@@ -203,7 +204,7 @@ costs:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
-  # solar_thermal: false
+  solar_thermal: false
   district_heating:
     potential: 0.4
     progress:

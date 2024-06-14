@@ -391,6 +391,49 @@ def add_h2_derivate_limit(n, snapshots, investment_year, config):
                 carrier_attribute="",
             )
 
+def force_H2_retrofit(n, force_year, planning_horizon):
+    ''''
+    Force the retrofit of existing gas plants to H2 from a certain year onwards.
+    '''
+    logger.info(f"Forcing retrofit of existing gas plants to H2 from {force_year} onwards")
+    # Remove extendable gas plants from this planning_horizon
+    carriers = ["OCGT", "CCGT", "urban central gas CHP"]
+    remove_i = n.links[(n.links.carrier.isin(carriers)) & 
+                       (n.links.p_nom_extendable) & 
+                       (n.links.bus0.str[:2] == "DE") &
+                       (n.links.build_year == 2040)].index
+    n.links.drop(remove_i, inplace=True)
+
+    # remove old constraint
+    constraints = ["OCGT_retrofit", "CCGT_retrofit", "urban central gas CHP_retrofit"]
+    n.model.remove_constraints(constraints)
+
+    # Add constraint to force retrofit
+    plant_types = [
+        ("OCGT", "retrofitted H2 OCGT"),
+        ("CCGT", "retrofitted H2 CCGT"),
+        ("urban central gas CHP", "urban central retrofitted H2 CHP"),
+    ]
+
+    for gas_carrier, h2_carrier in plant_types:
+        gas_plants = n.links.query(
+            f"carrier == '{gas_carrier}' and p_nom_extendable and build_year < {planning_horizon}"
+        ).index
+        h2_plants = n.links.query(
+            f"carrier == '{h2_carrier}' and p_nom_extendable and build_year < {planning_horizon}"
+        ).index
+
+        if h2_plants.empty or gas_plants.empty:
+            continue
+
+        # Store p_nom value for rhs of constraint
+        p_nom = n.model["Link-p_nom"]
+
+        lhs = p_nom.loc[h2_plants]
+        rhs = n.links.p_nom_max[gas_plants]
+        n.model.add_constraints(lhs == rhs, name=f"force retrofit {gas_carrier} to {h2_carrier}")
+        n.model.add_constraints(p_nom.loc[gas_plants] == 0, name=f"force out {gas_carrier}")
+
 
 def additional_functionality(n, snapshots, snakemake):
 
@@ -419,3 +462,6 @@ def additional_functionality(n, snapshots, snakemake):
         limit_countries = snakemake.config["co2_budget_national"][investment_year]
         add_co2limit_country(n, limit_countries, snakemake,                  
             debug=snakemake.config["run"]["debug_co2_limit"])
+
+    if snakemake.config["electricity"]["H2_retrofit_plants"]["force"] >= int(snakemake.wildcards.planning_horizons):
+        force_H2_retrofit(n, snakemake.config["electricity"]["H2_retrofit_plants"]["force"], int(snakemake.wildcards.planning_horizons))
