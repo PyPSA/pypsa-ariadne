@@ -270,12 +270,32 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
 
             lhs.append((n.model["Link-p"].loc[:, links]*efficiency*n.snapshot_weightings.generators).sum())
 
-        incoming = n.links.index[n.links.index == "EU renewable oil -> DE oil"]
-        outgoing = n.links.index[n.links.index == "DE renewable oil -> EU oil"]
+        # Adding Efuel imports and exports to constraint
+        incoming_oil = n.links.index[n.links.index == "EU renewable oil -> DE oil"]
+        outgoing_oil = n.links.index[n.links.index == "DE renewable oil -> EU oil"]
 
         if not debug:
-            lhs.append((-1*n.model["Link-p"].loc[:, incoming]*0.2571*n.snapshot_weightings.generators).sum())
-            lhs.append((n.model["Link-p"].loc[:, outgoing]*0.2571*n.snapshot_weightings.generators).sum())
+            lhs.append(
+                (-1 * n.model["Link-p"].loc[:, incoming_oil]
+                 * 0.2571 * n.snapshot_weightings.generators).sum())
+            lhs.append(
+                (n.model["Link-p"].loc[:, outgoing_oil]
+                 * 0.2571 * n.snapshot_weightings.generators).sum())
+
+        incoming_methanol = n.links.index[n.links.index == "EU methanol -> DE methanol"]
+        outgoing_methanol = n.links.index[n.links.index == "DE methanol -> EU methanol"]
+
+        lhs.append(
+            (-1 * n.model["Link-p"].loc[:, incoming_methanol]
+             / snakemake.config["sector"]["MWh_MeOH_per_tCO2"]
+             * n.snapshot_weightings.generators).sum())
+        
+        lhs.append(
+            (n.model["Link-p"].loc[:, outgoing_methanol]
+             / snakemake.config["sector"]["MWh_MeOH_per_tCO2"]
+             * n.snapshot_weightings.generators).sum())
+        
+        # Methane still missing, because its complicated
 
         lhs = sum(lhs)
 
