@@ -23,14 +23,23 @@ def load_egon():
     ]  # Keep only necessary columns
 
     internal_id = {
+        9: "Hard coal",
+        10: "Brown coal",
+        11: "Natural gas",
+        34: "Heating oil",
+        35: "Biomass (solid)",
+        68: "Ambient heating",
+        69: "Solar heat",
         71: "District heating",
+        72: "Electrical energy",
+        218: "Biomass (excluding wood, biogas)",
     }
 
     df = pd.read_json(snakemake.input.fn)
     id_region = pd.read_json(snakemake.input.fn_map)
 
     df["internal_id"] = df["internal_id"].apply(lambda x: x[0])
-    df = df[df["internal_id"] == 71]  # Keep only rows with district heating
+    # df = df[df["internal_id"] == 71]  # Keep only rows with district heating
 
     df["nuts3"] = df.id_region.map(
         id_region.set_index(id_region.id_region_from).kuerzel_to
@@ -41,13 +50,15 @@ def load_egon():
 
     egon_df = heat_tech_per_region.merge(nuts3, left_on="nuts3", right_on="index")
     egon_gdf = gpd.GeoDataFrame(egon_df)  # Convert merged DataFrame to GeoDataFrame
+    egon_gdf = egon_gdf.to_crs("EPSG:4326")
 
     return egon_gdf
 
 
-def update_dist_shares(egon_gdf, n_pre):
+def update_urban_loads_de(egon_gdf, n_pre):
     """
-    Update district heating shares of clusters according to egon data on NUTS3 level.
+    Update district heating demands of clusters according to shares in egon data on NUTS3 level for Germany.
+    Other heat loads are adjusted accodingly to ensure consistency of the nodal heat demand.
     """
 
     n = n_pre.copy()
@@ -62,16 +73,68 @@ def update_dist_shares(egon_gdf, n_pre):
         axis=1,
     )
 
-    # Calculate DH demand shares
-    dh_shares = (
-        egon_gdf.groupby("cluster")["District heating"].sum()
-        / egon_gdf["District heating"].sum()
+    # Calculate nodel DH shares according to households and modify index
+    egon_gdf_clustered = egon_gdf.groupby("cluster").sum(numeric_only=True)
+    nodal_dh_shares = egon_gdf_clustered["District heating"] / egon_gdf_clustered.drop(
+        "pop", axis=1
+    ).sum(axis=1)
+
+    nodal_dh_shares.index += " urban central heat"
+
+    # District heating demands by cluster in German nodes before heat distribution
+    nodal_uc_demand = (
+        n.loads_t.p_set.filter(regex="DE.*urban central heat")
+        .apply(lambda c: c * n.snapshot_weightings.generators)
+        .sum()
+        .div(
+            1 + snakemake.config["sector"]["district_heating"]["district_heating_loss"]
+        )
     )
 
-    # Current DH demands by cluster
-    dh_demand = n.loads_t.p_set.filter(regex="DE\d.*urban central heat")
+    nodal_uc_losses = (
+        nodal_uc_demand
+        - n.loads_t.p_set.filter(regex="DE.*urban central heat")
+        .apply(lambda c: c * n.snapshot_weightings.generators)
+        .sum()
+    )
 
-    return n
+    # Sum of rural and urban heat demand
+    nodal_heat_demand = (
+        n.loads_t.p_set.filter(regex="DE.*heat$")
+        .apply(lambda c: c * n.snapshot_weightings.generators)
+        .sum()
+        .sub(nodal_uc_losses, fill_value=0)
+    )
+
+    # Modify index of nodal_heat demand to align with urban central loads and aggregatze loads
+    nodal_heat_demand.index = nodal_heat_demand.index.str.replace(
+        "decentral", "central"
+    ).str.replace("rural", "urban central")
+
+    nodal_heat_demand = nodal_heat_demand.groupby(nodal_heat_demand.index).sum()
+
+    # Old district heating share
+    nodal_uc_shares = nodal_uc_demand / nodal_heat_demand
+
+    # Scaling factor for update of urban central heat loads
+
+    scaling_factor = nodal_dh_shares / nodal_uc_shares
+    scaling_factor.dropna(
+        inplace=True
+    )  # To deal with shape anomaly described in https://github.com/PyPSA/pypsa-eur/issues/1100
+
+    # Update urban heat loads
+    old_uc_loads = n.loads_t.p_set.filter(regex="DE.*urban central heat")
+    new_uc_loads = (
+        n.loads_t.p_set.filter(regex="DE.*urban central heat") * scaling_factor
+    )
+    diff_update = new_uc_loads - old_uc_loads
+    diff_update.columns = diff_update.columns.str.replace("central", "decentral")
+
+    n_pre.loads_t.p_set[new_uc_loads.columns] = new_uc_loads
+    n_pre.loads_t.p_set[diff_update.columns] -= diff_update
+
+    return n_pre
 
 
 def prepare_subnodes_de(egon_gdf):
@@ -160,7 +223,7 @@ if __name__ == "__main__":
 
     n = pypsa.Network(snakemake.input.network)
     egon_gdf = load_egon()
-    update_dist_shares(egon_gdf, n)
+    update_urban_loads_de(egon_gdf, n)
 
     if snakemake.params.enable_subnodes_de:
         prepare_subnodes_de(egon_gdf)
