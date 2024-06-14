@@ -243,15 +243,12 @@ def unravel_oilbus(n):
     """
     logger.info("Unraveling oil bus")
     # add buses
-    n.add("Bus", "DE", location="DE", x=10.5, y=51.2, carrier="none")
-    n.add("Bus", "DE oil", location="DE", x=10.5, y=51.2, carrier="oil")
-    n.add("Bus", "DE renewable oil", location="DE", x=10.5, y=51.2, carrier="renewable oil")
+    n.add("Bus", "DE", carrier="none")
+    n.add("Bus", "DE oil", carrier="oil")
+    n.add("Bus", "DE renewable oil", carrier="renewable oil")
     n.add(
         "Bus", 
-        "EU renewable oil", 
-        location="EU",
-        x=n.buses.loc["EU","x"],
-        y=n.buses.loc["EU","y"],
+        "EU renewable oil",
         carrier="renewable oil"
     )
 
@@ -295,6 +292,245 @@ def unravel_oilbus(n):
           capital_cost=0.02,
           )
 
+def unravel_import_carrier(n, industrial_demand, industrial_production):
+
+    logger.info("Unraveling steel and hbi import")
+    # needed for the loads
+    endogenous_sectors = []
+    options = snakemake.config["sector"]
+    if options["endogenous_steel"]:
+        endogenous_sectors += ["DRI + Electric arc"]
+    if options["endogenous_hvc"]:
+        endogenous_sectors += ["HVC"]
+    sectors_b = ~industrial_demand.index.get_level_values("sector").isin(
+        endogenous_sectors
+    )
+    HVC_demand_factor = options.get("HVC_demand_factor", 1)
+
+    ###
+    # add hbi/steel bus
+    n.add("Bus", "DE hbi", carrier="hbi")
+    n.add("Bus", "DE steel", carrier="steel")
+
+    # hbi links
+    hbi_links = n.links[(n.links.carrier=="hbi") & (n.links.index.str.contains("DE"))].index
+    n.links.loc[hbi_links, "bus1"] = "DE steel"
+    n.links.loc[hbi_links, "bus2"] = "DE hbi"
+
+    # hbi generator
+    hbi_gen = n.generators.loc["EU import shipping-hbi"].copy()
+    hbi_gen.name = "DE import shipping-hbi"
+    hbi_gen.bus = "DE hbi"
+    n.add("Generator", name=hbi_gen.name, **hbi_gen)
+
+    # steel generator
+    steel_gen = n.generators.loc["EU import shipping-steel"].copy()
+    steel_gen.name = "DE import shipping-steel"
+    steel_gen.bus = "DE steel"
+    n.add("Generator", name=steel_gen.name, **steel_gen)
+
+    # steel links
+    steel_links = n.links[(n.links.carrier=="DRI + Electric arc") & (n.links.index.str.contains("DE"))].index
+    n.links.loc[steel_links, "bus1"] = "DE steel"
+    
+    # transport links
+    n.madd(
+        "Link",
+        ["EU steel -> DE steel", "DE steel -> EU steel"],
+        bus0=["EU steel", "DE steel"],
+        bus1=["DE steel", "EU steel"],
+        carrier="steel",
+        p_nom=1e6,
+        p_min_pu=0,
+    )
+    # steel load
+    DE_steel = industrial_production["DRI + Electric arc"].filter(like="DE1 ").sum() / nhours
+    n.add("Load", "DE steel", bus="DE steel", p_set=DE_steel)
+    n.loads.loc["EU steel", "p_set"] -= DE_steel
+    n.loads.rename(index={"EU steel": "EUminusDE steel"}, inplace=True)
+
+    ###
+    # add ammonia
+    logger.info("Unraveling ammonia import")
+    n.add("Bus", "DE NH3", carrier="NH3")
+
+    # add ammonia store
+    nh3_index = "EU NH3 ammonia store-" + snakemake.wildcards.planning_horizons
+    nh3_store = n.stores.loc[nh3_index].copy()
+    if ~nh3_store.empty:
+        nh3_store.name = "DE NH3 ammonia store-" + snakemake.wildcards.planning_horizons
+        nh3_store.bus = "DE NH3"
+        n.add("Store", name=nh3_store.name, **nh3_store)
+
+    # ammonia links
+    HB_links = n.links[(n.links.carrier=="Haber-Bosch") & (n.links.index.str.contains("DE"))].index
+    n.links.loc[HB_links, "bus1"] = "DE NH3"
+    crack_links = n.links[(n.links.carrier=="ammonia cracker") & (n.links.index.str.contains("DE"))].index
+    n.links.loc[crack_links, "bus0"] = "DE NH3"
+
+    # ammonia generator
+    nh3_gen = n.generators.loc["EU import shipping-lnh3"].copy()
+    nh3_gen.name = "DE import shipping-lnh3"
+    nh3_gen.bus = "DE NH3"
+    n.add("Generator", name=nh3_gen.name, **nh3_gen)
+
+    # transport links
+    n.madd(
+        "Link",
+        ["EU NH3 -> DE NH3", "DE NH3 -> EU NH3"],
+        bus0=["EU NH3", "DE NH3"],
+        bus1=["DE NH3", "EU NH3"],
+        carrier="NH3",
+        p_nom=1e6,
+        p_min_pu=0,
+    )
+    # add load
+    EU_ammonia = industrial_demand.loc[sectors_b, "ammonia"]
+    DE_ammonia = EU_ammonia.loc[EU_ammonia.index.get_level_values("node").str.startswith("DE1")].sum() / nhours
+    n.add("Load", "DE NH3 load", bus="DE NH3", p_set=DE_ammonia)
+    n.loads.loc["EU NH3", "p_set"] -= DE_ammonia
+    n.loads.rename(index={"EU NH3": "EUminusDE NH3"}, inplace=True)
+
+    ###
+    # add meoh
+    logger.info("Unraveling methanol import")
+
+    n.add("Bus", "DE shipping-meoh", carrier="methanol")
+    n.add("Bus", "DE methanol", carrier="methanol")
+    n.add("Bus", "DE HVC", carrier="HVC")
+
+    # add meoh store
+    meoh_store = n.stores.loc["EU methanol Store"].copy()
+    meoh_store.name = "DE methanol Store"
+    meoh_store.bus = "DE methanol"
+    n.add("Store", name=meoh_store.name, **meoh_store)
+
+    # meoh generator link
+    meoh_gen = n.links.loc["EU import shipping-meoh"].copy()
+    meoh_gen.name = "DE import shipping-meoh"
+    meoh_gen.bus0 = "DE shipping-meoh"
+    meoh_gen.bus1 = "DE methanol"
+    n.add("Link", name=meoh_gen.name, **meoh_gen)
+
+    # add meoh links
+    industry = n.links[(n.links.carrier=="industry methanol") & (n.links.index.str.contains("DE"))].index
+    n.links.loc[industry, "bus0"] = "DE methanol"
+
+    allam = n.links[(n.links.carrier=="allam methanol") & (n.links.index.str.contains("DE"))].index
+    n.links.loc[allam, "bus0"] = "DE methanol"
+
+    HVC = n.links[(n.links.carrier=="methanol-to-olefins/aromatics") & (n.links.index.str.contains("DE"))].index
+    n.links.loc[HVC, "bus0"] = "DE methanol"
+    n.links.loc[HVC, "bus1"] = "DE HVC"
+
+    CCGT = n.links[(n.links.carrier=="CCGT methanol") & (n.links.index.str.contains("DE"))].index
+    n.links.loc[CCGT, "bus0"] = "DE methanol"
+
+    CCGT_CC = n.links[(n.links.carrier=="CCGT methanol CC") & (n.links.index.str.contains("DE"))].index
+    n.links.loc[CCGT_CC, "bus0"] = "DE methanol"
+
+    OCGT = n.links[(n.links.carrier=="OCGT methanol") & (n.links.index.str.contains("DE"))].index
+    n.links.loc[OCGT, "bus0"] = "DE methanol"
+
+    aviation = n.links[(n.links.carrier=="methanol-to-kerosene") & (n.links.index.str.contains("DE"))].index
+    n.links.loc[aviation, "bus0"] = "DE methanol"
+
+    methanolisation = n.links[(n.links.carrier=="methanolisation") & (n.links.index.str.contains("DE")) & n.links.index.str[:-4] == snakemake.wildcards.planning_horizons].index
+    n.links.loc[methanolisation, "bus1"] = "DE methanol"
+
+    # transport links
+    n.madd(
+        "Link",
+        ["EU methanol -> DE methanol", "DE methanol -> EU methanol"],
+        bus0=["EU methanol", "DE methanol"],
+        bus1=["DE methanol", "EU methanol"],
+        carrier="methanol",
+        p_nom=1e6,
+        p_min_pu=0,
+    )
+    
+    # add load
+    # HVC demand
+    DE_HVC = HVC_demand_factor * industrial_production["HVC"].filter(like="DE1 ").sum() / nhours
+    n.add("Load", "DE HVC", bus="DE HVC", p_set=DE_HVC)
+    n.loads.loc["EU HVC", "p_set"] -= DE_HVC
+    n.loads.rename(index={"EU HVC": "EUminusDE HVC"}, inplace=True)
+
+    # global shipping information
+    options = snakemake.params.sector
+    domestic_navigation = (
+    pd.read_csv(snakemake.input.pop_weighted_energy_totals, index_col=0) * nyears
+    ).loc[:, "total domestic navigation"].squeeze()
+    international_navigation = pd.read_csv(snakemake.input.shipping_demand, index_col=0).squeeze() * nyears
+    shipping_demand = domestic_navigation + international_navigation
+    DE_shipping = shipping_demand.filter(like="DE").sum() * 1e6 / nhours
+    
+    # shipping meoh
+    if "EU methanol shipping methanol" in n.loads.index:
+        efficiency = (
+            options["shipping_oil_efficiency"] / options["shipping_methanol_efficiency"]
+        )
+        shipping_methanol_share = options["shipping_methanol_share"][int(snakemake.wildcards.planning_horizons)]
+
+        p_set_methanol = shipping_methanol_share * DE_shipping * efficiency
+
+        n.add("Load", "DE shipping methanol", bus="DE methanol", carrier="methanol" , p_set=p_set_methanol)
+        n.loads.loc["EU methanol shipping methanol", "p_set"] -= p_set_methanol
+
+        # CO2 intensity methanol based on stoichiometric calculation with 22.7 GJ/t methanol (32 g/mol), CO2 (44 g/mol), 277.78 MWh/TJ = 0.218 t/MWh
+        co2 = p_set_methanol * costs.at["methanolisation", "carbondioxide-input"]
+
+        n.add(
+            "Load",
+            "DE shipping methanol emissions",
+            bus="co2 atmosphere",
+            carrier="shipping methanol emissions",
+            p_set=-co2,
+        )
+        n.loads.loc["shipping methanol emissions", "p_set"] += co2
+
+    # industry meoh demand
+    EU_meoh = industrial_demand["methanol"]
+    DE_meoh = EU_meoh.loc[EU_meoh.index.get_level_values("node").str.startswith("DE1")].sum() / nhours
+    n.add("Load", "DE industry methanol", bus="DE methanol", p_set=DE_meoh)
+    n.loads.loc["EU industry methanol", "p_set"] -= DE_meoh
+    n.loads.rename(index={"EU industry methanol": "EUminusDE industry methanol"}, inplace=True)
+
+    ###
+    # add ft
+    logger.info("Unraveling Fischer-Tropsch import")
+
+    n.add("Bus", "DE shipping-ftfuel", carrier="ftfuel")
+    n.add("Bus", "DE ftfuel", carrier="ftfuel")
+
+    # add ft store
+    ft_store = n.stores.loc["EU import shipping-ftfuel store"].copy()
+    ft_store.name = "DE ftfuel Store"
+    ft_store.bus = "DE ftfuel"
+    n.add("Store", name=ft_store.name, **ft_store)
+
+    # ft generator link
+    ft_gen = n.links.loc["EU import shipping-ftfuel"].copy()
+    ft_gen.name = "DE import shipping-ftfuel"
+    ft_gen.bus0 = "DE shipping-ftfuel"
+    ft_gen.bus1 = "DE renewable oil"
+    n.add("Link", name=ft_gen.name, **ft_gen)
+
+    # oil shipping
+    if "EU oil shipping oil" in n.loads.index:
+        shipping_oil_share = options["shipping_oil_share"][int(snakemake.wildcards.planning_horizons)]
+
+        p_set_oil = shipping_oil_share * DE_shipping
+
+        n.add("Load", "DE shipping oil", bus="DE oil", carrier="oil", p_set=p_set_oil,)
+        n.loads.loc["EU oil shipping oil", "p_set"] -= p_set_oil
+
+        co2 = p_set_oil * costs.at["oil", "CO2 intensity"]
+
+        n.add("Load", "DE shipping oil emissions", bus="co2 atmosphere", carrier="shipping oil emissions", p_set=-co2)
+        n.loads.loc["shipping oil emissions", "p_set"] += co2
+    
+    # everything else is already taken care of in unravel_oilbus
 
 def transmission_costs_from_modified_cost_data(n, costs, transmission, length_factor=1.0):
     # copying the the function update_transmission_costs from add_electricity
@@ -355,10 +591,10 @@ if __name__ == "__main__":
             simpl="",
             clusters=22,
             opts="",
-            ll="v1.2",
-            sector_opts="365H-T-H-B-I-A-solar+p3-linemaxext15",
-            planning_horizons="2040",
-            run="KN2045_H2_v4"
+            ll="vopt",
+            sector_opts="none",
+            planning_horizons="2020",
+            run="KN2045_Bal_v4"
         )
 
     logger.info("Adding Ariadne-specific functionality")
@@ -388,6 +624,9 @@ if __name__ == "__main__":
 
     if not snakemake.config["run"]["debug_unravel_oilbus"]:
         unravel_oilbus(n)
+        industrial_demand = pd.read_csv(snakemake.input.industrial_demand, index_col=[0, 1]) * 1e6 * nyears
+        industrial_production = pd.read_csv(snakemake.input.industrial_production, index_col=0) * 1e3 * nyears  # kt/a -> t/a
+        unravel_import_carrier(n, industrial_demand, industrial_production)
 
     if snakemake.params.enable_kernnetz:
         fn = snakemake.input.wkn

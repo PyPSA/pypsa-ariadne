@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240605newdb
+  prefix: import-de
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -18,7 +18,7 @@ run:
     enable: true
     file: config/scenarios.automated.yaml
   shared_resources: 
-    policy: base #stops recalculating
+    policy: true #stops recalculating
     exclude:
       - existing_heating.csv # specify files which should not be shared between scenarios
       - costs
@@ -64,8 +64,8 @@ scenario:
   sector_opts:
     - none
   planning_horizons:
-  - 2020
-  - 2025
+  # - 2020
+  # - 2025
   - 2030
   - 2035
   - 2040
@@ -156,16 +156,6 @@ limits_capacity_min:
           2045: 400
           # What about the EEG2023 "Strommengenpfad"?
 
-h2_import_max:
-  DE:
-    2020: 0
-    2025: 5
-    2030: 20
-    2035: 50
-    2040: 100
-    2045: 150
-    2050: 200
-
 wasserstoff_kernnetz:
   enable: false
   reload_locations: false
@@ -198,7 +188,31 @@ costs:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
-  # solar_thermal: false
+  shipping: true
+  imp: true
+  import:
+    capacity_boost: 2 # p_nom_max generator
+    limit: false # bool or number in TWh
+    limit_sense: "=="
+    limit_non_eu_de: 200 # bool or number in TWh
+    limit_sens_non_eu_de: "=="
+    limit_eu_de: 300 # bool or number in TWh
+    limit_sens_eu_de: "<="
+    options:
+    - pipeline-h2: 1.0 # relative costs
+    - shipping-lh2: 1.0
+    - shipping-lch4: 1.0
+    - shipping-lnh3: 1.0
+    - shipping-ftfuel: 1.0
+    - shipping-meoh: 1.0
+    - hvdc-to-elec: 1.0
+    - shipping-hbi: 1.0
+    - shipping-steel: 1.0
+    p_nom_max:
+      pipeline-h2: .inf
+    endogenous_hvdc_import:
+      enable: true
+  solar_thermal: false
   district_heating:
     potential: 0.4
     progress:
@@ -216,7 +230,7 @@ sector:
   #TBD what to include in config
   #relax so no infeasibility in 2050 with no land transport demand
   min_part_load_fischer_tropsch: 0.
-  regional_methanol_demand: true  #set to true if regional CO2 constraints needed
+  regional_methanol_demand: false  #set to true if regional CO2 constraints needed
   regional_oil_demand: true  #set to true if regional CO2 constraints needed
   regional_coal_demand: true  #set to true if regional CO2 constraints needed
   gas_network: true
@@ -235,43 +249,7 @@ sector:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#industry
 industry:
-  ammonia: false
-  St_primary_fraction:
-    2020: 0.6
-    2025: 0.55
-    2030: 0.5
-    2035: 0.45
-    2040: 0.4
-    2045: 0.35
-    2050: 0.3
-#HVC primary/recycling based on values used in Neumann et al https://doi.org/10.1016/j.joule.2023.06.016, linearly interpolated between 2020 and 2050
-#2020 recycling rates based on Agora https://static.agora-energiewende.de/fileadmin/Projekte/2021/2021_02_EU_CEAP/A-EW_254_Mobilising-circular-economy_study_WEB.pdf
-#fractions refer to the total primary HVC production in 2020
-#assumes 6.7 Mtplastics produced from recycling in 2020
-  HVC_primary_fraction:
-    2020: 1.0
-    2025: 0.9
-    2030: 0.8
-    2035: 0.7
-    2040: 0.6
-    2045: 0.5
-    2050: 0.4
-  HVC_mechanical_recycling_fraction:
-    2020: 0.12
-    2025: 0.15
-    2030: 0.18
-    2035: 0.21
-    2040: 0.24
-    2045: 0.27
-    2050: 0.30
-  HVC_chemical_recycling_fraction:
-    2020: 0.0
-    2025: 0.0
-    2030: 0.04
-    2035: 0.08
-    2040: 0.12
-    2045: 0.16
-    2050: 0.20
+  ammonia: true
   HVC_environment_sequestration_fraction:
     2020: 0.1
     2025: 0.1
@@ -290,11 +268,11 @@ solving:
   mem_mb: 40000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
   options:
     load_shedding: false
-    skip_iterations: false # settings for post-discretization: false
+    skip_iterations: true # settings for post-discretization: false
     min_iterations: 1 # settings for post-discretization: 1
     max_iterations: 1 # settings for post-discretization: 1
     post_discretization:
-      enable: true
+      enable: false
       line_unit_size: 1700
       line_threshold: 0.3
       link_unit_size:
@@ -345,10 +323,6 @@ electricity:
   custom_file: resources/german_chp.csv
 
 pypsa_eur:
-  Bus:
-  - AC
-  Link:
-  - DC
   Generator:
   - onwind
   - offwind-ac
@@ -357,10 +331,6 @@ pypsa_eur:
   - solar-hsat
   - solar
   - ror
-  StorageUnit:
-  - PHS
-  - hydro
-  Store: []
 
 
 co2_price_add_on_fossils:
