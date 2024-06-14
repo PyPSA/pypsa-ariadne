@@ -1013,7 +1013,7 @@ def get_primary_energy(n, region):
     return var
 
 
-def get_secondary_energy(n, region):
+def get_secondary_energy(n, region, _industry_demand):
     kwargs = {
         'groupby': n.statistics.groupers.get_name_bus_and_carrier,
         'nice_names': False,
@@ -1286,7 +1286,7 @@ def get_secondary_energy(n, region):
     )
 
     total_oil_fuel_usage = oil_fuel_usage.sum()
-
+    var["Secondary Energy|Liquids|Fossil"] = \
     var["Secondary Energy|Liquids|Oil"] = \
         total_oil_fuel_usage * oil_fossil_fraction
     var["Secondary Energy|Liquids|Hydrogen"] = \
@@ -1368,6 +1368,18 @@ def get_secondary_energy(n, region):
         gas_fuel_usage.sum()
     )
 
+
+    industry_demand = _industry_demand.filter(
+        like=region, axis=0,
+    ).sum()
+    mwh_coal_per_mwh_coke = 1.366 
+    # Coke is added as a coal demand, so we need to convert back to units of coke for secondary energy
+    var["Secondary Energy|Solids|Coal"] = \
+    var["Secondary Energy|Solids"] = \
+        industry_demand.get("coke", 0) / mwh_coal_per_mwh_coke 
+
+
+
     electricity_withdrawal = n.statistics.withdrawal(
         bus_carrier=["low voltage", "AC"], **kwargs
     ).filter(like=region).groupby(
@@ -1403,6 +1415,7 @@ def get_secondary_energy(n, region):
         + var["Secondary Energy|Hydrogen"]
         + var["Secondary Energy|Gases"]
         + var["Secondary Energy|Liquids"]
+        + var["Secondary Energy|Solids"]
         + var["Secondary Energy|Methanol"]
     )
     
@@ -1613,8 +1626,11 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
     var["Final Energy|Industry excl Non-Energy Use|Solids|Biomass"] = \
         var["Final Energy|Industry|Solids|Biomass"]
     
+    mwh_coal_per_mwh_coke = 1.366
+    # Coke is added as a coal demand, so we need to convert back to units of coke for final energy
     var["Final Energy|Industry|Solids|Coal"] = \
-        industry_demand.get(["coal", "coke"]).sum()
+        industry_demand.get("coal") + \
+        industry_demand.get("coke") / mwh_coal_per_mwh_coke
     var["Final Energy|Industry excl Non-Energy Use|Solids|Coal"] = \
         var["Final Energy|Industry|Solids|Coal"]
     
@@ -3287,7 +3303,7 @@ def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
         #get_capacity_additions_nstat(n, region),
         get_production(region, year),
         get_primary_energy(n, region),
-        get_secondary_energy(n, region),
+        get_secondary_energy(n, region, industry_demand),
         get_final_energy(n, region, industry_demand, energy_totals, year),
         get_prices(n,region), 
         get_emissions(n, region, energy_totals),
