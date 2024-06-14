@@ -4,21 +4,21 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240613scenariosredefined
+  prefix: dirty_hot_transport_fix
   name:
-  - CurrentPolicies
+  # - CurrentPolicies
   - KN2045_Bal_v4
-  - KN2045_Elec_v4
-  - KN2045_H2_v4
-  - KN2045plus_EasyRide
-  - KN2045plus_LowDemand
-  - KN2045minus_WorstCase
-  - KN2045minus_SupplyFocus
+  # - KN2045_Elec_v4
+  # - KN2045_H2_v4
+  # - KN2045plus_EasyRide
+  # - KN2045plus_LowDemand
+  # - KN2045minus_WorstCase
+  # - KN2045minus_SupplyFocus
   scenarios:
     enable: true
     file: config/scenarios.automated.yaml
   shared_resources: 
-    policy: base #stops recalculating
+    policy: true #stops recalculating
     exclude:
       - existing_heating.csv # specify files which should not be shared between scenarios
       - costs
@@ -257,6 +257,7 @@ sector:
     2040: 0.29
     2045: 0.36
     2050: 0.43
+  transport_ice_efficiency: 10.637 # 1 MWh_oil = 10.637 * 100 km
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#industry
 industry:
