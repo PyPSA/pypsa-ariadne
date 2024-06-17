@@ -175,7 +175,7 @@ def get_investments(n, costs, region):
     def _f(**kwargs):
         return n.statistics.optimal_capacity(**kwargs).sub(
             n.statistics.installed_capacity(**kwargs), fill_value=0)
-    return _get_capacities(n, region, _f, cap_string="Investments|", costs=costs)
+    return _get_capacities(n, region, _f, cap_string="Investment|", costs=costs)
 
 
 def get_capacity_additions_nstat(n, region):
@@ -214,9 +214,9 @@ costs_dict = {
     'rural ground heat pump': 'decentral ground-sourced heat pump',
     'rural resistive heater': 'decentral resistive heater',
     'rural solar thermal': 'decentral solar thermal',
-    'solar': 'solar-utility', # TODO add grid connection cost
-    'solar rooftop': 'solar-rooftop', # TODO add grid connection cost
-    'solar-hsat': 'solar-utility single-axis tracking', # TODO add grid connection cost
+    'solar': 'solar-utility', 
+    'solar rooftop': 'solar-rooftop', 
+    'solar-hsat': 'solar-utility single-axis tracking',
     'solid biomass': 'central solid biomass CHP',
     'urban central air heat pump': 'central air-sourced heat pump',
     'urban central coal CHP': 'central coal CHP',
@@ -274,12 +274,23 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
         errors="ignore",
     )
 
-    if cap_string.startswith("Investments"):
-        technology_investments = [
-            0 if costs_dict.get(key) is None else
-             costs.at[costs_dict.get(key), "investment"] 
-             for key in capacities_electricity.index] 
-        
+    if cap_string.startswith("Investment"):
+        technology_investments = pd.Series(
+            [
+                0 if costs_dict.get(key) is None else
+                costs.at[costs_dict.get(key), "investment"] 
+                for key in capacities_electricity.index
+            ],
+            capacities_electricity.index
+        )
+        for carrier in ["onwind", "solar", "solar-hsat"]:
+            technology_investments[carrier] += \
+                costs.at["electricity grid connection", "investment"]
+            
+        for carrier in ["offwind-ac", "offwind-dc", "offwind-float"]:
+            technology_investments[carrier] = 0.0 # TODO add grid connection cost
+        #     apply update_wind_solar_costs(n, costs)
+
         capacities_electricity = \
             capacities_electricity.div(5).multiply(technology_investments)
     else:
