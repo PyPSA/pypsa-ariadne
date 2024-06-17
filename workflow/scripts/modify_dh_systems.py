@@ -73,7 +73,7 @@ def update_urban_loads_de(egon_gdf, n_pre):
         axis=1,
     )
 
-    # Calculate nodel DH shares according to households and modify index
+    # Calculate nodal DH shares according to households and modify index
     egon_gdf_clustered = egon_gdf.groupby("cluster").sum(numeric_only=True)
     nodal_dh_shares = egon_gdf_clustered["District heating"] / egon_gdf_clustered.drop(
         "pop", axis=1
@@ -123,18 +123,20 @@ def update_urban_loads_de(egon_gdf, n_pre):
         inplace=True
     )  # To deal with shape anomaly described in https://github.com/PyPSA/pypsa-eur/issues/1100
 
-    # Update urban heat loads
+    # Update urban heat loads changing distribution and restoring old scale
     old_uc_loads = n.loads_t.p_set.filter(regex="DE.*urban central heat")
     new_uc_loads = (
         n.loads_t.p_set.filter(regex="DE.*urban central heat") * scaling_factor
     )
+    restore_scalar = new_uc_loads.sum().sum() / old_uc_loads.sum().sum()
+    new_uc_loads = new_uc_loads / restore_scalar
     diff_update = new_uc_loads - old_uc_loads
     diff_update.columns = diff_update.columns.str.replace("central", "decentral")
 
     n_pre.loads_t.p_set[new_uc_loads.columns] = new_uc_loads
     n_pre.loads_t.p_set[diff_update.columns] -= diff_update
 
-    return n_pre
+    return
 
 
 def prepare_subnodes_de(egon_gdf):
