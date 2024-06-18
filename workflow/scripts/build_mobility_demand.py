@@ -17,7 +17,7 @@ def get_aladin_data():
         snakemake.params.reference_scenario,
         "Deutschland",
         :,
-        "PJ/yr"]
+        :,]
     year = snakemake.wildcards.planning_horizons
 
     subsectors = ["Bus", "LDV", "Rail", "Truck"]
@@ -28,7 +28,10 @@ def get_aladin_data():
     for fuel in fuels:
         for subsector in subsectors:
             key = f"Final Energy|Transportation|{subsector}|{fuel}"
-            transport_demand.loc[fuel] += db.loc[key, year]
+            transport_demand.loc[fuel] += db.loc[key, year].iloc[0]
+    
+    transport_demand.div(3.6e-6) # convert PJ to MWh
+    transport_demand["number_of_cars"] = db.loc["Stock|Transportation|LDV|BEV", year].iloc[0]
 
     return transport_demand
 
@@ -43,6 +46,7 @@ if __name__ == "__main__":
 
         snakemake = mock_snakemake(
             "build_mobility_demand",
+            simpl="",
             clusters=22,
             opts="",
             ll="vopt",
@@ -61,7 +65,5 @@ if __name__ == "__main__":
     pop_layout = pop_layout[pop_layout.ct == "DE"].fraction
 
     mobility_demand = pd.DataFrame(pop_layout.values[:, None] * aladin.values, index=pop_layout.index, columns=aladin.index)
-
-    mobility_demand.div(3.6e-6) # convert PJ to MWh
 
     mobility_demand.to_csv(snakemake.output.mobility_demand)
