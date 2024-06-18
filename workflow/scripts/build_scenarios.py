@@ -18,19 +18,7 @@ def get_transport_growth(df, planning_horizons):
     aviation = df.loc[aviation_model,"Final Energy|Bunkers|Aviation", "PJ/yr"]
     aviation_growth_factor = aviation / aviation[2020]
 
-    # Transport growth factor - using REMIND until Aladin v1 uploads variables
-    transport_model = "REMIND-EU v1.1"
-    freight = df.loc[transport_model, "Energy Service|Transportation|Freight|Road", "bn tkm/yr"]
-    person = df.loc[transport_model, "Energy Service|Transportation|Passenger|Road", "bn pkm/yr"]
-    freight_PJ = df.loc[transport_model, "Final Energy|Transportation|Truck", "PJ/yr"]
-    person_PJ = df.loc[transport_model, "Final Energy|Transportation|LDV", "PJ/yr"]
-    
-    transport_growth_factor = pd.Series()
-    for year in planning_horizons:
-        share = (person_PJ[year] / (person_PJ[year] + freight_PJ[year]))
-        transport_growth_factor.loc[year] = share * (person[year] / person[2020]) + (1 - share) * (freight[year] / freight[2020])
-
-    return aviation_growth_factor[planning_horizons], transport_growth_factor
+    return aviation_growth_factor[planning_horizons]
 
 
 def get_primary_steel_share(df, planning_horizons):
@@ -130,15 +118,13 @@ def write_to_scenario_yaml(
         
         planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045] # for 2050 we still need data
         
-        aviation_demand_factor, land_transport_demand_factor = get_transport_growth(df.loc[:, fallback_reference_scenario, :], planning_horizons)
+        aviation_demand_factor = get_transport_growth(df.loc[:, fallback_reference_scenario, :], planning_horizons)
 
         config[scenario]["sector"] = {}
         
-        config[scenario]["sector"]["land_transport_demand_factor"] = {}
         config[scenario]["sector"]["aviation_demand_factor"] = {}
         for year in planning_horizons:
             config[scenario]["sector"]["aviation_demand_factor"][year] = round(aviation_demand_factor.loc[year].item(), 4)
-            config[scenario]["sector"]["land_transport_demand_factor"][year] = round(land_transport_demand_factor.loc[year].item(), 4)
 
         st_primary_fraction = get_primary_steel_share(df.loc[:, reference_scenario, :], planning_horizons)
         
