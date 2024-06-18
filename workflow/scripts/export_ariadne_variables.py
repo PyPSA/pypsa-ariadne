@@ -901,7 +901,7 @@ def get_primary_energy(n, region):
         renewable_electricity.filter(like="wind").sum()
 
     assert isclose(
-        renewable_electricity.sum(),
+        renewable_electricity.sum() - solar_thermal_heat,
         (
             var["Primary Energy|Hydro"] 
             + var["Primary Energy|Solar"] 
@@ -2411,8 +2411,8 @@ def get_prices(n, region):
     var["Price|Secondary Energy|Gases|Natural Gas"] = \
         costs_gen_generators(n, region ,"gas")[0] / MWh2GJ
 
-    var["Price|Secondary Energy|Gases|Hydrogen"] = \
-        costs_gen_links(n, region, "Sabatier")[0] / MWh2GJ
+    # var["Price|Secondary Energy|Gases|Hydrogen"] = \
+    #     costs_gen_links(n, region, "Sabatier")[0] / MWh2GJ
 
     var["Price|Secondary Energy|Gases|Biomass"] = \
         get_weighted_costs_links(
@@ -3131,7 +3131,7 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts="None",
-            run="KN2045_Bal_v4"
+            run="CurrentPolicies"
         )
 
 

@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240610highSpatialConfig
+  prefix: 20240617-noDisc-74cl-780sn
   name:
   - CurrentPolicies
   - KN2045_Bal_v4
@@ -58,7 +58,7 @@ scenario:
   ll:
   - vopt
   clusters:
-  - 22 #current options: 22, 44
+  - 74 #current options: 22, 44, 74
   opts:
   - ''
   sector_opts:
@@ -87,21 +87,21 @@ enable:
 clustering:
   # simplify_network:
   #   to_substations: true
-  focus_weights:
-  # 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
-    'DE': 0.3636 # 8/22
-    'AT': 0.0455 # 1/22
-    'BE': 0.0455
-    'CH': 0.0455
-    'CZ': 0.0455
-    'DK': 0.0909 # 2/22
-    'FR': 0.0454
-    'GB': 0.0909 # 2/22
-    'LU': 0.0454
-    'NL': 0.0454
-    'NO': 0.0454
-    'PL': 0.0454
-    'SE': 0.0454
+  # focus_weights:
+  # # 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
+  #   'DE': 0.3636 # 8/22
+  #   'AT': 0.0455 # 1/22
+  #   'BE': 0.0455
+  #   'CH': 0.0455
+  #   'CZ': 0.0455
+  #   'DK': 0.0909 # 2/22
+  #   'FR': 0.0454
+  #   'GB': 0.0909 # 2/22
+  #   'LU': 0.0454
+  #   'NL': 0.0454
+  #   'NO': 0.0454
+  #   'PL': 0.0454
+  #   'SE': 0.0454
 # # high spatial resolution: change clusters to 44
 #   focus_weights:
 #   # 44 nodes: 30 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn" (high spatial)  
@@ -118,8 +118,24 @@ clustering:
 #     'NO': 0.0227 
 #     'PL': 0.0227 
 #     'SE': 0.0227 
+# very high spatial resolution: change clusters to 74
+  focus_weights:
+  # 74 nodes: 60 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn" (high spatial)  
+    'DE': 0.8108 # 60/74 
+    'AT': 0.0135 # 1/74 
+    'BE': 0.0135 
+    'CH': 0.0135 
+    'CZ': 0.0135 
+    'DK': 0.0270 # 2/74 
+    'FR': 0.0135 
+    'GB': 0.0270 
+    'LU': 0.0135 
+    'NL': 0.0135 
+    'NO': 0.0135 
+    'PL': 0.0135 
+    'SE': 0.0135     
   temporal:
-    resolution_sector: 365H
+    resolution_sector: 780sn
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:
@@ -239,7 +255,7 @@ costs:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
-  # solar_thermal: false
+  solar_thermal: false
   district_heating:
     potential: 0.4
     progress:
@@ -327,8 +343,8 @@ industry:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
 solving:
-  runtime: 12h
-  mem_mb: 70000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
+  runtime: 30h
+  mem_mb: 400000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
   options:
     assign_all_duals: true
     load_shedding: false
@@ -338,7 +354,7 @@ solving:
     post_discretization:
       enable: true
       line_unit_size: 1700
-      line_threshold: 0.3
+      line_threshold: 0
       link_unit_size:
         DC: 2000
         gas pipeline: 1500
@@ -347,12 +363,12 @@ solving:
         H2 pipeline (Kernnetz): 1200
         H2 pipeline retrofitted: 1200
       link_threshold:
-        DC: 0.3
-        gas pipeline: 0.3
-        gas pipeline new: 0.3
-        H2 pipeline: 0.3
-        H2 pipeline (Kernnetz): 0.3
-        H2 pipeline retrofitted: 0.3
+        DC: 0
+        gas pipeline: 0
+        gas pipeline new: 0
+        H2 pipeline: 0
+        H2 pipeline (Kernnetz): 0
+        H2 pipeline retrofitted: 0
   # solver:
   #   options: gurobi-numeric-focus
   # solver_options:
