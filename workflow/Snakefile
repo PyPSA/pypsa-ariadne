@@ -129,6 +129,22 @@ rule modify_cost_data:
 if config["enable"]["retrieve"] and config["enable"].get("retrieve_cost_data", True):
     ruleorder: modify_cost_data > retrieve_cost_data
 
+
+rule build_mobility_demand:
+    params:
+        reference_scenario=config_provider("iiasa_database", "reference_scenario"),
+        planning_horizons=config_provider("scenario", "planning_horizons"),
+    input:
+        ariadne=resources("ariadne_database.csv"),
+        clustered_pop_layout=resources("pop_layout_elec_s{simpl}_{clusters}.csv"),
+    output:
+        mobility_demand=resources("mobility_demand_aladin_{planning_horizons}.csv"),
+    resources:
+        mem_mb=1000
+    script:
+        "scripts/build_mobility_demand.py"
+
+
 rule modify_prenetwork:
     params:
         enable_kernnetz=config_provider("wasserstoff_kernnetz", "enable"),
