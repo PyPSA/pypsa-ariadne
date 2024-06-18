@@ -12,40 +12,6 @@ from pathlib import Path
 import pandas as pd
 import os
 
-def get_transport_shares(df, planning_horizons):
-    # Get share of vehicles for transport sector - neglecting heavy duty vehicles
-    total_transport = df.loc["Aladin v1", "Stock|Transportation|LDV"]
-    tech_transport = df.loc["Aladin v1"].loc[[ 
-        "Stock|Transportation|LDV|ICE",
-        "Stock|Transportation|LDV|BEV",
-        "Stock|Transportation|LDV|PHEV",
-    ]]
-
-    transport_share = tech_transport / total_transport
-    transport_share = transport_share[planning_horizons]
-    transport_share.set_index(pd.Index(["ICE", "BEV", "PHEV"]), inplace=True)
-
-    # Get share of Navigation fuels from corresponding "Ariadne Leitmodell"
-    total_navigation = \
-        df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation"] + \
-        df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation"]
-    navigation_liquid = \
-        df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation|Liquids"] + \
-        df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation|Liquids"]
-    
-    navigation_h2 = df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation|Hydrogen"]    
-
-    h2_share = navigation_h2 / total_navigation
-    liquid_share = navigation_liquid / total_navigation
-    methanol_share = (1 - h2_share - liquid_share).round(6)
-    
-    naval_share = pd.concat(
-            [liquid_share, h2_share, methanol_share]).set_index(
-            pd.Index(["Oil", "H2", "MeOH"])
-        )[planning_horizons]
-
-    return transport_share, naval_share
-
 def get_transport_growth(df, planning_horizons):
     # Aviation growth factor - using REMIND-EU v1.1 since Aladin v1 does not include bunkers
     aviation_model = "REMIND-EU v1.1"
@@ -163,35 +129,11 @@ def write_to_scenario_yaml(
         )
         
         planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045] # for 2050 we still need data
-
-        transport_share, naval_share = get_transport_shares(
-            df.loc[:, fallback_reference_scenario, :],
-            planning_horizons,
-        )
         
         aviation_demand_factor, land_transport_demand_factor = get_transport_growth(df.loc[:, fallback_reference_scenario, :], planning_horizons)
 
-        mapping_transport = {
-            'PHEV': 'land_transport_fuel_cell_share',
-            'BEV': 'land_transport_electric_share',
-            'ICE': 'land_transport_ice_share'
-        }
-        mapping_navigation = {
-            'H2': 'shipping_hydrogen_share',
-            'MeOH': 'shipping_methanol_share',
-            'Oil': 'shipping_oil_share',
-        }
-
         config[scenario]["sector"] = {}
-        for key, sector_mapping in mapping_transport.items():
-            config[scenario]["sector"][sector_mapping] = {}
-            for year in transport_share.columns:
-                config[scenario]["sector"][sector_mapping][year] = round(transport_share.loc[key, year].item(), 4)
-
-        for key, sector_mapping in mapping_navigation.items():
-            config[scenario]["sector"][sector_mapping] = {}
-            for year in naval_share.columns:
-                config[scenario]["sector"][sector_mapping][year] = round(naval_share.loc[key, year].item(), 4)
+        
         config[scenario]["sector"]["land_transport_demand_factor"] = {}
         config[scenario]["sector"]["aviation_demand_factor"] = {}
         for year in planning_horizons:
