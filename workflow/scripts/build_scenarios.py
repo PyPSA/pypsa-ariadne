@@ -4,7 +4,8 @@
 # SPDX-License-Identifier: MIT
 
 # This script reads in data from the IIASA database to create the scenario.yaml file
-
+import logging
+logger = logging.getLogger(__name__)
 
 import ruamel.yaml
 from pathlib import Path
@@ -13,8 +14,8 @@ import os
 
 def get_transport_shares(df, planning_horizons):
     # Get share of vehicles for transport sector - neglecting heavy duty vehicles
-    total_transport = df.loc["DEMO v1", "Stock|Transportation|LDV"]
-    tech_transport = df.loc["DEMO v1"].loc[[ 
+    total_transport = df.loc["Aladin v1", "Stock|Transportation|LDV"]
+    tech_transport = df.loc["Aladin v1"].loc[[ 
         "Stock|Transportation|LDV|ICE",
         "Stock|Transportation|LDV|BEV",
         "Stock|Transportation|LDV|PHEV",
@@ -27,12 +28,12 @@ def get_transport_shares(df, planning_horizons):
     # Get share of Navigation fuels from corresponding "Ariadne Leitmodell"
     total_navigation = \
         df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation"] + \
-        df.loc["DEMO v1", "Final Energy|Transportation|Domestic Navigation"]
+        df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation"]
     navigation_liquid = \
         df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation|Liquids"] + \
-        df.loc["DEMO v1", "Final Energy|Transportation|Domestic Navigation|Liquids"]
+        df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation|Liquids"]
     
-    navigation_h2 = df.loc["DEMO v1", "Final Energy|Transportation|Domestic Navigation|Hydrogen"]    
+    navigation_h2 = df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation|Hydrogen"]    
 
     h2_share = navigation_h2 / total_navigation
     liquid_share = navigation_liquid / total_navigation
@@ -46,13 +47,13 @@ def get_transport_shares(df, planning_horizons):
     return transport_share, naval_share
 
 def get_transport_growth(df, planning_horizons):
-    # Aviation growth factor - using REMIND-EU v1.1 since DEMO v1 does not include bunkers
+    # Aviation growth factor - using REMIND-EU v1.1 since Aladin v1 does not include bunkers
     aviation_model = "REMIND-EU v1.1"
     aviation = df.loc[aviation_model,"Final Energy|Bunkers|Aviation", "PJ/yr"]
     aviation_growth_factor = aviation / aviation[2020]
 
-    # Transport growth factor - using DEMO v1
-    transport_model = "DEMO v1"
+    # Transport growth factor - using REMIND until Aladin v1 uploads variables
+    transport_model = "REMIND-EU v1.1"
     freight = df.loc[transport_model, "Energy Service|Transportation|Freight|Road", "bn tkm/yr"]
     person = df.loc[transport_model, "Energy Service|Transportation|Passenger|Road", "bn pkm/yr"]
     freight_PJ = df.loc[transport_model, "Final Energy|Transportation|Truck", "PJ/yr"]
@@ -74,58 +75,70 @@ def get_primary_steel_share(df, planning_horizons):
     
     primary_steel_share = primary_steel / total_steel
     primary_steel_share = primary_steel_share[planning_horizons]
+
+    if model == "FORECAST v1.0" and planning_horizons[0] == 2020:
+        logger.warning("FORECAST v1.0 does not have data for 2020. Using 2021 data for Production|Steel instead.")
+        primary_steel_share[2020] = primary_steel[2021] / total_steel[2021]
+
     
     return primary_steel_share.set_index(pd.Index(["Primary_Steel_Share"]))
 
-def get_ksg_targets(df):
+def get_co2_budget(df, source):
     # relative to the DE emissions in 1990 *including bunkers*; also
     # account for non-CO2 GHG and allow extra room for international
     # bunkers which are excluded from the national targets
 
     # Baseline emission in DE in 1990 in Mt as understood by the KSG and by PyPSA
-    baseline_ksg = 1251
+    baseline_co2 = 1251
     baseline_pypsa = 1052
+    if source == "KSG":
+        ## GHG targets according to KSG
+        initial_years_co2 = pd.Series(
+            index = [2020, 2025, 2030],
+            data = [813, 643, 438],
+        )
 
-    ## GHG targets according to KSG
-    initial_years_ksg = pd.Series(
-        index = [2020, 2025, 2030],
-        data = [813, 643, 438],
-    )
+        later_years_co2 = pd.Series(
+            index = [2035, 2040, 2045, 2050],
+            data = [0.77, 0.88, 1.0, 1.0],
+        )
 
-    later_years_ksg = pd.Series(
-        index = [2035, 2040, 2045, 2050],
-        data = [0.77, 0.88, 1.0, 1.0],
-    )
-
-    targets_ksg = pd.concat(
-        [initial_years_ksg, (1 - later_years_ksg) * baseline_ksg],
-    )
-
+        targets_co2 = pd.concat(
+            [initial_years_co2, (1 - later_years_co2) * baseline_co2],
+        )
+    elif source == "UBA":
+        ## For Zielverfehlungsszenarien use UBA Projektionsbericht
+        targets_co2 = pd.Series(
+            index = [2020, 2025, 2030, 2035, 2040, 2045, 2050],
+            data = [813, 655, 455, 309, 210, 169, 157],
+        )
+    else:
+        raise ValueError("Invalid source for CO2 budget.")
     ## Compute nonco2 from Ariadne-Leitmodell (REMIND)
 
-    co2_ksg = (
+    co2 = (
         df.loc["Emissions|CO2 incl Bunkers","Mt CO2/yr"]  
         - df.loc["Emissions|CO2|Land-Use Change","Mt CO2-equiv/yr"]
         - df.loc["Emissions|CO2|Energy|Demand|Bunkers","Mt CO2/yr"]
     )
 
-    ghg_ksg = (
+    ghg = (
         df.loc["Emissions|Kyoto Gases","Mt CO2-equiv/yr"]
         - df.loc["Emissions|Kyoto Gases|Land-Use Change","Mt CO2-equiv/yr"]
         # No Kyoto Gas emissions for Bunkers recorded in Ariadne DB
     )
 
-    nonco2 = ghg_ksg - co2_ksg
+    nonco2 = ghg - co2
 
     ## PyPSA disregards nonco2 GHG emissions, but includes bunkers
 
     targets_pypsa = (
-        targets_ksg - nonco2 
+        targets_co2 - nonco2 
         + df.loc["Emissions|CO2|Energy|Demand|Bunkers","Mt CO2/yr"]
     )
 
     target_fractions_pypsa = (
-        targets_pypsa.loc[targets_ksg.index] / baseline_pypsa
+        targets_pypsa.loc[targets_co2.index] / baseline_pypsa
     )
 
     return target_fractions_pypsa.round(3)
@@ -139,24 +152,24 @@ def write_to_scenario_yaml(
     config = yaml.load(file_path)
     for scenario in scenarios:
         reference_scenario = config[scenario]["iiasa_database"]["reference_scenario"]
-        if scenario == "CurrentPolicies":
-            ksg_target_fractions = get_ksg_targets(
-                df.loc["REMIND-EU v1.1", "8Gt_Bal_v3"]
-            )
-            ksg_target_fractions[[2035, 2040, 2045]] = ksg_target_fractions[2030]
-        else:
-            ksg_target_fractions = get_ksg_targets(
-                df.loc["REMIND-EU v1.1", reference_scenario]
-            )
+        fallback_reference_scenario = config[scenario]["iiasa_database"]["fallback_reference_scenario"]
+        if reference_scenario == "KN2045plus_EasyRide":
+            fallback_reference_scenario = reference_scenario
+        co2_budget_source = config[scenario]["co2_budget_DE_source"]
 
+        co2_budget_fractions = get_co2_budget(
+            df.loc["REMIND-EU v1.1", fallback_reference_scenario],
+            co2_budget_source
+        )
+        
         planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045] # for 2050 we still need data
 
         transport_share, naval_share = get_transport_shares(
-            df.loc[:, reference_scenario, :],
+            df.loc[:, fallback_reference_scenario, :],
             planning_horizons,
         )
         
-        aviation_demand_factor, land_transport_demand_factor = get_transport_growth(df.loc[:, reference_scenario, :], planning_horizons)
+        aviation_demand_factor, land_transport_demand_factor = get_transport_growth(df.loc[:, fallback_reference_scenario, :], planning_horizons)
 
         mapping_transport = {
             'PHEV': 'land_transport_fuel_cell_share',
@@ -192,10 +205,9 @@ def write_to_scenario_yaml(
         for year in st_primary_fraction.columns:
             config[scenario]["industry"]["St_primary_fraction"][year] = round(st_primary_fraction.loc["Primary_Steel_Share", year].item(), 4)
         config[scenario]["co2_budget_national"] = {}
-        for year, target in ksg_target_fractions.items():
+        for year, target in co2_budget_fractions.items():
             config[scenario]["co2_budget_national"][year] = {}
-            target_value = float(ksg_target_fractions[2030]) if year > 2030 and scenario == "CurrentPolicies" else target
-            config[scenario]["co2_budget_national"][year]["DE"] = target_value
+            config[scenario]["co2_budget_national"][year]["DE"] = target
 
     # write back to yaml file
     yaml.dump(config, Path(output))
@@ -225,7 +237,7 @@ if __name__ == "__main__":
         :,
         "Deutschland"]
     
-    scenarios = snakemake.params.scenario_name
+    scenarios = snakemake.params.scenarios
 
     input = snakemake.input.scenario_yaml
     output = snakemake.output.scenario_yaml

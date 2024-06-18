@@ -4,40 +4,47 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 240507downstreamEmissions
+  prefix: 20240613scenariosredefined
   name:
-  #- CurrentPolicies
-   - KN2045_Bal_v4
-  # - KN2045_Elec_v4
-  # - KN2045_H2_v4
-  # - KN2045plus_EasyRide
-  # - KN2045plus_LowDemand
-  # - KN2045minus_WorstCase
-  # - KN2045minus_SupplyFocus
+  - CurrentPolicies
+  - KN2045_Bal_v4
+  - KN2045_Elec_v4
+  - KN2045_H2_v4
+  - KN2045plus_EasyRide
+  - KN2045plus_LowDemand
+  - KN2045minus_WorstCase
+  - KN2045minus_SupplyFocus
   scenarios:
     enable: true
     file: config/scenarios.automated.yaml
-  shared_resources: true #stops recalculating
+  shared_resources: 
+    policy: base #stops recalculating
+    exclude:
+      - existing_heating.csv # specify files which should not be shared between scenarios
+      - costs
+      - retrieve_cost # This is necessary to save retrieve_cost_data_{year}.log in the correct folder
   disable_progressbar: true
   debug_co2_limit: false
   debug_h2deriv_limit: false
   debug_unravel_oilbus: false
 
 iiasa_database:
-  db_name: ariadne_intern
+  db_name: ariadne2_intern
   leitmodelle:
     - REMIND-EU v1.1
     - REMod v1.0
-    - TIMES PanEU v1.0
+    - Aladin v1
     - FORECAST v1.0
-    - DEMO v1
   scenarios:
-    # - CurrentPolicies
-    - Trend
-    - 8Gt_Bal_v3
-    - 8Gt_Elec_v3
-    - 8Gt_H2_v3
-  reference_scenario: 8Gt_Bal_v3
+    - CurrentPolicies
+    - KN2045_Elec_v4
+    - KN2045_H2_v4
+    - KN2045_Bal_v4
+    - KN2045plus_EasyRide
+    - KN2045plus_LowDemand
+    - KN2045minus_WorstCase
+    - KN2045minus_SupplyFocus
+  reference_scenario: KN2045_Bal_v4
   region: Deutschland
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
@@ -65,8 +72,8 @@ scenario:
   #- 2045
 
 existing_capacities:
-  grouping_years_power: [1895, 1920, 1950, 1955, 1960, 1965, 1970, 1975, 1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2019, 2024, 2029]
-  grouping_years_heat: [1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020] # heat grouping years >= baseyear will be ignored
+  grouping_years_power: [1920, 1950, 1955, 1960, 1965, 1970, 1975, 1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2020]
+  grouping_years_heat: [1980, 1985, 1990, 1995, 2000, 2005, 2010, 2015, 2019] # heat grouping years >= baseyear will be ignored
 
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
@@ -78,6 +85,8 @@ enable:
   retrieve: false # set to false once initial data is retrieved
   retrieve_cutout: false # set to false once initial data is retrieved
 clustering:
+  # simplify_network:
+  #   to_substations: true
   focus_weights:
   # 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
     'DE': 0.3636 # 8/22
@@ -106,36 +115,71 @@ co2_budget:
   2045: 0.050
   2050: 0.000 # climate-neutral by 2050
 
+limits_capacity_max:
+  Generator:
+    onwind:
+      DE:
+        2020: 54.5
+        2025: 69
+    offwind:
+      DE:
+        2020: 7.8
+        2025: 8
+    solar:
+      DE:
+        2020: 53.7
+        2025: 110 # EEG2023; assumes for 2026: 128 GW, assuming a fair share reached by end of 2025
+
 limits_capacity_min:
     Generator:
       onwind:
         DE:
-          2020: 48
-          2025: 61
           2030: 115 # Wind-an-Land Law
-          2035: 157 # Wind-an-Land Law
-          2040: 160 # Wind-an-Land Law
-          2045: 160
+          2035: 115 # Wind-an-Land Law
+          2040: 115 # Wind-an-Land Law
+          2045: 115
       offwind:
         DE:
-          2020: 7.77
-          2025: 8
           2030: 30 # Wind-auf-See Law
-          2035: 40 # 40 Wind-auf-See Law
-          # assuming at least 1/3 of difference reached in 2040
-          2040: 50
-          2045: 70 #70 Wind-auf-See Law
+          2035: 30 
+          2040: 30
+          2045: 30 
       solar:
         DE:
-          2020: 59
           # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW, 
           # assuming at least 1/3 of difference reached in 2025
           2025: 101 
-          2030: 215 # PV strategy
-          2035: 309
-          2040: 400 # PV strategy
-          2045: 400
-          # What about the EEG2023 "Strommengenpfad"?
+          2030: 101 
+          2035: 101
+          2040: 101 
+          2045: 101
+
+
+# limits_capacity_min:
+#     Generator:
+#       onwind:
+#         DE:
+#           2030: 115 # Wind-an-Land Law
+#           2035: 157 # Wind-an-Land Law
+#           2040: 160 # Wind-an-Land Law
+#           2045: 160
+#       offwind:
+#         DE:
+#           2030: 30 # Wind-auf-See Law
+#           2035: 40 # 40 Wind-auf-See Law
+#           # assuming at least 1/3 of difference reached in 2040
+#           2040: 50
+#           2045: 70 #70 Wind-auf-See Law
+#       solar:
+#         DE:
+#           # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW, 
+#           # assuming at least 1/3 of difference reached in 2025
+#           2025: 101 
+#           2030: 215 # PV strategy
+#           2035: 309
+#           2040: 400 # PV strategy
+#           2045: 400
+#           # What about the EEG2023 "Strommengenpfad"?
 
 h2_import_max:
   DE:
@@ -175,10 +219,11 @@ renewable:
     capacity_per_sqkm: 10
 
 costs:
-  version: v0.8.1
+  horizon: "mean" # "optimist", "pessimist" or "mean"
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
+  # solar_thermal: false
   district_heating:
     potential: 0.4
     progress:
@@ -215,6 +260,7 @@ sector:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#industry
 industry:
+  ammonia: false
   St_primary_fraction:
     2020: 0.6
     2025: 0.55
@@ -251,14 +297,46 @@ industry:
     2040: 0.12
     2045: 0.16
     2050: 0.20
+  HVC_environment_sequestration_fraction:
+    2020: 0.1
+    2025: 0.1
+    2030: 0.12
+    2035: 0.15
+    2040: 0.18
+    2045: 0.20
+    2050: 0.20
+  waste_to_energy: true
+  waste_to_energy_cc: true
 
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
 solving:
   runtime: 12h
-  mem_mb: 40000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
+  mem_mb: 70000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
   options:
+    assign_all_duals: true
     load_shedding: false
+    skip_iterations: false # settings for post-discretization: false
+    min_iterations: 1 # settings for post-discretization: 1
+    max_iterations: 1 # settings for post-discretization: 1
+    post_discretization:
+      enable: true
+      line_unit_size: 1700
+      line_threshold: 0.3
+      link_unit_size:
+        DC: 2000
+        gas pipeline: 1500
+        gas pipeline new: 1500
+        H2 pipeline: 1200
+        H2 pipeline (Kernnetz): 1200
+        H2 pipeline retrofitted: 1200
+      link_threshold:
+        DC: 0.3
+        gas pipeline: 0.3
+        gas pipeline new: 0.3
+        H2 pipeline: 0.3
+        H2 pipeline (Kernnetz): 0.3
+        H2 pipeline retrofitted: 0.3
   # solver:
   #   options: gurobi-numeric-focus
   # solver_options:
@@ -286,7 +364,11 @@ plotting:
     electricity: [AC, low_voltage]
 
 # overwrite in config.default.yaml
-powerplants_filter: (DateOut >= 2019 or DateOut != DateOut)
+#powerplants_filter: (DateOut >= 2019 or DateOut != DateOut)
+electricity:
+  powerplants_filter: (DateOut >= 2019 or DateOut != DateOut) and not (Country == "DE" and Set == "CHP")
+  custom_powerplants: True
+  custom_file: resources/german_chp.csv
 
 pypsa_eur:
   Bus:
@@ -297,9 +379,22 @@ pypsa_eur:
   - onwind
   - offwind-ac
   - offwind-dc
+  - offwind-float
+  - solar-hsat
   - solar
   - ror
   StorageUnit:
   - PHS
   - hydro
   Store: []
+
+
+co2_price_add_on_fossils:
+  2020: 25 
+  2025: 60
+  
+must_run_biomass:
+  enable: true
+  p_min_pu: 0.7 
+  regions: ['DE']
+
