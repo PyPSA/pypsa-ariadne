@@ -352,9 +352,16 @@ def aladin_mobility_demand(n):
     # normalize transport by the sum of each column
     rel_demand = transport.div(transport.sum(axis=0), axis=1)
     # aggregate rel_demand to n timesteps
-    aggregation_map = pd.Series(index=rel_demand.index).astype("datetime64[ns]")
-    for i in range(0, 8760, int(snakemake.params.clustering[:-1])):
-        aggregation_map.iloc[i:i+int(snakemake.params.clustering[:-1])] = rel_demand.index[i]
+    # aggregation_map = pd.Series(index=rel_demand.index).astype("datetime64[ns]")
+    # for i in range(0, 8760, int(snakemake.params.clustering[:-1])):
+    #     aggregation_map.iloc[i:i+int(snakemake.params.clustering[:-1])] = rel_demand.index[i]
+    aggregation_map = (
+            pd.Series(
+                n.snapshot_weightings.index.get_indexer(n.snapshots), index=n.snapshots
+            )
+            .astype(int)
+            .map(lambda i: n.snapshot_weightings.index[i])
+        )
 
     agg_rel = rel_demand.groupby(aggregation_map).sum()
 
@@ -415,7 +422,7 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts="none",
-            planning_horizons="2030",
+            planning_horizons="2020",
             run="KN2045_Bal_v4"
         )
 

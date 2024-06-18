@@ -30,7 +30,7 @@ def get_aladin_data():
             key = f"Final Energy|Transportation|{subsector}|{fuel}"
             transport_demand.loc[fuel] += db.loc[key, year].iloc[0]
     
-    transport_demand.div(3.6e-6) # convert PJ to MWh
+    transport_demand = transport_demand.div(3.6e-6) # convert PJ to MWh
     transport_demand["number_of_cars"] = db.loc["Stock|Transportation|LDV|BEV", year].iloc[0]
 
     return transport_demand
@@ -51,7 +51,7 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts="none",
-            planning_horizons="2030",
+            planning_horizons="2020",
             run="KN2045_Bal_v4"
         )
 
