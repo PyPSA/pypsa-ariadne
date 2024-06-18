@@ -1,6 +1,7 @@
 import logging
 
 import pandas as pd
+import numpy as np
 
 import pypsa
 
@@ -341,6 +342,63 @@ def must_run_biomass(n, p_min_pu, regions):
     n.links.loc[links_i, "p_min_pu"] = p_min_pu
 
 
+def aladin_mobility_demand(n):
+    '''
+    Change loads in Germany to use Aladin data for road demand.
+    '''
+    # get aladin data
+    aladin_demand = pd.read_csv(snakemake.input.aladin_demand, index_col=0)
+    transport = pd.read_csv(snakemake.input.transport_demand, index_col=0, parse_dates=True).filter(like="DE")
+    # normalize transport by the sum of each column
+    rel_demand = transport.div(transport.sum(axis=0), axis=1)
+    # aggregate rel_demand to n timesteps
+    aggregation_map = pd.Series(index=rel_demand.index).astype("datetime64[ns]")
+    for i in range(0, 8760, int(snakemake.params.clustering[:-1])):
+        aggregation_map.iloc[i:i+int(snakemake.params.clustering[:-1])] = rel_demand.index[i]
+
+    agg_rel = rel_demand.groupby(aggregation_map).sum()
+
+    # oil demand
+    oil_index = n.loads[(n.loads.carrier == "land transport oil") & (n.loads.index.str[:2] == "DE")].index
+    oil_demand = agg_rel*aladin_demand.Liquids
+
+    oil_demand.columns = [f"{i} land transport oil" for i in oil_demand.columns]
+    n.loads_t.p_set.loc[:, oil_index] = oil_demand
+
+    # hydrogen demand
+    h2_index = n.loads[(n.loads.carrier == "land transport fuel cell") & (n.loads.index.str[:2] == "DE")].index
+    h2_demand = agg_rel*aladin_demand.Hydrogen
+
+    h2_demand.columns = [f"{i} land transport fuel cell" for i in h2_demand.columns]
+    n.loads_t.p_set.loc[:, h2_index] = h2_demand
+
+    # electricity demand
+    ev_index = n.loads[(n.loads.carrier == "land transport EV") & (n.loads.index.str[:2] == "DE")].index
+    ev_demand = rel_demand*aladin_demand.Electricity
+    ev_demand.columns = [f"{i} land transport EV" for i in ev_demand.columns]
+    n.loads_t.p_set.loc[:, ev_index] = ev_demand
+    
+    # TODO: do I need to take temperature profiles into account?
+
+    # adjust BEV charger and V2G capacities
+    number_cars = pd.read_csv(snakemake.input.transport_data, index_col=0)[
+        "number cars"
+    ].filter(like="DE")
+
+    factor = aladin_demand.number_of_cars*1e6 / (number_cars*snakemake.config["sector"]["land_transport_electric_share"][int(snakemake.wildcards.planning_horizons)])
+
+    BEV_charger_i = n.links[(n.links.carrier == "BEV charger") & (n.links.bus0.str.startswith("DE"))].index
+    n.links.loc[BEV_charger_i].p_nom *= factor
+
+    V2G_i = n.links[(n.links.carrier == "V2G") & (n.links.bus0.str.startswith("DE"))].index
+    if not V2G_i.empty:
+        n.links.loc[V2G_i].p_nom *= factor
+
+    dsm_i = n.stores[(n.stores.carrier == "battery storage") & (n.stores.bus.str.startswith("DE"))].index
+    if not dsm_i.empty:
+        n.stores.loc[dsm_i].e_nom *= factor
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
@@ -355,10 +413,10 @@ if __name__ == "__main__":
             simpl="",
             clusters=22,
             opts="",
-            ll="v1.2",
-            sector_opts="365H-T-H-B-I-A-solar+p3-linemaxext15",
-            planning_horizons="2040",
-            run="KN2045_H2_v4"
+            ll="vopt",
+            sector_opts="none",
+            planning_horizons="2030",
+            run="KN2045_Bal_v4"
         )
 
     logger.info("Adding Ariadne-specific functionality")
@@ -373,6 +431,8 @@ if __name__ == "__main__":
         snakemake.params.costs,
         nyears,
     )
+
+    aladin_mobility_demand(n)
 
     new_boiler_ban(n)
 

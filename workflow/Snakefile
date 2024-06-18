@@ -138,7 +138,7 @@ rule build_mobility_demand:
         ariadne=resources("ariadne_database.csv"),
         clustered_pop_layout=resources("pop_layout_elec_s{simpl}_{clusters}.csv"),
     output:
-        mobility_demand=resources("mobility_demand_aladin_{planning_horizons}.csv"),
+        mobility_demand=resources("mobility_demand_aladin_{simpl}_{clusters}_{planning_horizons}.csv"),
     resources:
         mem_mb=1000
     script:
@@ -161,11 +161,15 @@ rule modify_prenetwork:
         H2_retrofit_capacity_per_CH4=config_provider("sector", "H2_retrofit_capacity_per_CH4"),
         transmission_costs=config_provider("costs", "transmission"),
         biomass_must_run=config_provider("must_run_biomass"),
+        clustering=config_provider("clustering", "temporal", "resolution_sector"),
     input:
         network=RESULTS
         + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
         wkn=resources("wasserstoff_kernnetz_elec_s{simpl}_{clusters}.csv") if config_provider("wasserstoff_kernnetz", "enable") else [],
         costs=resources("costs_{planning_horizons}.csv"),
+        aladin_demand=resources("mobility_demand_aladin_{simpl}_{clusters}_{planning_horizons}.csv"),
+        transport_demand=resources("transport_demand_s{simpl}_{clusters}.csv"),
+        transport_data=resources("transport_data_s{simpl}_{clusters}.csv"),
     output:
         network=RESULTS
         + "prenetworks-final/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc"
