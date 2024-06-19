@@ -168,7 +168,6 @@ rule modify_prenetwork:
         wkn=resources("wasserstoff_kernnetz_elec_s{simpl}_{clusters}.csv") if config_provider("wasserstoff_kernnetz", "enable") else [],
         costs=resources("costs_{planning_horizons}.csv"),
         aladin_demand=resources("mobility_demand_aladin_{simpl}_{clusters}_{planning_horizons}.csv"),
-        transport_demand=resources("transport_demand_s{simpl}_{clusters}.csv"),
         transport_data=resources("transport_data_s{simpl}_{clusters}.csv"),
     output:
         network=RESULTS

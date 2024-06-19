@@ -348,44 +348,33 @@ def aladin_mobility_demand(n):
     '''
     # get aladin data
     aladin_demand = pd.read_csv(snakemake.input.aladin_demand, index_col=0)
-    transport = pd.read_csv(snakemake.input.transport_demand, index_col=0, parse_dates=True).filter(like="DE")
-    # normalize transport by the sum of each column
-    rel_demand = transport.div(transport.sum(axis=0), axis=1)
-    # aggregate rel_demand to n timesteps
-    # aggregation_map = pd.Series(index=rel_demand.index).astype("datetime64[ns]")
-    # for i in range(0, 8760, int(snakemake.params.clustering[:-1])):
-    #     aggregation_map.iloc[i:i+int(snakemake.params.clustering[:-1])] = rel_demand.index[i]
-    aggregation_map = (
-            pd.Series(
-                n.snapshot_weightings.index.get_indexer(n.snapshots), index=n.snapshots
-            )
-            .astype(int)
-            .map(lambda i: n.snapshot_weightings.index[i])
-        )
-
-    agg_rel = rel_demand.groupby(aggregation_map).sum()
 
     # oil demand
+    oil_demand = aladin_demand.Liquids
     oil_index = n.loads[(n.loads.carrier == "land transport oil") & (n.loads.index.str[:2] == "DE")].index
-    oil_demand = agg_rel*aladin_demand.Liquids
+    oil_demand.index = [f"{i} land transport oil" for i in oil_demand.index]
 
-    oil_demand.columns = [f"{i} land transport oil" for i in oil_demand.columns]
-    n.loads_t.p_set.loc[:, oil_index] = oil_demand
+    profile = n.loads_t.p_set.loc[:, oil_index]
+    profile /= profile.sum()
+    n.loads_t.p_set.loc[:, oil_index] = (oil_demand*profile).div(n.snapshot_weightings.objective, axis=0)
 
     # hydrogen demand
+    h2_demand = aladin_demand.Hydrogen
     h2_index = n.loads[(n.loads.carrier == "land transport fuel cell") & (n.loads.index.str[:2] == "DE")].index
-    h2_demand = agg_rel*aladin_demand.Hydrogen
+    h2_demand.index = [f"{i} land transport fuel cell" for i in h2_demand.index]
 
-    h2_demand.columns = [f"{i} land transport fuel cell" for i in h2_demand.columns]
-    n.loads_t.p_set.loc[:, h2_index] = h2_demand
+    profile = n.loads_t.p_set.loc[:, h2_index]
+    profile /= profile.sum()
+    n.loads_t.p_set.loc[:, h2_index] = (h2_demand*profile).div(n.snapshot_weightings.objective, axis=0)
 
     # electricity demand
+    ev_demand = aladin_demand.Electricity
     ev_index = n.loads[(n.loads.carrier == "land transport EV") & (n.loads.index.str[:2] == "DE")].index
-    ev_demand = rel_demand*aladin_demand.Electricity
-    ev_demand.columns = [f"{i} land transport EV" for i in ev_demand.columns]
-    n.loads_t.p_set.loc[:, ev_index] = ev_demand
-    
-    # TODO: do I need to take temperature profiles into account?
+    ev_demand.index = [f"{i} land transport EV" for i in ev_demand.index]
+
+    profile = n.loads_t.p_set.loc[:, ev_index]
+    profile /= profile.sum()
+    n.loads_t.p_set.loc[:, ev_index] = (ev_demand*profile).div(n.snapshot_weightings.objective, axis=0)
 
     # adjust BEV charger and V2G capacities
     number_cars = pd.read_csv(snakemake.input.transport_data, index_col=0)[
