@@ -236,65 +236,145 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
     """
     logger.info(f"Adding CO2 budget limit for each country as per unit of 1990 levels")
 
-    nhours = n.snapshot_weightings.generators.sum()
-    nyears = nhours / 8760
+    # functionality if emissions upstream are not enabled
+    if not snakemake.params.emissions_upstream["enable"]:
+        nhours = n.snapshot_weightings.generators.sum()
+        nyears = nhours / 8760
 
-    sectors = determine_emission_sectors(n.config['sector'])
+        sectors = determine_emission_sectors(n.config['sector'])
 
-    # convert MtCO2 to tCO2
-    co2_totals = 1e6 * pd.read_csv(snakemake.input.co2_totals_name, index_col=0)
+        # convert MtCO2 to tCO2
+        co2_totals = 1e6 * pd.read_csv(snakemake.input.co2_totals_name, index_col=0)
 
-    co2_total_totals = co2_totals[sectors].sum(axis=1) * nyears
+        co2_total_totals = co2_totals[sectors].sum(axis=1) * nyears
 
-    for ct in limit_countries:
-        limit = co2_total_totals[ct]*limit_countries[ct]
-        logger.info(
-            f"Limiting emissions in country {ct} to {limit_countries[ct]:.1%} of "
-            f"1990 levels, i.e. {limit:,.2f} tCO2/a",
-        )
-
-        lhs = []
-
-        for port in [col[3:] for col in n.links if col.startswith("bus")]:
-
-            links = n.links.index[(n.links.index.str[:2] == ct) & (n.links[f"bus{port}"] == "co2 atmosphere")]
-
-            logger.info(f"For {ct} adding following link carriers to port {port} CO2 constraint: {n.links.loc[links,'carrier'].unique()}")
-
-            if port == "0":
-                efficiency = -1.
-            elif port == "1":
-                efficiency = n.links.loc[links, f"efficiency"]
-            else:
-                efficiency = n.links.loc[links, f"efficiency{port}"]
-
-            lhs.append((n.model["Link-p"].loc[:, links]*efficiency*n.snapshot_weightings.generators).sum())
-
-        incoming = n.links.index[n.links.index == "EU renewable oil -> DE oil"]
-        outgoing = n.links.index[n.links.index == "DE renewable oil -> EU oil"]
-
-        if not debug:
-            lhs.append((-1*n.model["Link-p"].loc[:, incoming]*0.2571*n.snapshot_weightings.generators).sum())
-            lhs.append((n.model["Link-p"].loc[:, outgoing]*0.2571*n.snapshot_weightings.generators).sum())
-
-        lhs = sum(lhs)
-
-        cname = f"co2_limit-{ct}"
-
-        n.model.add_constraints(
-            lhs <= limit,
-            name=f"GlobalConstraint-{cname}",
-        )
-
-        if cname not in n.global_constraints.index:
-            n.add(
-                "GlobalConstraint",
-                cname,
-                constant=limit,
-                sense="<=",
-                type="",
-                carrier_attribute="",
+        for ct in limit_countries:
+            limit = co2_total_totals[ct]*limit_countries[ct]
+            logger.info(
+                f"Limiting emissions in country {ct} to {limit_countries[ct]:.1%} of "
+                f"1990 levels, i.e. {limit:,.2f} tCO2/a",
             )
+
+            lhs = []
+
+            for port in [col[3:] for col in n.links if col.startswith("bus")]:
+
+                links = n.links.index[(n.links.index.str[:2] == ct) & (n.links[f"bus{port}"] == "co2 atmosphere")]
+
+                logger.info(f"For {ct} adding following link carriers to port {port} CO2 constraint: {n.links.loc[links,'carrier'].unique()}")
+
+                if port == "0":
+                    efficiency = -1.
+                elif port == "1":
+                    efficiency = n.links.loc[links, f"efficiency"]
+                else:
+                    efficiency = n.links.loc[links, f"efficiency{port}"]
+
+                lhs.append((n.model["Link-p"].loc[:, links]*efficiency*n.snapshot_weightings.generators).sum())
+
+            incoming = n.links.index[n.links.index == "EU renewable oil -> DE oil"]
+            outgoing = n.links.index[n.links.index == "DE renewable oil -> EU oil"]
+
+            if not debug:
+                lhs.append((-1*n.model["Link-p"].loc[:, incoming]*0.2571*n.snapshot_weightings.generators).sum())
+                lhs.append((n.model["Link-p"].loc[:, outgoing]*0.2571*n.snapshot_weightings.generators).sum())
+
+            lhs = sum(lhs)
+
+            cname = f"co2_limit-{ct}"
+
+            n.model.add_constraints(
+                lhs <= limit,
+                name=f"GlobalConstraint-{cname}",
+            )
+
+            if cname not in n.global_constraints.index:
+                n.add(
+                    "GlobalConstraint",
+                    cname,
+                    constant=limit,
+                    sense="<=",
+                    type="",
+                    carrier_attribute="",
+                )
+    # functionality if emissions upstream are enabled
+    else:
+        logger.info("Emissions upstream are enabled.")
+
+        nhours = n.snapshot_weightings.generators.sum()
+        nyears = nhours / 8760
+
+        sectors = determine_emission_sectors(n.config['sector'])
+
+        # convert MtCO2 to tCO2
+        co2_totals = 1e6 * pd.read_csv(snakemake.input.co2_totals_name, index_col=0)
+
+        co2_total_totals = co2_totals[sectors].sum(axis=1) * nyears
+
+        for ct in limit_countries:
+            limit = co2_total_totals[ct]*limit_countries[ct]
+            logger.info(
+                f"Limiting emissions in country {ct} to {limit_countries[ct]:.1%} of "
+                f"1990 levels, i.e. {limit:,.2f} tCO2/a",
+            )
+
+            # specific emissions in tons CO2/MWh according to n.links[n.links.carrier =="your_carrier].efficiency2.unique().item()
+            specific_emisisons = {
+                "oil" : 0.2571,
+                "gas" : 0.198, # OCGT
+                "coal" : 0.3361,
+                "lignite" : 0.4069,
+                # "co2 sequestered": 1.0,
+                # "co2": 0.0,
+            }
+
+            lhs = []
+
+            # restrict all trade and generation of fossil fuels in DE
+
+            for c in specific_emisisons.keys():
+
+                links = n.links.index[(n.links.index.str[:2] == ct) & (n.links[f"bus{port}"] == "co2 atmosphere")]
+
+                logger.info(f"For {ct} adding following link carriers to port {port} CO2 constraint: {n.links.loc[links,'carrier'].unique()}")
+
+                if port == "0":
+                    efficiency = -1.
+                elif port == "1":
+                    efficiency = n.links.loc[links, f"efficiency"]
+                else:
+                    efficiency = n.links.loc[links, f"efficiency{port}"]
+
+                lhs.append((n.model["Link-p"].loc[:, links]*efficiency*n.snapshot_weightings.generators).sum())
+
+            incoming = n.links.index[n.links.index == "EU renewable oil -> DE oil"]
+            outgoing = n.links.index[n.links.index == "DE renewable oil -> EU oil"]
+
+            if not debug:
+                lhs.append((-1*n.model["Link-p"].loc[:, incoming]*0.2571*n.snapshot_weightings.generators).sum())
+                lhs.append((n.model["Link-p"].loc[:, outgoing]*0.2571*n.snapshot_weightings.generators).sum())
+
+            lhs = sum(lhs)
+
+            cname = f"co2_limit_upstream-{ct}"
+
+            n.model.add_constraints(
+                lhs <= limit,
+                name=f"GlobalConstraint-{cname}",
+            )
+
+            if cname not in n.global_constraints.index:
+                n.add(
+                    "GlobalConstraint",
+                    cname,
+                    constant=limit,
+                    sense="<=",
+                    type="",
+                    carrier_attribute="",
+                ) 
+
+
+
 
 def force_boiler_profiles_existing_per_load(n):
     """this scales the boiler dispatch to the load profile with a factor common to all boilers at load"""
@@ -415,7 +495,7 @@ def additional_functionality(n, snapshots, snakemake):
     #force_boiler_profiles_existing_per_load(n)
     force_boiler_profiles_existing_per_boiler(n)
 
-    if snakemake.config["sector"]["co2_budget_national"]:
-        limit_countries = snakemake.config["co2_budget_national"][investment_year]
-        add_co2limit_country(n, limit_countries, snakemake,                  
-            debug=snakemake.config["run"]["debug_co2_limit"])
+    # if snakemake.config["sector"]["co2_budget_national"]:
+    #     limit_countries = snakemake.config["co2_budget_national"][investment_year]
+    #     add_co2limit_country(n, limit_countries, snakemake,                  
+    #         debug=snakemake.config["run"]["debug_co2_limit"])
