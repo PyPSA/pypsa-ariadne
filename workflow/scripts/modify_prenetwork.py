@@ -340,6 +340,35 @@ def must_run_biomass(n, p_min_pu, regions):
     links_i = n.links[(n.links.carrier == 'solid biomass') & (n.links.bus0.str.startswith(tuple(regions)))].index
     n.links.loc[links_i, "p_min_pu"] = p_min_pu
 
+# specific emissions in tons CO2/MWh according to n.links[n.links.carrier =="your_carrier].efficiency2.unique().item()
+specific_emisisons = {
+    "oil" : 0.2571,
+    "gas" : 0.198, # OCGT
+    "coal" : 0.3361,
+    "lignite" : 0.4069,
+    "co2 sequestered": 1.0,
+    "co2": 0.0,
+}
+
+def emissions_upstream(n):
+
+    # add co2_emissions attribute to carriers
+    for carrier in specific_emisisons:
+        n.carriers.loc[carrier, "co2_emissions"] = specific_emisisons[carrier]   
+
+    # alter constraint
+    limit = n.global_constraints.loc["CO2Limit","constant"] 
+    n.remove("GlobalConstraint", "CO2Limit")
+
+    n.add(
+        "GlobalConstraint",
+        "CO2Limit",
+        carrier_attribute="co2_emissions",
+        sense="<=",
+        type="co2_emisisons",
+        constant=limit,
+    ) 
+
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -353,10 +382,10 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "modify_prenetwork",
             simpl="",
-            clusters=22,
+            clusters=44,
             opts="",
-            ll="v1.2",
-            sector_opts="365H-T-H-B-I-A-solar+p3-linemaxext15",
+            ll="vopt",
+            sector_opts="none",
             planning_horizons="2040",
             run="KN2045_H2_v4"
         )
@@ -407,5 +436,8 @@ if __name__ == "__main__":
 
     if snakemake.params.biomass_must_run["enable"]:
         must_run_biomass(n, snakemake.params.biomass_must_run["p_min_pu"], snakemake.params.biomass_must_run["regions"])
+
+    if snakemake.params.emissions_upstream["enable"]:
+        emissions_upstream(n)
 
     n.export_to_netcdf(snakemake.output.network)
