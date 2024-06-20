@@ -37,15 +37,6 @@ CurrentPolicies:
     NEP: 2023
     transmission: "underground" # either overhead line ("overhead") or underground cable ("underground")
 
-  co2_budget:
-    2020: 0.800 # 20% reduction by 2020
-    2025: 0.600
-    2030: 0.450 # 55% reduction by 2030 (Ff55)
-    2035: 0.450 # stagnation for the Trend scenario
-    2040: 0.450
-    2045: 0.450
-    2050: 0.450
-
   limits_capacity_min:
     Generator:
       onwind:

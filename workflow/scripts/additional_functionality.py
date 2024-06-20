@@ -401,39 +401,33 @@ def force_H2_retrofit(n, force_year, planning_horizon):
     remove_i = n.links[(n.links.carrier.isin(carriers)) & 
                        (n.links.p_nom_extendable) & 
                        (n.links.bus0.str[:2] == "DE") &
-                       (n.links.build_year == 2040)].index
+                       (n.links.build_year == planning_horizon)].index
     n.links.drop(remove_i, inplace=True)
 
-    # remove old constraint
-    constraints = ["OCGT_retrofit", "CCGT_retrofit", "urban central gas CHP_retrofit"]
-    n.model.remove_constraints(constraints)
+    if n.links[n.links.carrier.str.contains("retrofitted H2") & (n.links.bus0.str[:2] == "DE")].empty:
+        logger.info("No retrofitted H2 plants in Germany found")
+        return
 
     # Add constraint to force retrofit
-    plant_types = [
-        ("OCGT", "retrofitted H2 OCGT"),
-        ("CCGT", "retrofitted H2 CCGT"),
-        ("urban central gas CHP", "urban central retrofitted H2 CHP"),
-    ]
+    carriers = ["retrofitted H2 OCGT", "retrofitted H2 CCGT", "urban central retrofitted H2 CHP"]
 
-    for gas_carrier, h2_carrier in plant_types:
-        gas_plants = n.links.query(
-            f"carrier == '{gas_carrier}' and p_nom_extendable and build_year < {planning_horizon}"
-        ).index
-        h2_plants = n.links.query(
-            f"carrier == '{h2_carrier}' and p_nom_extendable and build_year < {planning_horizon}"
-        ).index
+    for carrier in carriers:
+        h2_plants = n.links[
+            (n.links.carrier == carrier) &
+            (n.links.p_nom_extendable) &
+            (n.links.build_year < planning_horizon) &
+            (n.links.bus0.str[:2] == "DE")
+        ].index
 
-        if h2_plants.empty or gas_plants.empty:
+        if h2_plants.empty:
             continue
 
         # Store p_nom value for rhs of constraint
         p_nom = n.model["Link-p_nom"]
 
         lhs = p_nom.loc[h2_plants]
-        rhs = n.links.p_nom_max[gas_plants]
-        n.model.add_constraints(lhs == rhs, name=f"force retrofit {gas_carrier} to {h2_carrier}")
-        n.model.add_constraints(p_nom.loc[gas_plants] == 0, name=f"force out {gas_carrier}")
-
+        rhs = n.links.p_nom_max[h2_plants]
+        n.model.add_constraints(lhs <= rhs, name=f"force retrofit of {carrier}")
 
 def additional_functionality(n, snapshots, snakemake):
 
@@ -463,5 +457,6 @@ def additional_functionality(n, snapshots, snakemake):
         add_co2limit_country(n, limit_countries, snakemake,                  
             debug=snakemake.config["run"]["debug_co2_limit"])
 
-    if snakemake.config["electricity"]["H2_retrofit_plants"]["force"] >= int(snakemake.wildcards.planning_horizons):
-        force_H2_retrofit(n, snakemake.config["electricity"]["H2_retrofit_plants"]["force"], int(snakemake.wildcards.planning_horizons))
+    if snakemake.config["H2_force_retrofit"] <= int(snakemake.wildcards.planning_horizons):
+        print(snakemake.wildcards.planning_horizons)
+        force_H2_retrofit(n, snakemake.config["H2_force_retrofit"], int(snakemake.wildcards.planning_horizons))

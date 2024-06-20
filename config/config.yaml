@@ -64,8 +64,8 @@ scenario:
   sector_opts:
     - none
   planning_horizons:
-  - 2020
-  - 2025
+  # - 2020
+  # - 2025
   - 2030
   - 2035
   - 2040
@@ -181,12 +181,6 @@ coal_generation_ban:
 nuclear_generation_ban:
   DE: 2022
 
-electricity:
-  H2_retrofit_plants:
-    enable: true
-    year: 2020
-    force: 2035
-
 first_technology_occurrence:
   Link:
     H2 pipeline: 2025
@@ -238,6 +232,7 @@ sector:
     2040: 0.29
     2045: 0.36
     2050: 0.43
+  hydrogen_turbine: true
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#industry
 industry:
@@ -297,11 +292,11 @@ solving:
   options:
     assign_all_duals: true
     load_shedding: false
-    skip_iterations: false # settings for post-discretization: false
+    skip_iterations: true # settings for post-discretization: false
     min_iterations: 1 # settings for post-discretization: 1
     max_iterations: 1 # settings for post-discretization: 1
     post_discretization:
-      enable: true
+      enable: false
       line_unit_size: 1700
       line_threshold: 0.3
       link_unit_size:
@@ -350,6 +345,10 @@ electricity:
   powerplants_filter: (DateOut >= 2019 or DateOut != DateOut) and not (Country == "DE" and Set == "CHP")
   custom_powerplants: True
   custom_file: resources/german_chp.csv
+  H2_retrofit_plants:
+    enable: true
+    year: 2020
+H2_force_retrofit: 2035
 
 pypsa_eur:
   Bus:
