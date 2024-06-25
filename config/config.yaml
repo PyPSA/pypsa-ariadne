@@ -7,16 +7,44 @@ run:
   prefix: import-de
   name:
   # - CurrentPolicies
-  - KN2045_Bal_v4
+  # - KN2045_Bal_v4
   # - KN2045_Elec_v4
   # - KN2045_H2_v4
-  # - KN2045plus_EasyRide
-  # - KN2045plus_LowDemand
-  # - KN2045minus_WorstCase
-  # - KN2045minus_SupplyFocus
+  # - no_import_benchmark
+  # - cost_plus_10
+  # - cost_minus_10
+  # - cost_minus_20
+  # - selection_HVDC
+  # - selection_H2
+  # - selection_CH4
+  # - selection_NH3
+  # - selection_FTFuel
+  # - selection_MeOH
+  # - selection_steel
+  # - selection_H2_CH4_NH3_FT_MeOH
+  # - selection_H2_CH4_NH3_FT_MeOH_steel
+  # - selection_CH4_NH3_FT_MeOH
+  # - selection_CH4_NH3_FT_MeOH_steel
+  # - selection_MeOH_FT
+  # - selection_CH4_MeOH_FT
+  # - vol_limit_100_50
+  # - vol_limit_200_100
+  # - vol_limit_300_150
+  # - vol_limit_400_200
+  # - vol_limit_600_300
+  # - vol_limit_800_400
+  # - vol_limit_1000_500
+  # - vol_limit_1200_600
+  # - vol_limit_1400_700
+  # - vol_limit_1600_800
+  # - vol_limit_1800_900
+  # - vol_limit_2000_1000
+  - total_volume_high
+  - total_volume_medium
+  - total_volume_low
   scenarios:
     enable: true
-    file: config/scenarios.automated.yaml
+    file: config/scenarios.yaml # config/scenarios.automated.yaml
   shared_resources: 
     policy: true #stops recalculating
     exclude:
@@ -47,6 +75,33 @@ iiasa_database:
   reference_scenario: KN2045_Bal_v4
   region: Deutschland
 
+co2_budget_DE_source: KSG
+
+co2_budget_national:
+  2030:
+    DE: 0.401
+  2035:
+    DE: 0.265
+  2040:
+    DE: 0.131
+  2045:
+    DE: -0.02
+  2050:
+    DE: -0.018
+
+limits_volume_max:
+  enable: false
+limits_volume_min:
+  enable: false
+h2_import_limits:
+  enable: false
+electricity_import_limits:
+  enable: false
+h2_production_limits:
+  enable: false
+h2_derivate_import_limits:
+  enable: false
+
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
 foresight: myopic
 
@@ -58,14 +113,12 @@ scenario:
   ll:
   - vopt
   clusters:
-  - 22
+  - 37
   opts:
   - ''
   sector_opts:
     - none
   planning_horizons:
-  # - 2020
-  # - 2025
   - 2030
   - 2035
   - 2040
@@ -78,7 +131,7 @@ existing_capacities:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
 # Germany plus 12 "Stromnachbarn"
-countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'PL', 'SE']
+countries: ['AL', 'AT', 'BA', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GB', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'ME', 'MK', 'NL', 'NO', 'PL', 'PT', 'RO', 'RS', 'SE', 'SI', 'SK']
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
@@ -185,6 +238,8 @@ renewable:
 
 costs:
   horizon: "mean" # "optimist", "pessimist" or "mean"
+  NEP: 2023
+  transmission: overhead   # either overhead line ("overhead") or underground cable ("underground")
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
@@ -194,20 +249,11 @@ sector:
     capacity_boost: 2 # p_nom_max generator
     limit: false # bool or number in TWh
     limit_sense: "=="
-    limit_non_eu_de: 200 # bool or number in TWh
+    limit_non_eu_de: false # bool or number in TWh
     limit_sens_non_eu_de: "=="
-    limit_eu_de: 300 # bool or number in TWh
+    limit_eu_de: false # bool or number in TWh
     limit_sens_eu_de: "<="
-    options:
-    - pipeline-h2: 1.0 # relative costs
-    - shipping-lh2: 1.0
-    - shipping-lch4: 1.0
-    - shipping-lnh3: 1.0
-    - shipping-ftfuel: 1.0
-    - shipping-meoh: 1.0
-    - hvdc-to-elec: 1.0
-    - shipping-hbi: 1.0
-    - shipping-steel: 1.0
+    limit_total_de: "high" # false or ["low", "medium", "high"]
     p_nom_max:
       pipeline-h2: .inf
     endogenous_hvdc_import:
@@ -246,6 +292,20 @@ sector:
     2040: 0.29
     2045: 0.36
     2050: 0.43
+  land_transport_demand_factor:
+    2020: 1.0
+    2025: 0.9947
+    2030: 0.9806
+    2035: 0.9941
+    2040: 1.0035
+    2045: 1.0299
+  aviation_demand_factor:
+    2020: 1.0
+    2025: 0.9226
+    2030: 0.8264
+    2035: 0.742
+    2040: 0.6736
+    2045: 0.6395
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#industry
 industry:

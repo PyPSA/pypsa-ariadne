@@ -1,0 +1,389 @@
+no_import_benchmark:
+  sector:
+    imp: false
+
+cost_plus_10:
+  sector:
+    import:
+      options:
+      - pipeline-h2: 1.1
+      - shipping-lh2: 1.1
+      - shipping-lch4: 1.1
+      - shipping-lnh3: 1.1
+      - shipping-ftfuel: 1.1
+      - shipping-meoh: 1.1
+      - hvdc-to-elec: 1.1
+      - shipping-hbi: 1.1
+      - shipping-steel: 1.1
+
+cost_minus_10:
+  sector:
+    import:
+      options:
+      - pipeline-h2: 0.9
+      - shipping-lh2: 0.9
+      - shipping-lch4: 0.9
+      - shipping-lnh3: 0.9
+      - shipping-ftfuel: 0.9
+      - shipping-meoh: 0.9
+      - hvdc-to-elec: 0.9
+      - shipping-hbi: 0.9
+      - shipping-steel: 0.9
+
+cost_minus_20:
+  sector:
+    import:
+      options:
+      - pipeline-h2: 0.8
+      - shipping-lh2: 0.8
+      - shipping-lch4: 0.8
+      - shipping-lnh3: 0.8
+      - shipping-ftfuel: 0.8
+      - shipping-meoh: 0.8
+      - hvdc-to-elec: 0.8
+      - shipping-hbi: 0.8
+      - shipping-steel: 0.8
+
+selection_HVDC:
+  sector:
+    import:
+      options:
+      - hvdc-to-elec: 1.0
+
+selection_H2:
+  sector:
+    import:
+      options:
+      - shipping-lh2: 1.0
+      - pipeline-h2: 1.0
+
+selection_CH4:
+  sector:
+    import:
+      options:
+      - shipping-lch4: 1.0
+
+selection_NH3:
+  sector:
+    import:
+      options:
+      - shipping-lnh3: 1.0
+
+selection_FTFuel:
+  sector:
+    import:
+      options:
+      - shipping-ftfuel: 1.0
+
+selection_MeOH:
+  sector:
+    import:
+      options:
+      - shipping-meoh: 1.0
+
+selection_steel:
+  sector:
+    import:
+      options:
+      - shipping-steel: 1.0
+      - shipping-hbi: 1.0
+
+selection_H2_CH4_NH3_FT_MeOH:
+  sector:
+    import:
+      options:
+      - shipping-lh2: 1.0
+      - pipeline-h2: 1.0
+      - shipping-lch4: 1.0
+      - shipping-lnh3: 1.0
+      - shipping-ftfuel: 1.0
+      - shipping-meoh: 1.0
+
+selection_H2_CH4_NH3_FT_MeOH_steel:
+  sector:
+    import:
+      options:
+      - shipping-lh2: 1.0
+      - pipeline-h2: 1.0
+      - shipping-lch4: 1.0
+      - shipping-lnh3: 1.0
+      - shipping-ftfuel: 1.0
+      - shipping-meoh: 1.0
+      - shipping-steel: 1.0
+      - shipping-hbi: 1.0
+
+selection_CH4_NH3_FT_MeOH:
+  sector:
+    import:
+      options:
+      - shipping-lch4: 1.0
+      - shipping-lnh3: 1.0
+      - shipping-ftfuel: 1.0
+      - shipping-meoh: 1.0
+
+selection_CH4_NH3_FT_MeOH_steel:
+  sector:
+    import:
+      options:
+      - shipping-lch4: 1.0
+      - shipping-lnh3: 1.0
+      - shipping-ftfuel: 1.0
+      - shipping-meoh: 1.0
+      - shipping-steel: 1.0
+      - shipping-hbi: 1.0
+
+selection_MeOH_FT:
+  sector:
+    import:
+      options:
+      - shipping-ftfuel: 1.0
+      - shipping-meoh: 1.0
+
+selection_CH4_MeOH_FT:
+  sector:
+    import:
+      options:
+      - shipping-lch4: 1.0
+      - shipping-meoh: 1.0
+      - shipping-ftfuel: 1.0
+
+vol_limit_100_50:
+  sector:
+    import:
+      limit_non_eu_de: 100
+      limit_eu_de: 50
+    options:
+    - pipeline-h2: 1.0 # relative costs
+    - shipping-lh2: 1.0
+    - shipping-lch4: 1.0
+    - shipping-lnh3: 1.0
+    - shipping-ftfuel: 1.0
+    - shipping-meoh: 1.0
+    - hvdc-to-elec: 1.0
+    - shipping-hbi: 1.0
+    - shipping-steel: 1.0
+
+vol_limit_200_100:
+  sector:
+    import:
+      limit_non_eu_de: 200
+      limit_eu_de: 100
+    options:
+    - pipeline-h2: 1.0 # relative costs
+    - shipping-lh2: 1.0
+    - shipping-lch4: 1.0
+    - shipping-lnh3: 1.0
+    - shipping-ftfuel: 1.0
+    - shipping-meoh: 1.0
+    - hvdc-to-elec: 1.0
+    - shipping-hbi: 1.0
+    - shipping-steel: 1.0
+
+vol_limit_300_150:
+  sector:
+    import:
+      limit_non_eu_de: 300
+      limit_eu_de: 150
+    options:
+    - pipeline-h2: 1.0 # relative costs
+    - shipping-lh2: 1.0
+    - shipping-lch4: 1.0
+    - shipping-lnh3: 1.0
+    - shipping-ftfuel: 1.0
+    - shipping-meoh: 1.0
+    - hvdc-to-elec: 1.0
+    - shipping-hbi: 1.0
+    - shipping-steel: 1.0
+
+vol_limit_400_200:
+  sector:
+    import:
+      limit_non_eu_de: 400
+      limit_eu_de: 200
+    options:
+    - pipeline-h2: 1.0 # relative costs
+    - shipping-lh2: 1.0
+    - shipping-lch4: 1.0
+    - shipping-lnh3: 1.0
+    - shipping-ftfuel: 1.0
+    - shipping-meoh: 1.0
+    - hvdc-to-elec: 1.0
+    - shipping-hbi: 1.0
+    - shipping-steel: 1.0
+
+vol_limit_600_300:
+  sector:
+    import:
+      limit_non_eu_de: 600
+      limit_eu_de: 300
+    options:
+    - pipeline-h2: 1.0 # relative costs
+    - shipping-lh2: 1.0
+    - shipping-lch4: 1.0
+    - shipping-lnh3: 1.0
+    - shipping-ftfuel: 1.0
+    - shipping-meoh: 1.0
+    - hvdc-to-elec: 1.0
+    - shipping-hbi: 1.0
+    - shipping-steel: 1.0
+
+vol_limit_800_400:
+  sector:
+    import:
+      limit_non_eu_de: 800
+      limit_eu_de: 400
+    options:
+    - pipeline-h2: 1.0 # relative costs
+    - shipping-lh2: 1.0
+    - shipping-lch4: 1.0
+    - shipping-lnh3: 1.0
+    - shipping-ftfuel: 1.0
+    - shipping-meoh: 1.0
+    - hvdc-to-elec: 1.0
+    - shipping-hbi: 1.0
+    - shipping-steel: 1.0
+
+vol_limit_1000_500:
+  sector:
+    import:
+      limit_non_eu_de: 1000
+      limit_eu_de: 500
+    options:
+    - pipeline-h2: 1.0 # relative costs
+    - shipping-lh2: 1.0
+    - shipping-lch4: 1.0
+    - shipping-lnh3: 1.0
+    - shipping-ftfuel: 1.0
+    - shipping-meoh: 1.0
+    - hvdc-to-elec: 1.0
+    - shipping-hbi: 1.0
+    - shipping-steel: 1.0
+
+vol_limit_1200_600:
+  sector:
+    import:
+      limit_non_eu_de: 1200
+      limit_eu_de: 600
+    options:
+    - pipeline-h2: 1.0 # relative costs
+    - shipping-lh2: 1.0
+    - shipping-lch4: 1.0
+    - shipping-lnh3: 1.0
+    - shipping-ftfuel: 1.0
+    - shipping-meoh: 1.0
+    - hvdc-to-elec: 1.0
+    - shipping-hbi: 1.0
+    - shipping-steel: 1.0
+
+vol_limit_1400_700:
+  sector:
+    import:
+      limit_non_eu_de: 1400
+      limit_eu_de: 700
+    options:
+    - pipeline-h2: 1.0 # relative costs
+    - shipping-lh2: 1.0
+    - shipping-lch4: 1.0
+    - shipping-lnh3: 1.0
+    - shipping-ftfuel: 1.0
+    - shipping-meoh: 1.0
+    - hvdc-to-elec: 1.0
+    - shipping-hbi: 1.0
+    - shipping-steel: 1.0
+
+vol_limit_1600_800:
+  sector:
+    import:
+      limit_non_eu_de: 1600
+      limit_eu_de: 800
+    options:
+    - pipeline-h2: 1.0 # relative costs
+    - shipping-lh2: 1.0
+    - shipping-lch4: 1.0
+    - shipping-lnh3: 1.0
+    - shipping-ftfuel: 1.0
+    - shipping-meoh: 1.0
+    - hvdc-to-elec: 1.0
+    - shipping-hbi: 1.0
+    - shipping-steel: 1.0
+
+vol_limit_1800_900:
+  sector:
+    import:
+      limit_non_eu_de: 1800
+      limit_eu_de: 900
+    options:
+    - pipeline-h2: 1.0 # relative costs
+    - shipping-lh2: 1.0
+    - shipping-lch4: 1.0
+    - shipping-lnh3: 1.0
+    - shipping-ftfuel: 1.0
+    - shipping-meoh: 1.0
+    - hvdc-to-elec: 1.0
+    - shipping-hbi: 1.0
+    - shipping-steel: 1.0
+
+vol_limit_2000_1000:
+  sector:
+    import:
+      limit_non_eu_de: 2000
+      limit_eu_de: 1000
+    options:
+    - pipeline-h2: 1.0 # relative costs
+    - shipping-lh2: 1.0
+    - shipping-lch4: 1.0
+    - shipping-lnh3: 1.0
+    - shipping-ftfuel: 1.0
+    - shipping-meoh: 1.0
+    - hvdc-to-elec: 1.0
+    - shipping-hbi: 1.0
+    - shipping-steel: 1.0
+
+total_volume_high:
+  sector:
+    import:
+      limit_total_de: "high"
+    options:
+    - pipeline-h2: 1.0 # relative costs
+    - shipping-lh2: 1.0
+    - shipping-lch4: 1.0
+    - shipping-lnh3: 1.0
+    - shipping-ftfuel: 1.0
+    - shipping-meoh: 1.0
+    - hvdc-to-elec: 1.0
+    - shipping-hbi: 1.0
+    - shipping-steel: 1.0
+  
+total_volume_medium:
+  sector:
+    import:
+      limit_total_de: "medium"
+    options:
+    - pipeline-h2: 1.0 # relative costs
+    - shipping-lh2: 1.0
+    - shipping-lch4: 1.0
+    - shipping-lnh3: 1.0
+    - shipping-ftfuel: 1.0
+    - shipping-meoh: 1.0
+    - hvdc-to-elec: 1.0
+    - shipping-hbi: 1.0
+    - shipping-steel: 1.0
+
+total_volume_low:
+  sector:
+    import:
+      limit_total_de: "low"
+    options:
+    - pipeline-h2: 1.0 # relative costs
+    - shipping-lh2: 1.0
+    - shipping-lch4: 1.0
+    - shipping-lnh3: 1.0
+    - shipping-ftfuel: 1.0
+    - shipping-meoh: 1.0
+    - hvdc-to-elec: 1.0
+    - shipping-hbi: 1.0
+    - shipping-steel: 1.0
+
+# transmission_h2:
+# transmission_elec:
+# transmission_h2_elec:

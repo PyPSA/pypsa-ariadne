@@ -307,47 +307,48 @@ def unravel_import_carrier(n, industrial_demand, industrial_production):
     )
     HVC_demand_factor = options.get("HVC_demand_factor", 1)
 
-    ###
-    # add hbi/steel bus
-    n.add("Bus", "DE hbi", carrier="hbi")
-    n.add("Bus", "DE steel", carrier="steel")
+    if any("shipping-steel" in keys for keys in snakemake.params.sector["import"]["options"]):
+        ###
+        # add hbi/steel bus
+        n.add("Bus", "DE hbi", carrier="hbi")
+        n.add("Bus", "DE steel", carrier="steel")
 
-    # hbi links
-    hbi_links = n.links[(n.links.carrier=="hbi") & (n.links.index.str.contains("DE"))].index
-    n.links.loc[hbi_links, "bus1"] = "DE steel"
-    n.links.loc[hbi_links, "bus2"] = "DE hbi"
+        # hbi links
+        hbi_links = n.links[(n.links.carrier=="hbi") & (n.links.index.str.contains("DE"))].index
+        n.links.loc[hbi_links, "bus1"] = "DE steel"
+        n.links.loc[hbi_links, "bus2"] = "DE hbi"
 
-    # hbi generator
-    hbi_gen = n.generators.loc["EU import shipping-hbi"].copy()
-    hbi_gen.name = "DE import shipping-hbi"
-    hbi_gen.bus = "DE hbi"
-    n.add("Generator", name=hbi_gen.name, **hbi_gen)
+        # hbi generator
+        hbi_gen = n.generators.loc["EU import shipping-hbi"].copy()
+        hbi_gen.name = "DE import shipping-hbi"
+        hbi_gen.bus = "DE hbi"
+        n.add("Generator", name=hbi_gen.name, **hbi_gen)
 
-    # steel generator
-    steel_gen = n.generators.loc["EU import shipping-steel"].copy()
-    steel_gen.name = "DE import shipping-steel"
-    steel_gen.bus = "DE steel"
-    n.add("Generator", name=steel_gen.name, **steel_gen)
+        # steel generator
+        steel_gen = n.generators.loc["EU import shipping-steel"].copy()
+        steel_gen.name = "DE import shipping-steel"
+        steel_gen.bus = "DE steel"
+        n.add("Generator", name=steel_gen.name, **steel_gen)
 
-    # steel links
-    steel_links = n.links[(n.links.carrier=="DRI + Electric arc") & (n.links.index.str.contains("DE"))].index
-    n.links.loc[steel_links, "bus1"] = "DE steel"
-    
-    # transport links
-    n.madd(
-        "Link",
-        ["EU steel -> DE steel", "DE steel -> EU steel"],
-        bus0=["EU steel", "DE steel"],
-        bus1=["DE steel", "EU steel"],
-        carrier="steel",
-        p_nom=1e6,
-        p_min_pu=0,
-    )
-    # steel load
-    DE_steel = industrial_production["DRI + Electric arc"].filter(like="DE1 ").sum() / nhours
-    n.add("Load", "DE steel", bus="DE steel", p_set=DE_steel)
-    n.loads.loc["EU steel", "p_set"] -= DE_steel
-    n.loads.rename(index={"EU steel": "EUminusDE steel"}, inplace=True)
+        # steel links
+        steel_links = n.links[(n.links.carrier=="DRI + Electric arc") & (n.links.index.str.contains("DE"))].index
+        n.links.loc[steel_links, "bus1"] = "DE steel"
+        
+        # transport links
+        n.madd(
+            "Link",
+            ["EU steel -> DE steel", "DE steel -> EU steel"],
+            bus0=["EU steel", "DE steel"],
+            bus1=["DE steel", "EU steel"],
+            carrier="steel",
+            p_nom=1e6,
+            p_min_pu=0,
+        )
+        # steel load
+        DE_steel = industrial_production["DRI + Electric arc"].filter(like="DE1 ").sum() / nhours
+        n.add("Load", "DE steel", bus="DE steel", p_set=DE_steel)
+        n.loads.loc["EU steel", "p_set"] -= DE_steel
+        n.loads.rename(index={"EU steel": "EUminusDE steel"}, inplace=True)
 
     ###
     # add ammonia
@@ -368,11 +369,12 @@ def unravel_import_carrier(n, industrial_demand, industrial_production):
     crack_links = n.links[(n.links.carrier=="ammonia cracker") & (n.links.index.str.contains("DE"))].index
     n.links.loc[crack_links, "bus0"] = "DE NH3"
 
-    # ammonia generator
-    nh3_gen = n.generators.loc["EU import shipping-lnh3"].copy()
-    nh3_gen.name = "DE import shipping-lnh3"
-    nh3_gen.bus = "DE NH3"
-    n.add("Generator", name=nh3_gen.name, **nh3_gen)
+    if any("shipping-lnh3" in keys for keys in snakemake.params.sector["import"]["options"]):
+        # ammonia generator
+        nh3_gen = n.generators.loc["EU import shipping-lnh3"].copy()
+        nh3_gen.name = "DE import shipping-lnh3"
+        nh3_gen.bus = "DE NH3"
+        n.add("Generator", name=nh3_gen.name, **nh3_gen)
 
     # transport links
     n.madd(
@@ -395,7 +397,6 @@ def unravel_import_carrier(n, industrial_demand, industrial_production):
     # add meoh
     logger.info("Unraveling methanol import")
 
-    n.add("Bus", "DE shipping-meoh", carrier="methanol")
     n.add("Bus", "DE methanol", carrier="methanol")
     n.add("Bus", "DE HVC", carrier="HVC")
 
@@ -405,12 +406,14 @@ def unravel_import_carrier(n, industrial_demand, industrial_production):
     meoh_store.bus = "DE methanol"
     n.add("Store", name=meoh_store.name, **meoh_store)
 
-    # meoh generator link
-    meoh_gen = n.links.loc["EU import shipping-meoh"].copy()
-    meoh_gen.name = "DE import shipping-meoh"
-    meoh_gen.bus0 = "DE shipping-meoh"
-    meoh_gen.bus1 = "DE methanol"
-    n.add("Link", name=meoh_gen.name, **meoh_gen)
+    if any("shipping-meoh" in keys for keys in snakemake.params.sector["import"]["options"]):
+        n.add("Bus", "DE shipping-meoh", carrier="methanol")
+        # meoh generator link
+        meoh_gen = n.links.loc["EU import shipping-meoh"].copy()
+        meoh_gen.name = "DE import shipping-meoh"
+        meoh_gen.bus0 = "DE shipping-meoh"
+        meoh_gen.bus1 = "DE methanol"
+        n.add("Link", name=meoh_gen.name, **meoh_gen)
 
     # add meoh links
     industry = n.links[(n.links.carrier=="industry methanol") & (n.links.index.str.contains("DE"))].index
@@ -498,23 +501,24 @@ def unravel_import_carrier(n, industrial_demand, industrial_production):
 
     ###
     # add ft
-    logger.info("Unraveling Fischer-Tropsch import")
+    if any("shipping-ftfuel" in keys for keys in snakemake.params.sector["import"]["options"]):
+        logger.info("Unraveling Fischer-Tropsch import")
 
-    n.add("Bus", "DE shipping-ftfuel", carrier="ftfuel")
-    n.add("Bus", "DE ftfuel", carrier="ftfuel")
+        n.add("Bus", "DE shipping-ftfuel", carrier="ftfuel")
+        n.add("Bus", "DE ftfuel", carrier="ftfuel")
 
-    # add ft store
-    ft_store = n.stores.loc["EU import shipping-ftfuel store"].copy()
-    ft_store.name = "DE ftfuel Store"
-    ft_store.bus = "DE ftfuel"
-    n.add("Store", name=ft_store.name, **ft_store)
+        # add ft store
+        ft_store = n.stores.loc["EU import shipping-ftfuel store"].copy()
+        ft_store.name = "DE ftfuel Store"
+        ft_store.bus = "DE ftfuel"
+        n.add("Store", name=ft_store.name, **ft_store)
 
-    # ft generator link
-    ft_gen = n.links.loc["EU import shipping-ftfuel"].copy()
-    ft_gen.name = "DE import shipping-ftfuel"
-    ft_gen.bus0 = "DE shipping-ftfuel"
-    ft_gen.bus1 = "DE renewable oil"
-    n.add("Link", name=ft_gen.name, **ft_gen)
+        # ft generator link
+        ft_gen = n.links.loc["EU import shipping-ftfuel"].copy()
+        ft_gen.name = "DE import shipping-ftfuel"
+        ft_gen.bus0 = "DE shipping-ftfuel"
+        ft_gen.bus1 = "DE renewable oil"
+        n.add("Link", name=ft_gen.name, **ft_gen)
 
     # oil shipping
     if "EU oil shipping oil" in n.loads.index:
@@ -531,6 +535,16 @@ def unravel_import_carrier(n, industrial_demand, industrial_production):
         n.loads.loc["shipping oil emissions", "p_set"] += co2
     
     # everything else is already taken care of in unravel_oilbus
+    # delete all European import links/generators
+    drop_gen = n.generators[(n.generators.index.str.contains("shipping")) & 
+                            (n.generators.bus.str[:2] != "DE")].index
+    carriers = ["import shipping-lch4", "import shipping-ftfuel", "import shipping-meoh"]
+    drop_lin = n.links[(n.links.carrier.isin(carriers)) & 
+                       (n.links.index.str[:2] != "DE")].index
+
+    n.generators.drop(drop_gen, inplace=True)
+    n.links.drop(drop_lin, inplace=True)
+
 
 def transmission_costs_from_modified_cost_data(n, costs, transmission, length_factor=1.0):
     # copying the the function update_transmission_costs from add_electricity
@@ -589,12 +603,12 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "modify_prenetwork",
             simpl="",
-            clusters=22,
+            clusters=37,
             opts="",
             ll="vopt",
             sector_opts="none",
-            planning_horizons="2020",
-            run="KN2045_Bal_v4"
+            planning_horizons="2030",
+            run="cost_plus_10",
         )
 
     logger.info("Adding Ariadne-specific functionality")
@@ -612,7 +626,7 @@ if __name__ == "__main__":
 
     new_boiler_ban(n)
 
-    fix_new_boiler_profiles(n)
+    # fix_new_boiler_profiles(n)
 
     remove_old_boiler_profiles(n)
 
@@ -624,9 +638,10 @@ if __name__ == "__main__":
 
     if not snakemake.config["run"]["debug_unravel_oilbus"]:
         unravel_oilbus(n)
-        industrial_demand = pd.read_csv(snakemake.input.industrial_demand, index_col=[0, 1]) * 1e6 * nyears
-        industrial_production = pd.read_csv(snakemake.input.industrial_production, index_col=0) * 1e3 * nyears  # kt/a -> t/a
-        unravel_import_carrier(n, industrial_demand, industrial_production)
+        if snakemake.params.sector["imp"]:
+            industrial_demand = pd.read_csv(snakemake.input.industrial_demand, index_col=[0, 1]) * 1e6 * nyears
+            industrial_production = pd.read_csv(snakemake.input.industrial_production, index_col=0) * 1e3 * nyears  # kt/a -> t/a
+            unravel_import_carrier(n, industrial_demand, industrial_production)
 
     if snakemake.params.enable_kernnetz:
         fn = snakemake.input.wkn
