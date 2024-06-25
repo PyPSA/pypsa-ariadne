@@ -295,6 +295,45 @@ def unravel_oilbus(n):
           e_cyclic=True,
           capital_cost=0.02,
           )
+    
+    # unravel meoh
+    logger.info("Unraveling methanol bus")
+    # add bus
+    n.add(
+        "Bus", 
+        "DE methanol", 
+        location="DE",
+        x=n.buses.loc["DE","x"],
+        y=n.buses.loc["DE","y"],
+        carrier="methanol"
+    )
+    
+    # change links from EU meoh to DE meoh
+    DE_meoh_out = n.links[(n.links.bus0=="EU methanol") & (n.links.index.str[:2]=="DE")].index
+    n.links.loc[DE_meoh_out, "bus0"] = "DE methanol"
+    DE_meoh_in = n.links[(n.links.bus1=="EU methanol") & (n.links.index.str[:2]=="DE")].index
+    n.links.loc[DE_meoh_in, "bus1"] = "DE methanol"
+
+    # add links between methanol buses
+    n.madd(
+        "Link",
+        ["EU methanol -> DE methanol", "DE methanol -> EU methanol"],
+        bus0=["EU methanol", "DE methanol"],
+        bus1=["DE methanol", "EU methanol"],
+        carrier="methanol",
+        p_nom=1e6,
+        p_min_pu=0,
+    )
+
+    # add stores
+    n.add("Store",
+          "DE methanol Store",
+          bus="DE methanol",
+          carrier="methanol",
+          e_nom_extendable=True,
+          e_cyclic=True,
+          capital_cost=0.02,
+          )
 
 
 def transmission_costs_from_modified_cost_data(n, costs, transmission, length_factor=1.0):
