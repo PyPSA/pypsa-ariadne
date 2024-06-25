@@ -1,6 +1,7 @@
 import logging
 
 import pandas as pd
+import numpy as np
 
 import pypsa
 
@@ -380,6 +381,59 @@ def must_run_biomass(n, p_min_pu, regions):
     n.links.loc[links_i, "p_min_pu"] = p_min_pu
 
 
+def aladin_mobility_demand(n):
+    '''
+    Change loads in Germany to use Aladin data for road demand.
+    '''
+    # get aladin data
+    aladin_demand = pd.read_csv(snakemake.input.aladin_demand, index_col=0)
+
+    # oil demand
+    oil_demand = aladin_demand.Liquids
+    oil_index = n.loads[(n.loads.carrier == "land transport oil") & (n.loads.index.str[:2] == "DE")].index
+    oil_demand.index = [f"{i} land transport oil" for i in oil_demand.index]
+
+    profile = n.loads_t.p_set.loc[:, oil_index]
+    profile /= profile.sum()
+    n.loads_t.p_set.loc[:, oil_index] = (oil_demand*profile).div(n.snapshot_weightings.objective, axis=0)
+
+    # hydrogen demand
+    h2_demand = aladin_demand.Hydrogen
+    h2_index = n.loads[(n.loads.carrier == "land transport fuel cell") & (n.loads.index.str[:2] == "DE")].index
+    h2_demand.index = [f"{i} land transport fuel cell" for i in h2_demand.index]
+
+    profile = n.loads_t.p_set.loc[:, h2_index]
+    profile /= profile.sum()
+    n.loads_t.p_set.loc[:, h2_index] = (h2_demand*profile).div(n.snapshot_weightings.objective, axis=0)
+
+    # electricity demand
+    ev_demand = aladin_demand.Electricity
+    ev_index = n.loads[(n.loads.carrier == "land transport EV") & (n.loads.index.str[:2] == "DE")].index
+    ev_demand.index = [f"{i} land transport EV" for i in ev_demand.index]
+
+    profile = n.loads_t.p_set.loc[:, ev_index]
+    profile /= profile.sum()
+    n.loads_t.p_set.loc[:, ev_index] = (ev_demand*profile).div(n.snapshot_weightings.objective, axis=0)
+
+    # adjust BEV charger and V2G capacities
+    number_cars = pd.read_csv(snakemake.input.transport_data, index_col=0)[
+        "number cars"
+    ].filter(like="DE")
+
+    factor = aladin_demand.number_of_cars*1e6 / (number_cars*snakemake.config["sector"]["land_transport_electric_share"][int(snakemake.wildcards.planning_horizons)])
+
+    BEV_charger_i = n.links[(n.links.carrier == "BEV charger") & (n.links.bus0.str.startswith("DE"))].index
+    n.links.loc[BEV_charger_i].p_nom *= factor
+
+    V2G_i = n.links[(n.links.carrier == "V2G") & (n.links.bus0.str.startswith("DE"))].index
+    if not V2G_i.empty:
+        n.links.loc[V2G_i].p_nom *= factor
+
+    dsm_i = n.stores[(n.stores.carrier == "battery storage") & (n.stores.bus.str.startswith("DE"))].index
+    if not dsm_i.empty:
+        n.stores.loc[dsm_i].e_nom *= factor
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
@@ -412,6 +466,8 @@ if __name__ == "__main__":
         snakemake.params.costs,
         nyears,
     )
+
+    aladin_mobility_demand(n)
 
     new_boiler_ban(n)
 

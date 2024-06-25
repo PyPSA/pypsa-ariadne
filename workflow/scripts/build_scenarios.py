@@ -12,40 +12,13 @@ from pathlib import Path
 import pandas as pd
 import os
 
-def get_transport_shares(df, planning_horizons):
-    # Get share of vehicles for transport sector - neglecting heavy duty vehicles
-    total_transport = df.loc["Aladin v1", "Stock|Transportation|LDV"]
-    tech_transport = df.loc["Aladin v1"].loc[[ 
-        "Stock|Transportation|LDV|ICE",
-        "Stock|Transportation|LDV|BEV",
-        "Stock|Transportation|LDV|PHEV",
-    ]]
-
-    transport_share = tech_transport / total_transport
-    transport_share = transport_share[planning_horizons]
-    transport_share.set_index(pd.Index(["ICE", "BEV", "PHEV"]), inplace=True)
-
-    return transport_share
-
 def get_transport_growth(df, planning_horizons):
     # Aviation growth factor - using REMIND-EU v1.1 since Aladin v1 does not include bunkers
     aviation_model = "REMIND-EU v1.1"
     aviation = df.loc[aviation_model,"Final Energy|Bunkers|Aviation", "PJ/yr"]
     aviation_growth_factor = aviation / aviation[2020]
 
-    # Transport growth factor - using REMIND until Aladin v1 uploads variables
-    transport_model = "REMIND-EU v1.1"
-    freight = df.loc[transport_model, "Energy Service|Transportation|Freight|Road", "bn tkm/yr"]
-    person = df.loc[transport_model, "Energy Service|Transportation|Passenger|Road", "bn pkm/yr"]
-    freight_PJ = df.loc[transport_model, "Final Energy|Transportation|Truck", "PJ/yr"]
-    person_PJ = df.loc[transport_model, "Final Energy|Transportation|LDV", "PJ/yr"]
-    
-    transport_growth_factor = pd.Series()
-    for year in planning_horizons:
-        share = (person_PJ[year] / (person_PJ[year] + freight_PJ[year]))
-        transport_growth_factor.loc[year] = share * (person[year] / person[2020]) + (1 - share) * (freight[year] / freight[2020])
-
-    return aviation_growth_factor[planning_horizons], transport_growth_factor
+    return aviation_growth_factor[planning_horizons]
 
 
 def get_primary_steel_share(df, planning_horizons):
@@ -144,31 +117,14 @@ def write_to_scenario_yaml(
         )
         
         planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045] # for 2050 we still need data
-
-        transport_share = get_transport_shares(
-            df.loc[:, fallback_reference_scenario, :],
-            planning_horizons,
-        )
         
-        aviation_demand_factor, land_transport_demand_factor = get_transport_growth(df.loc[:, fallback_reference_scenario, :], planning_horizons)
-
-        mapping_transport = {
-            'PHEV': 'land_transport_fuel_cell_share',
-            'BEV': 'land_transport_electric_share',
-            'ICE': 'land_transport_ice_share'
-        }
+        aviation_demand_factor = get_transport_growth(df.loc[:, fallback_reference_scenario, :], planning_horizons)
 
         config[scenario]["sector"] = {}
-        for key, sector_mapping in mapping_transport.items():
-            config[scenario]["sector"][sector_mapping] = {}
-            for year in transport_share.columns:
-                config[scenario]["sector"][sector_mapping][year] = round(transport_share.loc[key, year].item(), 4)
-
-        config[scenario]["sector"]["land_transport_demand_factor"] = {}
+        
         config[scenario]["sector"]["aviation_demand_factor"] = {}
         for year in planning_horizons:
             config[scenario]["sector"]["aviation_demand_factor"][year] = round(aviation_demand_factor.loc[year].item(), 4)
-            config[scenario]["sector"]["land_transport_demand_factor"][year] = round(land_transport_demand_factor.loc[year].item(), 4)
 
         st_primary_fraction = get_primary_steel_share(df.loc[:, reference_scenario, :], planning_horizons)
         
