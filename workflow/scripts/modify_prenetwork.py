@@ -423,15 +423,15 @@ def aladin_mobility_demand(n):
     factor = aladin_demand.number_of_cars*1e6 / (number_cars*snakemake.config["sector"]["land_transport_electric_share"][int(snakemake.wildcards.planning_horizons)])
 
     BEV_charger_i = n.links[(n.links.carrier == "BEV charger") & (n.links.bus0.str.startswith("DE"))].index
-    n.links.loc[BEV_charger_i].p_nom *= factor
+    n.links.loc[BEV_charger_i].p_nom *= pd.Series(factor.values, index=BEV_charger_i)
 
     V2G_i = n.links[(n.links.carrier == "V2G") & (n.links.bus0.str.startswith("DE"))].index
     if not V2G_i.empty:
-        n.links.loc[V2G_i].p_nom *= factor
+        n.links.loc[V2G_i].p_nom *= pd.Series(factor.values, index=V2G_i)
 
     dsm_i = n.stores[(n.stores.carrier == "battery storage") & (n.stores.bus.str.startswith("DE"))].index
     if not dsm_i.empty:
-        n.stores.loc[dsm_i].e_nom *= factor
+        n.stores.loc[dsm_i].e_nom *= pd.Series(factor.values, index=dsm_i)
 
 
 if __name__ == "__main__":
@@ -450,7 +450,7 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts="none",
-            planning_horizons="2020",
+            planning_horizons="2030",
             run="KN2045_Bal_v4"
         )
 
