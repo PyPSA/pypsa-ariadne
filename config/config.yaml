@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: transport_aladin
+  prefix: 20240625transport_aladin
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -18,7 +18,7 @@ run:
     enable: true
     file: config/scenarios.automated.yaml
   shared_resources: 
-    policy: true #stops recalculating
+    policy: base #stops recalculating
     exclude:
       - existing_heating.csv # specify files which should not be shared between scenarios
       - costs

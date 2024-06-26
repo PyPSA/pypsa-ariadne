@@ -452,9 +452,9 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
     # if desired by Ariadne
     #
     var[cap_string + "Heat|Biomass|w/ CCS"] = \
-        capacities_central_heat.get('urban central solid biomass CHP CC',0) 
+        capacities_central_heat.get('urban central solid biomass CHP CC', 0) 
     var[cap_string + "Heat|Biomass|w/o CCS"] = \
-        capacities_central_heat.get('urban central solid biomass CHP') \
+        capacities_central_heat.get('urban central solid biomass CHP', 0) \
         +  capacities_central_heat.filter(like="biomass boiler").sum()
     
     var[cap_string + "Heat|Biomass"] = \
@@ -1216,7 +1216,7 @@ def get_secondary_energy(n, region):
             ["carrier"]
         ).sum().multiply(MWh2PJ)
 
-        assert methanol_production.size <= 1 # only methanolisation
+        assert methanol_production.size <= 2 # only methanolisation and methanol imports
 
         # var["Production|Chemicals|Methanol"] = \ # here units are Mt/year
         var["Secondary Energy|Methanol"] = \
@@ -3017,6 +3017,9 @@ def get_trade(n, region):
         exports_oil_renew * MWh2PJ
 
     # Trade|Secondary Energy|Gases|Hydrogen|Volume
+
+    # TODO add methanol trade
+
     # Trade|Primary Energy|Coal|Volume
     # Trade|Primary Energy|Gas|Volume
     kwargs = {

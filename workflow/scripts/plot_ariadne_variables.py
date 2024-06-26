@@ -232,7 +232,11 @@ if __name__ == "__main__":
         select_regex="Primary Energy\|[^|]*\|[^|]*$",
         drop_regex="^(?!.*(CCS|Price|Volume)).+"
     )
-
+    if df.loc["Final Energy|Industry excl Non-Energy Use|Hydrogen", "2025"].item() < 0:
+        val = df.loc["Final Energy|Industry excl Non-Energy Use|Hydrogen", "2025"]
+        df.loc["Final Energy|Industry excl Non-Energy Use|Hydrogen", "2025"] = 0
+        df.loc["Final Energy|Hydrogen", "2025"] = 0
+        print("WARNING! NEGATIVE HYDROGEN DEMAND IN INDUSTRY IN 2025! ", val)
     side_by_side_plot(
         df,
         dfremind,
