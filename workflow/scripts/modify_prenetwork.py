@@ -429,7 +429,7 @@ def aladin_mobility_demand(n):
     if not V2G_i.empty:
         n.links.loc[V2G_i].p_nom *= pd.Series(factor.values, index=V2G_i)
 
-    dsm_i = n.stores[(n.stores.carrier == "battery storage") & (n.stores.bus.str.startswith("DE"))].index
+    dsm_i = n.stores[(n.stores.carrier == "EV battery") & (n.stores.bus.str.startswith("DE"))].index
     if not dsm_i.empty:
         n.stores.loc[dsm_i].e_nom *= pd.Series(factor.values, index=dsm_i)
 

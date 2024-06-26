@@ -391,7 +391,7 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         }).sum()
     
     var[cap_string + "Electricity|Storage Reservoir|Vehicles"] = \
-        storage_capacities.get("Li ion", 0) 
+        storage_capacities.get("EV battery", 0) 
 
     var[cap_string + "Electricity|Storage Reservoir"] = \
         var[[
