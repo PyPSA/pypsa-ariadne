@@ -121,14 +121,26 @@ limits_capacity_max:
       DE:
         2020: 54.5
         2025: 69
+        2030: 160
+        2035: 160
+        2040: 160
+        2045: 160
     offwind:
       DE:
         2020: 7.8
         2025: 8
+        2030: 80
+        2035: 80
+        2040: 80
+        2045: 80
     solar:
       DE:
         2020: 53.7
         2025: 110 # EEG2023; assumes for 2026: 128 GW, assuming a fair share reached by end of 2025
+        2030: 400
+        2035: 400
+        2040: 400
+        2045: 400
 
 limits_capacity_min:
     Generator:
