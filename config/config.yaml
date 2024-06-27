@@ -16,6 +16,7 @@ run:
   # - KN2045minus_SupplyFocus
   scenarios:
     enable: true
+    manual_file: config/scenarios.public.yaml
     file: config/scenarios.automated.yaml
   shared_resources: 
     policy: base #stops recalculating
@@ -31,10 +32,10 @@ run:
 iiasa_database:
   db_name: ariadne2_intern
   leitmodelle:
-    - REMIND-EU v1.1
-    - REMod v1.0
-    - Aladin v1
-    - FORECAST v1.0
+    general: REMIND-EU v1.1
+    buildings: REMod v1.0
+    transport: Aladin v1
+    industry: FORECAST v1.0
   scenarios:
     - CurrentPolicies
     - KN2045_Elec_v4
