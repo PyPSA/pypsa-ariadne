@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240625transport_aladin
+  prefix: 20240627wind_limits
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -129,10 +129,10 @@ limits_capacity_max:
       DE:
         2020: 7.8
         2025: 8
-        2030: 80
-        2035: 80
-        2040: 80
-        2045: 80
+        2030: 70
+        2035: 70
+        2040: 70
+        2045: 70
     solar:
       DE:
         2020: 53.7
