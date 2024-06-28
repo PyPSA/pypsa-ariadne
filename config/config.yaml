@@ -16,7 +16,7 @@ run:
   # - KN2045minus_SupplyFocus
   scenarios:
     enable: true
-    manual_file: config/scenarios.public.yaml
+    manual_file: config/scenarios.manual.yaml
     file: config/scenarios.automated.yaml
   shared_resources: 
     policy: base #stops recalculating
