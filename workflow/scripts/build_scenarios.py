@@ -14,8 +14,12 @@ import os
 
 def get_transport_growth(df, planning_horizons):
     # Aviation growth factor - using REMIND-EU v1.1 since Aladin v1 does not include bunkers
-    aviation_model = "REMIND-EU v1.1"
-    aviation = df.loc[aviation_model,"Final Energy|Bunkers|Aviation", "PJ/yr"]
+    aviation_model = snakemake.params.leitmodelle["general"]
+    try:
+        aviation = df.loc[aviation_model,"Final Energy|Bunkers|Aviation", "PJ/yr"]
+    except KeyError:
+        aviation = df.loc[aviation_model,"Final Energy|Bunkers|Aviation", "TWh/yr"] * 3.6 # TWh to PJ
+
     aviation_growth_factor = aviation / aviation[2020]
 
     return aviation_growth_factor[planning_horizons]
@@ -23,14 +27,14 @@ def get_transport_growth(df, planning_horizons):
 
 def get_primary_steel_share(df, planning_horizons):
     # Get share of primary steel production
-    model = "FORECAST v1.0"
+    model = snakemake.params.leitmodelle["industry"]
     total_steel = df.loc[model, "Production|Steel"]
     primary_steel = df.loc[model, "Production|Steel|Primary"]
     
     primary_steel_share = primary_steel / total_steel
     primary_steel_share = primary_steel_share[planning_horizons]
 
-    if model == "FORECAST v1.0" and planning_horizons[0] == 2020:
+    if model == "FORECAST v1.0" and (planning_horizons[0] == 2020) and snakemake.params.db_name == "ariadne2_intern":
         logger.warning("FORECAST v1.0 does not have data for 2020. Using 2021 data for Production|Steel instead.")
         primary_steel_share[2020] = primary_steel[2021] / total_steel[2021]
 
@@ -70,16 +74,23 @@ def get_co2_budget(df, source):
         raise ValueError("Invalid source for CO2 budget.")
     ## Compute nonco2 from Ariadne-Leitmodell (REMIND)
 
+    # co2 = (
+    #     df.loc["Emissions|CO2 incl Bunkers","Mt CO2/yr"]  
+    #     - df.loc["Emissions|CO2|Land-Use Change","Mt CO2-equiv/yr"]
+    #     - df.loc["Emissions|CO2|Energy|Demand|Bunkers","Mt CO2/yr"]
+    # )
+    # ghg = (
+    #     df.loc["Emissions|Kyoto Gases","Mt CO2-equiv/yr"]
+    #     - df.loc["Emissions|Kyoto Gases|Land-Use Change","Mt CO2-equiv/yr"]
+    #     # No Kyoto Gas emissions for Bunkers recorded in Ariadne DB
+    # )
+
     co2 = (
-        df.loc["Emissions|CO2 incl Bunkers","Mt CO2/yr"]  
-        - df.loc["Emissions|CO2|Land-Use Change","Mt CO2-equiv/yr"]
-        - df.loc["Emissions|CO2|Energy|Demand|Bunkers","Mt CO2/yr"]
+        df.loc["Emissions|CO2","Mt CO2/yr"]
     )
 
     ghg = (
         df.loc["Emissions|Kyoto Gases","Mt CO2-equiv/yr"]
-        - df.loc["Emissions|Kyoto Gases|Land-Use Change","Mt CO2-equiv/yr"]
-        # No Kyoto Gas emissions for Bunkers recorded in Ariadne DB
     )
 
     nonco2 = ghg - co2
@@ -112,7 +123,7 @@ def write_to_scenario_yaml(
         co2_budget_source = config[scenario]["co2_budget_DE_source"]
 
         co2_budget_fractions = get_co2_budget(
-            df.loc["REMIND-EU v1.1", fallback_reference_scenario],
+            df.loc[snakemake.params.leitmodelle["general"], fallback_reference_scenario],
             co2_budget_source
         )
         
