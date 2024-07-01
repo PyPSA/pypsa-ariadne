@@ -32,13 +32,13 @@ You need conda or [mamba](https://mamba.readthedocs.io/en/latest/) to run the an
 
 The default workflow configured for this repository assumes access to the internal Ariadne2 database. Users that do not have the required login details can run the analysis based on the data published during the [first phase of the Ariadne project](https://data.ece.iiasa.ac.at/ariadne/).
 
-This is possible by providing an additional config to the snakemake workflow. For every `snakemake COMMAND` specified in the instructions below, public users may use:
+This is possible by providing an additional config to the snakemake workflow. For every `snakemake COMMAND` specified in the instructions below, public users should use:
 
 ```
 snakemake --configfile=config/config.public.yaml COMMAND
 ```
 
-If public users wish to edit the default scenario specifications, they should change `scenarios.public.yaml` instead of `scenarios.manual.yaml`. More details on using scenarios are given below.
+The additional config file specifies the required database, model, and scenario names for Ariadne1. If public users wish to edit the default scenario specifications, they should change `scenarios.public.yaml` instead of `scenarios.manual.yaml`. More details on using scenarios are given below.
 
 ## For internal users: Provide login details
 
@@ -52,17 +52,17 @@ You will be prompted to enter your `<password>`.
 
 Caveat: These credentials are stored on your machine in plain text.
 
-To switch between public and internal use, the command `ixmp4 logout` may be necessary.
+To switch between internal and public use, the command `ixmp4 logout` may be necessary.
 
 ## Run the analysis
 
-Before running any analysis with scenarios, the rule `build_scenarios` must be executed. This will write the file `config/scenarios.automated.yaml` which includes input data and CO2 targets from the IIASA Ariadne database as well as the information from the manual scenario file. [This file is specified in the default config.yaml via they key `run:scenarios:manual_file` (by default located at `config/scenarios.manual.yaml`)].
+Before running any analysis with scenarios, the rule `build_scenarios` must be executed. This will create the file `config/scenarios.automated.yaml` which includes input data and CO2 targets from the IIASA Ariadne database as well as the specifications from the manual scenario file. [This file is specified in the default config.yaml via they key `run:scenarios:manual_file` (by default located at `config/scenarios.manual.yaml`)].
 
     snakemake -call build_scenarios -f
 
 Note that the hierarchy of scenario files is the following: `scenarios.automated.yaml` > (any `explicitly specified --configfiles`) > `config.yaml `> `config.default.yaml `Changes in the file `scenarios.manual.yaml `are only taken into account if the rule `build_scenarios` is executed.
 
-For the first run open config.yaml and set
+For the first run, open config.yaml and set
 
     enable:
         retrieve: true # set to false once initial data is retrieved
@@ -80,7 +80,7 @@ To generate a PDF of the dependency graph of all steps `build/dag.pdf` run:
 
 ## Repo structure
 
-* `config`: configurations used in the study
+* `config`: configuration files
 * `ariadne-data`: Germany specific data from the Ariadne project
 * `workflow`: contains the Snakemake workflow, including the submodule PyPSA-Eur and specific scripts for Germany
 * `cutouts`: very large weather data cutouts supplied by atlite library (does not exist initially)
@@ -103,7 +103,7 @@ To generate a PDF of the dependency graph of all steps `build/dag.pdf` run:
 - Additional constraints that limit maximum capacity of specific technologies
 - Import constraints
 - Renewable build out according to the Wind-an-Land, Wind-auf-See and Solarstrategie laws
-- A comprehensive reporting reporting module that exports Capacity Expansion, Primary/Secondary/Final Energy, CO2 Emissions per Sector, Trade, Investments, ...
+- A comprehensive reporting  module that exports Capacity Expansion, Primary/Secondary/Final Energy, CO2 Emissions per Sector, Trade, Investments, ...
 - Plotting functionality to compare different scenarios
 
 ## License
