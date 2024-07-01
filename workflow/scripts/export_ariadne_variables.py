@@ -233,22 +233,42 @@ costs_dict = {
     'urban decentral solar thermal': 'decentral solar thermal',
     'waste CHP': 'waste CHP',
     'waste CHP CC': 'waste CHP CC',
+    # Heat capacities
+    'DAC': 'direct air capture',                                     
+    'Fischer-Tropsch': 'Fischer-Tropsch',                         
+    'H2 Electrolysis': 'electrolysis',                         
+    'H2 Fuel Cell': 'fuel cell',                            
+    'Sabatier': 'methanation',                                
+    'methanolisation': 'methanolisation',                         
+    # 'urban central air heat pump': 'central air-sourced heat pump',
+    # 'urban central coal CHP': 'central coal CHP',
+    # 'urban central gas CHP': 'central gas CHP',
+    # 'urban central gas CHP CC': 'central gas CHP',
+    # 'urban central lignite CHP': 'central coal CHP',
+    # 'urban central oil CHP': 'central gas CHP',
+    # 'urban central resistive heater': 'central resistive heater',        
+    # 'urban central solid biomass CHP': 'central solid biomass CHP',
+    # 'urban central solid biomass CHP CC': 'central solid biomass CHP CC',
+    'urban central water tanks charger': 'water tank charger',       
+    'urban central water tanks discharger': 'water tank discharger',    
+    # 'waste CHP': 'waste CHP',
+    # 'waste CHP CC': 'waste CHP CC',                           
 }
 
 storage_costs_dict = {
-    'H2': None,
-    'Li ion': None,
-    'PHS': None,
+    'H2': 'hydrogen storage underground',
+    'EV battery': None, # 0 i think
+    'PHS': None, #'PHS', accounted already as generator??
     'battery': 'battery storage',
-    'biogas': None,
-    'co2 sequestered': None,
-    'co2 stored': None,
+    'biogas': None, # not a typical store, 0 i think
+    'co2 sequestered': snakemake.params.co2_sequestration_cost, # TODO how to consider the co2_sequestration_lifetime here
+    'co2 stored': 'CO2 storage tank',
     'gas': 'gas storage',
     'home battery': 'home battery storage',
-    'hydro': None,
+    'hydro': None, # `hydro`, , accounted already as generator??
     'oil': 0.02,
     'rural water tanks': 'decentral water tank storage',
-    'solid biomass': None,
+    'solid biomass': None, # not a store, but a potential, 0 i think
     'urban central water tanks': 'central water tank storage',
     'urban decentral water tanks': 'decentral water tank storage',
 }
@@ -283,7 +303,8 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
             ],
             capacities_electricity.index
         )
-        for carrier in ["onwind", "solar", "solar-hsat"]:
+        for carrier in technology_investments.index.intersection(
+            ["onwind", "solar", "solar-hsat"]):
             technology_investments[carrier] += \
                 costs.at["electricity grid connection", "investment"]
             

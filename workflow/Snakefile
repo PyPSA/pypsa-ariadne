@@ -316,6 +316,7 @@ rule export_ariadne_variables:
         hours=config_provider("clustering","temporal","resolution_sector"),
         costs=config_provider("costs"),
         energy_totals_year=config_provider("energy", "energy_totals_year"),
+        co2_sequestration_cost=config_provider("sector","co2_sequestration_cost"),
     input:
         template=resources("template_ariadne_database.xlsx"),
         industry_demands=expand(
