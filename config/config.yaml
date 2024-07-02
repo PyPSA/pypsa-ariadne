@@ -4,16 +4,16 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240613scenariosredefined
+  prefix: 20240620threeNodesDE
   name:
-  - CurrentPolicies
-  - KN2045_Bal_v4
-  - KN2045_Elec_v4
-  - KN2045_H2_v4
-  - KN2045plus_EasyRide
-  - KN2045plus_LowDemand
-  - KN2045minus_WorstCase
-  - KN2045minus_SupplyFocus
+  # - CurrentPolicies
+   - KN2045_Bal_v4
+  # - KN2045_Elec_v4
+  # - KN2045_H2_v4
+  # - KN2045plus_EasyRide
+  # - KN2045plus_LowDemand
+  # - KN2045minus_WorstCase
+  # - KN2045minus_SupplyFocus
   scenarios:
     enable: true
     file: config/scenarios.automated.yaml
@@ -58,7 +58,7 @@ scenario:
   ll:
   - vopt
   clusters:
-  - 22
+  - 3
   opts:
   - ''
   sector_opts:
@@ -78,57 +78,57 @@ existing_capacities:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
 # Germany plus 12 "Stromnachbarn"
-countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'PL', 'SE']
+countries: ['DE']
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
   retrieve: false # set to false once initial data is retrieved
   retrieve_cutout: false # set to false once initial data is retrieved
-clustering:
-  # simplify_network:
-  #   to_substations: true
-  focus_weights:
-  # 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
-    'DE': 0.3636 # 8/22
-    'AT': 0.0455 # 1/22
-    'BE': 0.0455
-    'CH': 0.0455
-    'CZ': 0.0455
-    'DK': 0.0909 # 2/22
-    'FR': 0.0454
-    'GB': 0.0909 # 2/22
-    'LU': 0.0454
-    'NL': 0.0454
-    'NO': 0.0454
-    'PL': 0.0454
-    'SE': 0.0454
+# clustering:
+#   # simplify_network:
+#   #   to_substations: true
+#   focus_weights:
+#   # 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
+#     'DE': 0.3636 # 8/22
+#     'AT': 0.0455 # 1/22
+#     'BE': 0.0455
+#     'CH': 0.0455
+#     'CZ': 0.0455
+#     'DK': 0.0909 # 2/22
+#     'FR': 0.0454
+#     'GB': 0.0909 # 2/22
+#     'LU': 0.0454
+#     'NL': 0.0454
+#     'NO': 0.0454
+#     'PL': 0.0454
+#     'SE': 0.0454
   temporal:
     resolution_sector: 365H
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:
-  2020: 0.800 # 20% reduction by 2020
-  2025: 0.600
-  2030: 0.450 # 55% reduction by 2030 (Ff55)
-  2035: 0.250
-  2040: 0.100 # goal to be set next year
-  2045: 0.050
-  2050: 0.000 # climate-neutral by 2050
+  2020: 1 # 20% reduction by 2020
+  2025: 1
+  2030: 1 # 55% reduction by 2030 (Ff55)
+  2035: 1
+  2040: 1 # goal to be set next year
+  2045: 1
+  2050: 1 # climate-neutral by 2050
 
-limits_capacity_max:
-  Generator:
-    onwind:
-      DE:
-        2020: 54.5
-        2025: 69
-    offwind:
-      DE:
-        2020: 7.8
-        2025: 8
-    solar:
-      DE:
-        2020: 53.7
-        2025: 110 # EEG2023; assumes for 2026: 128 GW, assuming a fair share reached by end of 2025
+# limits_capacity_max:
+#   Generator:
+#     onwind:
+#       DE:
+#         2020: 54.5
+#         2025: 69
+#     offwind:
+#       DE:
+#         2020: 7.8
+#         2025: 8
+#     solar:
+#       DE:
+#         2020: 53.7
+#         2025: 110 # EEG2023; assumes for 2026: 128 GW, assuming a fair share reached by end of 2025
 
 limits_capacity_min:
     Generator:
@@ -181,15 +181,15 @@ limits_capacity_min:
 #           2045: 400
 #           # What about the EEG2023 "Strommengenpfad"?
 
-h2_import_max:
-  DE:
-    2020: 0
-    2025: 5
-    2030: 20
-    2035: 50
-    2040: 100
-    2045: 150
-    2050: 200
+# h2_import_max:
+#   DE:
+#     2020: 0
+#     2025: 5
+#     2030: 20
+#     2035: 50
+#     2040: 100
+#     2045: 150
+#     2050: 200
 
 wasserstoff_kernnetz:
   enable: false
@@ -223,7 +223,7 @@ costs:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
-  # solar_thermal: false
+  solar_thermal: false
   district_heating:
     potential: 0.4
     progress:
@@ -316,7 +316,7 @@ solving:
   options:
     assign_all_duals: true
     load_shedding: false
-    skip_iterations: false # settings for post-discretization: false
+    skip_iterations: true # settings for post-discretization: false
     min_iterations: 1 # settings for post-discretization: 1
     max_iterations: 1 # settings for post-discretization: 1
     post_discretization:
