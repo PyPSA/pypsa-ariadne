@@ -1852,6 +1852,9 @@ def get_emissions(n, region, _energy_totals):
         bus_carrier="co2",**kwargs
     ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)  
     
+    co2_emissions_global = n.statistics.supply(
+        bus_carrier="co2",**kwargs
+    ).groupby("carrier").sum().multiply(t2Mt)  
 
     CHP_emissions = n.statistics.supply(
         bus_carrier="co2",**kwargs
@@ -1890,6 +1893,10 @@ def get_emissions(n, region, _energy_totals):
         bus_carrier="co2",**kwargs
     ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)
 
+    co2_negative_emissions_global = n.statistics.withdrawal(
+        bus_carrier="co2",**kwargs
+    ).groupby("carrier").sum().multiply(t2Mt)
+
     co2_storage = n.statistics.supply(
         bus_carrier ="co2 stored",**kwargs
     ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)    
@@ -1920,6 +1927,9 @@ def get_emissions(n, region, _energy_totals):
 
     var["Emissions|CO2"] = \
         co2_emissions.sum() - co2_negative_emissions.sum()
+    
+    var["Emissions|CO2|Global"] = \
+        co2_emissions_global.sum() - co2_negative_emissions_global.sum()
 
     # ! LULUCF should also be subtracted (or added??), we get from REMIND, 
     # TODO how to consider it here?
@@ -2323,7 +2333,7 @@ def get_prices(n, region):
     }
 
     # co2 additions
-    co2_price = -n.global_constraints.loc["CO2Limit", "mu"] - n.global_constraints.loc["co2_limit-DE", "mu"]
+    co2_price = -n.global_constraints.loc["CO2Limit", "mu"] #- n.global_constraints.loc["co2_limit-DE", "mu"]
     # specific emissions in tons CO2/MWh according to n.links[n.links.carrier =="your_carrier].efficiency2.unique().item()
     specific_emisisons = {
         "oil" : 0.2571,
@@ -2937,15 +2947,15 @@ def get_policy(n, investment_year):
         co2_price_add_on = 0.0
         
     var["Price|Carbon"] = \
-        -n.global_constraints.loc["CO2Limit", "mu"] - n.global_constraints.loc["co2_limit-DE", "mu"] + co2_price_add_on
+        -n.global_constraints.loc["CO2Limit", "mu"]  + co2_price_add_on # - n.global_constraints.loc["co2_limit-DE", "mu"]
     
     var["Price|Carbon|EU-wide Regulation All Sectors"] = \
         -n.global_constraints.loc["CO2Limit", "mu"] + co2_price_add_on
     
     # Price|Carbon|EU-wide Regulation Non-ETS
 
-    var["Price|Carbon|National Climate Target"] = \
-        -n.global_constraints.loc["co2_limit-DE", "mu"]
+    # var["Price|Carbon|National Climate Target"] = \
+    #     -n.global_constraints.loc["co2_limit-DE", "mu"]
     
     # Price|Carbon|National Climate Target Non-ETS
 
