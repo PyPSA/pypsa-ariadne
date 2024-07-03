@@ -236,7 +236,8 @@ costs_dict = {
     # Heat capacities
     'DAC': 'direct air capture',                                     
     'Fischer-Tropsch': 'Fischer-Tropsch',                         
-    'H2 Electrolysis': 'electrolysis',                         
+    'H2 Electrolysis': 'electrolysis',                  
+
     'H2 Fuel Cell': 'fuel cell',                            
     'Sabatier': 'methanation',                                
     'methanolisation': 'methanolisation',                         
@@ -253,24 +254,6 @@ costs_dict = {
     'urban central water tanks discharger': 'water tank discharger',    
     # 'waste CHP': 'waste CHP',
     # 'waste CHP CC': 'waste CHP CC',                           
-}
-
-storage_costs_dict = {
-    'H2': 'hydrogen storage underground',
-    'EV battery': None, # 0 i think
-    'PHS': None, #'PHS', accounted already as generator??
-    'battery': 'battery storage',
-    'biogas': None, # not a typical store, 0 i think
-    'co2 sequestered': snakemake.params.co2_sequestration_cost, # TODO how to consider the co2_sequestration_lifetime here
-    'co2 stored': 'CO2 storage tank',
-    'gas': 'gas storage',
-    'home battery': 'home battery storage',
-    'hydro': None, # `hydro`, , accounted already as generator??
-    'oil': 0.02,
-    'rural water tanks': 'decentral water tank storage',
-    'solid biomass': None, # not a store, but a potential, 0 i think
-    'urban central water tanks': 'central water tank storage',
-    'urban decentral water tanks': 'decentral water tank storage',
 }
 
 
@@ -3259,6 +3242,7 @@ def get_operational_and_capital_costs(year):
         "battery charger": "Electricity",
         "battery discharger": "Electricity",
         "coal": "Electricity",
+        "Fischer-Tropsch": "Liquids",
         "gas pipeline": "Gases",
         "home battery charger": "Electricity",
         "home battery discharger": "Electricity",
@@ -3275,6 +3259,7 @@ def get_operational_and_capital_costs(year):
         "rural ground heat pump": "Heat",
         "rural resistive heater": "Heat",
         "rural solar thermal": "Heat",
+        "Sabatier": "Gases",
         "solar": "Electricity",
         "solar rooftop": "Electricity",
         "solar-hsat": "Electricity",
@@ -3285,6 +3270,8 @@ def get_operational_and_capital_costs(year):
         "urban central gas CHP CC": "Heat",
         "urban central lignite CHP": "Heat",
         "urban central oil CHP": "Heat",
+        "urban central water tanks charger": "Heat",
+        "urban central water tanks discharger": "Heat",
         "urban central resistive heater": "Heat",
         "urban central solar thermal": "Heat",
         "urban central solid biomass CHP": "Heat",
@@ -3403,6 +3390,24 @@ if __name__ == "__main__":
             run="KN2045_Bal_v4"
         )
 
+
+    storage_costs_dict = {
+        'H2': 'hydrogen storage underground',
+        'EV battery': None, # 0 i think
+        'PHS': None, #'PHS', accounted already as generator??
+        'battery': 'battery storage',
+        'biogas': None, # not a typical store, 0 i think
+        'co2 sequestered': snakemake.params.co2_sequestration_cost, # TODO how to consider the co2_sequestration_lifetime here
+        'co2 stored': 'CO2 storage tank',
+        'gas': 'gas storage',
+        'home battery': 'home battery storage',
+        'hydro': None, # `hydro`, , accounted already as generator??
+        'oil': 0.02,
+        'rural water tanks': 'decentral water tank storage',
+        'solid biomass': None, # not a store, but a potential, 0 i think
+        'urban central water tanks': 'central water tank storage',
+        'urban decentral water tanks': 'decentral water tank storage',
+    }
 
     config = snakemake.config
     ariadne_template = pd.read_excel(
