@@ -29,7 +29,13 @@ toe_to_MWh = 11.630 # GWh/ktoe OR MWh/toe
 
 
 
-def _get_oil_fossil_fraction(n, region, kwargs):
+def _get_oil_fossil_fraction(n, region):
+    kwargs = {
+        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
+        'at_port': True,
+        'nice_names': False,
+    }
+    
     if "DE" in region:
         total_oil_supply =  n.statistics.supply(
             bus_carrier="oil", **kwargs
@@ -264,7 +270,6 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
         'at_port': True,
         'nice_names': False,
     }
-
 
     var = pd.Series()
 
@@ -792,7 +797,7 @@ def get_primary_energy(n, region):
 
     var = pd.Series()
 
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
     
     oil_usage = n.statistics.withdrawal(
         bus_carrier="oil", 
@@ -1280,7 +1285,7 @@ def get_secondary_energy(n, region, _industry_demand):
         ].sum()
     )
 
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
 
     
     oil_fuel_usage = n.statistics.withdrawal(
@@ -1542,7 +1547,7 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
     # write var
     var["Final Energy|Non-Energy Use|Gases"] = (non_energy_natural_gas + CH4_for_MeOH + CH4_for_NH3) * MWh2PJ
 
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
 
     var["Final Energy|Non-Energy Use|Liquids"] = non_energy_naphtha * MWh2PJ
     var["Final Energy|Non-Energy Use|Liquids|Petroleum"] = non_energy_naphtha * MWh2PJ * oil_fossil_fraction
@@ -1762,7 +1767,7 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
 
     # var["Final Energy|Residential and Commercial|Hydrogen"] = \
     # ! Not implemented
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
     oil_usage = n.statistics.withdrawal(
         bus_carrier="oil", **kwargs
     ).filter(like=region).groupby(
@@ -1847,7 +1852,7 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
         + energy_totals["total international navigation"]
     )
 
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
 
     var["Final Energy|Transportation|Liquids"] = (
         sum_load(n, "land transport oil", region)
@@ -2042,8 +2047,22 @@ def get_emissions(n, region, _energy_totals):
 
     co2_emissions = n.statistics.supply(
         bus_carrier="co2",**kwargs
-    ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)  
+    ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)      
+
+    ## Account for e-fuels
+
+    # At the moment the emissions from urban central oil CHP are not corrected with the oil fossil_fraction. Here we assert that they are neglible
+    assert co2_emissions.get("urban central oil CHP", 1e-14) < 0.1
+
+    oil_techs = co2_emissions[co2_emissions.index.str.contains("oil") & ~co2_emissions.index.str.contains("gas")].index
     
+    
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
+    # Assuming that efuel emissions are generated at the production site
+    var["Emissions|CO2|Energy|Supply|Liquids"] = \
+        co2_emissions.loc[oil_techs].sum() * (1 - oil_fossil_fraction)
+    # Fossil fuel emissions are generated where they get burned
+    co2_emissions.loc[oil_techs] *= oil_fossil_fraction
 
     CHP_emissions = n.statistics.supply(
         bus_carrier="co2",**kwargs
@@ -2254,10 +2273,6 @@ def get_emissions(n, region, _energy_totals):
             "waste CHP",
             "waste CHP CC",
         ]).sum()
-
-    # var["Emissions|CO2|Energy|Supply|Liquids"] = \
-    # Our only Liquid production is Fischer-Tropsch
-    # -> no emissions in this category
 
     # var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = \
         # var["Emissions|CO2|Energy|Supply|Liquids"]
@@ -2582,7 +2597,7 @@ def get_prices(n, region):
     nodal_prices_oil = n.buses_t.marginal_price[nodal_flows_oil.columns]
 
     # co2 part
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
     co2_add_oil = oil_fossil_fraction * specific_emisisons["oil"] * co2_price
 
     var["Price|Primary Energy|Oil"] = \
