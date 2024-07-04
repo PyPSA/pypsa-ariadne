@@ -87,10 +87,19 @@ def get_co2_budget(df, source):
 
     co2 = (
         df.loc["Emissions|CO2","Mt CO2/yr"]
+        - df.loc["Emissions|CO2|Land-Use Change","Mt CO2-equiv/yr"]
     )
-
+    try:
+        kyoto_land_use_change = (
+            df.loc["Emissions|Kyoto Gases|Land-Use Change","Mt CO2-equiv/yr"]
+        )
+    except KeyError: # Key not in Ariadne public database
+        # Guesstimate of difference from Ariadne 2 data
+        kyoto_land_use_change = df.loc["Emissions|CO2|Land-Use Change","Mt CO2-equiv/yr"] + 4.5
+    
     ghg = (
         df.loc["Emissions|Kyoto Gases","Mt CO2-equiv/yr"]
+        - kyoto_land_use_change
     )
 
     nonco2 = ghg - co2
