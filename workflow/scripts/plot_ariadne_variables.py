@@ -41,7 +41,7 @@ def secondary_energy_plot(ddf, name="Secondary Energy"):
 
 def ariadne_subplot(
     df, ax, title, 
-    select_regex="", drop_regex="", stacked=True,
+    select_regex="", drop_regex="", stacked=True, unit=None,
 ):  
     # Check that all values have the same Unit
 
@@ -57,8 +57,8 @@ def ariadne_subplot(
         df = df.filter(
             regex=drop_regex,
         )
-
-    unit = df.columns.get_level_values("Unit").unique().dropna().item()
+    if not unit:
+        unit = df.columns.get_level_values("Unit").unique().dropna().item()
  
     df.columns = df.columns.droplevel("Unit")
 
@@ -81,12 +81,12 @@ def side_by_side_plot(
     ):
 
     idx = df.index.union(dfhybrid.index, sort=False)
-    print(idx)
+    
     df = df.reindex(idx)
     dfhybrid = dfhybrid.reindex(idx)
 
     fig, axes = plt.subplots(ncols=2, sharey=True)
-    ax = ariadne_subplot(df, axes[0], "PyP SA-Eur", **kwargs)
+    ax = ariadne_subplot(df, axes[0], "PyPSA-Eur", **kwargs)
     ax2 = ariadne_subplot(dfhybrid, axes[1], "REMIND-EU v1.1", **kwargs)
     
     handles, labels = ax.get_legend_handles_labels()
@@ -350,15 +350,16 @@ if __name__ == "__main__":
         drop_regex="^(?!.*(and)).+"
     )
 
-    # side_by_side_plot(
-    #     df,
-    #     dfremind,
-    #     "Detailed Emissions in Mt",
-    #     savepath=snakemake.output.co2_emissions,
-    #     select_regex="Emissions\|CO2\|[^|]*$",
-    #     stacked=False,
-    #     #drop_regex="^(?!.*(and)).+"
-    # )
+    side_by_side_plot(
+        df,
+        dfremind,
+        "Detailed Emissions in Mt",
+        savepath=snakemake.output.co2_emissions,
+        select_regex="Emissions\|CO2\|[^|]*$",
+        stacked=False,
+        #drop_regex="^(?!.*(and)).+",
+        unit="Mt CO2equiv/yr"
+    )
 
     within_plot(
         df, 

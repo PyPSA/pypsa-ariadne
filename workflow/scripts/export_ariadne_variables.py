@@ -2214,7 +2214,7 @@ def get_emissions(n, region, _energy_totals):
     co2_negative_emissions = co2_storage.multiply(
         negative_ccs / co2_storage.sum()
         ).reindex(
-        co2_atmosphere_withdrawal.index).fillna(0)
+        co2_atmosphere_withdrawal.index).fillna(0.0)
     
     negative_CHP_emissions = n.statistics.withdrawal(
         bus_carrier="co2",**kwargs
