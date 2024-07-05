@@ -250,8 +250,9 @@ costs_dict = {
     'waste CHP': 'waste CHP',
     'waste CHP CC': 'waste CHP CC',
     # Heat capacities
+    # TODO Check the units of the investments
     'DAC': 'direct air capture',                                     
-    'Fischer-Tropsch': 'Fischer-Tropsch',                         
+    'Fischer-Tropsch': None, #'Fischer-Tropsch' * "efficiency" ,                         
     'H2 Electrolysis': 'electrolysis',                  
 
     'H2 Fuel Cell': 'fuel cell',                            
@@ -269,7 +270,32 @@ costs_dict = {
     'urban central water tanks charger': 'water tank charger',       
     'urban central water tanks discharger': 'water tank discharger',    
     # 'waste CHP': 'waste CHP',
-    # 'waste CHP CC': 'waste CHP CC',                           
+    # 'waste CHP CC': 'waste CHP CC',
+    #  Decentral Heat capacities
+    # TODO consider overdim_factor
+    #'rural air heat pump': None,
+    'rural biomass boiler': 'biomass boiler',
+    'rural gas boiler': 'decentral gas boiler',
+    #'rural ground heat pump': None,
+    'rural oil boiler': 'decentral oil boiler',
+    'rural resistive heater': 'decentral resistive heater',
+    'rural water tanks charger': 'water tank charger',
+    'rural water tanks discharger': 'water tank discharger',
+    #'urban decentral air heat pump': None,
+    'urban decentral biomass boiler': 'biomass boiler',
+    'urban decentral gas boiler': 'decentral gas boiler',
+    'urban decentral oil boiler': 'decentral oil boiler',
+    'urban decentral resistive heater': 'decentral resistive heater',
+    'urban decentral water tanks charger': 'water tank charger',
+    'urban decentral water tanks discharger': 'water tank discharger',                      
+    # Other capacities
+    # 'Sabatier': 'methanation',costs.at["methanation", "fixed"]
+    #* costs.at["methanation", "efficiency"]
+    'biogas to gas': None, # TODO biogas + biogas upgrading
+    'biogas to gas CC': None, # TODO costs.at["biogas CC", "fixed"]
+    # + costs.at["biogas upgrading", "fixed"]
+    # + costs.at["biomass CHP capture", "fixed"]
+    # * costs.at["biogas CC", "CO2 stored"], 
 }
 
 
@@ -2138,6 +2164,7 @@ def get_emissions(n, region, _energy_totals):
         ] *= gas_fossil_fraction
 
     # TODO Methanol
+
     CHP_E_to_H =  (
         n.links.loc[CHP_emissions.index.get_level_values("name")].efficiency 
         / n.links.loc[CHP_emissions.index.get_level_values("name")].efficiency2
@@ -2244,7 +2271,7 @@ def get_emissions(n, region, _energy_totals):
             "process emissions CC",
         ]).sum() + \
         co2_emissions.get("industry methanol", 0)
-    # TODO not sure methanol emissions are right here
+    # process emissions is mainly cement, methanol is used for chemicals
     
 
     var["Emissions|CO2|Energy|Demand|Industry"] = \
