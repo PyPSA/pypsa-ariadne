@@ -2059,12 +2059,12 @@ def get_emissions(n, region, _energy_totals):
         bus_carrier="co2",**kwargs
     ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)   
 
-    co2_negative_emissions = n.statistics.withdrawal(
+    co2_atmosphere_withdrawal = n.statistics.withdrawal(
         bus_carrier="co2",**kwargs
     ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)
 
     var["Emissions|CO2"] = \
-        co2_emissions.sum() - co2_negative_emissions.sum()
+        co2_emissions.sum() - co2_atmosphere_withdrawal.sum()
 
     co2_storage = n.statistics.supply(
         bus_carrier ="co2 stored",**kwargs
@@ -2097,7 +2097,7 @@ def get_emissions(n, region, _energy_totals):
     
     oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
     # Assuming that efuel emissions are generated at the production site
-    var["Emissions|CO2|Energy|Production| From Liquids"] = \
+    var["Emissions|CO2|Energy|Production|From Liquids"] = \
         co2_emissions.loc[
             co2_emissions.index.isin(oil_techs)
             ].sum() * (1 - oil_fossil_fraction)
@@ -2126,7 +2126,7 @@ def get_emissions(n, region, _energy_totals):
     ]
 
     gas_fossil_fraction = _get_gas_fossil_fraction(n)
-    var["Emissions|CO2|Energy|Production| From Gases"] = \
+    var["Emissions|CO2|Energy|Production|From Gases"] = \
         co2_emissions.loc[
             co2_emissions.index.isin(gas_techs)
         ].sum() * (1 - gas_fossil_fraction)
@@ -2144,24 +2144,6 @@ def get_emissions(n, region, _energy_totals):
     )
 
     CHP_E_fraction =  CHP_E_to_H * (1 / (CHP_E_to_H + 1))
-
-    negative_CHP_emissions = n.statistics.withdrawal(
-        bus_carrier="co2",**kwargs
-    ).filter(like=region).filter(like="CHP").multiply(t2Mt)
-
-    negative_CHP_E_to_H =  (
-        n.links.loc[
-            negative_CHP_emissions.index.get_level_values("name")
-        ].efficiency 
-        / n.links.loc[
-            negative_CHP_emissions.index.get_level_values("name")
-        ].efficiency2
-    )
-
-    negative_CHP_E_fraction =  negative_CHP_E_to_H * (
-        1 / (negative_CHP_E_to_H + 1)
-    )
-
 
 
     fossil_cc = co2_storage.reindex(
@@ -2185,19 +2167,51 @@ def get_emissions(n, region, _energy_totals):
         fossil_cc.sum() + negative_cc.sum(),
         co2_storage.drop("co2 stored").sum()
     )
-    # Neglible numerical errors in stored CO2
+    # Assert neglible numerical errors in stored CO2
     assert co2_storage["co2 stored"] < 1e-3
 
     total_ccs = n.statistics.supply(
             bus_carrier="co2 sequestered",**kwargs
-        ).filter(like=region).groupby("carrier").sum().multiply(t2Mt).sum() 
+        ).filter(like=region).groupby(
+            "carrier"
+        ).sum().multiply(t2Mt).sum() 
    
    
     # All captures fossil should be sequestered for e-fuels to be carbon neutral
     # We allow for a small margin of error (0.1 Mt CO2)
     # If this assert fails repeatedly we will need to add a hard constraint for this
     assert total_ccs + 0.1 > fossil_cc.sum() 
+
     negative_ccs = total_ccs - fossil_cc.sum()
+
+    co2_negative_emissions = co2_storage.multiply(
+        negative_ccs / co2_storage.sum()
+        ).reindex(
+        co2_atmosphere_withdrawal.index).fillna(0)
+    
+    negative_CHP_emissions = n.statistics.withdrawal(
+        bus_carrier="co2",**kwargs
+    ).filter(like=region).filter(
+        like="solid biomass CHP CC"
+    ).multiply(t2Mt).multiply( # Correcting for actual negative emissions
+        co2_negative_emissions["urban central solid biomass CHP CC"]
+    ).divide( 
+        co2_atmosphere_withdrawal["urban central solid biomass CHP CC"]
+    )
+
+    negative_CHP_E_to_H =  (
+        n.links.loc[
+            negative_CHP_emissions.index.get_level_values("name")
+        ].efficiency 
+        / n.links.loc[
+            negative_CHP_emissions.index.get_level_values("name")
+        ].efficiency2
+    )
+
+    negative_CHP_E_fraction =  negative_CHP_E_to_H * (
+        1 / (negative_CHP_E_to_H + 1)
+    )
+
 
     var["Carbon Sequestration"] = total_ccs
             
@@ -2219,8 +2233,6 @@ def get_emissions(n, region, _energy_totals):
         - var["Carbon Sequestration|DACCS"]
         - var["Carbon Sequestration|BECCS"]
     )
-
-
 
     # ! LULUCF should also be subtracted (or added??), we get from REMIND, 
     # TODO how to consider it here?
@@ -2400,8 +2412,9 @@ def get_emissions(n, region, _energy_totals):
             + var["Emissions|CO2|Energy|Demand|Bunkers"]
             + var["Emissions|CO2|Supply|Non-Renewable Waste"]
             - co2_negative_emissions.get("DAC", 0)
-            + var["Emissions|CO2|Energy|Production| From Liquids"]
-            + var["Emissions|CO2|Energy|Production| From Gases"]
+            + var["Emissions|CO2|Energy|Production|From Liquids"]
+            + var["Emissions|CO2|Energy|Production|From Gases"]
+            - co2_atmosphere_withdrawal.subtract(co2_negative_emissions).sum()
         )
     )
     assert isclose(
@@ -2411,8 +2424,10 @@ def get_emissions(n, region, _energy_totals):
             + var["Emissions|CO2|Energy|Demand|Bunkers"]
             + var["Emissions|CO2|Supply|Non-Renewable Waste"]
             - co2_negative_emissions.get("DAC", 0)
-            + var["Emissions|CO2|Energy|Production| From Liquids"]
-            + var["Emissions|CO2|Energy|Production| From Gases"]
+            # Correction Terms
+            + var["Emissions|CO2|Energy|Production|From Liquids"]
+            + var["Emissions|CO2|Energy|Production|From Gases"]
+            - co2_atmosphere_withdrawal.subtract(co2_negative_emissions).sum()
         )
     )
     return var 
