@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240603postdiscretize
+  prefix: 20240705morevariables
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -196,7 +196,7 @@ costs:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
-  # solar_thermal: false
+  solar_thermal: false
   district_heating:
     potential: 0.4
     progress:
