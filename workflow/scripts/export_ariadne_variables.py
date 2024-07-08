@@ -61,7 +61,7 @@ def _get_oil_fossil_fraction(n, region):
 
     return oil_fossil_fraction
 
-def _get_gas_fossil_fraction(n):
+def _get_gas_fractions(n):
     kwargs = {
         'groupby': n.statistics.groupers.get_name_bus_and_carrier,
         'at_port': True,
@@ -74,14 +74,14 @@ def _get_gas_fossil_fraction(n):
     drops = ["gas pipeline", "gas pipeline new"]
     for d in drops:
         if d in total_gas_supply.index:
-            total_gas_supply.drop(d)
+            total_gas_supply.drop(d, inplace=True)
 
-    gas_fossil_fraction = (
-        total_gas_supply.get("gas")
-        / total_gas_supply.sum()
-    )
-
-    return gas_fossil_fraction
+    gas_fractions = pd.Series({
+            "Natural Gas": total_gas_supply.get("gas", 0),
+            "Biomass": total_gas_supply.filter(like="biogas").sum(),
+            "Efuel": total_gas_supply.get("Sabatier", 0),
+        }).divide(total_gas_supply.sum())
+    return gas_fractions
 
 def _get_h2_fossil_fraction(n):
     kwargs = {
@@ -860,23 +860,8 @@ def get_primary_energy(n, region):
     var["Primary Energy|Oil"] = oil_usage.sum()
     
 
-    regional_gas_supply = n.statistics.supply(
-        bus_carrier="gas", 
-        **kwargs,
-    ).filter(
-        like=region
-    ).groupby(
-        ["component", "carrier"]
-    ).sum().drop([
-        "Store",
-        ("Link", "gas pipeline"),
-        ("Link", "gas pipeline new"),
-    ])
+    gas_fractions = _get_gas_fractions(n)
 
-    gas_fossil_fraction = (
-        regional_gas_supply.get("Generator").get("gas")
-        / regional_gas_supply.sum()
-    )
     # Eventhough biogas gets routed through the EU gas bus,
     # it should be counted separately as Primary Energy|Biomass
     gas_usage = n.statistics.withdrawal(
@@ -892,10 +877,10 @@ def get_primary_energy(n, region):
         ("Link", "gas pipeline new"),
     ]).groupby(
         "carrier"
-    ).sum().multiply(gas_fossil_fraction).multiply(MWh2PJ)
+    ).sum().multiply(gas_fractions["Natural Gas"]).multiply(MWh2PJ)
 
     gas_CHP_E_usage, gas_CHP_H_usage = get_CHP_E_and_H_usage(
-        n, "gas", region, fossil_fraction=gas_fossil_fraction)
+        n, "gas", region, fossil_fraction=gas_fractions["Natural Gas"])
 
     var["Primary Energy|Gas|Heat"] = \
         gas_usage.filter(like="urban central gas boiler").sum() + gas_CHP_H_usage 
@@ -1123,11 +1108,6 @@ def get_secondary_energy(n, region, _industry_demand):
         var["Secondary Energy|Electricity|Biomass|w/o CCS"] 
         + var["Secondary Energy|Electricity|Biomass|w/ CCS"] 
     )
-    # ! Biogas to gas should go into this category
-    # How to do that? (trace e.g., biogas to gas -> CCGT)
-    # If so: Should double counting with |Gas be avoided?
-    # -> Might use gas_fossil_fraction just like above  
-
 
     var["Secondary Energy|Electricity|Hydro"] = (
         electricity_supply.get("hydro")
@@ -1583,6 +1563,11 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
     # write var
     var["Final Energy|Non-Energy Use|Gases"] = (non_energy_natural_gas + CH4_for_MeOH + CH4_for_NH3) * MWh2PJ
 
+    gas_fractions = _get_gas_fractions(n)
+    for gas_type in gas_fractions.index:
+        var[f"Final Energy|Non-Energy Use|Gases|{gas_type}"] = \
+            var["Final Energy|Non-Energy Use|Gases"] * gas_fractions[gas_type]
+
     oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
 
     var["Final Energy|Non-Energy Use|Liquids"] = non_energy_naphtha * MWh2PJ
@@ -1637,10 +1622,22 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
 
     var["Final Energy|Industry|Gases"] = \
         industry_demand.get("methane")
+
+    for gas_type in gas_fractions.index:
+        var[f"Final Energy|Industry|Gases|{gas_type}"] = \
+            var["Final Energy|Industry|Gases"] * gas_fractions[gas_type]
+    
     # "gas for industry" is now regionally resolved and could be used here
     # subtract non-energy used gases from total gas demand
     var["Final Energy|Industry excl Non-Energy Use|Gases"] = \
         var["Final Energy|Industry|Gases"] - var["Final Energy|Non-Energy Use|Gases"]
+    
+
+    for gas_type in gas_fractions.index:
+        var[f"Final Energy|Industry excl Non-Energy Use|Gases|{gas_type}"] = \
+            var[f"Final Energy|Industry excl Non-Energy Use|Gases"] * gas_fractions[gas_type]
+
+
 
     # var["Final Energy|Industry|Power2Heat"] = \
     # Q: misleading description
@@ -1782,8 +1779,6 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
         + decentral_heat_supply_rescom.filter(like="solar thermal").sum()
     ) # Assuming for solar thermal secondary energy == Final energy
 
-    gas_fossil_fraction = _get_gas_fossil_fraction(n)
-
     gas_usage = n.statistics.withdrawal(
         bus_carrier="gas", **kwargs
     ).filter(like=region).groupby(
@@ -1795,11 +1790,12 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
         gas_usage.get("urban decentral gas boiler", 0) + \
         gas_usage.get("rural gas boiler", 0)    
     
-    var["Final Energy|Residential and Commercial|Gases|Natural Gas"] = (
-        var["Final Energy|Residential and Commercial|Gases"]
-        * gas_fossil_fraction
-    )
-    
+    for gas_type in gas_fractions.index:
+        var[f"Final Energy|Residential and Commercial|Gases|{gas_type}"] = (
+            var["Final Energy|Residential and Commercial|Gases"]
+            * gas_fractions[gas_type]
+        )
+
 
     # var["Final Energy|Residential and Commercial|Hydrogen"] = \
     # ! Not implemented
@@ -1983,9 +1979,6 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
         + var["Final Energy|Industry excl Non-Energy Use|Electricity"]
     )
     
-
-    # TODO The problem with all of these is that FEEDSTOCKS have to be excluded!!!
-
     var["Final Energy|Solids"] = (
         # var["Final Energy|Agriculture|Solids"]
         var["Final Energy|Residential and Commercial|Solids"]
@@ -2004,9 +1997,11 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, year):
         var["Final Energy|Residential and Commercial|Gases"]
         + var["Final Energy|Industry excl Non-Energy Use|Gases"]
     )
-
-    var["Final Energy|Gases|Natural Gas"] = \
-        var["Final Energy|Gases"] * gas_fossil_fraction
+    for gas_type in gas_fractions.index:
+        var[f"Final Energy|Gases|{gas_type}"] = (
+            var["Final Energy|Gases"]
+            * gas_fractions[gas_type]
+        )
     
 
     var["Final Energy|Liquids"] = (
@@ -2151,17 +2146,18 @@ def get_emissions(n, region, _energy_totals):
         "urban central gas CHP CC",
     ]
 
-    gas_fossil_fraction = _get_gas_fossil_fraction(n)
+    gas_fractions = _get_gas_fractions(n)
+
     var["Emissions|CO2|Energy|Production|From Gases"] = \
         co2_emissions.loc[
             co2_emissions.index.isin(gas_techs)
-        ].sum() * (1 - gas_fossil_fraction)
+        ].sum() * (1 - gas_fractions["Natural Gas"])
     co2_emissions.loc[
         co2_emissions.index.isin(gas_techs)
-        ] *= gas_fossil_fraction
+        ] *= gas_fractions["Natural Gas"]
     CHP_emissions.loc[
         CHP_emissions.index.get_level_values("carrier").isin(gas_techs)
-        ] *= gas_fossil_fraction
+        ] *= gas_fractions["Natural Gas"]
 
     # TODO Methanol
 
@@ -2729,8 +2725,8 @@ def get_prices(n, region):
     nodal_prices_gas = n.buses_t.marginal_price[nodal_flows_gas.columns]
 
     # co2 part
-    gas_fossil_fraction = _get_gas_fossil_fraction(n)
-    co2_add_gas = gas_fossil_fraction * specific_emisisons["gas"] * co2_price
+    gas_fractions = _get_gas_fractions(n)
+    co2_add_gas = gas_fractions["Natural Gas"] * specific_emisisons["gas"] * co2_price
 
 
     var["Price|Primary Energy|Gas"] = \
@@ -3344,12 +3340,11 @@ def get_trade(n, region):
     # Trade|Secondary Energy|Gases|Hydrogen|Volume
     # Trade|Primary Energy|Coal|Volume
     # Trade|Primary Energy|Gas|Volume
-    kwargs = {
-        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
-        'nice_names': False,
-    }
+
+
+    gas_fractions = _get_gas_fractions(n)
     var["Trade|Primary Energy|Gas|Volume"] = \
-        get_net_export_links(n, region, ["gas pipeline", "gas pipeline new"]) * _get_gas_fossil_fraction(n)
+        get_net_export_links(n, region, ["gas pipeline", "gas pipeline new"]) * gas_fractions["Natural Gas"]
 
     # Trade|Primary Energy|Oil|Volume
 
@@ -3503,7 +3498,7 @@ def get_ariadne_var(n, industry_demand, energy_totals, costs, region, year):
         ),
         get_policy(n),
         get_trade(n, region),
-        get_operational_and_capital_costs(year),
+        #get_operational_and_capital_costs(year),
     ])
 
     return var
