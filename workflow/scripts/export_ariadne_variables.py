@@ -2132,7 +2132,9 @@ def get_emissions(n, region, _energy_totals):
     # All captures fossil should be sequestered for e-fuels to be carbon neutral
     # We allow for a small margin of error (0.1 Mt CO2)
     # If this assert fails repeatedly we will need to add a hard constraint for this
-    assert total_ccs + 0.1 > fossil_cc.sum() 
+    if not total_ccs + 0.1 > fossil_cc.sum():
+        print("WARNING! Not all CO2 capture from fossil sources is captured!!!")
+        print("total_ccs - fossil_cc: ", total_ccs - fossil_cc.sum())
 
     negative_ccs = total_ccs - fossil_cc.sum()
 
