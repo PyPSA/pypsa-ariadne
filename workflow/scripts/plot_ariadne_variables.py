@@ -3,11 +3,52 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 
+
+def secondary_energy_plot(ddf, name="Secondary Energy"): 
+    # Get Secondary Energy data
+    df = ddf[
+        ddf.index.get_level_values(
+            "Variable"
+        ).str.startswith(name)]
+    # Get Unit and delete Multiindex
+    unit = df.index.get_level_values("Unit").unique().dropna().item()
+    df.index = df.index.droplevel("Unit")
+
+    # Simplify variable names
+    df.index = pd.Index(
+        map(
+            lambda x: x[(x.find("|") + 1):], 
+            df.index,
+        ),
+        name=df.index.names[0],
+    )
+
+    # Get detailed data
+    exclude = ("Fossil", "Renewables", "Losses") # include Losses once fixed
+    detailed = df[
+        (df.index.str.count("[|]") == 1)
+        & ~df.index.str.endswith(exclude)]
+    
+    ax = detailed.T.plot.area(ylabel=unit, title="Detailed" + name)
+    ax.legend(bbox_to_anchor=(1, 1))
+
+    coarse = df[
+        (df.index.str.count("[|]") == 0)]
+    
+    ax = coarse.T.plot.area(ylabel=unit, title=name)
+    ax.legend(bbox_to_anchor=(1, 1))
+
+
 def ariadne_subplot(
     df, ax, title, 
-    select_regex="", drop_regex="", stacked=True,
-):
+    select_regex="", drop_regex="", stacked=True, unit=None,
+):  
+    # Check that all values have the same Unit
+
+
+
     df = df.T.copy()
+
     if select_regex:
         df = df.filter(
             regex=select_regex,
@@ -16,19 +57,21 @@ def ariadne_subplot(
         df = df.filter(
             regex=drop_regex,
         )
-    # Check that all values have the same Unit
-    assert df.columns.unique(level="Unit").size == 1
+    if not unit:
+        unit = df.columns.get_level_values("Unit").unique().dropna().item()
+ 
+    df.columns = df.columns.droplevel("Unit")
 
     # Simplify variable names
     df.columns = pd.Index(
         map(
-            lambda x: x[0][(x[0].find("|") + 1):], 
+            lambda x: x[(x.find("|") + 1):], 
             df.columns,
         ),
         name=df.columns.names[0],
     )
 
-    return df.plot.area(ax=ax, title=title, legend=False, stacked=stacked)
+    return df.plot.area(ax=ax, title=title, legend=False, stacked=stacked, ylabel=unit)
 
 
 
@@ -36,9 +79,11 @@ def side_by_side_plot(
         df, dfhybrid, title, savepath,
         rshift=1.25, **kwargs
     ):
-    idx = df.index.intersection(dfhybrid.index)
-    df = df.loc[idx]
-    dfhybrid = dfhybrid.loc[idx]
+
+    idx = df.index.union(dfhybrid.index, sort=False)
+    
+    df = df.reindex(idx)
+    dfhybrid = dfhybrid.reindex(idx)
 
     fig, axes = plt.subplots(ncols=2, sharey=True)
     ax = ariadne_subplot(df, axes[0], "PyPSA-Eur", **kwargs)
@@ -322,7 +367,8 @@ if __name__ == "__main__":
         savepath=snakemake.output.co2_emissions,
         select_regex="Emissions\|CO2\|[^|]*$",
         stacked=False,
-        #drop_regex="^(?!.*(and)).+"
+        #drop_regex="^(?!.*(and)).+",
+        unit="Mt CO2equiv/yr"
     )
 
     within_plot(

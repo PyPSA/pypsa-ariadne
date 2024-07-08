@@ -334,6 +334,7 @@ rule export_ariadne_variables:
         costs=config_provider("costs"),
         energy_totals_year=config_provider("energy", "energy_totals_year"),
         co2_price_add_on_fossils = config_provider("co2_price_add_on_fossils"),
+        co2_sequestration_cost=config_provider("sector","co2_sequestration_cost"),
     input:
         template=resources("template_ariadne_database.xlsx"),
         industry_demands=expand(

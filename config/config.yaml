@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240627wind_limits
+  prefix: 20240708morevariables
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
