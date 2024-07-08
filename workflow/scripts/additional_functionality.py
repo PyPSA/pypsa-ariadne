@@ -191,13 +191,19 @@ def electricity_import_limits(n, snapshots, investment_year, config):
 
         logger.info(f"limiting electricity imports in {ct} to {limit/1e6} TWh/a")
 
-        incoming = n.links.index[((n.links.carrier == "DC") | (n.links.carrier == "AC")) & (n.links.bus0.str[:2] != ct) & (n.links.bus1.str[:2] == ct)]
-        outgoing = n.links.index[((n.links.carrier == "DC") | (n.links.carrier == "AC")) & (n.links.bus0.str[:2] == ct) & (n.links.bus1.str[:2] != ct)]
+        incoming_line = n.lines.index[(n.lines.carrier == "AC") & (n.lines.bus0.str[:2] != ct) & (n.lines.bus1.str[:2] == ct)]
+        outgoing_line = n.lines.index[(n.lines.carrier == "AC") & (n.lines.bus0.str[:2] == ct) & (n.lines.bus1.str[:2] != ct)]
+        
+        incoming_link = n.links.index[(n.links.carrier == "DC") & (n.links.bus0.str[:2] != ct) & (n.links.bus1.str[:2] == ct)]
+        outgoing_link = n.links.index[(n.links.carrier == "DC") & (n.links.bus0.str[:2] == ct) & (n.links.bus1.str[:2] != ct)]
 
-        incoming_p = (n.model["Link-p"].loc[:, incoming]*n.snapshot_weightings.generators).sum()
-        outgoing_p = (n.model["Link-p"].loc[:, outgoing]*n.snapshot_weightings.generators).sum()
+        incoming_line_p = (n.model["Line-s"].loc[:, incoming_line]*n.snapshot_weightings.generators).sum()
+        outgoing_line_p = (n.model["Line-s"].loc[:, outgoing_line]*n.snapshot_weightings.generators).sum()
 
-        lhs = incoming_p - outgoing_p
+        incoming_link_p = (n.model["Link-p"].loc[:, incoming_link]*n.snapshot_weightings.generators).sum()
+        outgoing_link_p = (n.model["Link-p"].loc[:, outgoing_link]*n.snapshot_weightings.generators).sum()
+
+        lhs = (incoming_link_p - outgoing_link_p) + (incoming_line_p - outgoing_line_p)
 
         cname = f"Electricity_import_limit-{ct}"
 
@@ -264,12 +270,32 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
 
             lhs.append((n.model["Link-p"].loc[:, links]*efficiency*n.snapshot_weightings.generators).sum())
 
-        incoming = n.links.index[n.links.index == "EU renewable oil -> DE oil"]
-        outgoing = n.links.index[n.links.index == "DE renewable oil -> EU oil"]
+        # Adding Efuel imports and exports to constraint
+        incoming_oil = n.links.index[n.links.index == "EU renewable oil -> DE oil"]
+        outgoing_oil = n.links.index[n.links.index == "DE renewable oil -> EU oil"]
 
         if not debug:
-            lhs.append((-1*n.model["Link-p"].loc[:, incoming]*0.2571*n.snapshot_weightings.generators).sum())
-            lhs.append((n.model["Link-p"].loc[:, outgoing]*0.2571*n.snapshot_weightings.generators).sum())
+            lhs.append(
+                (-1 * n.model["Link-p"].loc[:, incoming_oil]
+                 * 0.2571 * n.snapshot_weightings.generators).sum())
+            lhs.append(
+                (n.model["Link-p"].loc[:, outgoing_oil]
+                 * 0.2571 * n.snapshot_weightings.generators).sum())
+
+        incoming_methanol = n.links.index[n.links.index == "EU methanol -> DE methanol"]
+        outgoing_methanol = n.links.index[n.links.index == "DE methanol -> EU methanol"]
+
+        lhs.append(
+            (-1 * n.model["Link-p"].loc[:, incoming_methanol]
+             / snakemake.config["sector"]["MWh_MeOH_per_tCO2"]
+             * n.snapshot_weightings.generators).sum())
+        
+        lhs.append(
+            (n.model["Link-p"].loc[:, outgoing_methanol]
+             / snakemake.config["sector"]["MWh_MeOH_per_tCO2"]
+             * n.snapshot_weightings.generators).sum())
+        
+        # Methane still missing, because its complicated
 
         lhs = sum(lhs)
 
@@ -361,8 +387,8 @@ def add_h2_derivate_limit(n, snapshots, investment_year, config):
 
         logger.info(f"limiting H2 derivate imports in {ct} to {limit/1e6} TWh/a")
 
-        incoming = n.links.index[n.links.index.str.contains("EU renewable oil -> DE oil")]
-        outgoing = n.links.index[n.links.index.str.contains("DE renewable oil -> EU oil")]
+        incoming = n.links.loc[["EU renewable oil -> DE oil", "EU methanol -> DE methanol"]].index
+        outgoing = n.links.loc[["DE renewable oil -> EU oil", "DE methanol -> EU methanol"]].index
 
         incoming_p = (n.model["Link-p"].loc[:, incoming]*n.snapshot_weightings.generators).sum()
         outgoing_p = (n.model["Link-p"].loc[:, outgoing]*n.snapshot_weightings.generators).sum()

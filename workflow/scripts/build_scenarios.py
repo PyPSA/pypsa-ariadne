@@ -4,66 +4,21 @@
 # SPDX-License-Identifier: MIT
 
 # This script reads in data from the IIASA database to create the scenario.yaml file
-
+import logging
+logger = logging.getLogger(__name__)
 
 import ruamel.yaml
 from pathlib import Path
 import pandas as pd
 import os
 
-def get_transport_shares(df, planning_horizons):
-    # Get share of vehicles for transport sector - neglecting heavy duty vehicles
-    total_transport = df.loc["DEMO v1", "Stock|Transportation|LDV"]
-    tech_transport = df.loc["DEMO v1"].loc[[ 
-        "Stock|Transportation|LDV|ICE",
-        "Stock|Transportation|LDV|BEV",
-        "Stock|Transportation|LDV|PHEV",
-    ]]
-
-    transport_share = tech_transport / total_transport
-    transport_share = transport_share[planning_horizons]
-    transport_share.set_index(pd.Index(["ICE", "BEV", "PHEV"]), inplace=True)
-
-    # Get share of Navigation fuels from corresponding "Ariadne Leitmodell"
-    total_navigation = \
-        df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation"] + \
-        df.loc["DEMO v1", "Final Energy|Transportation|Domestic Navigation"]
-    navigation_liquid = \
-        df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation|Liquids"] + \
-        df.loc["DEMO v1", "Final Energy|Transportation|Domestic Navigation|Liquids"]
-    
-    navigation_h2 = df.loc["DEMO v1", "Final Energy|Transportation|Domestic Navigation|Hydrogen"]    
-
-    h2_share = navigation_h2 / total_navigation
-    liquid_share = navigation_liquid / total_navigation
-    methanol_share = (1 - h2_share - liquid_share).round(6)
-    
-    naval_share = pd.concat(
-            [liquid_share, h2_share, methanol_share]).set_index(
-            pd.Index(["Oil", "H2", "MeOH"])
-        )[planning_horizons]
-
-    return transport_share, naval_share
-
 def get_transport_growth(df, planning_horizons):
-    # Aviation growth factor - using REMIND-EU v1.1 since DEMO v1 does not include bunkers
+    # Aviation growth factor - using REMIND-EU v1.1 since Aladin v1 does not include bunkers
     aviation_model = "REMIND-EU v1.1"
     aviation = df.loc[aviation_model,"Final Energy|Bunkers|Aviation", "PJ/yr"]
     aviation_growth_factor = aviation / aviation[2020]
 
-    # Transport growth factor - using DEMO v1
-    transport_model = "DEMO v1"
-    freight = df.loc[transport_model, "Energy Service|Transportation|Freight|Road", "bn tkm/yr"]
-    person = df.loc[transport_model, "Energy Service|Transportation|Passenger|Road", "bn pkm/yr"]
-    freight_PJ = df.loc[transport_model, "Final Energy|Transportation|Truck", "PJ/yr"]
-    person_PJ = df.loc[transport_model, "Final Energy|Transportation|LDV", "PJ/yr"]
-    
-    transport_growth_factor = pd.Series()
-    for year in planning_horizons:
-        share = (person_PJ[year] / (person_PJ[year] + freight_PJ[year]))
-        transport_growth_factor.loc[year] = share * (person[year] / person[2020]) + (1 - share) * (freight[year] / freight[2020])
-
-    return aviation_growth_factor[planning_horizons], transport_growth_factor
+    return aviation_growth_factor[planning_horizons]
 
 
 def get_primary_steel_share(df, planning_horizons):
@@ -74,6 +29,11 @@ def get_primary_steel_share(df, planning_horizons):
     
     primary_steel_share = primary_steel / total_steel
     primary_steel_share = primary_steel_share[planning_horizons]
+
+    if model == "FORECAST v1.0" and planning_horizons[0] == 2020:
+        logger.warning("FORECAST v1.0 does not have data for 2020. Using 2021 data for Production|Steel instead.")
+        primary_steel_share[2020] = primary_steel[2021] / total_steel[2021]
+
     
     return primary_steel_share.set_index(pd.Index(["Primary_Steel_Share"]))
 
@@ -146,50 +106,25 @@ def write_to_scenario_yaml(
     config = yaml.load(file_path)
     for scenario in scenarios:
         reference_scenario = config[scenario]["iiasa_database"]["reference_scenario"]
-        if scenario == "CurrentPolicies":
-            reference_scenario = "8Gt_Bal_v3" # hotfix until DB is updated
+        fallback_reference_scenario = config[scenario]["iiasa_database"]["fallback_reference_scenario"]
+        if reference_scenario == "KN2045plus_EasyRide":
+            fallback_reference_scenario = reference_scenario
         co2_budget_source = config[scenario]["co2_budget_DE_source"]
 
         co2_budget_fractions = get_co2_budget(
-            df.loc["REMIND-EU v1.1", "8Gt_Bal_v3"],
+            df.loc["REMIND-EU v1.1", fallback_reference_scenario],
             co2_budget_source
         )
-
-        planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045] # for 2050 we still need data
-
-        transport_share, naval_share = get_transport_shares(
-            df.loc[:, reference_scenario, :],
-            planning_horizons,
-        )
         
-        aviation_demand_factor, land_transport_demand_factor = get_transport_growth(df.loc[:, reference_scenario, :], planning_horizons)
-
-        mapping_transport = {
-            'PHEV': 'land_transport_fuel_cell_share',
-            'BEV': 'land_transport_electric_share',
-            'ICE': 'land_transport_ice_share'
-        }
-        mapping_navigation = {
-            'H2': 'shipping_hydrogen_share',
-            'MeOH': 'shipping_methanol_share',
-            'Oil': 'shipping_oil_share',
-        }
+        planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045] # for 2050 we still need data
+        
+        aviation_demand_factor = get_transport_growth(df.loc[:, fallback_reference_scenario, :], planning_horizons)
 
         config[scenario]["sector"] = {}
-        for key, sector_mapping in mapping_transport.items():
-            config[scenario]["sector"][sector_mapping] = {}
-            for year in transport_share.columns:
-                config[scenario]["sector"][sector_mapping][year] = round(transport_share.loc[key, year].item(), 4)
-
-        for key, sector_mapping in mapping_navigation.items():
-            config[scenario]["sector"][sector_mapping] = {}
-            for year in naval_share.columns:
-                config[scenario]["sector"][sector_mapping][year] = round(naval_share.loc[key, year].item(), 4)
-        config[scenario]["sector"]["land_transport_demand_factor"] = {}
+        
         config[scenario]["sector"]["aviation_demand_factor"] = {}
         for year in planning_horizons:
             config[scenario]["sector"]["aviation_demand_factor"][year] = round(aviation_demand_factor.loc[year].item(), 4)
-            config[scenario]["sector"]["land_transport_demand_factor"][year] = round(land_transport_demand_factor.loc[year].item(), 4)
 
         st_primary_fraction = get_primary_steel_share(df.loc[:, reference_scenario, :], planning_horizons)
         

@@ -3,23 +3,17 @@
 #
 # SPDX-License-Identifier: MIT
 CurrentPolicies:
-# Trend Szenario
-# Suggestion (Tom): "policy from 2030 is frozen"
-# conservative development after 2030
-# fixing CO2 budget at 2030 value for 2035-2050
-# reducing VRE targets in 2030 to 75% of the target (following REMIND)
-# not forcing H2 production
-# orient transport transformation from REMod v1.0 (currently is DEMO)
-# industry transformation towards FORECAST results
-# consider not assuming Kernnetz
+# UBA CO2 pathway instead of KSG targets
+# Europen CO2 pathway fixed at 2030 for 2035-2050
+# Kernnetz is not assumed to be built
+# Not forcing renewables after 2030
 
-  # Kernnetz is not assumed to be built
   wasserstoff_kernnetz:
-    enable: true
+    enable: false
 
   iiasa_database:
-    # TODO: wait for REMod v1.0 to upload a first Trend scenario
-    reference_scenario: Trend # CurrentPolicies once it's renamed
+    reference_scenario: CurrentPolicies
+    fallback_reference_scenario: CurrentPolicies # if the reference scenario is not available (due to late uploads)
 
   co2_budget_DE_source: UBA
 
@@ -53,7 +47,6 @@ CurrentPolicies:
           2045: 22.5
       solar:
         DE:
-          2025: 101 
           2030: 161.25   # 75 % PV strategy
           2035: 161.25
           2040: 161.25
@@ -64,7 +57,7 @@ CurrentPolicies:
     # constrain electricity import in TWh
     electricity_import:
       DE:
-        2020: 0
+        2020: -20
         2025: 0
         2030: 0
         2035: 40
@@ -117,12 +110,13 @@ KN2045_Bal_v4:
 # dient als Referenzszenario in der Familie der Ariadne-Szenarien
 
   iiasa_database:
-    reference_scenario: 8Gt_Bal_v3
+    reference_scenario: KN2045_Bal_v4
+    fallback_reference_scenario: KN2045_Bal_v4
   co2_budget_DE_source: KSG
 
   costs:
     horizon: "mean"
-    NEP: 2021
+    NEP: 2023
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
 
   # boundary condition of maximum volumes
@@ -130,7 +124,7 @@ KN2045_Bal_v4:
     # constrain electricity import in TWh
     electricity_import:
       DE:
-        2020: 0
+        2020: -20
         2025: 0
         2030: 0
         2035: 40
@@ -169,6 +163,7 @@ KN2045_Bal_v4:
         2035: 0
         2040: 0
         2045: 0
+
 KN2045_Elec_v4:
 # Fokus auf dem Hochlauf von Technologien zur direkten Elektrifizierung der Sektoren
 # Strom als präferierter Energieträger in der Endenergie, andere Energieträger ergänzend, wo nötig (Wasserstoff, synthetische Kraftstoffe)
@@ -176,19 +171,20 @@ KN2045_Elec_v4:
 # Importe erneuerbar erzeugter Energien auf mittlerem Niveau
 
   iiasa_database:
-    reference_scenario: 8Gt_Elec_v3
+    reference_scenario: KN2045_Elec_v4
+    fallback_reference_scenario: KN2045_Elec_v4
   co2_budget_DE_source: KSG
 
   costs:
     horizon: "mean"
-    NEP: 2021
+    NEP: 2023
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
 
   limits_volume_max:
     # constrain electricity import in TWh
     electricity_import:
       DE:
-        2020: 0
+        2020: -20
         2025: 0
         2030: 0
         2035: 50
@@ -227,6 +223,7 @@ KN2045_Elec_v4:
         2035: 0
         2040: 0
         2045: 0
+
 KN2045_H2_v4:
 # Fokus stärker auf dem Hochlauf von Technologien zur indirekten Elektrifizierung der Sektoren
 # Verstärkter Einsatz von Wasserstoff und synthetischen Kraftstoffen - erneuerbar erzeugt und auch importiert
@@ -234,24 +231,26 @@ KN2045_H2_v4:
 # Ausbau der erneuerbaren Stromerzeugung erreicht politisch gesetzte Ziele
 
   iiasa_database:
-    reference_scenario: 8Gt_H2_v3
+    reference_scenario: KN2045_H2_v4
+    fallback_reference_scenario: KN2045_H2_v4
   co2_budget_DE_source: KSG
 
   costs:
     horizon: "mean"
-    NEP: 2021
+    NEP: 2023
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
 
   limits_volume_max:
     # constrain electricity import in TWh
     electricity_import:
       DE:
-        2020: 0
+        2020: -20
         2025: 0
         2030: 0
         2035: 30
         2040: 70
         2045: 100 # scenario guidelines
+
     # constrain hydrogen import in TWh
     h2_import:
       DE:
@@ -296,12 +295,13 @@ KN2045plus_EasyRide:
 # EE weiterhin auskömmlich nur werden die Ausbauziele evtl. nicht voll ausgeschöpft
 # Verlagerung der energieintensiven Grundstoffindustrie
   iiasa_database:
-    reference_scenario: 8Gt_EasyRide_v3 # TODO: wait for database
+    reference_scenario: KN2045plus_EasyRide # TODO: wait for database
+    fallback_reference_scenario: KN2045_Bal_v4
   co2_budget_DE_source: KSG
 
   costs:
     horizon: "optimist"
-    NEP: 2021
+    NEP: 2023
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
 
   # boundary condition of maximum volumes
@@ -309,7 +309,7 @@ KN2045plus_EasyRide:
     # constrain electricity import in TWh
     electricity_import:
       DE:
-        2020: 0
+        2020: -20
         2025: 0
         2030: 0
         2035: 40
@@ -354,12 +354,13 @@ KN2045plus_LowDemand:
 # Im Vergleich zu Easy Ride eher knappe EE Erzeugung 
 # innerhalb Deutschlands und knappe Importe EE möglich
   iiasa_database:
-    reference_scenario: 8Gt_LowDemand_v3 # TODO: wait for database
+    reference_scenario: KN2045plus_LowDemand # TODO: wait for database
+    fallback_reference_scenario: KN2045_Bal_v4
   co2_budget_DE_source: KSG
 
   costs:
     horizon: "optimist"
-    NEP: 2021
+    NEP: 2023
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
 
   # boundary condition of maximum volumes
@@ -367,7 +368,7 @@ KN2045plus_LowDemand:
     # constrain electricity import in TWh
     electricity_import:
       DE:
-        2020: 0
+        2020: -20
         2025: 0
         2030: 0
         2035: 20
@@ -414,7 +415,8 @@ KN2045minus_WorstCase:
 # Verfehlen der Reduktionsziele in 2030 und 2045
 # eher knapper Ausbau EE und EE Importe
   iiasa_database:
-    reference_scenario: 8Gt_WorstCase_v3 # TODO: wait for database
+    reference_scenario: KN2045minus_WorstCase
+    fallback_reference_scenario: CurrentPolicies
 
   co2_budget_DE_source: UBA
 
@@ -437,7 +439,7 @@ KN2045minus_WorstCase:
     # constrain electricity import in TWh
     electricity_import:
       DE:
-        2020: 0
+        2020: -20
         2025: 0
         2030: 0
         2035: 20
@@ -480,29 +482,29 @@ KN2045minus_WorstCase:
     Generator:
       onwind:
         DE:
-          2030: 115 # Wind-an-Land Law
-          2035: 115 # not forcing more EE
-          2040: 115
-          2045: 115
+          2030: 86.5   # 75 % Wind-an-Land Law
+          2035: 86.5
+          2040: 86.5
+          2045: 86.5
       offwind:
         DE:
-          2030: 30 # Wind-auf-See Law
-          2035: 30 # not forcing more EE
-          2040: 30
-          2045: 30
+          2030: 22.5   # 75 % Wind-auf-See Law
+          2035: 22.5
+          2040: 22.5
+          2045: 22.5
       solar:
         DE:
-          2025: 101 
-          2030: 215 # PV strategy
-          2035: 215 # not forcing more EE
-          2040: 215
-          2045: 215
+          2030: 161.25   # 75 % PV strategy
+          2035: 161.25
+          2040: 161.25
+          2045: 161.25
 
 KN2045minus_SupplyFocus:
 # Nachfrage genau so hoch wie in Szenario WorstCase
 # Ausbau EE und EE Importe jetzt aber auskömmlich
   iiasa_database:
-    reference_scenario: 8Gt_WorstCase_v3 # TODO: wait for database
+    reference_scenario: KN2045minus_SupplyFocus
+    fallback_reference_scenario: CurrentPolicies
 
   costs:
     horizon: "pessimist"
@@ -523,7 +525,7 @@ KN2045minus_SupplyFocus:
     # constrain electricity import in TWh
     electricity_import:
       DE:
-        2020: 0
+        2020: -20
         2025: 0
         2030: 0
         2035: 40
@@ -563,23 +565,26 @@ KN2045minus_SupplyFocus:
         2040: 0
         2045: 0
   limits_capacity_min:
-    Generator:
-      onwind:
-        DE:
-          2030: 115 # Wind-an-Land Law
-          2035: 115 # not forcing more EE
-          2040: 115
-          2045: 115
-      offwind:
-        DE:
-          2030: 30 # Wind-auf-See Law
-          2035: 30 # not forcing more EE
-          2040: 30
-          2045: 30
-      solar:
-        DE:
-          2025: 101 
-          2030: 215 # PV strategy
-          2035: 215 # not forcing more EE
-          2040: 215
-          2045: 215
+      Generator:
+        onwind:
+          DE:
+            2030: 115 # Wind-an-Land Law
+            2035: 157 # Wind-an-Land Law
+            2040: 160 # Wind-an-Land Law
+            2045: 160
+        offwind:
+          DE:
+            2030: 30 # Wind-auf-See Law
+            2035: 40 # 40 Wind-auf-See Law
+            # assuming at least 1/3 of difference reached in 2040
+            2040: 50
+            2045: 70 #70 Wind-auf-See Law
+        solar:
+          DE:
+            # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW, 
+            # assuming at least 1/3 of difference reached in 2025
+            2030: 215 # PV strategy
+            2035: 309
+            2040: 400 # PV strategy
+            2045: 400
+            # What about the EEG2023 "Strommengenpfad"?
