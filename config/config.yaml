@@ -226,9 +226,9 @@ first_technology_occurrence:
 
 renewable:
   offwind-ac:
-    capacity_per_sqkm: 10
+    capacity_per_sqkm: 6
   offwind-dc:
-    capacity_per_sqkm: 10
+    capacity_per_sqkm: 6
 
 costs:
   horizon: "mean" # "optimist", "pessimist" or "mean"
@@ -236,6 +236,7 @@ costs:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
   solar_thermal: false
+  v2g: false
   district_heating:
     potential: 0.4
     progress:
