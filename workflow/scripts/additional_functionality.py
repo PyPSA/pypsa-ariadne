@@ -402,18 +402,28 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
             lhs.append((n.model["Generator-p"].loc[:, i_oil]*specific_emisisons["oil"]*n.snapshot_weightings.generators).sum())
 
             # coal
-            i_coal = n.links.index[(n.links.carrier == "coal") & (n.links.bus1.str[:2] == ct)]
+            i_coal = n.links.index[(n.links.bus0 == "EU coal") & (n.links.bus1.str[:2] == ct)]
             lhs.append((n.model["Link-p"].loc[:, i_coal]*specific_emisisons["coal"]*n.snapshot_weightings.generators).sum())
 
             # lignite
-            i_lignite = n.links.index[(n.links.carrier == "lignite") & (n.links.bus1.str[:2] == ct)]
+            i_lignite = n.links.index[(n.links.bus0 == "EU lignite") & (n.links.bus1.str[:2] == ct)]
             lhs.append((n.model["Link-p"].loc[:, i_lignite]*specific_emisisons["lignite"]*n.snapshot_weightings.generators).sum())
 
             # sequestration
             i_sequestered = n.links.index[(n.links.carrier == "co2 sequestered") & (n.links.index.str[:2] == ct)]
             lhs.append((-1*n.model["Link-p"].loc[:, i_sequestered]*n.snapshot_weightings.generators).sum())
 
-            # trade
+            ## trade
+
+            # gas
+            gas_pipe_c = ['gas pipeline', 'gas pipeline new']
+            gas_out = n.links.index[(n.links.carrier.isin(gas_pipe_c)) & (n.links.bus0.str[:2] == ct) & (n.links.bus1.str[:2] != ct)]
+            gas_in = n.links.index[(n.links.carrier.isin(gas_pipe_c)) & (n.links.bus0.str[:2] != ct) & (n.links.bus1.str[:2] == ct)]
+
+            lhs.append((-1*n.model["Link-p"].loc[:, gas_in]*specific_emisisons["gas"]*n.snapshot_weightings.generators).sum())
+            lhs.append((n.model["Link-p"].loc[:, gas_out]*specific_emisisons["gas"]*n.snapshot_weightings.generators).sum())
+
+            # oil
             incoming = n.links.index[n.links.index == "EU renewable oil -> DE oil"]
             outgoing = n.links.index[n.links.index == "DE renewable oil -> EU oil"]
 
