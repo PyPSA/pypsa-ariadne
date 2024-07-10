@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240708morevariables
+  prefix: industry_steam_fractions
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -23,6 +23,8 @@ run:
       - existing_heating.csv # specify files which should not be shared between scenarios
       - costs
       - retrieve_cost # This is necessary to save retrieve_cost_data_{year}.log in the correct folder
+      - industry_sector_ratios
+      - build_industry_sector_ratios # This is necessary to save build_industry_sector_ratios_data.log in the correct folder
   disable_progressbar: true
   debug_co2_limit: false
   debug_h2deriv_limit: false
@@ -344,6 +346,9 @@ industry:
     2050: 0.20
   waste_to_energy: true
   waste_to_energy_cc: true
+  steam_biomass_fraction: 0.4
+  steam_hydrogen_fraction: 0.3
+  steam_electricity_fraction: 0.3
 
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
