@@ -148,7 +148,6 @@ def write_to_scenario_yaml(
         
         dri_fraction = get_DRI_share(df.loc[:, reference_scenario, :], planning_horizons)
 
-        config[scenario]["industry"] = {}
         config[scenario]["industry"]["St_primary_fraction"] = {}
         config[scenario]["industry"]["DRI_fraction"] = {}
         for year in st_primary_fraction.columns:
