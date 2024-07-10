@@ -55,22 +55,6 @@ def get_DRI_share(df, planning_horizons):
     return DRI_steel_share.set_index(pd.Index(["DRI_Steel_Share"]))
 
 
-def get_steam_share(df):
-    # Get share of steam production from FORECAST v1.0
-    model = "FORECAST v1.0"
-    
-    biomass = df.loc[model, "Final Energy|Industry excl Non-Energy Use|Solids|Biomass"][2045]
-    hydrogen = df.loc[model, "Final Energy|Industry excl Non-Energy Use|Hydrogen"][2045]
-    electricity = df.loc[model, "Final Energy|Industry excl Non-Energy Use|Electricity"][2045]
-    total = biomass + hydrogen + electricity
-
-    biomass_fraction = biomass / total
-    hydrogen_fraction = hydrogen / total
-    electricity_fraction = electricity / total
-
-    return biomass_fraction.iloc[0], hydrogen_fraction.iloc[0], electricity_fraction.iloc[0]
-
-
 def get_co2_budget(df, source):
     # relative to the DE emissions in 1990 *including bunkers*; also
     # account for non-CO2 GHG and allow extra room for international
@@ -170,15 +154,6 @@ def write_to_scenario_yaml(
         for year in st_primary_fraction.columns:
             config[scenario]["industry"]["St_primary_fraction"][year] = round(st_primary_fraction.loc["Primary_Steel_Share", year].item(), 4)
             config[scenario]["industry"]["DRI_fraction"][year] = round(dri_fraction.loc["DRI_Steel_Share", year].item(), 4)
-
-        biomass_share, hydrogen_share, electricity_share = get_steam_share(df.loc[:, reference_scenario, :])
-
-        config[scenario]["industry"]["steam_biomass_fraction"] = {}
-        config[scenario]["industry"]["steam_hydrogen_fraction"] = {}
-        config[scenario]["industry"]["steam_electricity_fraction"] = {}
-        config[scenario]["industry"]["steam_biomass_fraction"] = float(round(biomass_share, 4))
-        config[scenario]["industry"]["steam_hydrogen_fraction"] = float(round(hydrogen_share, 4))
-        config[scenario]["industry"]["steam_electricity_fraction"] = float(round(electricity_share, 4))
 
         config[scenario]["co2_budget_national"] = {}
         for year, target in co2_budget_fractions.items():

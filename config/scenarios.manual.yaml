@@ -100,6 +100,11 @@ CurrentPolicies:
         2040: 0
         2045: 0
 
+  industry:
+    steam_biomass_fraction: 0.4
+    steam_hydrogen_fraction: 0.3
+    steam_electricity_fraction: 0.3
+
 
 
 KN2045_Bal_v4:
@@ -164,6 +169,11 @@ KN2045_Bal_v4:
         2040: 0
         2045: 0
 
+  industry:
+    steam_biomass_fraction: 0.4
+    steam_hydrogen_fraction: 0.3
+    steam_electricity_fraction: 0.3
+
 KN2045_Elec_v4:
 # Fokus auf dem Hochlauf von Technologien zur direkten Elektrifizierung der Sektoren
 # Strom als präferierter Energieträger in der Endenergie, andere Energieträger ergänzend, wo nötig (Wasserstoff, synthetische Kraftstoffe)
@@ -223,6 +233,11 @@ KN2045_Elec_v4:
         2035: 0
         2040: 0
         2045: 0
+
+  industry:
+    steam_biomass_fraction: 0.4
+    steam_hydrogen_fraction: 0.1
+    steam_electricity_fraction: 0.5
 
 KN2045_H2_v4:
 # Fokus stärker auf dem Hochlauf von Technologien zur indirekten Elektrifizierung der Sektoren
@@ -287,6 +302,10 @@ KN2045_H2_v4:
         2040: 0
         2045: 200
 
+  industry:
+    steam_biomass_fraction: 0.4
+    steam_hydrogen_fraction: 0.5
+    steam_electricity_fraction: 0.1
 
 KN2045plus_EasyRide:
 # Endenergienachfrage ist geringer im Vergleich zu Szenarien 1-3
@@ -349,6 +368,11 @@ KN2045plus_EasyRide:
         2040: 0
         2045: 0
 
+  industry:
+    steam_biomass_fraction: 0.4
+    steam_hydrogen_fraction: 0.3
+    steam_electricity_fraction: 0.3
+
         
 KN2045plus_LowDemand:
 # Im Vergleich zu Easy Ride eher knappe EE Erzeugung 
@@ -407,6 +431,11 @@ KN2045plus_LowDemand:
         2035: 0
         2040: 0
         2045: 0
+
+  industry:
+    steam_biomass_fraction: 0.4
+    steam_hydrogen_fraction: 0.3
+    steam_electricity_fraction: 0.3
 
 KN2045minus_WorstCase:
 # Nachfrage nach Endenergie ist höher als in den Szenarien 1-3
@@ -499,6 +528,11 @@ KN2045minus_WorstCase:
           2040: 161.25
           2045: 161.25
 
+  industry:
+    steam_biomass_fraction: 0.4
+    steam_hydrogen_fraction: 0.3
+    steam_electricity_fraction: 0.3
+
 KN2045minus_SupplyFocus:
 # Nachfrage genau so hoch wie in Szenario WorstCase
 # Ausbau EE und EE Importe jetzt aber auskömmlich
@@ -588,3 +622,8 @@ KN2045minus_SupplyFocus:
             2040: 400 # PV strategy
             2045: 400
             # What about the EEG2023 "Strommengenpfad"?
+
+  industry:
+    steam_biomass_fraction: 0.4
+    steam_hydrogen_fraction: 0.3
+    steam_electricity_fraction: 0.3
