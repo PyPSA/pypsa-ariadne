@@ -346,10 +346,6 @@ industry:
     2050: 0.20
   waste_to_energy: true
   waste_to_energy_cc: true
-  steam_biomass_fraction: 0.4
-  steam_hydrogen_fraction: 0.3
-  steam_electricity_fraction: 0.3
-
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
 solving:
