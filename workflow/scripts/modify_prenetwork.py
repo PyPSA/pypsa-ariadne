@@ -434,6 +434,53 @@ def aladin_mobility_demand(n):
         n.stores.loc[dsm_i].e_nom *= pd.Series(factor.values, index=dsm_i)
 
 
+def force_hydrogen_plant_retrofit(n):
+    """
+    Forcing retrofit of H2 plants in Germany to config[H2_force_factor]
+    """
+    force_factor = snakemake.config["electricity"]["H2_retrofit_plants"]["H2_force_factor"]
+    logger.info(f"Forcing retrofit of H2 plants in Germany to a share of {force_factor}.")
+    # get all German CH4 and H2 plants that are extendable
+    gas_carriers = ["OCGT", "CCGT", "urban central gas CHP"]
+    new_carrier_names  = {
+        "OCGT": "H2 OCGT",
+        "CCGT": "H2 CCGT",
+        "urban central gas CHP": "urban central H2 CHP",
+    }
+    h2_carriers = ["retrofitted H2 OCGT", "retrofitted H2 CCGT", "urban central retrofitted H2 CHP"]
+
+    for gas_carrier in gas_carriers:
+        new_cap_i = n.links[(n.links.carrier == gas_carrier) & 
+            (n.links.build_year == int(snakemake.wildcards.planning_horizons)) & 
+            (n.links.index.str[:2] == "DE")].index
+        if new_cap_i.empty:
+            continue
+        # replace gas bus with hydrogen
+        n.links.loc[new_cap_i, "bus0"] = n.links.loc[new_cap_i, "bus0"].str.replace("gas", "H2")
+
+        # change carrier name
+        n.links.loc[new_cap_i, "carrier"] = new_carrier_names[gas_carrier]
+
+        # rename index
+        new_link_names = {old_index: old_index.replace(gas_carrier, new_carrier_names[gas_carrier]) for old_index in new_cap_i}
+        
+        n.links.rename(index=new_link_names, inplace=True)
+
+    gas_i = n.links[(n.links.carrier.isin(gas_carriers)) & (n.links.bus0.str.startswith("DE")) & n.links.p_nom_extendable].index
+    h2_i = n.links[(n.links.carrier.isin(h2_carriers)) & (n.links.bus0.str.startswith("DE")) & n.links.p_nom_extendable].index
+
+    if gas_i.empty or h2_i.empty:
+        return
+    
+    # set p_nom to value
+    n.links.loc[gas_i, "p_nom"] = n.links.loc[gas_i, "p_nom_max"] * (1 - force_factor)
+    n.links.loc[h2_i, "p_nom"] = n.links.loc[h2_i, "p_nom_max"] * force_factor
+    # set p_nom_extendable to False
+    n.links.loc[gas_i, "p_nom_extendable"] = False
+    n.links.loc[h2_i, "p_nom_extendable"] = False
+
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
@@ -502,5 +549,8 @@ if __name__ == "__main__":
 
     if snakemake.params.biomass_must_run["enable"]:
         must_run_biomass(n, snakemake.params.biomass_must_run["p_min_pu"], snakemake.params.biomass_must_run["regions"])
+
+    if int(snakemake.wildcards.planning_horizons) >= snakemake.config["electricity"]["H2_retrofit_plants"]["H2_force_retrofit"]:
+        force_hydrogen_plant_retrofit(n)
 
     n.export_to_netcdf(snakemake.output.network)

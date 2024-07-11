@@ -411,43 +411,6 @@ def add_h2_derivate_limit(n, snapshots, investment_year, config):
                 carrier_attribute="",
             )
 
-def force_H2_retrofit(n, force_year, planning_horizon):
-    ''''
-    Force the retrofit of existing gas plants to H2 from a certain year onwards.
-    '''
-    logger.info(f"Forcing retrofit of existing gas plants to H2 from {force_year} onwards")
-    # Remove extendable gas plants from this planning_horizon
-    carriers = ["OCGT", "CCGT", "urban central gas CHP"]
-    remove_i = n.links[(n.links.carrier.isin(carriers)) & 
-                       (n.links.p_nom_extendable) & 
-                       (n.links.bus0.str[:2] == "DE") &
-                       (n.links.build_year == planning_horizon)].index
-    n.links.drop(remove_i, inplace=True)
-
-    if n.links[n.links.carrier.str.contains("retrofitted H2") & (n.links.bus0.str[:2] == "DE")].empty:
-        logger.info("No retrofitted H2 plants in Germany found")
-        return
-
-    # Add constraint to force retrofit
-    carriers = ["retrofitted H2 OCGT", "retrofitted H2 CCGT", "urban central retrofitted H2 CHP"]
-
-    for carrier in carriers:
-        h2_plants = n.links[
-            (n.links.carrier == carrier) &
-            (n.links.p_nom_extendable) &
-            (n.links.build_year < planning_horizon) &
-            (n.links.bus0.str[:2] == "DE")
-        ].index
-
-        if h2_plants.empty:
-            continue
-
-        # Store p_nom value for rhs of constraint
-        p_nom = n.model["Link-p_nom"]
-
-        lhs = p_nom.loc[h2_plants]
-        rhs = n.links.p_nom_max[h2_plants]
-        n.model.add_constraints(lhs <= rhs, name=f"force retrofit of {carrier}")
 
 def additional_functionality(n, snapshots, snakemake):
 
@@ -476,7 +439,3 @@ def additional_functionality(n, snapshots, snakemake):
         limit_countries = snakemake.config["co2_budget_national"][investment_year]
         add_co2limit_country(n, limit_countries, snakemake,                  
             debug=snakemake.config["run"]["debug_co2_limit"])
-
-    if snakemake.config["H2_force_retrofit"] <= int(snakemake.wildcards.planning_horizons):
-        print(snakemake.wildcards.planning_horizons)
-        force_H2_retrofit(n, snakemake.config["H2_force_retrofit"], int(snakemake.wildcards.planning_horizons))

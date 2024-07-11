@@ -388,6 +388,9 @@ plotting:
     load: "#111100"
     H2 pipeline (Kernnetz): '#6b3161'
     renewable oil: '#c9c9c9'
+    H2 OCGT: '#ff7f0e'
+    H2 CCGT: '#ff7f0e'
+    H2 urban central CHP: '#ff7f0e'
   countries:
   - all
   - DE
@@ -410,7 +413,8 @@ electricity:
   H2_retrofit_plants:
     enable: true
     year: 2020
-H2_force_retrofit: 2035
+    H2_force_factor: 0.7
+    H2_force_retrofit: 2035
 
 pypsa_eur:
   Bus:
