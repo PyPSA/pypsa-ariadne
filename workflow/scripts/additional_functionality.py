@@ -223,22 +223,9 @@ def electricity_import_limits(n, snapshots, investment_year, config):
 
 def emissions_upstream(n):
 
-    # old constraint
+    # remove old constraint
     limit = n.global_constraints.loc["CO2Limit","constant"] 
     n.remove("GlobalConstraint", "CO2Limit")
-    
-    # # add co2_emissions attribute to carriers
-    # for carrier in specific_emisisons:
-    #     n.carriers.loc[carrier, "co2_emissions"] = specific_emisisons[carrier]   
-
-    # n.add(
-    #     "GlobalConstraint",
-    #     "CO2Limit",
-    #     carrier_attribute="co2_emissions",
-    #     sense="<=",
-    #     type="co2_emisisons",
-    #     constant=limit,
-    # ) 
 
     # specific emissions in tons CO2/MWh according to n.links[n.links.carrier =="your_carrier].efficiency2.unique().item()
     specific_emisisons = {
@@ -246,31 +233,28 @@ def emissions_upstream(n):
         "gas" : 0.198, # OCGT
         "coal" : 0.3361,
         "lignite" : 0.4069,
-        # "co2 sequestered": 1.0,
-        # "co2": 0.0,
     }
 
     lhs = []
 
-    # gas (spatially distributed)
-    i_gas = n.generators.index[(n.generators.carrier == "gas")]
-    lhs.append((n.model["Generator-p"].loc[:, i_gas]*specific_emisisons["gas"]*n.snapshot_weightings.generators).sum())
-
-    # oil (EU oild and DE oil)
-    i_oil = n.generators.index[(n.generators.carrier == "oil")]
-    lhs.append((n.model["Generator-p"].loc[:, i_oil]*specific_emisisons["oil"]*n.snapshot_weightings.generators).sum())
-
-    # coal (only EU coal)
-    i_coal = n.generators.index[(n.generators.carrier == "coal")]
-    lhs.append((n.model["Generator-p"].loc[:, i_coal]*specific_emisisons["coal"]*n.snapshot_weightings.generators).sum())
-
-    # lignite (only EU lignite)
-    i_lignite = n.generators.index[(n.generators.carrier == "lignite")]
-    lhs.append((n.model["Generator-p"].loc[:, i_lignite]*specific_emisisons["lignite"]*n.snapshot_weightings.generators).sum())
+    for c in specific_emisisons.keys():
+    
+        i_fossil = n.generators.index[(n.generators.carrier == c)]
+        lhs.append((n.model["Generator-p"].loc[:, i_fossil]*specific_emisisons[c]*n.snapshot_weightings.generators).sum())
 
     # sequestration
     i_sequestered = n.links.index[(n.links.carrier == "co2 sequestered")]
     lhs.append((-1*n.model["Link-p"].loc[:, i_sequestered]*n.snapshot_weightings.generators).sum())
+
+    # process emisions
+    i_pe = n.links.index[n.links.carrier == "process emissions"]
+    lhs.append((n.model["Link-p"].loc[:, i_pe]*n.snapshot_weightings.generators).sum())
+
+    i_pecc = n.links.index[n.links.carrier == "process emissions CC"]
+    lhs.append((n.model["Link-p"].loc[:, i_pe]*n.links.loc[i_pecc, "efficiency"]*n.snapshot_weightings.generators).sum())
+
+    i_nfi = n.links.index[(n.links.carrier == "naphtha for industry")]
+    lhs.append(-1*(n.model["Link-p"].loc[:, i_nfi]*n.links.loc[i_nfi, "efficiency3"]*n.snapshot_weightings.generators).sum())
 
     lhs = sum(lhs)
 
@@ -385,43 +369,38 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
                 "gas" : 0.198, # OCGT
                 "coal" : 0.3361,
                 "lignite" : 0.4069,
-                # "co2 sequestered": 1.0,
-                # "co2": 0.0,
             }
 
             lhs = []
 
-            # restrict all trade and generation of fossil fuels in country ct
-
-            # gas
+            # restrict all generation of fossil fuels
             i_gas = n.generators.index[(n.generators.carrier == "gas") & (n.generators.index.str[:2] == ct)]
             lhs.append((n.model["Generator-p"].loc[:, i_gas]*specific_emisisons["gas"]*n.snapshot_weightings.generators).sum())
 
-            # oil
             i_oil = n.generators.index[(n.generators.carrier == "oil") & (n.generators.index.str[:2] == ct)]
             lhs.append((n.model["Generator-p"].loc[:, i_oil]*specific_emisisons["oil"]*n.snapshot_weightings.generators).sum())
 
-            # coal
             i_coal = n.links.index[(n.links.bus0 == "EU coal") & (n.links.bus1.str[:2] == ct)]
             lhs.append((n.model["Link-p"].loc[:, i_coal]*specific_emisisons["coal"]*n.snapshot_weightings.generators).sum())
 
-            # lignite
             i_lignite = n.links.index[(n.links.bus0 == "EU lignite") & (n.links.bus1.str[:2] == ct)]
             lhs.append((n.model["Link-p"].loc[:, i_lignite]*specific_emisisons["lignite"]*n.snapshot_weightings.generators).sum())
 
-            # sequestration
             i_sequestered = n.links.index[(n.links.carrier == "co2 sequestered") & (n.links.index.str[:2] == ct)]
             lhs.append((-1*n.model["Link-p"].loc[:, i_sequestered]*n.snapshot_weightings.generators).sum())
+
+            # pe = n.loads.index[(n.loads.carrier == "process emissions") & (n.loads.bus.str[:2] == ct)]
+            # lhs.append(-1*(n.loads.loc[pe, "p_set"]*n.snapshot_weightings.generators.sum()).sum())
 
             ## trade
 
             # gas
-            gas_pipe_c = ['gas pipeline', 'gas pipeline new']
-            gas_out = n.links.index[(n.links.carrier.isin(gas_pipe_c)) & (n.links.bus0.str[:2] == ct) & (n.links.bus1.str[:2] != ct)]
-            gas_in = n.links.index[(n.links.carrier.isin(gas_pipe_c)) & (n.links.bus0.str[:2] != ct) & (n.links.bus1.str[:2] == ct)]
+            # gas_pipe_c = ['gas pipeline', 'gas pipeline new']
+            # gas_out = n.links.index[(n.links.carrier.isin(gas_pipe_c)) & (n.links.bus0.str[:2] == ct) & (n.links.bus1.str[:2] != ct)]
+            # gas_in = n.links.index[(n.links.carrier.isin(gas_pipe_c)) & (n.links.bus0.str[:2] != ct) & (n.links.bus1.str[:2] == ct)]
 
-            lhs.append((-1*n.model["Link-p"].loc[:, gas_in]*specific_emisisons["gas"]*n.snapshot_weightings.generators).sum())
-            lhs.append((n.model["Link-p"].loc[:, gas_out]*specific_emisisons["gas"]*n.snapshot_weightings.generators).sum())
+            # lhs.append((-1*n.model["Link-p"].loc[:, gas_in]*specific_emisisons["gas"]*n.snapshot_weightings.generators).sum())
+            # lhs.append((n.model["Link-p"].loc[:, gas_out]*specific_emisisons["gas"]*n.snapshot_weightings.generators).sum())
 
             # oil
             incoming = n.links.index[n.links.index == "EU renewable oil -> DE oil"]
