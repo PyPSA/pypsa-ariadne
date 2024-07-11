@@ -3216,7 +3216,7 @@ def get_policy(n, investment_year):
         co2_price_add_on = 0.0
         
     var["Price|Carbon"] = \
-        -n.global_constraints.loc["CO2Limit", "mu"]  + co2_price_add_on  - n.global_constraints.loc["co2_limit-DE", "mu"]
+        -n.global_constraints.loc["CO2Limit", "mu"] - n.global_constraints.loc["co2_limit-DE", "mu"] + co2_price_add_on 
     
     var["Price|Carbon|EU-wide Regulation All Sectors"] = \
         -n.global_constraints.loc["CO2Limit", "mu"] + co2_price_add_on
