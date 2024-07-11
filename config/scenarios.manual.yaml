@@ -47,7 +47,6 @@ CurrentPolicies:
           2045: 22.5
       solar:
         DE:
-          2025: 101 
           2030: 161.25   # 75 % PV strategy
           2035: 161.25
           2040: 161.25
@@ -483,23 +482,22 @@ KN2045minus_WorstCase:
     Generator:
       onwind:
         DE:
-          2030: 115 # Wind-an-Land Law
-          2035: 115 # not forcing more EE
-          2040: 115
-          2045: 115
+          2030: 86.5   # 75 % Wind-an-Land Law
+          2035: 86.5
+          2040: 86.5
+          2045: 86.5
       offwind:
         DE:
-          2030: 30 # Wind-auf-See Law
-          2035: 30 # not forcing more EE
-          2040: 30
-          2045: 30
+          2030: 22.5   # 75 % Wind-auf-See Law
+          2035: 22.5
+          2040: 22.5
+          2045: 22.5
       solar:
         DE:
-          2025: 101 
-          2030: 215 # PV strategy
-          2035: 215 # not forcing more EE
-          2040: 215
-          2045: 215
+          2030: 161.25   # 75 % PV strategy
+          2035: 161.25
+          2040: 161.25
+          2045: 161.25
 
 KN2045minus_SupplyFocus:
 # Nachfrage genau so hoch wie in Szenario WorstCase
@@ -585,7 +583,6 @@ KN2045minus_SupplyFocus:
           DE:
             # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW, 
             # assuming at least 1/3 of difference reached in 2025
-            2025: 101 
             2030: 215 # PV strategy
             2035: 309
             2040: 400 # PV strategy
