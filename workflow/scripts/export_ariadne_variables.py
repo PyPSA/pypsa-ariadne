@@ -2602,7 +2602,7 @@ def get_prices(n, region):
     }
 
     # co2 additions
-    co2_price = -n.global_constraints.loc["CO2Limit", "mu"] #- n.global_constraints.loc["co2_limit-DE", "mu"]
+    co2_price = -n.global_constraints.loc["CO2Limit", "mu"] - n.global_constraints.loc["co2_limit-DE", "mu"]
     # specific emissions in tons CO2/MWh according to n.links[n.links.carrier =="your_carrier].efficiency2.unique().item()
     specific_emisisons = {
         "oil" : 0.2571,
@@ -3216,15 +3216,15 @@ def get_policy(n, investment_year):
         co2_price_add_on = 0.0
         
     var["Price|Carbon"] = \
-        -n.global_constraints.loc["CO2Limit", "mu"]  + co2_price_add_on # - n.global_constraints.loc["co2_limit-DE", "mu"]
+        -n.global_constraints.loc["CO2Limit", "mu"]  + co2_price_add_on  - n.global_constraints.loc["co2_limit-DE", "mu"]
     
     var["Price|Carbon|EU-wide Regulation All Sectors"] = \
         -n.global_constraints.loc["CO2Limit", "mu"] + co2_price_add_on
     
     # Price|Carbon|EU-wide Regulation Non-ETS
 
-    # var["Price|Carbon|National Climate Target"] = \
-    #     -n.global_constraints.loc["co2_limit-DE", "mu"]
+    var["Price|Carbon|National Climate Target"] = \
+        -n.global_constraints.loc["co2_limit-DE", "mu"]
     
     # Price|Carbon|National Climate Target Non-ETS
 
