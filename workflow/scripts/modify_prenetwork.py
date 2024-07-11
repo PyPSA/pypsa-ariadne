@@ -1,6 +1,7 @@
 import logging
 
 import pandas as pd
+import numpy as np
 
 import pypsa
 
@@ -294,6 +295,45 @@ def unravel_oilbus(n):
           e_cyclic=True,
           capital_cost=0.02,
           )
+    
+    # unravel meoh
+    logger.info("Unraveling methanol bus")
+    # add bus
+    n.add(
+        "Bus", 
+        "DE methanol", 
+        location="DE",
+        x=n.buses.loc["DE","x"],
+        y=n.buses.loc["DE","y"],
+        carrier="methanol"
+    )
+    
+    # change links from EU meoh to DE meoh
+    DE_meoh_out = n.links[(n.links.bus0=="EU methanol") & (n.links.index.str[:2]=="DE")].index
+    n.links.loc[DE_meoh_out, "bus0"] = "DE methanol"
+    DE_meoh_in = n.links[(n.links.bus1=="EU methanol") & (n.links.index.str[:2]=="DE")].index
+    n.links.loc[DE_meoh_in, "bus1"] = "DE methanol"
+
+    # add links between methanol buses
+    n.madd(
+        "Link",
+        ["EU methanol -> DE methanol", "DE methanol -> EU methanol"],
+        bus0=["EU methanol", "DE methanol"],
+        bus1=["DE methanol", "EU methanol"],
+        carrier="methanol",
+        p_nom=1e6,
+        p_min_pu=0,
+    )
+
+    # add stores
+    n.add("Store",
+          "DE methanol Store",
+          bus="DE methanol",
+          carrier="methanol",
+          e_nom_extendable=True,
+          e_cyclic=True,
+          capital_cost=0.02,
+          )
 
 
 def transmission_costs_from_modified_cost_data(n, costs, transmission, length_factor=1.0):
@@ -341,6 +381,59 @@ def must_run_biomass(n, p_min_pu, regions):
     n.links.loc[links_i, "p_min_pu"] = p_min_pu
 
 
+def aladin_mobility_demand(n):
+    '''
+    Change loads in Germany to use Aladin data for road demand.
+    '''
+    # get aladin data
+    aladin_demand = pd.read_csv(snakemake.input.aladin_demand, index_col=0)
+
+    # oil demand
+    oil_demand = aladin_demand.Liquids
+    oil_index = n.loads[(n.loads.carrier == "land transport oil") & (n.loads.index.str[:2] == "DE")].index
+    oil_demand.index = [f"{i} land transport oil" for i in oil_demand.index]
+
+    profile = n.loads_t.p_set.loc[:, oil_index]
+    profile /= profile.sum()
+    n.loads_t.p_set.loc[:, oil_index] = (oil_demand*profile).div(n.snapshot_weightings.objective, axis=0)
+
+    # hydrogen demand
+    h2_demand = aladin_demand.Hydrogen
+    h2_index = n.loads[(n.loads.carrier == "land transport fuel cell") & (n.loads.index.str[:2] == "DE")].index
+    h2_demand.index = [f"{i} land transport fuel cell" for i in h2_demand.index]
+
+    profile = n.loads_t.p_set.loc[:, h2_index]
+    profile /= profile.sum()
+    n.loads_t.p_set.loc[:, h2_index] = (h2_demand*profile).div(n.snapshot_weightings.objective, axis=0)
+
+    # electricity demand
+    ev_demand = aladin_demand.Electricity
+    ev_index = n.loads[(n.loads.carrier == "land transport EV") & (n.loads.index.str[:2] == "DE")].index
+    ev_demand.index = [f"{i} land transport EV" for i in ev_demand.index]
+
+    profile = n.loads_t.p_set.loc[:, ev_index]
+    profile /= profile.sum()
+    n.loads_t.p_set.loc[:, ev_index] = (ev_demand*profile).div(n.snapshot_weightings.objective, axis=0)
+
+    # adjust BEV charger and V2G capacities
+    number_cars = pd.read_csv(snakemake.input.transport_data, index_col=0)[
+        "number cars"
+    ].filter(like="DE")
+
+    factor = aladin_demand.number_of_cars*1e6 / (number_cars*snakemake.config["sector"]["land_transport_electric_share"][int(snakemake.wildcards.planning_horizons)])
+
+    BEV_charger_i = n.links[(n.links.carrier == "BEV charger") & (n.links.bus0.str.startswith("DE"))].index
+    n.links.loc[BEV_charger_i].p_nom *= pd.Series(factor.values, index=BEV_charger_i)
+
+    V2G_i = n.links[(n.links.carrier == "V2G") & (n.links.bus0.str.startswith("DE"))].index
+    if not V2G_i.empty:
+        n.links.loc[V2G_i].p_nom *= pd.Series(factor.values, index=V2G_i)
+
+    dsm_i = n.stores[(n.stores.carrier == "EV battery") & (n.stores.bus.str.startswith("DE"))].index
+    if not dsm_i.empty:
+        n.stores.loc[dsm_i].e_nom *= pd.Series(factor.values, index=dsm_i)
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
@@ -355,10 +448,10 @@ if __name__ == "__main__":
             simpl="",
             clusters=22,
             opts="",
-            ll="v1.2",
-            sector_opts="365H-T-H-B-I-A-solar+p3-linemaxext15",
-            planning_horizons="2040",
-            run="KN2045_H2_v4"
+            ll="vopt",
+            sector_opts="none",
+            planning_horizons="2030",
+            run="KN2045_Bal_v4"
         )
 
     logger.info("Adding Ariadne-specific functionality")
@@ -373,6 +466,8 @@ if __name__ == "__main__":
         snakemake.params.costs,
         nyears,
     )
+
+    aladin_mobility_demand(n)
 
     new_boiler_ban(n)
 
