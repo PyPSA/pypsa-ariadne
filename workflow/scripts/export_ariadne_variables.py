@@ -2124,7 +2124,7 @@ def get_emissions(n, region, _energy_totals):
 
     total_ccs = n.statistics.supply(
             bus_carrier="co2 sequestered",**kwargs
-        ).filter(like=region).drop("Store").groupby(
+        ).filter(like=region).get("Link").groupby(
             "carrier"
         ).sum().multiply(t2Mt).sum() 
    # TODO should we account for e-fuels here???
