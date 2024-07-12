@@ -353,24 +353,24 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
         
         # Methane still missing, because its complicated
 
-            lhs = sum(lhs)
+        lhs = sum(lhs)
 
-            cname = f"co2_limit-{ct}"
+        cname = f"co2_limit-{ct}"
 
-            n.model.add_constraints(
-                lhs <= limit,
-                name=f"GlobalConstraint-{cname}",
+        n.model.add_constraints(
+            lhs <= limit,
+            name=f"GlobalConstraint-{cname}",
+        )
+
+        if cname not in n.global_constraints.index:
+            n.add(
+                "GlobalConstraint",
+                cname,
+                constant=limit,
+                sense="<=",
+                type="",
+                carrier_attribute="",
             )
-
-            if cname not in n.global_constraints.index:
-                n.add(
-                    "GlobalConstraint",
-                    cname,
-                    constant=limit,
-                    sense="<=",
-                    type="",
-                    carrier_attribute="",
-                )
     
     # functionality if emissions upstream are enabled
     else:
@@ -384,7 +384,7 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
             )
 
             # specific emissions in tons CO2/MWh according to n.links[n.links.carrier =="your_carrier].efficiency2.unique().item()
-            specific_emisisons = {
+            specific_emissions = {
                 "oil" : 0.2571,
                 "gas" : 0.198, # OCGT
                 "coal" : 0.3361,
@@ -395,16 +395,16 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
 
             # restrict all generation of fossil fuels
             i_gas = n.generators.index[(n.generators.carrier == "gas") & (n.generators.index.str[:2] == ct)]
-            lhs.append((n.model["Generator-p"].loc[:, i_gas]*specific_emisisons["gas"]*n.snapshot_weightings.generators).sum())
+            lhs.append((n.model["Generator-p"].loc[:, i_gas]*specific_emissions["gas"]*n.snapshot_weightings.generators).sum())
 
             i_oil = n.generators.index[(n.generators.carrier == "oil") & (n.generators.index.str[:2] == ct)]
-            lhs.append((n.model["Generator-p"].loc[:, i_oil]*specific_emisisons["oil"]*n.snapshot_weightings.generators).sum())
+            lhs.append((n.model["Generator-p"].loc[:, i_oil]*specific_emissions["oil"]*n.snapshot_weightings.generators).sum())
 
             i_coal = n.links.index[(n.links.bus0 == "EU coal") & (n.links.bus1.str[:2] == ct)]
-            lhs.append((n.model["Link-p"].loc[:, i_coal]*specific_emisisons["coal"]*n.snapshot_weightings.generators).sum())
+            lhs.append((n.model["Link-p"].loc[:, i_coal]*specific_emissions["coal"]*n.snapshot_weightings.generators).sum())
 
             i_lignite = n.links.index[(n.links.bus0 == "EU lignite") & (n.links.bus1.str[:2] == ct)]
-            lhs.append((n.model["Link-p"].loc[:, i_lignite]*specific_emisisons["lignite"]*n.snapshot_weightings.generators).sum())
+            lhs.append((n.model["Link-p"].loc[:, i_lignite]*specific_emissions["lignite"]*n.snapshot_weightings.generators).sum())
 
             i_sequestered = n.links.index[(n.links.carrier == "co2 sequestered") & (n.links.index.str[:2] == ct)]
             lhs.append((-1*n.model["Link-p"].loc[:, i_sequestered]*n.snapshot_weightings.generators).sum())
@@ -427,8 +427,8 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
             outgoing = n.links.index[n.links.index == "DE renewable oil -> EU oil"]
 
             if not debug:
-                lhs.append((-1*n.model["Link-p"].loc[:, incoming]*specific_emisisons["oil"]*n.snapshot_weightings.generators).sum())
-                lhs.append((n.model["Link-p"].loc[:, outgoing]*specific_emisisons["oil"]*n.snapshot_weightings.generators).sum())
+                lhs.append((-1*n.model["Link-p"].loc[:, incoming]*specific_emissions["oil"]*n.snapshot_weightings.generators).sum())
+                lhs.append((n.model["Link-p"].loc[:, outgoing]*specific_emissions["oil"]*n.snapshot_weightings.generators).sum())
 
             lhs = sum(lhs)
 
