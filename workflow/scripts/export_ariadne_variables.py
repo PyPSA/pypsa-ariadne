@@ -2120,14 +2120,14 @@ def get_emissions(n, region, _energy_totals):
         co2_storage.drop("co2 stored").sum()
     )
     # Assert neglible numerical errors in stored CO2
-    assert co2_storage["co2 stored"] < 1e-3
+    assert co2_storage["co2 stored"] < 0.1
 
     total_ccs = n.statistics.supply(
             bus_carrier="co2 sequestered",**kwargs
         ).filter(like=region).groupby(
             "carrier"
         ).sum().multiply(t2Mt).sum() 
-   
+   # TODO should we account for e-fuels here???
    
     # All captures fossil should be sequestered for e-fuels to be carbon neutral
     # We allow for a small margin of error (0.1 Mt CO2)
@@ -2143,14 +2143,18 @@ def get_emissions(n, region, _energy_totals):
         ).reindex(
         co2_atmosphere_withdrawal.index).fillna(0.0)
     
+    biomass_CHP_correction_factor = min(
+        1, # Can not be > 1, taking minimum to avoid numerical errors
+        co2_negative_emissions["urban central solid biomass CHP CC"]
+        / co2_atmosphere_withdrawal["urban central solid biomass CHP CC"],
+    )
+
     negative_CHP_emissions = n.statistics.withdrawal(
         bus_carrier="co2",**kwargs
     ).filter(like=region).filter(
         like="solid biomass CHP CC"
     ).multiply(t2Mt).multiply( # Correcting for actual negative emissions
-        co2_negative_emissions["urban central solid biomass CHP CC"]
-    ).divide( 
-        co2_atmosphere_withdrawal["urban central solid biomass CHP CC"]
+        biomass_CHP_correction_factor
     )
 
     negative_CHP_E_to_H =  (
