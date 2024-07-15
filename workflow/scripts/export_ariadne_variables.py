@@ -2244,6 +2244,11 @@ def get_emissions(n, region, _energy_totals):
             * (1 - international_navigation_fraction)
         )
     )
+
+    var["Emissions|CO2|Energy|Demand|Transportation|Domestic Aviation"] = (
+        co2_emissions.get("kerosene for aviation")
+        * (1 - international_aviation_fraction)
+    )
   
     var["Emissions|CO2|Energy|Demand|Bunkers|Aviation"] = (
         co2_emissions.get("kerosene for aviation") 
@@ -3268,33 +3273,33 @@ def get_trade(n, region):
 
     var["Trade|Secondary Energy|Electricity|Volume"] = \
         ((exporting_p_ac - importing_p_ac) + (exports_dc - imports_dc)) * MWh2PJ 
-    var["Trade|Secondary Energy|Electricity|Volume|Imports"] = \
+    var["Trade|Secondary Energy|Electricity|Gross Import|Volume"] = \
         (importing_p_ac + imports_dc) * MWh2PJ
-    var["Trade|Secondary Energy|Electricity|Volume|Exports"] = \
-        (exporting_p_ac + exports_dc) * MWh2PJ
+    # var["Trade|Secondary Energy|Electricity|Volume|Exports"] = \
+    #     (exporting_p_ac + exports_dc) * MWh2PJ
 
     # Trade|Secondary Energy|Hydrogen|Volume
     h2_carriers = ["H2 pipeline", "H2 pipeline (Kernnetz)", "H2 pipeline retrofitted"]
     exports_h2, imports_h2 = get_export_import_links(n, region, h2_carriers)
     var["Trade|Secondary Energy|Hydrogen|Volume"] = \
         (exports_h2 - imports_h2) * MWh2PJ
-    var["Trade|Secondary Energy|Hydrogen|Volume|Imports"] = \
+    var["Trade|Secondary Energy|Hydrogen|Gross Import|Volume"] = \
         imports_h2 * MWh2PJ
-    var["Trade|Secondary Energy|Hydrogen|Volume|Exports"] = \
-        exports_h2 * MWh2PJ
+    # var["Trade|Secondary Energy|Hydrogen|Volume|Exports"] = \
+    #     exports_h2 * MWh2PJ
     
     # Trade|Secondary Energy|Liquids|Hydrogen|Volume
     exports_oil_renew, imports_oil_renew = get_export_import_links(n, region, ["renewable oil"])
     var["Trade|Secondary Energy|Liquids|Hydrogen|Volume"] = \
         (exports_oil_renew - imports_oil_renew) * MWh2PJ
-    var["Trade|Secondary Energy|Liquids|Hydrogen|Volume|Imports"] = \
+    var["Trade|Secondary Energy|Liquids|Hydrogen|Gross Import|Volume"] = \
         imports_oil_renew * MWh2PJ
-    var["Trade|Secondary Energy|Liquids|Hydrogen|Volume|Exports"] = \
-        exports_oil_renew * MWh2PJ
+    # var["Trade|Secondary Energy|Liquids|Hydrogen|Volume|Exports"] = \
+    #     exports_oil_renew * MWh2PJ
 
     # Trade|Secondary Energy|Gases|Hydrogen|Volume
 
-    # TODO add methanol trade
+    # TODO add methanol trade, renewable gas trade
 
     # Trade|Primary Energy|Coal|Volume
     # Trade|Primary Energy|Gas|Volume
@@ -3319,7 +3324,7 @@ def get_production(region, year):
     # read in the industrial production data
     years = [int(re.search(r'(\d{4})-modified\.csv', filename).group(1)) for filename in snakemake.input.industrial_production_per_country_tomorrow]
     index = next((idx for idx, y in enumerate(years) if y == year), None)
-    production = pd.read_csv(snakemake.input.industrial_production_per_country_tomorrow[index], index_col=0) # kton/a
+    production = pd.read_csv(snakemake.input.industrial_production_per_country_tomorrow[index], index_col=0).div(1e3) # kton/a -> Mton/a
     
     var["Production|Non-Metallic Minerals|Cement"] = production.loc[region, "Cement"]
     var["Production|Steel"] = production.loc["DE", ["Electric arc", "Integrated steelworks", "DRI + Electric arc"]].sum()
@@ -3446,7 +3451,7 @@ def get_ariadne_var(n, industry_demand, energy_totals, sector_ratios, industry_p
         #get_capacity_additions_simple(n,region),
         #get_installed_capacities(n,region),
         get_capacity_additions(n, region),
-        get_investments(n, costs, region),
+        #get_investments(n, costs, region),
         #get_capacity_additions_nstat(n, region),
         get_production(region, year),
         get_primary_energy(n, region),
