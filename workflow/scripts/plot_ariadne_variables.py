@@ -57,10 +57,15 @@ def ariadne_subplot(
         df = df.filter(
             regex=drop_regex,
         )
+
+    # Check that all values have the same Unit
+    assert df.columns.unique(level="Unit").size <= 1
+
     if not unit:
         unit = df.columns.get_level_values("Unit").unique().dropna().item()
  
     df.columns = df.columns.droplevel("Unit")
+
 
     # Simplify variable names
     df.columns = pd.Index(
@@ -71,7 +76,15 @@ def ariadne_subplot(
         name=df.columns.names[0],
     )
 
+    if df.empty:
+            # Create an empty plot if DataFrame is empty
+            ax.plot([], [])
+            ax.set_title("Ooops! Empty DataFrame")
+            return ax
+
+
     return df.plot.area(ax=ax, title=title, legend=False, stacked=stacked, ylabel=unit)
+
 
 
 
@@ -238,8 +251,9 @@ if __name__ == "__main__":
             opts="",
             ll="v1.2",
             sector_opts="None",
-            planning_horizons="2050",
-            run="KN2045_Bal_v4"
+            planning_horizons="2045",
+            run="8Gt_Bal_v3",
+            configfiles="config/config.public.yaml"
         )
 
     df = pd.read_excel(
