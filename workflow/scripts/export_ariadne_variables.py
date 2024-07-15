@@ -29,7 +29,13 @@ toe_to_MWh = 11.630 # GWh/ktoe OR MWh/toe
 
 
 
-def _get_oil_fossil_fraction(n, region, kwargs):
+def _get_oil_fossil_fraction(n, region):
+    kwargs = {
+        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
+        'at_port': True,
+        'nice_names': False,
+    }
+    
     if "DE" in region:
         total_oil_supply =  n.statistics.supply(
             bus_carrier="oil", **kwargs
@@ -55,7 +61,12 @@ def _get_oil_fossil_fraction(n, region, kwargs):
 
     return oil_fossil_fraction
 
-def _get_gas_fossil_fraction(n, region, kwargs):
+def _get_gas_fractions(n):
+    kwargs = {
+        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
+        'at_port': True,
+        'nice_names': False,
+    }
     total_gas_supply =  n.statistics.supply(
         bus_carrier="gas", **kwargs
     ).drop("Store").groupby("carrier").sum()
@@ -63,16 +74,21 @@ def _get_gas_fossil_fraction(n, region, kwargs):
     drops = ["gas pipeline", "gas pipeline new"]
     for d in drops:
         if d in total_gas_supply.index:
-            total_gas_supply.drop(d)
+            total_gas_supply.drop(d, inplace=True)
 
-    gas_fossil_fraction = (
-        total_gas_supply.get("gas")
-        / total_gas_supply.sum()
-    )
+    gas_fractions = pd.Series({
+            "Natural Gas": total_gas_supply.get("gas", 0),
+            "Biomass": total_gas_supply.filter(like="biogas").sum(),
+            "Efuel": total_gas_supply.get("Sabatier", 0),
+        }).divide(total_gas_supply.sum())
+    return gas_fractions
 
-    return gas_fossil_fraction
-
-def _get_h2_fossil_fraction(n, region, kwargs):
+def _get_h2_fossil_fraction(n):
+    kwargs = {
+        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
+        'at_port': True,
+        'nice_names': False,
+    }
     total_h2_supply = n.statistics.supply(
         bus_carrier="H2", **kwargs
     ).drop("Store").groupby("carrier").sum()
@@ -165,10 +181,18 @@ def get_capacity_additions_simple(n, region):
                      index = "Capacity Additions" + caps.index.str[8:])
 
 def get_capacity_additions(n, region):
-    def _f(*args, **kwargs):
-        return n.statistics.optimal_capacity(*args, **kwargs).sub(
-            n.statistics.installed_capacity(*args, **kwargs), fill_value=0)
-    return _get_capacities(n, region, _f, cap_string="Capacity Additions Sub|")
+    def _f(**kwargs):
+        return n.statistics.optimal_capacity(**kwargs).sub(
+            n.statistics.installed_capacity(**kwargs), fill_value=0)
+    return _get_capacities(n, region, _f, cap_string="Capacity Additions|")
+
+
+def get_investments(n, costs, region):
+    def _f(**kwargs):
+        return n.statistics.optimal_capacity(**kwargs).sub(
+            n.statistics.installed_capacity(**kwargs), fill_value=0)
+    return _get_capacities(n, region, _f, cap_string="Investment|", costs=costs)
+
 
 def get_capacity_additions_nstat(n, region):
     def _f(*args, **kwargs):
@@ -176,14 +200,112 @@ def get_capacity_additions_nstat(n, region):
         return n.statistics.expanded_capacity(*args, **kwargs)
     return _get_capacities(n, region, _f, cap_string="Capacity Additions Nstat|")
 
-def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
+
+costs_dict = {
+    # capacities electricity
+    'BEV charger': None,
+    'CCGT': 'CCGT',
+    'DAC': 'direct air capture',
+    'H2 Electrolysis': 'electrolysis',
+    'H2 Fuel Cell': 'fuel cell',
+    'OCGT': 'OCGT',
+    'PHS': 'PHS',
+    'V2G': None,
+    'battery charger': 'battery inverter',
+    'battery discharger': 'battery inverter',
+    'coal': 'coal',
+    'gas pipeline': 'CH4 (g) pipeline',
+    'home battery charger': 'home battery inverter',
+    'home battery discharger': 'home battery inverter',
+    'hydro': 'hydro',
+    'lignite': 'lignite',
+    'methanolisation': 'methanolisation',
+    'offwind-ac': 'offwind', # TODO add grid connection cost
+    'offwind-dc': 'offwind',# TODO add grid connection cost
+    'offwind-float': 'offwind-float',# TODO add grid connection cost
+    'oil': 'oil',
+    'onwind': 'onwind',
+    'ror': 'ror',
+    'rural air heat pump': 'decentral air-sourced heat pump',
+    'rural ground heat pump': 'decentral ground-sourced heat pump',
+    'rural resistive heater': 'decentral resistive heater',
+    'rural solar thermal': 'decentral solar thermal',
+    'solar': 'solar-utility', 
+    'solar rooftop': 'solar-rooftop', 
+    'solar-hsat': 'solar-utility single-axis tracking',
+    'solid biomass': 'central solid biomass CHP',
+    'urban central air heat pump': 'central air-sourced heat pump',
+    'urban central coal CHP': 'central coal CHP',
+    'urban central gas CHP': 'central gas CHP',
+    'urban central gas CHP CC': 'central gas CHP',
+    'urban central lignite CHP': 'central coal CHP',
+    'urban central oil CHP': 'central gas CHP',
+    'urban central resistive heater': 'central resistive heater',
+    'urban central solar thermal': 'central solar thermal',
+    'urban central solid biomass CHP': 'central solid biomass CHP',
+    'urban central solid biomass CHP CC': 'central solid biomass CHP CC',
+    'urban decentral air heat pump': 'decentral air-sourced heat pump',
+    'urban decentral resistive heater': 'decentral resistive heater',
+    'urban decentral solar thermal': 'decentral solar thermal',
+    'waste CHP': 'waste CHP',
+    'waste CHP CC': 'waste CHP CC',
+    # Heat capacities
+    # TODO Check the units of the investments
+    'DAC': 'direct air capture',                                     
+    'Fischer-Tropsch': None, #'Fischer-Tropsch' * "efficiency" ,                         
+    'H2 Electrolysis': 'electrolysis',                  
+
+    'H2 Fuel Cell': 'fuel cell',                            
+    'Sabatier': 'methanation',                                
+    'methanolisation': 'methanolisation',                         
+    # 'urban central air heat pump': 'central air-sourced heat pump',
+    # 'urban central coal CHP': 'central coal CHP',
+    # 'urban central gas CHP': 'central gas CHP',
+    # 'urban central gas CHP CC': 'central gas CHP',
+    # 'urban central lignite CHP': 'central coal CHP',
+    # 'urban central oil CHP': 'central gas CHP',
+    # 'urban central resistive heater': 'central resistive heater',        
+    # 'urban central solid biomass CHP': 'central solid biomass CHP',
+    # 'urban central solid biomass CHP CC': 'central solid biomass CHP CC',
+    'urban central water tanks charger': 'water tank charger',       
+    'urban central water tanks discharger': 'water tank discharger',    
+    # 'waste CHP': 'waste CHP',
+    # 'waste CHP CC': 'waste CHP CC',
+    #  Decentral Heat capacities
+    # TODO consider overdim_factor
+    #'rural air heat pump': None,
+    'rural biomass boiler': 'biomass boiler',
+    'rural gas boiler': 'decentral gas boiler',
+    #'rural ground heat pump': None,
+    'rural oil boiler': 'decentral oil boiler',
+    'rural resistive heater': 'decentral resistive heater',
+    'rural water tanks charger': 'water tank charger',
+    'rural water tanks discharger': 'water tank discharger',
+    #'urban decentral air heat pump': None,
+    'urban decentral biomass boiler': 'biomass boiler',
+    'urban decentral gas boiler': 'decentral gas boiler',
+    'urban decentral oil boiler': 'decentral oil boiler',
+    'urban decentral resistive heater': 'decentral resistive heater',
+    'urban decentral water tanks charger': 'water tank charger',
+    'urban decentral water tanks discharger': 'water tank discharger',                      
+    # Other capacities
+    # 'Sabatier': 'methanation',costs.at["methanation", "fixed"]
+    #* costs.at["methanation", "efficiency"]
+    'biogas to gas': None, # TODO biogas + biogas upgrading
+    'biogas to gas CC': None, # TODO costs.at["biogas CC", "fixed"]
+    # + costs.at["biogas upgrading", "fixed"]
+    # + costs.at["biomass CHP capture", "fixed"]
+    # * costs.at["biogas CC", "CO2 stored"], 
+}
+
+
+def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
 
     kwargs = {
         'groupby': n.statistics.groupers.get_bus_and_carrier,
         'at_port': True,
         'nice_names': False,
     }
-
 
     var = pd.Series()
 
@@ -194,7 +316,33 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         # transmission capacities
         ["AC", "DC", "electricity distribution grid"],
         errors="ignore",
-    ).multiply(MW2GW)
+    )
+
+    if cap_string.startswith("Investment"):
+        technology_investments = pd.Series(
+            [
+                0 if costs_dict.get(key) is None else
+                costs.at[costs_dict.get(key), "investment"] 
+                for key in capacities_electricity.index
+            ],
+            capacities_electricity.index
+        )
+        for carrier in technology_investments.index.intersection(
+            ["onwind", "solar", "solar-hsat"]):
+            technology_investments[carrier] += \
+                costs.at["electricity grid connection", "investment"]
+            
+        for carrier in ["offwind-ac", "offwind-dc", "offwind-float"]:
+            technology_investments[carrier] = 0.0 # TODO add grid connection cost
+        #     apply update_wind_solar_costs(n, costs)
+
+        capacities_electricity = \
+            capacities_electricity.div(5).multiply(technology_investments)
+    else:
+        capacities_electricity = \
+            capacities_electricity.multiply(MW2GW)
+
+        
 
     capacities_biomass = capacities_electricity.filter(like="biomass")
 
@@ -289,12 +437,9 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
     # var[cap_string + "Electricity|Hydrogen|OC"] = 
     # Q: "H2-turbine"
     # Q: What about retrofitted gas power plants? -> Lisa
-
-    var[cap_string + "Electricity|Hydrogen|FC"] = \
-        capacities_electricity.get("H2 Fuel Cell")
-
     var[cap_string + "Electricity|Hydrogen"] = \
-        var[cap_string + "Electricity|Hydrogen|FC"]
+    var[cap_string + "Electricity|Hydrogen|FC"] = \
+        capacities_electricity.get("H2 Fuel Cell", 0)
 
     var[cap_string + "Electricity|Nuclear"] = \
         capacities_electricity.get("nuclear", 0)
@@ -588,7 +733,7 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
     ).filter(like=region).groupby("carrier").sum().multiply(MW2GW)
 
     var[cap_string + "Hydrogen|Reservoir"] = \
-        storage_capacities.get("H2")
+        storage_capacities.get("H2", 0)
 
 
 
@@ -688,7 +833,7 @@ def get_primary_energy(n, region):
 
     var = pd.Series()
 
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
     
     oil_usage = n.statistics.withdrawal(
         bus_carrier="oil", 
@@ -715,23 +860,8 @@ def get_primary_energy(n, region):
     var["Primary Energy|Oil"] = oil_usage.sum()
     
 
-    regional_gas_supply = n.statistics.supply(
-        bus_carrier="gas", 
-        **kwargs,
-    ).filter(
-        like=region
-    ).groupby(
-        ["component", "carrier"]
-    ).sum().drop([
-        "Store",
-        ("Link", "gas pipeline"),
-        ("Link", "gas pipeline new"),
-    ])
+    gas_fractions = _get_gas_fractions(n)
 
-    gas_fossil_fraction = (
-        regional_gas_supply.get("Generator").get("gas")
-        / regional_gas_supply.sum()
-    )
     # Eventhough biogas gets routed through the EU gas bus,
     # it should be counted separately as Primary Energy|Biomass
     gas_usage = n.statistics.withdrawal(
@@ -747,10 +877,10 @@ def get_primary_energy(n, region):
         ("Link", "gas pipeline new"),
     ]).groupby(
         "carrier"
-    ).sum().multiply(gas_fossil_fraction).multiply(MWh2PJ)
+    ).sum().multiply(gas_fractions["Natural Gas"]).multiply(MWh2PJ)
 
     gas_CHP_E_usage, gas_CHP_H_usage = get_CHP_E_and_H_usage(
-        n, "gas", region, fossil_fraction=gas_fossil_fraction)
+        n, "gas", region, fossil_fraction=gas_fractions["Natural Gas"])
 
     var["Primary Energy|Gas|Heat"] = \
         gas_usage.filter(like="urban central gas boiler").sum() + gas_CHP_H_usage 
@@ -924,7 +1054,7 @@ def get_primary_energy(n, region):
     return var
 
 
-def get_secondary_energy(n, region):
+def get_secondary_energy(n, region, _industry_demand):
     kwargs = {
         'groupby': n.statistics.groupers.get_name_bus_and_carrier,
         'nice_names': False,
@@ -978,11 +1108,6 @@ def get_secondary_energy(n, region):
         var["Secondary Energy|Electricity|Biomass|w/o CCS"] 
         + var["Secondary Energy|Electricity|Biomass|w/ CCS"] 
     )
-    # ! Biogas to gas should go into this category
-    # How to do that? (trace e.g., biogas to gas -> CCGT)
-    # If so: Should double counting with |Gas be avoided?
-    # -> Might use gas_fossil_fraction just like above  
-
 
     var["Secondary Energy|Electricity|Hydro"] = (
         electricity_supply.get("hydro")
@@ -1176,7 +1301,7 @@ def get_secondary_energy(n, region):
         ].sum()
     )
 
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
 
     
     oil_fuel_usage = n.statistics.withdrawal(
@@ -1197,7 +1322,7 @@ def get_secondary_energy(n, region):
     )
 
     total_oil_fuel_usage = oil_fuel_usage.sum()
-
+    var["Secondary Energy|Liquids|Fossil"] = \
     var["Secondary Energy|Liquids|Oil"] = \
         total_oil_fuel_usage * oil_fossil_fraction
     var["Secondary Energy|Liquids|Hydrogen"] = \
@@ -1279,6 +1404,18 @@ def get_secondary_energy(n, region):
         gas_fuel_usage.sum()
     )
 
+
+    industry_demand = _industry_demand.filter(
+        like=region, axis=0,
+    ).sum()
+    mwh_coal_per_mwh_coke = 1.366 
+    # Coke is added as a coal demand, so we need to convert back to units of coke for secondary energy
+    var["Secondary Energy|Solids|Coal"] = \
+    var["Secondary Energy|Solids"] = \
+        industry_demand.get("coke", 0) / mwh_coal_per_mwh_coke 
+
+
+
     electricity_withdrawal = n.statistics.withdrawal(
         bus_carrier=["low voltage", "AC"], **kwargs
     ).filter(like=region).groupby(
@@ -1314,6 +1451,7 @@ def get_secondary_energy(n, region):
         + var["Secondary Energy|Hydrogen"]
         + var["Secondary Energy|Gases"]
         + var["Secondary Energy|Liquids"]
+        + var["Secondary Energy|Solids"]
         + var["Secondary Energy|Methanol"]
     )
     
@@ -1328,8 +1466,8 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, _sector_ratios
             'groupby': n.statistics.groupers.get_name_bus_and_carrier,
             'nice_names': False,
         }
-    h2_fossil_fraction = _get_h2_fossil_fraction(n, region, kwargs)
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
+    h2_fossil_fraction = _get_h2_fossil_fraction(n)
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
 
     if config["industry"]["ammonia"]:
         # MWh/a
@@ -1355,6 +1493,12 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, _sector_ratios
     # write var
     var["Final Energy|Non-Energy Use|Gases"] = non_energy.methane + CH4_for_NH3
 
+    gas_fractions = _get_gas_fractions(n)
+    for gas_type in gas_fractions.index:
+        var[f"Final Energy|Non-Energy Use|Gases|{gas_type}"] = \
+            var["Final Energy|Non-Energy Use|Gases"] * gas_fractions[gas_type]
+
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
     var["Final Energy|Non-Energy Use|Liquids"] = non_energy.naphtha
 
     var["Final Energy|Non-Energy Use|Liquids|Petroleum"] = non_energy.naphtha * oil_fossil_fraction
@@ -1408,10 +1552,22 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, _sector_ratios
 
     var["Final Energy|Industry|Gases"] = \
         industry_demand.get("methane")
+
+    for gas_type in gas_fractions.index:
+        var[f"Final Energy|Industry|Gases|{gas_type}"] = \
+            var["Final Energy|Industry|Gases"] * gas_fractions[gas_type]
+    
     # "gas for industry" is now regionally resolved and could be used here
     # subtract non-energy used gases from total gas demand
     var["Final Energy|Industry excl Non-Energy Use|Gases"] = \
         var["Final Energy|Industry|Gases"] - var["Final Energy|Non-Energy Use|Gases"]
+    
+
+    for gas_type in gas_fractions.index:
+        var[f"Final Energy|Industry excl Non-Energy Use|Gases|{gas_type}"] = \
+            var[f"Final Energy|Industry excl Non-Energy Use|Gases"] * gas_fractions[gas_type]
+
+
 
     # var["Final Energy|Industry|Power2Heat"] = \
     # Q: misleading description
@@ -1453,8 +1609,11 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, _sector_ratios
     var["Final Energy|Industry excl Non-Energy Use|Solids|Biomass"] = \
         var["Final Energy|Industry|Solids|Biomass"]
     
+    mwh_coal_per_mwh_coke = 1.366
+    # Coke is added as a coal demand, so we need to convert back to units of coke for final energy
     var["Final Energy|Industry|Solids|Coal"] = \
-        industry_demand.get(["coal", "coke"]).sum()
+        industry_demand.get("coal") + \
+        industry_demand.get("coke") / mwh_coal_per_mwh_coke
     var["Final Energy|Industry excl Non-Energy Use|Solids|Coal"] = \
         var["Final Energy|Industry|Solids|Coal"]
     
@@ -1549,8 +1708,6 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, _sector_ratios
         + decentral_heat_supply_rescom.filter(like="solar thermal").sum()
     ) # Assuming for solar thermal secondary energy == Final energy
 
-    gas_fossil_fraction = _get_gas_fossil_fraction(n, region, kwargs)
-
     gas_usage = n.statistics.withdrawal(
         bus_carrier="gas", **kwargs
     ).filter(like=region).groupby(
@@ -1562,15 +1719,16 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, _sector_ratios
         gas_usage.get("urban decentral gas boiler", 0) + \
         gas_usage.get("rural gas boiler", 0)    
     
-    var["Final Energy|Residential and Commercial|Gases|Natural Gas"] = (
-        var["Final Energy|Residential and Commercial|Gases"]
-        * gas_fossil_fraction
-    )
-    
+    for gas_type in gas_fractions.index:
+        var[f"Final Energy|Residential and Commercial|Gases|{gas_type}"] = (
+            var["Final Energy|Residential and Commercial|Gases"]
+            * gas_fractions[gas_type]
+        )
+
 
     # var["Final Energy|Residential and Commercial|Hydrogen"] = \
     # ! Not implemented
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
     oil_usage = n.statistics.withdrawal(
         bus_carrier="oil", **kwargs
     ).filter(like=region).groupby(
@@ -1655,7 +1813,7 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, _sector_ratios
         + energy_totals["total international navigation"]
     )
 
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
 
     var["Final Energy|Transportation|Liquids"] = (
         sum_load(n, "land transport oil", region)
@@ -1750,9 +1908,6 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, _sector_ratios
         + var["Final Energy|Industry excl Non-Energy Use|Electricity"]
     )
     
-
-    # TODO The problem with all of these is that FEEDSTOCKS have to be excluded!!!
-
     var["Final Energy|Solids"] = (
         # var["Final Energy|Agriculture|Solids"]
         var["Final Energy|Residential and Commercial|Solids"]
@@ -1771,9 +1926,11 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, _sector_ratios
         var["Final Energy|Residential and Commercial|Gases"]
         + var["Final Energy|Industry excl Non-Energy Use|Gases"]
     )
-
-    var["Final Energy|Gases|Natural Gas"] = \
-        var["Final Energy|Gases"] * gas_fossil_fraction
+    for gas_type in gas_fractions.index:
+        var[f"Final Energy|Gases|{gas_type}"] = (
+            var["Final Energy|Gases"]
+            * gas_fractions[gas_type]
+        )
     
 
     var["Final Energy|Liquids"] = (
@@ -1850,8 +2007,18 @@ def get_emissions(n, region, _energy_totals):
 
     co2_emissions = n.statistics.supply(
         bus_carrier="co2",**kwargs
-    ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)  
-    
+    ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)   
+
+    co2_atmosphere_withdrawal = n.statistics.withdrawal(
+        bus_carrier="co2",**kwargs
+    ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)
+
+    var["Emissions|CO2"] = \
+        co2_emissions.sum() - co2_atmosphere_withdrawal.sum()
+
+    co2_storage = n.statistics.supply(
+        bus_carrier ="co2 stored",**kwargs
+    ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)
 
     CHP_emissions = n.statistics.supply(
         bus_carrier="co2",**kwargs
@@ -1862,6 +2029,67 @@ def get_emissions(n, region, _energy_totals):
         ~CHP_emissions.index.get_level_values(
             "carrier").str.contains("waste")]
 
+    ## Account for carbon neutral fuels (e-fuels, biogas, ...)
+
+    oil_techs = [
+        "HVC to air",
+        "agriculture machinery oil",
+        "kerosene for aviation",
+        "land transport oil",
+        "oil",
+        "shipping oil",
+        "waste CHP",
+        "waste CHP CC",
+        "urban decentral oil boiler",
+        "rural oil boiler",
+        "urban central oil CHP",
+    ]
+    
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
+    # Assuming that efuel emissions are generated at the production site
+    var["Emissions|CO2|Energy|Production|From Liquids"] = \
+        co2_emissions.loc[
+            co2_emissions.index.isin(oil_techs)
+            ].sum() * (1 - oil_fossil_fraction)
+
+    # Fossil fuel emissions are generated where they get burned
+    
+    co2_emissions.loc[
+        co2_emissions.index.isin(oil_techs)
+        ] *= oil_fossil_fraction
+    
+    CHP_emissions.loc[
+        CHP_emissions.index.get_level_values("carrier").isin(oil_techs)
+        ] *= oil_fossil_fraction
+
+    gas_techs = [
+        "CCGT",
+        "OCGT",
+        "SMR",
+        "SMR CC",
+        "gas for industry",
+        "gas for industry CC",
+        "rural gas boiler",
+        "urban decentral gas boiler",
+        "urban central gas CHP",
+        "urban central gas CHP CC",
+    ]
+
+    gas_fractions = _get_gas_fractions(n)
+
+    var["Emissions|CO2|Energy|Production|From Gases"] = \
+        co2_emissions.loc[
+            co2_emissions.index.isin(gas_techs)
+        ].sum() * (1 - gas_fractions["Natural Gas"])
+    co2_emissions.loc[
+        co2_emissions.index.isin(gas_techs)
+        ] *= gas_fractions["Natural Gas"]
+    CHP_emissions.loc[
+        CHP_emissions.index.get_level_values("carrier").isin(gas_techs)
+        ] *= gas_fractions["Natural Gas"]
+
+    # TODO Methanol
+
     CHP_E_to_H =  (
         n.links.loc[CHP_emissions.index.get_level_values("name")].efficiency 
         / n.links.loc[CHP_emissions.index.get_level_values("name")].efficiency2
@@ -1869,9 +2097,65 @@ def get_emissions(n, region, _energy_totals):
 
     CHP_E_fraction =  CHP_E_to_H * (1 / (CHP_E_to_H + 1))
 
+
+    fossil_cc = co2_storage.reindex(
+        [
+            "SMR CC", 
+            "gas for industry CC", 
+            "process emissions CC", 
+            "urban central gas CHP CC", 
+            "waste CHP CC"
+        ])
+
+    negative_cc = co2_storage.reindex(
+        [
+            "DAC", 
+            "biogas to gas CC", 
+            "solid biomass for industry CC", 
+            "urban central solid biomass CHP CC"
+        ])
+
+    assert isclose(
+        fossil_cc.sum() + negative_cc.sum(),
+        co2_storage.drop("co2 stored").sum()
+    )
+    # Assert neglible numerical errors in stored CO2
+    assert co2_storage["co2 stored"] < 0.1
+
+    total_ccs = n.statistics.supply(
+            bus_carrier="co2 sequestered",**kwargs
+        ).filter(like=region).get("Link").groupby(
+            "carrier"
+        ).sum().multiply(t2Mt).sum() 
+   # TODO should we account for e-fuels here???
+   
+    # All captures fossil should be sequestered for e-fuels to be carbon neutral
+    # We allow for a small margin of error (0.1 Mt CO2)
+    # If this assert fails repeatedly we will need to add a hard constraint for this
+    if not total_ccs + 0.1 > fossil_cc.sum():
+        print("WARNING! Not all CO2 capture from fossil sources is captured!!!")
+        print("total_ccs - fossil_cc: ", total_ccs - fossil_cc.sum())
+
+    negative_ccs = total_ccs - fossil_cc.sum()
+
+    co2_negative_emissions = co2_storage.multiply(
+        negative_ccs / co2_storage.sum()
+        ).reindex(
+        co2_atmosphere_withdrawal.index).fillna(0.0)
+    
+    biomass_CHP_correction_factor = min(
+        1, # Can not be > 1, taking minimum to avoid numerical errors
+        co2_negative_emissions["urban central solid biomass CHP CC"]
+        / co2_atmosphere_withdrawal["urban central solid biomass CHP CC"],
+    )
+
     negative_CHP_emissions = n.statistics.withdrawal(
         bus_carrier="co2",**kwargs
-    ).filter(like=region).filter(like="CHP").multiply(t2Mt)
+    ).filter(like=region).filter(
+        like="solid biomass CHP CC"
+    ).multiply(t2Mt).multiply( # Correcting for actual negative emissions
+        biomass_CHP_correction_factor
+    )
 
     negative_CHP_E_to_H =  (
         n.links.loc[
@@ -1886,18 +2170,9 @@ def get_emissions(n, region, _energy_totals):
         1 / (negative_CHP_E_to_H + 1)
     )
 
-    co2_negative_emissions = n.statistics.withdrawal(
-        bus_carrier="co2",**kwargs
-    ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)
 
-    co2_storage = n.statistics.supply(
-        bus_carrier ="co2 stored",**kwargs
-    ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)    
-
-    var["Carbon Sequestration"] = \
-        n.statistics.supply(
-            bus_carrier="co2 sequestered",**kwargs
-        ).filter(like=region).groupby("carrier").sum().multiply(t2Mt).sum()     
+    var["Carbon Sequestration"] = total_ccs
+            
 
     var["Carbon Sequestration|DACCS"] = \
         var["Carbon Sequestration"] * (
@@ -1917,10 +2192,6 @@ def get_emissions(n, region, _energy_totals):
         - var["Carbon Sequestration|BECCS"]
     )
 
-
-    var["Emissions|CO2"] = \
-        co2_emissions.sum() - co2_negative_emissions.sum()
-
     # ! LULUCF should also be subtracted (or added??), we get from REMIND, 
     # TODO how to consider it here?
     
@@ -1931,10 +2202,9 @@ def get_emissions(n, region, _energy_totals):
             "process emissions CC",
         ]).sum() + \
         co2_emissions.get("industry methanol", 0)
-    # TODO not sure methanol emissions are right here
+    # process emissions is mainly cement, methanol is used for chemicals
     
-    # !!! We do not strictly separate fuel combustion emissions from
-    # process emissions in industry, so some should go to:
+
     var["Emissions|CO2|Energy|Demand|Industry"] = \
         co2_emissions.reindex([
             "gas for industry",
@@ -1973,6 +2243,11 @@ def get_emissions(n, region, _energy_totals):
             co2_emissions.filter(like="shipping").sum()
             * (1 - international_navigation_fraction)
         )
+    )
+
+    var["Emissions|CO2|Energy|Demand|Transportation|Domestic Aviation"] = (
+        co2_emissions.get("kerosene for aviation")
+        * (1 - international_aviation_fraction)
     )
   
     var["Emissions|CO2|Energy|Demand|Bunkers|Aviation"] = (
@@ -2063,10 +2338,6 @@ def get_emissions(n, region, _energy_totals):
             "waste CHP CC",
         ]).sum()
 
-    # var["Emissions|CO2|Energy|Supply|Liquids"] = \
-    # Our only Liquid production is Fischer-Tropsch
-    # -> no emissions in this category
-
     # var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = \
         # var["Emissions|CO2|Energy|Supply|Liquids"]
         # var["Emissions|CO2|Energy|Supply|Gases"] + \
@@ -2074,7 +2345,8 @@ def get_emissions(n, region, _energy_totals):
     var["Emissions|CO2|Energy|Supply"] = \
         var["Emissions|CO2|Energy|Supply|Gases"] + \
         var["Emissions|CO2|Energy|Supply|Hydrogen"] + \
-        var["Emissions|CO2|Energy|Supply|Electricity and Heat"]
+        var["Emissions|CO2|Energy|Supply|Electricity and Heat"] # + \
+        # var["Emissions|CO2|Energy|Supply|Liquids"]
     
     # var["Emissions|CO2|Energy|Supply|Other Sector"] = \   
     # var["Emissions|CO2|Energy|Supply|Solids"] = \ 
@@ -2096,15 +2368,24 @@ def get_emissions(n, region, _energy_totals):
         var["Emissions|Gross Fossil CO2|Energy|Supply|Heat"] + \
         var["Emissions|Gross Fossil CO2|Energy|Supply|Hydrogen"]
 
-    assert isclose(
-        var["Emissions|CO2"],
+
+    emission_difference = var["Emissions|CO2"] - \
         (
             var["Emissions|CO2|Energy and Industrial Processes"] 
             + var["Emissions|CO2|Energy|Demand|Bunkers"]
             + var["Emissions|CO2|Supply|Non-Renewable Waste"]
             - co2_negative_emissions.get("DAC", 0)
+            + var["Emissions|CO2|Energy|Production|From Liquids"]
+            + var["Emissions|CO2|Energy|Production|From Gases"]
+            - co2_atmosphere_withdrawal.subtract(co2_negative_emissions).sum()
         )
+    print(
+        "Differences in accounting for CO2 emissions:",
+        emission_difference,        
     )
+
+    assert emission_difference < 1e-2 # Improve numerical stability
+
     return var 
 
 # functions for prices
@@ -2377,8 +2658,8 @@ def get_prices(n, region):
     nodal_prices_gas = n.buses_t.marginal_price[nodal_flows_gas.columns]
 
     # co2 part
-    gas_fossil_fraction = _get_gas_fossil_fraction(n, region, kwargs)
-    co2_add_gas = gas_fossil_fraction * specific_emisisons["gas"] * co2_price
+    gas_fractions = _get_gas_fractions(n)
+    co2_add_gas = gas_fractions["Natural Gas"] * specific_emisisons["gas"] * co2_price
 
 
     var["Price|Primary Energy|Gas"] = \
@@ -2390,7 +2671,7 @@ def get_prices(n, region):
     nodal_prices_oil = n.buses_t.marginal_price[nodal_flows_oil.columns]
 
     # co2 part
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region, kwargs)
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
     co2_add_oil = oil_fossil_fraction * specific_emisisons["oil"] * co2_price
 
     var["Price|Primary Energy|Oil"] = \
@@ -2753,7 +3034,7 @@ def get_discretized_value(value, disc_int, build_threshold=0.3):
 
         return add + discrete
 
-def get_investments(n, costs, region, dg_cost_factor=1.0, length_factor=1.0):
+def get_grid_investments(n, costs, region, dg_cost_factor=1.0, length_factor=1.0):
     # TODO gap between years should be read from config
     # TODO Discretization units should be read from config 
     var = pd.Series()
@@ -2992,47 +3273,46 @@ def get_trade(n, region):
 
     var["Trade|Secondary Energy|Electricity|Volume"] = \
         ((exporting_p_ac - importing_p_ac) + (exports_dc - imports_dc)) * MWh2PJ 
-    var["Trade|Secondary Energy|Electricity|Volume|Imports"] = \
+    var["Trade|Secondary Energy|Electricity|Gross Import|Volume"] = \
         (importing_p_ac + imports_dc) * MWh2PJ
-    var["Trade|Secondary Energy|Electricity|Volume|Exports"] = \
-        (exporting_p_ac + exports_dc) * MWh2PJ
+    # var["Trade|Secondary Energy|Electricity|Volume|Exports"] = \
+    #     (exporting_p_ac + exports_dc) * MWh2PJ
 
     # Trade|Secondary Energy|Hydrogen|Volume
     h2_carriers = ["H2 pipeline", "H2 pipeline (Kernnetz)", "H2 pipeline retrofitted"]
     exports_h2, imports_h2 = get_export_import_links(n, region, h2_carriers)
     var["Trade|Secondary Energy|Hydrogen|Volume"] = \
         (exports_h2 - imports_h2) * MWh2PJ
-    var["Trade|Secondary Energy|Hydrogen|Volume|Imports"] = \
+    var["Trade|Secondary Energy|Hydrogen|Gross Import|Volume"] = \
         imports_h2 * MWh2PJ
-    var["Trade|Secondary Energy|Hydrogen|Volume|Exports"] = \
-        exports_h2 * MWh2PJ
+    # var["Trade|Secondary Energy|Hydrogen|Volume|Exports"] = \
+    #     exports_h2 * MWh2PJ
     
     # Trade|Secondary Energy|Liquids|Hydrogen|Volume
     exports_oil_renew, imports_oil_renew = get_export_import_links(n, region, ["renewable oil"])
     var["Trade|Secondary Energy|Liquids|Hydrogen|Volume"] = \
         (exports_oil_renew - imports_oil_renew) * MWh2PJ
-    var["Trade|Secondary Energy|Liquids|Hydrogen|Volume|Imports"] = \
+    var["Trade|Secondary Energy|Liquids|Hydrogen|Gross Import|Volume"] = \
         imports_oil_renew * MWh2PJ
-    var["Trade|Secondary Energy|Liquids|Hydrogen|Volume|Exports"] = \
-        exports_oil_renew * MWh2PJ
+    # var["Trade|Secondary Energy|Liquids|Hydrogen|Volume|Exports"] = \
+    #     exports_oil_renew * MWh2PJ
 
     # Trade|Secondary Energy|Gases|Hydrogen|Volume
 
-    # TODO add methanol trade
+    # TODO add methanol trade, renewable gas trade
 
     # Trade|Primary Energy|Coal|Volume
     # Trade|Primary Energy|Gas|Volume
-    kwargs = {
-        'groupby': n.statistics.groupers.get_name_bus_and_carrier,
-        'nice_names': False,
-    }
+
+
+    gas_fractions = _get_gas_fractions(n)
     exports_gas, imports_gas = get_export_import_links(n, region, ["gas pipeline", "gas pipeline new"])
     var["Trade|Primary Energy|Gas|Volume"] = \
-        ((exports_gas - imports_gas) * MWh2PJ) * _get_gas_fossil_fraction(n, region, kwargs)
+        ((exports_gas - imports_gas) * MWh2PJ) * gas_fractions["Natural Gas"]
     var["Trade|Primary Energy|Gas|Volume|Imports"] = \
-        imports_gas * MWh2PJ * _get_gas_fossil_fraction(n, region, kwargs)
+        imports_gas * MWh2PJ * gas_fractions["Natural Gas"]
     var["Trade|Primary Energy|Gas|Volume|Exports"] = \
-        exports_gas * MWh2PJ * _get_gas_fossil_fraction(n, region, kwargs)
+        exports_gas * MWh2PJ * gas_fractions["Natural Gas"]
 
     # Trade|Primary Energy|Oil|Volume
 
@@ -3044,7 +3324,7 @@ def get_production(region, year):
     # read in the industrial production data
     years = [int(re.search(r'(\d{4})-modified\.csv', filename).group(1)) for filename in snakemake.input.industrial_production_per_country_tomorrow]
     index = next((idx for idx, y in enumerate(years) if y == year), None)
-    production = pd.read_csv(snakemake.input.industrial_production_per_country_tomorrow[index], index_col=0) # kton/a
+    production = pd.read_csv(snakemake.input.industrial_production_per_country_tomorrow[index], index_col=0).div(1e3) # kton/a -> Mton/a
     
     var["Production|Non-Metallic Minerals|Cement"] = production.loc[region, "Cement"]
     var["Production|Steel"] = production.loc["DE", ["Electric arc", "Integrated steelworks", "DRI + Electric arc"]].sum()
@@ -3060,27 +3340,133 @@ def get_production(region, year):
 
     return var
 
+def get_operational_and_capital_costs(year):
+    ''''
+    This function reads in the cost data from the costs.csv file and
+    brings it into the database format.
+    '''
+    var = pd.Series()
+    ind = snakemake.params.planning_horizons.index(year)
+    costs = prepare_costs(
+        snakemake.input.costs[ind],
+        snakemake.params.costs,
+        nyears=1,
+    )
+
+    sector_dict = {
+        "BEV charger": "Electricity",
+        "CCGT": "Electricity",
+        "DAC": "Gases",
+        "H2 Electrolysis": "Hydrogen",
+        "H2 Fuel Cell": "Electricity",
+        "OCGT": "Electricity",
+        "PHS": "Electricity",
+        "V2G": "Electricity",
+        "battery charger": "Electricity",
+        "battery discharger": "Electricity",
+        "coal": "Electricity",
+        "Fischer-Tropsch": "Liquids",
+        "gas pipeline": "Gases",
+        "home battery charger": "Electricity",
+        "home battery discharger": "Electricity",
+        "hydro": "Electricity",
+        "lignite": "Electricity",
+        "methanolisation": "Liquids",
+        "offwind-ac": "Electricity",
+        "offwind-dc": "Electricity",
+        "offwind-float": "Electricity",
+        "oil": "Electricity",
+        "onwind": "Electricity",
+        "ror": "Electricity",
+        "rural air heat pump": "Heat",
+        "rural biomass boiler": "Heat",
+        "rural gas boiler": "Heat",
+        "rural oil boiler": "Heat",
+        "rural ground heat pump": "Heat",
+        "rural resistive heater": "Heat",
+        "rural solar thermal": "Heat",
+        "rural water tanks charger": "Heat",
+        "rural water tanks discharger": "Heat",
+        "Sabatier": "Gases",
+        "solar": "Electricity",
+        "solar rooftop": "Electricity",
+        "solar-hsat": "Electricity",
+        "solid biomass": "Heat",
+        "urban central air heat pump": "Heat",
+        "urban central coal CHP": "Heat",
+        "urban central gas CHP": "Heat",
+        "urban central gas CHP CC": "Heat",
+        "urban central lignite CHP": "Heat",
+        "urban central oil CHP": "Heat",
+        "urban central water tanks charger": "Heat",
+        "urban central water tanks discharger": "Heat",
+        "urban central resistive heater": "Heat",
+        "urban central solar thermal": "Heat",
+        "urban central solid biomass CHP": "Heat",
+        "urban central solid biomass CHP CC": "Heat",
+        "urban decentral air heat pump": "Heat",
+        "urban decentral resistive heater": "Heat",
+        "urban decentral solar thermal": "Heat",
+        "urban decentral biomass boiler": "Heat",
+        "urban decentral gas boiler": "Heat",
+        "urban decentral oil boiler": "Heat",
+        "urban decentral water tanks charger": "Heat",
+        "urban decentral water tanks discharger": "Heat",
+        "waste CHP": "Heat",
+        "waste CHP CC": "Heat",
+    }
+
+    grid_connection = [
+        "offwind-ac",
+        "offwind-dc",
+        "offwind-float",
+        "solar",
+        "solar-hsat",
+    ]
+
+    for key, tech in costs_dict.items():
+        if tech is None:
+            continue
+        sector = sector_dict[key]
+
+        FOM = "OM Cost|Fixed" + "|" + sector + "|" + tech
+        VOM = "OM Cost|Variable" + "|" + sector + "|" + tech
+        capital = "Capital Cost" + "|" + sector + "|" + tech
+
+        var[FOM] = costs.at[tech, "fixed"] / 1e3 # EUR/MW -> EUR/kW
+        var[VOM] = costs.at[tech, "VOM"] / MWh2GJ # EUR/MWh -> EUR/GJ
+        var[capital] = costs.at[tech, "investment"] / 1e3 # EUR/MW -> EUR/kW
+
+        if key in grid_connection:
+            var[FOM] += costs.at["electricity grid connection", "fixed"] / 1e3
+            var[capital] += costs.at["electricity grid connection", "investment"] / 1e3
+
+    return var
+
+
 def get_ariadne_var(n, industry_demand, energy_totals, sector_ratios, industry_production, costs, region, year):
 
     var = pd.concat([
         get_capacities(n, region),
-        get_capacity_additions_simple(n,region),
+        #get_capacity_additions_simple(n,region),
         #get_installed_capacities(n,region),
-        #get_capacity_additions(n, region),
+        get_capacity_additions(n, region),
+        #get_investments(n, costs, region),
         #get_capacity_additions_nstat(n, region),
         get_production(region, year),
         get_primary_energy(n, region),
-        get_secondary_energy(n, region),
+        get_secondary_energy(n, region, industry_demand),
         get_final_energy(n, region, industry_demand, energy_totals, sector_ratios, industry_production),
         get_prices(n,region), 
         get_emissions(n, region, energy_totals),
-        get_investments(
+        get_grid_investments(
             n, costs, region,
             dg_cost_factor=snakemake.params.dg_cost_factor,
             length_factor=snakemake.params.length_factor
         ),
         get_policy(n, year),
         get_trade(n, region),
+        #get_operational_and_capital_costs(year),
     ])
 
     return var
@@ -3137,6 +3523,24 @@ if __name__ == "__main__":
             run="KN2045_Bal_v4"
         )
 
+
+    storage_costs_dict = {
+        'H2': 'hydrogen storage underground',
+        'EV battery': None, # 0 i think
+        'PHS': None, #'PHS', accounted already as generator??
+        'battery': 'battery storage',
+        'biogas': None, # not a typical store, 0 i think
+        'co2 sequestered': snakemake.params.co2_sequestration_cost, # TODO how to consider the co2_sequestration_lifetime here
+        'co2 stored': 'CO2 storage tank',
+        'gas': 'gas storage',
+        'home battery': 'home battery storage',
+        'hydro': None, # `hydro`, , accounted already as generator??
+        'oil': 0.02,
+        'rural water tanks': 'decentral water tank storage',
+        'solid biomass': None, # not a store, but a potential, 0 i think
+        'urban central water tanks': 'central water tank storage',
+        'urban decentral water tanks': 'decentral water tank storage',
+    }
 
     config = snakemake.config
     ariadne_template = pd.read_excel(

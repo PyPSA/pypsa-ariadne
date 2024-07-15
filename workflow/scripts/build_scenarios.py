@@ -41,6 +41,24 @@ def get_primary_steel_share(df, planning_horizons):
     
     return primary_steel_share.set_index(pd.Index(["Primary_Steel_Share"]))
 
+def get_DRI_share(df, planning_horizons):
+    # Get share of DRI steel production
+    model = "FORECAST v1.0"
+    total_steel = df.loc[model, "Production|Steel|Primary"]
+    # Assuming that only hydrogen DRI steel is sustainable and DRI using natural gas is phased out
+    DRI_steel = df.loc[model, "Production|Steel|Primary|Direct Reduction Hydrogen"]
+
+    DRI_steel_share = DRI_steel / total_steel
+
+    if model == "FORECAST v1.0" and planning_horizons[0] == 2020:
+        logger.warning("FORECAST v1.0 does not have data for 2020. Using 2021 data for DRI fraction instead.")
+        DRI_steel_share[2020] = DRI_steel_share[2021] / total_steel[2021]
+    
+    DRI_steel_share = DRI_steel_share[planning_horizons]
+
+    return DRI_steel_share.set_index(pd.Index(["DRI_Steel_Share"]))
+
+
 def get_co2_budget(df, source):
     # relative to the DE emissions in 1990 *including bunkers*; also
     # account for non-CO2 GHG and allow extra room for international
@@ -152,10 +170,14 @@ def write_to_scenario_yaml(
 
         st_primary_fraction = get_primary_steel_share(df.loc[:, reference_scenario, :], planning_horizons)
         
-        config[scenario]["industry"] = {}
+        dri_fraction = get_DRI_share(df.loc[:, reference_scenario, :], planning_horizons)
+
         config[scenario]["industry"]["St_primary_fraction"] = {}
+        config[scenario]["industry"]["DRI_fraction"] = {}
         for year in st_primary_fraction.columns:
             config[scenario]["industry"]["St_primary_fraction"][year] = round(st_primary_fraction.loc["Primary_Steel_Share", year].item(), 4)
+            config[scenario]["industry"]["DRI_fraction"][year] = round(dri_fraction.loc["DRI_Steel_Share", year].item(), 4)
+
         config[scenario]["co2_budget_national"] = {}
         for year, target in co2_budget_fractions.items():
             config[scenario]["co2_budget_national"][year] = {}

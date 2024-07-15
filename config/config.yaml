@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240628public_db
+  prefix: 20240710limitwasteheat
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -24,6 +24,8 @@ run:
       - existing_heating.csv # specify files which should not be shared between scenarios
       - costs
       - retrieve_cost # This is necessary to save retrieve_cost_data_{year}.log in the correct folder
+      - industry_sector_ratios
+      - build_industry_sector_ratios # This is necessary to save build_industry_sector_ratios_data.log in the correct folder
   disable_progressbar: true
   debug_co2_limit: false
   debug_h2deriv_limit: false
@@ -227,9 +229,9 @@ first_technology_occurrence:
 
 renewable:
   offwind-ac:
-    capacity_per_sqkm: 10
+    capacity_per_sqkm: 6
   offwind-dc:
-    capacity_per_sqkm: 10
+    capacity_per_sqkm: 6
 
 costs:
   horizon: "mean" # "optimist", "pessimist" or "mean"
@@ -237,6 +239,7 @@ costs:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
   solar_thermal: false
+  v2g: false
   district_heating:
     potential: 0.4
     progress:
@@ -344,7 +347,6 @@ industry:
     2050: 0.20
   waste_to_energy: true
   waste_to_energy_cc: true
-
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
 solving:
