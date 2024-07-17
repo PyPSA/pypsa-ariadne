@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240710limitwasteheat
+  prefix: unravel_CH4
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -30,6 +30,7 @@ run:
   debug_co2_limit: false
   debug_h2deriv_limit: false
   debug_unravel_oilbus: false
+  debug_unravel_ch4: false
 
 iiasa_database:
   db_name: ariadne2_intern
@@ -261,6 +262,7 @@ sector:
   regional_oil_demand: true  #set to true if regional CO2 constraints needed
   regional_coal_demand: true  #set to true if regional CO2 constraints needed
   gas_network: true
+  H2_retrofit: true
   biogas_upgrading_cc: true
   cluster_heat_buses: true
   # calculated based on ariadne "Stock|Space Heating"
@@ -389,6 +391,9 @@ plotting:
     load: "#111100"
     H2 pipeline (Kernnetz): '#6b3161'
     renewable oil: '#c9c9c9'
+    consumption gas: '#c9c9c9'
+    renewable gas: '#c9c9c9'
+    renewable gas pipeline: '#c9c9c9'
   countries:
   - all
   - DE
