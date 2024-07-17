@@ -433,85 +433,20 @@ def aladin_mobility_demand(n):
     if not dsm_i.empty:
         n.stores.loc[dsm_i].e_nom *= pd.Series(factor.values, index=dsm_i)
 
-# specific emissions in tons CO2/MWh according to n.links[n.links.carrier =="your_carrier].efficiency2.unique().item()
-specific_emisisons = {
-    "oil" : 0.2571,
-    "gas" : 0.198, # OCGT
-    "coal" : 0.3361,
-    "lignite" : 0.4069,
-    "co2 sequestered": 1.0,
-    "co2": 0.0,
-}
 
 def emissions_upstream(n):
+    """
+    Delete current downstream constraint and save global co2 limit in n.meta.
 
-    # old constraint
-    limit = n.global_constraints.loc["CO2Limit","constant"] 
+    Parameters:
+        n (pypsa.Network): The PyPSA network object.
+
+    Returns:
+        None
+    """
+
+    n.meta["_global_co2_limit"] = n.global_constraints.loc["CO2Limit","constant"] 
     n.remove("GlobalConstraint", "CO2Limit")
-    
-    # # add co2_emissions attribute to carriers
-    # for carrier in specific_emisisons:
-    #     n.carriers.loc[carrier, "co2_emissions"] = specific_emisisons[carrier]   
-
-    # n.add(
-    #     "GlobalConstraint",
-    #     "CO2Limit",
-    #     carrier_attribute="co2_emissions",
-    #     sense="<=",
-    #     type="co2_emisisons",
-    #     constant=limit,
-    # ) 
-
-    # specific emissions in tons CO2/MWh according to n.links[n.links.carrier =="your_carrier].efficiency2.unique().item()
-    specific_emisisons = {
-        "oil" : 0.2571,
-        "gas" : 0.198, # OCGT
-        "coal" : 0.3361,
-        "lignite" : 0.4069,
-        # "co2 sequestered": 1.0,
-        # "co2": 0.0,
-    }
-
-    lhs = []
-
-    # gas (spatially distributed)
-    i_gas = n.generators.index[(n.generators.carrier == "gas")]
-    lhs.append((n.model["Generator-p"].loc[:, i_gas]*specific_emisisons["gas"]*n.snapshot_weightings.generators).sum())
-
-    # oil (EU oild and DE oil)
-    i_oil = n.generators.index[(n.generators.carrier == "oil")]
-    lhs.append((n.model["Generator-p"].loc[:, i_oil]*specific_emisisons["oil"]*n.snapshot_weightings.generators).sum())
-
-    # coal (only EU coal)
-    i_coal = n.generators.index[(n.generators.carrier == "coal")]
-    lhs.append((n.model["Generator-p"].loc[:, i_coal]*specific_emisisons["coal"]*n.snapshot_weightings.generators).sum())
-
-    # lignite (only EU lignite)
-    i_lignite = n.generators.index[(n.generators.carrier == "lignite")]
-    lhs.append((n.model["Generator-p"].loc[:, i_lignite]*specific_emisisons["lignite"]*n.snapshot_weightings.generators).sum())
-
-    # sequestration
-    i_sequestered = n.links.index[(n.links.carrier == "co2 sequestered")]
-    lhs.append((-1*n.model["Link-p"].loc[:, i_sequestered]*n.snapshot_weightings.generators).sum())
-
-    lhs = sum(lhs)
-
-    cname = "CO2Limit"
-
-    n.model.add_constraints(
-        lhs <= limit,
-        name=f"GlobalConstraint",
-    )
-
-    if cname not in n.global_constraints.index:
-        n.add(
-            "GlobalConstraint",
-            cname,
-            constant=limit,
-            sense="<=",
-            type="",
-            carrier_attribute="",
-        ) 
 
 
 
@@ -584,7 +519,7 @@ if __name__ == "__main__":
     if snakemake.params.biomass_must_run["enable"]:
         must_run_biomass(n, snakemake.params.biomass_must_run["p_min_pu"], snakemake.params.biomass_must_run["regions"])
 
-    # if snakemake.params.emissions_upstream["enable"]:
-    #     emissions_upstream(n)
+    if snakemake.params.emissions_upstream["enable"]:
+        emissions_upstream(n)
 
     n.export_to_netcdf(snakemake.output.network)

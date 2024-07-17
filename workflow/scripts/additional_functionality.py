@@ -2,6 +2,7 @@
 import logging
 
 import pandas as pd
+import os
 from prepare_sector_network import determine_emission_sectors
 
 from xarray import DataArray
@@ -223,9 +224,7 @@ def electricity_import_limits(n, snapshots, investment_year, config):
 
 def emissions_upstream(n):
 
-    # remove old constraint
-    limit = n.global_constraints.loc["CO2Limit","constant"] 
-    n.remove("GlobalConstraint", "CO2Limit")
+    limit =  n.meta["_global_co2_limit"]
 
     # specific emissions in tons CO2/MWh according to n.links[n.links.carrier =="your_carrier].efficiency2.unique().item()
     specific_emisisons = {
@@ -246,23 +245,24 @@ def emissions_upstream(n):
     i_sequestered = n.links.index[(n.links.carrier == "co2 sequestered")]
     lhs.append((-1*n.model["Link-p"].loc[:, i_sequestered]*n.snapshot_weightings.generators).sum())
 
-    # process emisions
+    # process emissions
     i_pe = n.links.index[n.links.carrier == "process emissions"]
     lhs.append((n.model["Link-p"].loc[:, i_pe]*n.snapshot_weightings.generators).sum())
 
     i_pecc = n.links.index[n.links.carrier == "process emissions CC"]
-    lhs.append((n.model["Link-p"].loc[:, i_pe]*n.links.loc[i_pecc, "efficiency"]*n.snapshot_weightings.generators).sum())
+    lhs.append((n.model["Link-p"].loc[:, i_pecc]*n.snapshot_weightings.generators).sum())
 
+    # lost oil emissions: this is the hvc sequestered emissions that are not accounted in the downstream constraint
     i_nfi = n.links.index[(n.links.carrier == "naphtha for industry")]
-    lhs.append(-1*(n.model["Link-p"].loc[:, i_nfi]*n.links.loc[i_nfi, "efficiency3"]*n.snapshot_weightings.generators).sum())
+    lhs.append(-1*((n.model["Link-p"].loc[:, i_nfi]*(1-n.links.loc[i_nfi, "efficiency2"])*specific_emisisons["oil"]*n.snapshot_weightings.generators).sum()))
 
     lhs = sum(lhs)
 
-    cname = "CO2Limit"
+    cname = "CO2LimitUpstream"
 
     n.model.add_constraints(
         lhs <= limit,
-        name=f"GlobalConstraint",
+        name=f"GlobalConstraint-{cname}",
     )
 
     if cname not in n.global_constraints.index:
@@ -571,10 +571,12 @@ def additional_functionality(n, snapshots, snakemake):
     #force_boiler_profiles_existing_per_load(n)
     force_boiler_profiles_existing_per_boiler(n)
 
-    if snakemake.config["sector"]["co2_budget_national"]:
-        limit_countries = snakemake.config["co2_budget_national"][investment_year]
-        add_co2limit_country(n, limit_countries, snakemake,                  
-            debug=snakemake.config["run"]["debug_co2_limit"])
-        
+    # if snakemake.config["sector"]["co2_budget_national"]:
+    #     limit_countries = snakemake.config["co2_budget_national"][investment_year]
+    #     add_co2limit_country(n, limit_countries, snakemake,                  
+    #         debug=snakemake.config["run"]["debug_co2_limit"])
+    
     if snakemake.config["emissions_upstream"]["enable"]:
         emissions_upstream(n)
+
+    n.export_to_netcdf("/home/julian-geis/repos/pypsa-ariadne-1/results/models/model_export.nc")
