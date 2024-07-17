@@ -336,6 +336,117 @@ def unravel_oilbus(n):
           )
 
 
+def unravel_ch4(n, config):
+    """
+    This function copies each ch4 bus twice to have one fossil, renewable and consumption bus.
+    XX1 0 gas consumption:  consumption gas bus
+    XX1 0 gas:              fossil gas bus
+    XX1 0 gas renewable:    renewable gas bus
+
+    Renewable gas from biomass or methanation processes feed into the renewable gas bus.
+    The pipeline links are copied as well to allow the transport/trade of fossil and renewable gas separately.
+    Additionally, stores are added to enable the storage of fossil and renewable gas.
+    The boundary conditions are added in the additional_functionality script.
+    """
+
+    consumption_carriers = ["urban central gas boiler", 
+                                "urban central gas CHP",
+                                "urban central gas CHP CC",
+                                "gas for industry", 
+                                "gas for industry CC",
+                                "rural gas boiler",
+                                "urban decentral gas boiler"]
+
+    renewable_carriers = ["Sabatier", "biogas to gas", "biogas to gas CC"]
+
+    logger.info("Unraveling gas bus")
+
+    # add new gas buses
+    gas_buses = n.buses[n.buses.carrier == "gas"]
+    consumption_gas_buses = gas_buses.copy()
+    consumption_gas_buses["carrier"] = "consumption gas"
+    consumption_gas_buses.index = consumption_gas_buses.index.str.replace("gas", "consumption gas")
+    n.import_components_from_dataframe(consumption_gas_buses, "Bus")
+
+    renewable_gas_buses = gas_buses.copy()
+    renewable_gas_buses["carrier"] = "renewable gas"
+    renewable_gas_buses.index = renewable_gas_buses.index.str.replace("gas", "renewable gas")
+    n.import_components_from_dataframe(renewable_gas_buses, "Bus")
+
+    # copy gas stores for renewable gas
+    gas_stores = n.stores[n.stores.carrier == "gas"]
+
+    renewable_gas_stores = gas_stores.copy()
+    renewable_gas_stores["carrier"] = "renewable gas"
+    renewable_gas_stores["bus"] = renewable_gas_stores["bus"].str.replace("gas", "renewable gas")
+    renewable_gas_stores["e_nom_extendable"] = False
+    renewable_gas_stores["capital_cost"] = 0
+    renewable_gas_stores.index = renewable_gas_stores.index.str.replace("gas", "renewable gas")
+    n.import_components_from_dataframe(renewable_gas_stores, "Store")
+
+    if config["sector"]["H2_retrofit"]:
+        # only gas pipelines in the current planning horizon exist
+        gas_links = n.links[n.links.carrier == "gas pipeline"]
+        renewable_gas_links = gas_links.copy()
+        renewable_gas_links["carrier"] = "renewable gas pipeline"
+        renewable_gas_links["bus0"] = renewable_gas_links["bus0"].str.replace("gas", "renewable gas")
+        renewable_gas_links["bus1"] = renewable_gas_links["bus1"].str.replace("gas", "renewable gas")
+        renewable_gas_links.index = renewable_gas_links.index.str.replace("gas", "renewable gas")
+        n.import_components_from_dataframe(renewable_gas_links, "Link")
+
+    else:
+        # gas pipelines for each planning horizon exist
+        # first remove all renewable gas pipeline links
+        renewable_gas_links = n.links[n.links.carrier == "renewable gas pipeline"]
+        n.links.drop(renewable_gas_links.index, inplace=True)
+        # add them again with all the updated information
+        gas_links = n.links[n.links.carrier == "gas pipeline"]
+        renewable_gas_links = gas_links.copy()
+        renewable_gas_links["carrier"] = "renewable gas pipeline"
+        renewable_gas_links["bus0"] = renewable_gas_links["bus0"].str.replace("gas", "renewable gas")
+        renewable_gas_links["bus1"] = renewable_gas_links["bus1"].str.replace("gas", "renewable gas")
+        renewable_gas_links.index = renewable_gas_links.index.str.replace("gas", "renewable gas")
+        n.import_components_from_dataframe(renewable_gas_links, "Link")
+
+    # get all spatial nodes
+    spatial_nodes = n.buses[n.buses.carrier=="gas"].index.str[:5].unique()
+    # add links from renewable gas bus to gas bus
+    n.madd(
+        "Link",
+        [f"{node} renewable gas -> {node} consumption gas" for node in spatial_nodes],
+        bus0=[f"{node} renewable gas" for node in spatial_nodes],
+        bus1=[f"{node} consumption gas" for node in spatial_nodes],
+        carrier="renewable gas",
+        p_nom=1e6,
+        p_min_pu=0,
+    )
+    # add links from fossil gas bus to gas bus
+    n.madd(
+        "Link",
+        [f"{node} gas -> {node} consumption gas" for node in spatial_nodes],
+        bus0=[f"{node} consumption gas" for node in spatial_nodes],
+        bus1=[f"{node} gas" for node in spatial_nodes],
+        carrier="consumption gas",
+        p_nom=1e6,
+        p_min_pu=0,
+    )
+
+    # change existing consumption links only for the first planning horizon
+    if int(snakemake.wildcards.planning_horizons) == config["scenario"]["planning_horizons"][0]:
+        artifacts = n.links[(n.links.carrier.isin(consumption_carriers)) & 
+                            (n.links.p_nom_extendable==False)]
+        n.links.loc[artifacts.index, "bus0"] = n.links.loc[artifacts.index, "bus0"].str.replace("gas", "consumption gas")
+    
+    # change new consumption links
+    consumption_links = n.links[(n.links.carrier.isin(consumption_carriers)) &
+                                (n.links.p_nom_extendable)]
+    n.links.loc[consumption_links.index, "bus0"] = n.links.loc[consumption_links.index, "bus0"].str.replace("gas", "consumption gas")
+
+    # TODO: Check with @lindemi
+    renewable_production = n.links[n.links.carrier.isin(renewable_carriers)]
+    n.links.loc[renewable_production.index, "bus1"] = n.links.loc[renewable_production.index, "bus1"].str.replace("gas", "renewable gas")
+
+
 def transmission_costs_from_modified_cost_data(n, costs, transmission, length_factor=1.0):
     # copying the the function update_transmission_costs from add_electricity
     # slight change to the function so it works in modify_prenetwork
@@ -450,7 +561,7 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts="none",
-            planning_horizons="2030",
+            planning_horizons="2020",
             run="KN2045_Bal_v4"
         )
 
@@ -483,6 +594,9 @@ if __name__ == "__main__":
 
     if not snakemake.config["run"]["debug_unravel_oilbus"]:
         unravel_oilbus(n)
+    
+    if not snakemake.config["run"]["debug_unravel_ch4"]:
+        unravel_ch4(n, config=snakemake.config)
 
     if snakemake.params.enable_kernnetz:
         fn = snakemake.input.wkn
