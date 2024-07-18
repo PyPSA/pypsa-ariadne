@@ -407,7 +407,6 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
 
             # trade: import of fossils must be restricted; trade of gas as well
 
-            # trade: import of fossils must be restricted; gas trade must not be considered?
             coal_in = n.links.index[(n.links.bus0 == "EU coal") & (n.links.bus1.str[:2] == ct)]
             lhs.append((n.model["Link-p"].loc[:, coal_in]*specific_emissions["coal"]*n.snapshot_weightings.generators).sum())
 
