@@ -28,7 +28,6 @@ MWh2PJ = 3.6e-6
 toe_to_MWh = 11.630 # GWh/ktoe OR MWh/toe
 
 
-
 def _get_oil_fossil_fraction(n, region):
     kwargs = {
         'groupby': n.statistics.groupers.get_name_bus_and_carrier,
@@ -1296,7 +1295,7 @@ def get_secondary_energy(n, region, _industry_demand):
         var["Secondary Energy|Hydrogen"],
         hydrogen_production[
             ~hydrogen_production.index.isin(
-                ["H2", "H2 pipeline", "H2 pipeline (Kernnetz)"]
+                ["H2", "H2 pipeline", "H2 pipeline (Kernnetz)", "H2 Store"]
             )
         ].sum()
     )
@@ -2601,10 +2600,13 @@ def get_prices(n, region):
         'nice_names': False,
     }
 
+    n_glob_co2 = "CO2Limit" if "CO2Limit" in n.global_constraints.index else "CO2LimitUpstream"
+    n_loc_co2 = "co2_limit-DE" if "co2_limit-DE" in n.global_constraints.index else "co2_limit_upstream-DE"
+
     # co2 additions
-    co2_price = -n.global_constraints.loc["CO2Limit", "mu"] - n.global_constraints.loc["co2_limit-DE", "mu"]
+    co2_price = -n.global_constraints.loc[n_glob_co2, "mu"] - n.global_constraints.loc[n_loc_co2, "mu"]
     # specific emissions in tons CO2/MWh according to n.links[n.links.carrier =="your_carrier].efficiency2.unique().item()
-    specific_emisisons = {
+    specific_emissions = {
         "oil" : 0.2571,
         "gas" : 0.198, # OCGT
         "hard coal" : 0.3361,
@@ -2645,8 +2647,8 @@ def get_prices(n, region):
     coal_fraction = nf_coal.values.sum() / (nf_coal.values.sum() + nf_lignite.values.sum())
     lignite_fraction = nf_lignite.values.sum() / (nf_coal.values.sum() + nf_lignite.values.sum())
     co2_add_coal = \
-        coal_fraction * specific_emisisons["hard coal"] * co2_price \
-        + lignite_fraction * specific_emisisons["lignite"] * co2_price 
+        coal_fraction * specific_emissions["hard coal"] * co2_price \
+        + lignite_fraction * specific_emissions["lignite"] * co2_price 
 
     var["Price|Primary Energy|Coal"] = \
         (get_weighted_costs([coal_price, lignite_price], [nf_coal.values.sum(), nf_lignite.values.sum()]) + co2_add_coal)/ MWh2GJ 
@@ -2657,7 +2659,7 @@ def get_prices(n, region):
 
     # co2 part
     gas_fractions = _get_gas_fractions(n)
-    co2_add_gas = gas_fractions["Natural Gas"] * specific_emisisons["gas"] * co2_price
+    co2_add_gas = gas_fractions["Natural Gas"] * specific_emissions["gas"] * co2_price
 
 
     var["Price|Primary Energy|Gas"] = \
@@ -2670,7 +2672,7 @@ def get_prices(n, region):
 
     # co2 part
     oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
-    co2_add_oil = oil_fossil_fraction * specific_emisisons["oil"] * co2_price
+    co2_add_oil = oil_fossil_fraction * specific_emissions["oil"] * co2_price
 
     var["Price|Primary Energy|Oil"] = \
         (nodal_flows_oil.mul(nodal_prices_oil).values.sum() / nodal_flows_oil.values.sum() + co2_add_oil) /MWh2GJ 
@@ -3208,6 +3210,8 @@ def get_grid_investments(n, costs, region, dg_cost_factor=1.0, length_factor=1.0
 
 def get_policy(n, investment_year):
     var = pd.Series()
+    n_glob_co2 = "CO2Limit" if "CO2Limit" in n.global_constraints.index else "CO2LimitUpstream"
+    n_loc_co2 = "co2_limit-DE" if "co2_limit-DE" in n.global_constraints.index else "co2_limit_upstream-DE"
     
     # add carbon component to fossil fuels if specified
     if investment_year in snakemake.params.co2_price_add_on_fossils.keys():
@@ -3216,15 +3220,15 @@ def get_policy(n, investment_year):
         co2_price_add_on = 0.0
         
     var["Price|Carbon"] = \
-        -n.global_constraints.loc["CO2Limit", "mu"] - n.global_constraints.loc["co2_limit-DE", "mu"] + co2_price_add_on
+        -n.global_constraints.loc[n_glob_co2, "mu"] - n.global_constraints.loc[n_loc_co2, "mu"] + co2_price_add_on
     
     var["Price|Carbon|EU-wide Regulation All Sectors"] = \
-        -n.global_constraints.loc["CO2Limit", "mu"] + co2_price_add_on
+        -n.global_constraints.loc[n_glob_co2, "mu"] + co2_price_add_on
     
     # Price|Carbon|EU-wide Regulation Non-ETS
 
     var["Price|Carbon|National Climate Target"] = \
-        -n.global_constraints.loc["co2_limit-DE", "mu"]
+        -n.global_constraints.loc[n_loc_co2, "mu"]
     
     # Price|Carbon|National Climate Target Non-ETS
 
