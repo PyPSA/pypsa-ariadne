@@ -568,5 +568,3 @@ def additional_functionality(n, snapshots, snakemake):
     
     if snakemake.config["emissions_upstream"]["enable"]:
         emissions_upstream(n)
-
-    n.export_to_netcdf("/home/julian-geis/repos/pypsa-ariadne-1/results/models/model_export.nc")
