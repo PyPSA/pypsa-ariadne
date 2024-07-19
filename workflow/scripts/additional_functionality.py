@@ -390,15 +390,16 @@ def add_h2_derivate_limit(n, snapshots, investment_year, config):
         incomin_oil_meoh = n.links.loc[["EU renewable oil -> DE oil", "EU methanol -> DE methanol"]].index
         outgoing_oil_meoh = n.links.loc[["DE renewable oil -> EU oil", "DE methanol -> EU methanol"]].index
         
-        incoming_ch4 = n.links[(n.links.carrier=="renewable gas pipeline") & 
+        ch4_carrier = ["renewable gas pipeline", "renewable gas pipeline new"]
+        incoming_ch4 = n.links[(n.links.carrier.isin(ch4_carrier)) & 
                                (n.links.bus0.str[:2] != "DE") & 
                                (n.links.bus1.str[:2] == "DE")].index
-        outgoing_ch4 = n.links[(n.links.carrier=="renewable gas pipeline") &
+        outgoing_ch4 = n.links[(n.links.carrier.isin(ch4_carrier)) &
                                (n.links.bus0.str[:2] == "DE") &
                                (n.links.bus1.str[:2] != "DE")].index
 
-        incoming_p = (n.model["Link-p"].loc[:, incomin_oil_meoh]*n.snapshot_weightings.generators).sum() #+ (n.model["Link-p"].loc[:, incoming_ch4]*n.snapshot_weightings.generators).sum()
-        outgoing_p = (n.model["Link-p"].loc[:, outgoing_oil_meoh]*n.snapshot_weightings.generators).sum() #+ (n.model["Link-p"].loc[:, outgoing_ch4]*n.snapshot_weightings.generators).sum()
+        incoming_p = (n.model["Link-p"].loc[:, incomin_oil_meoh]*n.snapshot_weightings.generators).sum() + (n.model["Link-p"].loc[:, incoming_ch4]*n.snapshot_weightings.generators).sum()
+        outgoing_p = (n.model["Link-p"].loc[:, outgoing_oil_meoh]*n.snapshot_weightings.generators).sum() + (n.model["Link-p"].loc[:, outgoing_ch4]*n.snapshot_weightings.generators).sum()
 
         lhs = incoming_p - outgoing_p
         
@@ -418,7 +419,7 @@ def add_h2_derivate_limit(n, snapshots, investment_year, config):
                 carrier_attribute="",
             )
 
-def add_ch4_constraints(n, config, investment_year):
+def add_gas_constraints(n, config):
     """
     Since renewable gas and fossil gas are sharing the same infrastructure,
     the capacity of pipelines and stores must be limited.
@@ -439,14 +440,25 @@ def add_ch4_constraints(n, config, investment_year):
     else:
         # if H2 retrofit is not active, gas pipelines for each planning_horizon exist
         # the current planning horizon is p_nom_extendable
-        lhs = n.model["Link-p"].loc[:, fossil_gas_pipe[fossil_gas_pipe.p_nom_extendable].index] + n.model["Link-p"].loc[:, re_gas_pipe[re_gas_pipe.p_nom_extendable].index]
-        rhs = n.model["Link-p_nom"].loc[fossil_gas_pipe[fossil_gas_pipe.p_nom_extendable].index]
-        n.model.add_constraints(lhs <= rhs*n.snapshot_weightings.generators, name=f"extendable fossil+renewable gas pipelines")
-
         if not fossil_gas_pipe[~fossil_gas_pipe.p_nom_extendable].empty:
             lhs = n.model["Link-p"].loc[:, fossil_gas_pipe[~fossil_gas_pipe.p_nom_extendable].index] + n.model["Link-p"].loc[:, re_gas_pipe[~re_gas_pipe.p_nom_extendable].index]
             rhs = n.links.p_nom.loc[fossil_gas_pipe[~fossil_gas_pipe.p_nom_extendable].index]
-            n.model.add_constraints(lhs <= rhs*n.snapshot_weightings.generators, name=f"non extendable fossil+renewable gas pipelines")
+            n.model.add_constraints(lhs <= rhs, name=f"non extendable fossil+renewable gas pipelines")
+
+        else:
+            lhs = n.model["Link-p"].loc[:, fossil_gas_pipe[fossil_gas_pipe.p_nom_extendable].index] + n.model["Link-p"].loc[:, re_gas_pipe[re_gas_pipe.p_nom_extendable].index]
+            rhs = n.model["Link-p_nom"].loc[fossil_gas_pipe[fossil_gas_pipe.p_nom_extendable].index]
+            n.model.add_constraints(lhs <= rhs, name=f"extendable fossil+renewable gas pipelines")
+
+    # cover new gas pipelines
+    gas_pipe_new = n.links[(n.links.carrier=="gas pipeline new") & 
+                           ~(n.links.p_nom_extendable)]
+    re_gas_pipe_new = n.links[(n.links.carrier=="renewable gas pipeline new") &
+                              ~(n.links.p_nom_extendable)]
+    if not gas_pipe_new.empty:
+        lhs = n.model["Link-p"].loc[:, gas_pipe_new.index] + n.model["Link-p"].loc[:, re_gas_pipe_new.index]
+        rhs = n.links.p_nom.loc[gas_pipe_new.index]
+        n.model.add_constraints(lhs <= rhs, name=f"new fossil+renewable gas pipelines")
 
     logger.info(
         "Adding constraint so renewable plus fossil gas stored does not exceed capacity."
@@ -467,8 +479,8 @@ def additional_functionality(n, snapshots, snakemake):
 
     investment_year = int(snakemake.wildcards.planning_horizons[-4:])
 
-    if not snakemake.config["run"]["debug_unravel_ch4"]:
-        add_ch4_constraints(n, snakemake.config, investment_year)
+    if snakemake.config["sector"]["gas_network"] and snakemake.config["sector"]["track_renewable_gas"]:
+        add_gas_constraints(n, snakemake.config)
 
     add_min_limits(n, investment_year, snakemake.config)
 

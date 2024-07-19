@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: unravel_CH4
+  prefix: H2_retrofit_true # H2_retrofit_false
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -30,7 +30,6 @@ run:
   debug_co2_limit: false
   debug_h2deriv_limit: false
   debug_unravel_oilbus: false
-  debug_unravel_ch4: false
 
 iiasa_database:
   db_name: ariadne2_intern
@@ -262,6 +261,7 @@ sector:
   regional_oil_demand: true  #set to true if regional CO2 constraints needed
   regional_coal_demand: true  #set to true if regional CO2 constraints needed
   gas_network: true
+  track_renewable_gas: true
   H2_retrofit: true
   biogas_upgrading_cc: true
   cluster_heat_buses: true
@@ -394,6 +394,7 @@ plotting:
     consumption gas: '#c9c9c9'
     renewable gas: '#c9c9c9'
     renewable gas pipeline: '#c9c9c9'
+    renewable gas pipeline new: '#c9c9c9'
   countries:
   - all
   - DE

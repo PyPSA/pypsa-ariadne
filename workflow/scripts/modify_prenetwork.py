@@ -336,7 +336,7 @@ def unravel_oilbus(n):
           )
 
 
-def unravel_ch4(n, config):
+def unravel_gas(n, config):
     """
     This function copies each ch4 bus twice to have one fossil, renewable and consumption bus.
     XX1 0 gas consumption:  consumption gas bus
@@ -395,7 +395,6 @@ def unravel_ch4(n, config):
         n.import_components_from_dataframe(renewable_gas_links, "Link")
 
     else:
-        # gas pipelines for each planning horizon exist
         # first remove all renewable gas pipeline links
         renewable_gas_links = n.links[n.links.carrier == "renewable gas pipeline"]
         n.links.drop(renewable_gas_links.index, inplace=True)
@@ -407,6 +406,63 @@ def unravel_ch4(n, config):
         renewable_gas_links["bus1"] = renewable_gas_links["bus1"].str.replace("gas", "renewable gas")
         renewable_gas_links.index = renewable_gas_links.index.str.replace("gas", "renewable gas")
         n.import_components_from_dataframe(renewable_gas_links, "Link")
+
+    # gas pipeline new for this planning horizon
+    gas_links_new = n.links[(n.links.carrier == "gas pipeline new") & (n.links.build_year == int(snakemake.wildcards.planning_horizons))]
+    renewable_gas_links_new = gas_links_new.copy()
+    renewable_gas_links_new["carrier"] = "renewable gas pipeline new"
+    renewable_gas_links_new["bus0"] = renewable_gas_links_new["bus0"].str.replace("gas", "renewable gas")
+    renewable_gas_links_new["bus1"] = renewable_gas_links_new["bus1"].str.replace("gas", "renewable gas")
+    renewable_gas_links_new.index = renewable_gas_links_new.index.str.replace("gas", "renewable gas")
+    n.import_components_from_dataframe(renewable_gas_links_new, "Link")
+
+    # gas pipeline new from previous planning horizon
+    previous_investment_year = int(snakemake.params.planning_horizons[snakemake.params.planning_horizons.index(int(snakemake.wildcards.planning_horizons)) - 1])
+
+    gas_links_new_artifacts = n.links[(n.links.carrier == "gas pipeline new") & (n.links.build_year == previous_investment_year)]
+
+    re_gas_links_new_artifacts = n.links[(n.links.carrier == "renewable gas pipeline new") & (n.links.build_year == previous_investment_year)]
+
+    if not gas_links_new_artifacts.empty:
+        for link in gas_links_new_artifacts.index:
+            # check if renewable counterpart exists
+            renewable_link = link.replace("gas", "renewable gas")
+            if renewable_link in n.links.index:
+                # change p_nom to sum of both
+                re_p_nom = n.links.loc[renewable_link, "p_nom"]
+                n.links.loc[renewable_link, "p_nom"] += n.links.loc[link, "p_nom"]
+                n.links.loc[link, "p_nom"] += re_p_nom
+            else:
+                # add link
+                n.add(
+                    "Link",
+                    renewable_link,
+                    bus0=n.links.loc[link, "bus0"].replace("gas", "renewable gas"),
+                    bus1=n.links.loc[link, "bus1"].replace("gas", "renewable gas"),
+                    p_min_pu=-1,
+                    p_nom_extendable=False,
+                    length=n.links.loc[link, "length"],
+                    capital_cost=n.links.loc[link, "capital_cost"],
+                    carrier="renewable gas pipeline new",
+                    lifetime=n.links.loc[link, "lifetime"],
+                )
+
+    if not re_gas_links_new_artifacts.empty:
+        for link in re_gas_links_new_artifacts.index:
+            link_index = link.replace("renewable gas", "gas")
+            if not link_index in n.links.index:
+                n.add(
+                    "Link",
+                    link_index,
+                    bus0=n.links.loc[link, "bus0"].replace("renewable gas", "gas"),
+                    bus1=n.links.loc[link, "bus1"].replace("renewable gas", "gas"),
+                    p_min_pu=-1,
+                    p_nom_extendable=False,
+                    length=n.links.loc[link, "length"],
+                    capital_cost=n.links.loc[link, "capital_cost"],
+                    carrier="gas pipeline new",
+                    lifetime=n.links.loc[link, "lifetime"],
+                    )
 
     # get all spatial nodes
     spatial_nodes = n.buses[n.buses.carrier=="gas"].index.str[:5].unique()
@@ -442,8 +498,8 @@ def unravel_ch4(n, config):
                                 (n.links.p_nom_extendable)]
     n.links.loc[consumption_links.index, "bus0"] = n.links.loc[consumption_links.index, "bus0"].str.replace("gas", "consumption gas")
 
-    # TODO: Check with @lindemi
-    renewable_production = n.links[n.links.carrier.isin(renewable_carriers)]
+    renewable_production = n.links[n.links.carrier.isin(renewable_carriers) 
+                                   & (n.links.p_nom_extendable)]
     n.links.loc[renewable_production.index, "bus1"] = n.links.loc[renewable_production.index, "bus1"].str.replace("gas", "renewable gas")
 
 
@@ -595,8 +651,8 @@ if __name__ == "__main__":
     if not snakemake.config["run"]["debug_unravel_oilbus"]:
         unravel_oilbus(n)
     
-    if not snakemake.config["run"]["debug_unravel_ch4"]:
-        unravel_ch4(n, config=snakemake.config)
+    if snakemake.config["sector"]["gas_network"] and snakemake.config["sector"]["track_renewable_gas"]:
+        unravel_gas(n, config=snakemake.config)
 
     if snakemake.params.enable_kernnetz:
         fn = snakemake.input.wkn
