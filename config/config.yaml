@@ -104,8 +104,15 @@ renewable:
     cutout: europe-2019-sarah3-era5-compressed
   solar:
     cutout: europe-2019-sarah3-era5-compressed
+  solar-hsat:
+    cutout: europe-2019-sarah3-era5-compressed
   hydro:
     cutout: europe-2019-sarah3-era5-compressed
+
+lines:
+  dynamic_line_rating:
+    cutout: europe-2019-sarah3-era5-compressed
+
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
   retrieve: false # set to false once initial data is retrieved
