@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240710limitwasteheat
+  prefix: 20240722newcutout
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -83,6 +83,29 @@ existing_capacities:
 # Germany plus 12 "Stromnachbarn"
 countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'PL', 'SE']
 
+atlite:
+  default_cutout: europe-2019-sarah3-era5-compressed
+  cutouts:
+    europe-2019-sarah3-era5-compressed:
+      module: [sarah, era5] # in priority order
+      x: [-12., 42.]
+      y: [33., 72]
+      dx: 0.3
+      dy: 0.3
+      time: ['2019', '2019']
+renewable:
+  onwind:
+    cutout: europe-2019-sarah3-era5-compressed
+  offwind-ac:
+    cutout: europe-2019-sarah3-era5-compressed
+  offwind-dc:
+    cutout: europe-2019-sarah3-era5-compressed
+  offwind-float:
+    cutout: europe-2019-sarah3-era5-compressed
+  solar:
+    cutout: europe-2019-sarah3-era5-compressed
+  hydro:
+    cutout: europe-2019-sarah3-era5-compressed
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
   retrieve: false # set to false once initial data is retrieved
