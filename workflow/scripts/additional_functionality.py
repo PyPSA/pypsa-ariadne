@@ -563,7 +563,7 @@ def limit_total_import_de(n, snapshots, limit_de, investment_year):
     energy_weightings_gen = np.where(import_gens.str.contains("hbi"), 1.5, energy_weightings_gen)
     energy_weightings_gen = pd.Series(energy_weightings_gen, index=import_gens)
 
-    lhs = (incoming_link_p * weightings * energy_weightings_in).sum() + (outgoing_link_p * weightings * energy_weightings_out).sum() + (incoming_line_p * weightings).sum() + (outgoing_line_p * weightings).sum() + (p_gens * weightings * energy_weightings_gen).sum()
+    lhs = (incoming_link_p * weightings * energy_weightings_in).sum() - (outgoing_link_p * weightings * energy_weightings_out).sum() + (incoming_line_p * weightings).sum() - (outgoing_line_p * weightings).sum() + (p_gens * weightings * energy_weightings_gen).sum()
 
     rhs = limit * 1e6
 

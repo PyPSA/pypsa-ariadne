@@ -73,6 +73,7 @@ iiasa_database:
     - KN2045minus_WorstCase
     - KN2045minus_SupplyFocus
   reference_scenario: KN2045_Bal_v4
+  fallback_reference_scenario: KN2045_Bal_v4
   region: Deutschland
 
 co2_budget_DE_source: KSG

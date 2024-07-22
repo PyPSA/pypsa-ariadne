@@ -437,14 +437,14 @@ def unravel_import_carrier(n, industrial_demand, industrial_production):
     # add meoh
     logger.info("Unraveling methanol import")
 
-    n.add("Bus", "DE methanol", carrier="methanol")
-    n.add("Bus", "DE HVC", carrier="HVC")
+    # n.add("Bus", "DE methanol", carrier="methanol")
+    # n.add("Bus", "DE HVC", carrier="HVC")
 
-    # add meoh store
-    meoh_store = n.stores.loc["EU methanol Store"].copy()
-    meoh_store.name = "DE methanol Store"
-    meoh_store.bus = "DE methanol"
-    n.add("Store", name=meoh_store.name, **meoh_store)
+    # # add meoh store
+    # meoh_store = n.stores.loc["EU methanol Store"].copy()
+    # meoh_store.name = "DE methanol Store"
+    # meoh_store.bus = "DE methanol"
+    # n.add("Store", name=meoh_store.name, **meoh_store)
 
     if any("shipping-meoh" in keys for keys in snakemake.params.sector["import"]["options"]):
         n.add("Bus", "DE shipping-meoh", carrier="methanol")
@@ -481,16 +481,16 @@ def unravel_import_carrier(n, industrial_demand, industrial_production):
     methanolisation = n.links[(n.links.carrier=="methanolisation") & (n.links.index.str.contains("DE")) & n.links.index.str[:-4] == snakemake.wildcards.planning_horizons].index
     n.links.loc[methanolisation, "bus1"] = "DE methanol"
 
-    # transport links
-    n.madd(
-        "Link",
-        ["EU methanol -> DE methanol", "DE methanol -> EU methanol"],
-        bus0=["EU methanol", "DE methanol"],
-        bus1=["DE methanol", "EU methanol"],
-        carrier="methanol",
-        p_nom=1e6,
-        p_min_pu=0,
-    )
+    # # transport links
+    # n.madd(
+    #     "Link",
+    #     ["EU methanol -> DE methanol", "DE methanol -> EU methanol"],
+    #     bus0=["EU methanol", "DE methanol"],
+    #     bus1=["DE methanol", "EU methanol"],
+    #     carrier="methanol",
+    #     p_nom=1e6,
+    #     p_min_pu=0,
+    # )
     
     # add load
     # HVC demand
