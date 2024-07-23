@@ -188,10 +188,12 @@ def get_capacity_additions(n, region):
 
 
 def get_investments(n, costs, region):
-    def _f(**kwargs):
-        return n.statistics.optimal_capacity(**kwargs).sub(
-            n.statistics.installed_capacity(**kwargs), fill_value=0)
-    return _get_capacities(n, region, _f, cap_string="Investment|", costs=costs)
+    return _get_capacities(
+        n, 
+        region, 
+        n.statistics.expanded_investments, 
+        cap_string="Investment|", 
+        costs=costs)
 
 
 def get_capacity_additions_nstat(n, region):
@@ -316,33 +318,31 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
         # transmission capacities
         ["AC", "DC", "electricity distribution grid"],
         errors="ignore",
-    )
+    ).multiply(MW2GW)
 
-    if cap_string.startswith("Investment"):
-        technology_investments = pd.Series(
-            [
-                0 if costs_dict.get(key) is None else
-                costs.at[costs_dict.get(key), "investment"] 
-                for key in capacities_electricity.index
-            ],
-            capacities_electricity.index
-        )
-        for carrier in technology_investments.index.intersection(
-            ["onwind", "solar", "solar-hsat"]):
-            technology_investments[carrier] += \
-                costs.at["electricity grid connection", "investment"]
+    # if cap_string.startswith("Investment"):
+    #     technology_investments = pd.Series(
+    #         [
+    #             0 if costs_dict.get(key) is None else
+    #             costs.at[costs_dict.get(key), "investment"] 
+    #             for key in capacities_electricity.index
+    #         ],
+    #         capacities_electricity.index
+    #     )
+    #     for carrier in technology_investments.index.intersection(
+    #         ["onwind", "solar", "solar-hsat"]):
+    #         technology_investments[carrier] += \
+    #             costs.at["electricity grid connection", "investment"]
             
-        for carrier in ["offwind-ac", "offwind-dc", "offwind-float"]:
-            technology_investments[carrier] = 0.0 # TODO add grid connection cost
-        #     apply update_wind_solar_costs(n, costs)
+    #     for carrier in ["offwind-ac", "offwind-dc", "offwind-float"]:
+    #         technology_investments[carrier] = 0.0 # TODO add grid connection cost
+    #     #     apply update_wind_solar_costs(n, costs)
 
-        capacities_electricity = \
-            capacities_electricity.div(5).multiply(technology_investments)
-    else:
-        capacities_electricity = \
-            capacities_electricity.multiply(MW2GW)
-
-        
+    #     capacities_electricity = \
+    #         capacities_electricity.div(5).multiply(technology_investments)
+    # else:
+    #     capacities_electricity = \
+    #         capacities_electricity.multiply(MW2GW)
 
     capacities_biomass = capacities_electricity.filter(like="biomass")
 
@@ -515,11 +515,15 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
             cap_string + "Electricity|Storage Converter|Vehicles",
         ]].sum()
     
-
-    storage_capacities = cap_func(
-        storage=True,
-        **kwargs,
-    ).filter(like=region).groupby("carrier").sum().multiply(MW2GW)
+    if cap_string.startswith("Investment"):
+        storage_capacities = cap_func(
+            **kwargs,
+        ).filter(like=region).groupby("carrier").sum().multiply(MW2GW)
+    else:
+        storage_capacities = cap_func(
+            storage=True,
+            **kwargs,
+        ).filter(like=region).groupby("carrier").sum().multiply(MW2GW)
     # var[cap_string + "Electricity|Storage Reservoir|CAES"] =
     # ! Not implemented
      
@@ -644,11 +648,6 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
     var[cap_string + "Heat|Storage Converter"] = \
         capacities_central_heat.filter(like="water tanks discharger").sum()
 
-    storage_capacities = cap_func(
-        storage=True,
-        **kwargs,
-    ).filter(like=region).groupby("carrier").sum().multiply(MW2GW)
-
     var[cap_string + "Heat|Storage Reservoir"] = \
         storage_capacities.filter(like="water tanks").sum()
 
@@ -727,10 +726,6 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
     #     ]).sum(), # if technology not build, reindex returns NaN
     # )
 
-    storage_capacities = cap_func(
-        storage=True,
-        **kwargs,
-    ).filter(like=region).groupby("carrier").sum().multiply(MW2GW)
 
     var[cap_string + "Hydrogen|Reservoir"] = \
         storage_capacities.get("H2", 0)
@@ -796,6 +791,8 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
         print("Warning: carrier `methanol` not found in network.links.carrier! Assuming 0 capacities.")
         var[cap_string + "Methanol"] = 0
     
+    if cap_string.startswith("Investment"):
+        var = var.div(MW2GW).mul(1e-9).div(5).round(3) # in bn € / year
     return var 
 
 def get_CHP_E_and_H_usage(n, bus_carrier, region, fossil_fraction=1):
@@ -3039,6 +3036,10 @@ def get_grid_investments(n, costs, region, dg_cost_factor=1.0, length_factor=1.0
     # TODO Discretization units should be read from config 
     var = pd.Series()
 
+    offwind = n.generators.filter(like="offwind",axis=0).filter(like="DE", axis=0)
+    offwind_connection_investment = (
+        (offwind.p_nom_opt - offwind.p_nom) 
+        * offwind.connection_investment).sum() * 1e-9 / 5
     # capacities_electricity = n.statistics.expanded_capacity(
     #     bus_carrier=["AC", "low voltage"],
     #     **kwargs,
