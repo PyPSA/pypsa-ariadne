@@ -192,7 +192,7 @@ def get_investments(n, costs, region):
         n, 
         region, 
         n.statistics.expanded_investments, 
-        cap_string="Investment|", 
+        cap_string="Investment|Energy Supply|", 
         costs=costs)
 
 
@@ -3039,38 +3039,9 @@ def get_grid_investments(n, costs, region, dg_cost_factor=1.0, length_factor=1.0
     offwind = n.generators.filter(like="offwind",axis=0).filter(like="DE", axis=0)
     offwind_connection_investment = (
         (offwind.p_nom_opt - offwind.p_nom) 
-        * offwind.connection_investment).sum() * 1e-9 / 5
-    # capacities_electricity = n.statistics.expanded_capacity(
-    #     bus_carrier=["AC", "low voltage"],
-    #     **kwargs,
-    # ).filter(like=region).groupby("carrier").sum() # in bn 
-    # 
-    # var["Investment"] = 
-    # var["Investment|Energy Supply"] = \ 
-    #var["Investment|Energy Supply|Electricity"] = \
-    #    capex_electricity.sum()
-    #var["Investment|Energy Supply|Electricity|Coal"] = \
-    #    capex_electricity.reindex(["coal", "lignite"]).sum()
-    # var["Investment|Energy Supply|Electricity|Coal|w/ CCS"] = \ 
-    # var["Investment|Energy Supply|Electricity|Coal|w/o CCS"] = \
-    # var["Investment|Energy Supply|Electricity|Gas"] = \ 
-    # var["Investment|Energy Supply|Electricity|Gas|w/ CCS"] = \  
-    # var["Investment|Energy Supply|Electricity|Gas|w/o CCS"] = \ 
-    # var["Investment|Energy Supply|Electricity|Oil"] = \ 
-    # var["Investment|Energy Supply|Electricity|Oil|w/ CCS"] = \  
-    # var["Investment|Energy Supply|Electricity|Oil|w/o CCS"] = \ 
-    # var["Investment|Energy Supply|Electricity|Non-fossil"] = \  
-    # var["Investment|Energy Supply|Electricity|Biomass"] = \ 
-    # var["Investment|Energy Supply|Electricity|Biomass|w/ CCS"] = \  
-    # var["Investment|Energy Supply|Electricity|Biomass|w/o CCS"] = \ 
-    # var["Investment|Energy Supply|Electricity|Nuclear"] = \ 
-    # var["Investment|Energy Supply|Electricity|Non-Biomass Renewables"] = \  
-    # var["Investment|Energy Supply|Electricity|Hydro"] = 
-    # var["Investment|Energy Supply|Electricity|Solar"] = 
-    # var["Investment|Energy Supply|Electricity|Wind"] = \
-    # var["Investment|Energy Supply|Electricity|Geothermal"] = \  
-    # var["Investment|Energy Supply|Electricity|Ocean"] = 
-    # var["Investment|Energy Supply|Electricity|Other"] = 
+        * offwind.connection_investment) * 1e-9
+    offwind_connection_ac = offwind_connection_investment.filter(like="ac")
+    offwind_connection_dc = offwind_connection_investment.filter(regex="dc|float")
 
     dc_links = n.links[
         (n.links.carrier=="DC") & 
@@ -3104,10 +3075,9 @@ def get_grid_investments(n, costs, region, dg_cost_factor=1.0, length_factor=1.0
         )
     ac_investments = ac_lines.length * length_factor *  ac_expansion * costs.at["HVAC overhead", "investment"]
     var["Investment|Energy Supply|Electricity|Transmission|AC"] = \
-        ac_investments.sum() / 5   
+        (ac_investments.sum() + offwind_connection_ac.sum()) / 5 
     var["Investment|Energy Supply|Electricity|Transmission|DC"] = \
-        dc_investments.sum() / 5
-    
+        (dc_investments.sum() + offwind_connection_dc.sum()) / 5
     var["Investment|Energy Supply|Electricity|Transmission"] = \
     var["Investment|Energy Supply|Electricity|Transmission|AC"] + \
     var["Investment|Energy Supply|Electricity|Transmission|DC"] 
@@ -3347,7 +3317,7 @@ def get_operational_and_capital_costs(year):
     brings it into the database format.
     '''
     var = pd.Series()
-    ind = snakemake.params.planning_horizons.index(year)
+    ind = planning_horizons.index(year)
     costs = prepare_costs(
         snakemake.input.costs[ind],
         snakemake.params.costs,
@@ -3544,6 +3514,7 @@ if __name__ == "__main__":
     }
 
     config = snakemake.config
+    planning_horizons = snakemake.params.planning_horizons
     ariadne_template = pd.read_excel(
         snakemake.input.template, sheet_name=None)
     var2unit = ariadne_template["variable_definitions"].set_index("Variable")["Unit"]
@@ -3611,7 +3582,7 @@ if __name__ == "__main__":
         }
 
     yearly_dfs = []
-    for i, year in enumerate(snakemake.params.planning_horizons):
+    for i, year in enumerate(planning_horizons):
         print("Getting data for year {year}...".format(year=year))
         yearly_dfs.append(get_data(
             networks[i],
@@ -3633,6 +3604,12 @@ if __name__ == "__main__":
             on=["Model", "Scenario", "Region", "Variable", "Unit"]), 
         yearly_dfs
     )
+
+    print("Assigning mean investments of year and year + 5 to year.")
+    investment_rows = df.loc[df["Variable"].str.contains("Investment")]
+    df.loc[investment_rows.index, planning_horizons] = \
+        investment_rows[planning_horizons].add(
+            investment_rows[planning_horizons].shift(-1,axis=1)).div(2)
 
     df["Region"] = df["Region"].str.replace("DE", "DEU")
     df["Model"] = "PyPSA-Eur v0.10"
