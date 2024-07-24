@@ -43,10 +43,6 @@ def ariadne_subplot(
     df, ax, title, 
     select_regex="", drop_regex="", stacked=True, unit=None,
 ):  
-    # Check that all values have the same Unit
-
-
-
     df = df.T.copy()
 
     if select_regex:
@@ -57,10 +53,8 @@ def ariadne_subplot(
         df = df.filter(
             regex=drop_regex,
         )
-
+        
     # Check that all values have the same Unit
-    assert df.columns.unique(level="Unit").size <= 1
-
     if not unit:
         unit = df.columns.get_level_values("Unit").unique().dropna().item()
  
@@ -252,7 +246,7 @@ if __name__ == "__main__":
             ll="v1.2",
             sector_opts="None",
             planning_horizons="2045",
-            run="8Gt_Bal_v3",
+            run="KN2045_Bal_v4",
             configfiles="config/config.public.yaml"
         )
 
@@ -382,7 +376,7 @@ if __name__ == "__main__":
         select_regex="Emissions\|CO2\|[^|]*$",
         stacked=False,
         #drop_regex="^(?!.*(and)).+",
-        unit="Mt CO2equiv/yr"
+        unit="Mt CO2-equiv/yr"
     )
 
     within_plot(
