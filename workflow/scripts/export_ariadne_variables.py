@@ -188,10 +188,12 @@ def get_capacity_additions(n, region):
 
 
 def get_investments(n, costs, region):
+    def _f(**kwargs):
+        return n.statistics.expanded_capex(**kwargs, cost_attribute="investment")
     return _get_capacities(
         n, 
         region, 
-        n.statistics.expanded_investments, 
+        _f, 
         cap_string="Investment|Energy Supply|", 
         costs=costs)
 
@@ -3422,7 +3424,7 @@ def get_ariadne_var(n, industry_demand, energy_totals, sector_ratios, industry_p
         #get_capacity_additions_simple(n,region),
         #get_installed_capacities(n,region),
         get_capacity_additions(n, region),
-        #get_investments(n, costs, region),
+        get_investments(n, costs, region),
         #get_capacity_additions_nstat(n, region),
         get_production(region, year),
         get_primary_energy(n, region),
