@@ -3610,9 +3610,9 @@ if __name__ == "__main__":
     print("Assigning mean investments of year and year + 5 to year.")
     investment_rows = df.loc[df["Variable"].str.contains("Investment")]
     average_investments = investment_rows[planning_horizons].add(
-            investment_rows[planning_horizons].shift(-1,axis=1)).div(2)
+        investment_rows[planning_horizons].shift(-1,axis=1)).div(2).fillna(0)
     average_investments[planning_horizons[0]] += investment_rows[planning_horizons[0]].div(2)
-    average_investments[planning_horizons[-1]] += investment_rows[planning_horizons[-1]].div(2).fillna(0)
+    average_investments[planning_horizons[-1]] += investment_rows[planning_horizons[-1]].div(2)
     df.loc[investment_rows.index, planning_horizons] = average_investments
         
 
