@@ -105,6 +105,10 @@ CurrentPolicies:
     steam_hydrogen_fraction: 0.3
     steam_electricity_fraction: 0.3
 
+  sector:
+    district_heating:
+      potential: 0.1
+
 
 
 KN2045_Bal_v4:
@@ -532,6 +536,10 @@ KN2045minus_WorstCase:
     steam_biomass_fraction: 0.4
     steam_hydrogen_fraction: 0.3
     steam_electricity_fraction: 0.3
+
+  sector:
+    district_heating:
+      potential: 0.1
 
 KN2045minus_SupplyFocus:
 # Nachfrage genau so hoch wie in Szenario WorstCase
