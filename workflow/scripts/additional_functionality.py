@@ -432,9 +432,9 @@ def add_gas_constraints(n, config):
     
     if config["sector"]["H2_retrofit"]:
         # if H2 retrofit is active, the fossil gas pipeline is also p_nom_extendable
-        # lhs = n.model["Link-p"].loc[:, fossil_gas_pipe.index] + n.model["Link-p"].loc[:, re_gas_pipe.index]
-        lhs = n.model["Link-p_nom"].loc[fossil_gas_pipe.index] + n.model["Link-p_nom"].loc[re_gas_pipe.index]
-        rhs = n.model["Link-p_nom"].loc[fossil_gas_pipe.index]
+        rename = {"Link-ext": "Link"}
+        lhs = n.model["Link-p"].loc[:, fossil_gas_pipe.index] + n.model["Link-p"].loc[:, re_gas_pipe.index]
+        rhs = n.model["Link-p_nom"].rename(rename).loc[fossil_gas_pipe.index]
         n.model.add_constraints(lhs <= rhs, name=f"fossil+renewable gas pipelines")
 
     else:
