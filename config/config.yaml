@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: H2_retrofit_true # H2_retrofit_false
+  prefix: 20240726unravelCH4_H2_retrofit_true # H2_retrofit_false
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4

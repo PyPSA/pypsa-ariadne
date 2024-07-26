@@ -355,7 +355,9 @@ def unravel_gas(n, config):
                                 "gas for industry", 
                                 "gas for industry CC",
                                 "rural gas boiler",
-                                "urban decentral gas boiler"]
+                                "urban decentral gas boiler",
+                                "SMR",
+                                "SMR CC"]
 
     renewable_carriers = ["Sabatier", "biogas to gas", "biogas to gas CC"]
 
@@ -381,6 +383,7 @@ def unravel_gas(n, config):
     renewable_gas_stores["bus"] = renewable_gas_stores["bus"].str.replace("gas", "renewable gas")
     renewable_gas_stores["e_nom_extendable"] = False
     renewable_gas_stores["capital_cost"] = 0
+    renewable_gas_stores["investment"] = 0
     renewable_gas_stores.index = renewable_gas_stores.index.str.replace("gas", "renewable gas")
     n.import_components_from_dataframe(renewable_gas_stores, "Store")
 
@@ -443,6 +446,7 @@ def unravel_gas(n, config):
                     p_nom_extendable=False,
                     length=n.links.loc[link, "length"],
                     capital_cost=n.links.loc[link, "capital_cost"],
+                    #TODO investment=n.links.loc[link, "investment"],
                     carrier="renewable gas pipeline new",
                     lifetime=n.links.loc[link, "lifetime"],
                 )
@@ -460,6 +464,7 @@ def unravel_gas(n, config):
                     p_nom_extendable=False,
                     length=n.links.loc[link, "length"],
                     capital_cost=n.links.loc[link, "capital_cost"],
+                    #TODO investment=n.links.loc[link, "investment"],
                     carrier="gas pipeline new",
                     lifetime=n.links.loc[link, "lifetime"],
                     )
