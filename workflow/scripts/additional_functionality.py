@@ -412,7 +412,7 @@ def add_h2_derivate_limit(n, snapshots, investment_year, config):
                 carrier_attribute="",
             )
 
-def import_limit_de(n, snapshots, limit_non_eu_de, limit_eu_de):
+def import_limit_de(n, snapshots, limit_non_eu_de, limit_eu_de, investment_year):
     logger.info("Adding import limits for Germany")
 
     if limit_non_eu_de:
@@ -420,8 +420,7 @@ def import_limit_de(n, snapshots, limit_non_eu_de, limit_eu_de):
         import_gens = n.generators.loc[n.generators.carrier.str.contains("import") & n.generators.index.str.contains("DE")].index
         import_links = n.links.loc[n.links.carrier.str.contains("import") & n.links.index.str.contains("DE")].index
 
-        limit = n.config["sector"].get("import", {}).get("limit_non_eu_de", False)
-        limit_sense = n.config["sector"].get("import", {}).get("limit_sens_non_eu_de", "==")
+        limit = limit_non_eu_de[investment_year]
 
         if (import_gens.empty and import_links.empty):
             return
@@ -440,7 +439,7 @@ def import_limit_de(n, snapshots, limit_non_eu_de, limit_eu_de):
 
         rhs = limit * 1e6
 
-        n.model.add_constraints(lhs, limit_sense, rhs, name="energy_import_limit_non_eu_de")
+        n.model.add_constraints(lhs, "==", rhs, name="energy_import_limit_non_eu_de")
 
     if limit_eu_de:
         logger.info("Limiting European imports")
@@ -477,8 +476,7 @@ def import_limit_de(n, snapshots, limit_non_eu_de, limit_eu_de):
         incoming_line_p = n.model["Line-s"].loc[snapshots, elec_lines_in]
         outgoing_line_p = n.model["Line-s"].loc[snapshots, elec_lines_out]
 
-        limit = n.config["sector"].get("import", {}).get("limit_de", False)
-        limit_sense = n.config["sector"].get("import", {}).get("limit_sens_de", "<=")
+        limit = limit_eu_de[investment_year]
 
         weightings = n.snapshot_weightings.loc[snapshots, "generators"]
 
@@ -492,18 +490,11 @@ def import_limit_de(n, snapshots, limit_non_eu_de, limit_eu_de):
 
         rhs = limit * 1e6
 
-        n.model.add_constraints(lhs, limit_sense, rhs, name="energy_import_limit_eu_de")
+        n.model.add_constraints(lhs, "==", rhs, name="energy_import_limit_eu_de")
 
 def limit_total_import_de(n, snapshots, limit_de, investment_year):
-    limits = {
-        "low": [45, 70, 100, 200],
-        "medium": [65, 200, 380, 500],
-        "high": [90, 400, 700, 800]
-    }
-    years = [2030, 2035, 2040, 2045]
 
-    i = years.index(investment_year)
-    limit = limits[limit_de][i]
+    limit = limit_de[investment_year]
     
     logger.info(f"Adding one total import limit for Germany of {limit} TWh/a.")
     
@@ -594,20 +585,20 @@ def additional_functionality(n, snapshots, snakemake):
     if not snakemake.config["run"]["debug_h2deriv_limit"] and snakemake.config["h2_derivate_import_limits"]["enable"]:
         add_h2_derivate_limit(n, snapshots, investment_year, snakemake.config)
 
-    #force_boiler_profiles_existing_per_load(n)
+    # force_boiler_profiles_existing_per_load(n)
     # force_boiler_profiles_existing_per_boiler(n)
 
     if snakemake.config["sector"]["co2_budget_national"]:
         limit_countries = snakemake.config["co2_budget_national"][investment_year]
         add_co2limit_country(n, limit_countries, snakemake,                  
             debug=snakemake.config["run"]["debug_co2_limit"])
+        
+    limit_non_eu_de = snakemake.config["sector"]["import"]["limit_non_eu_de"]
+    limit_eu_de = snakemake.config["sector"]["import"]["limit_eu_de"]
+    if limit_non_eu_de or limit_eu_de:        
+        import_limit_de(n, snapshots, limit_non_eu_de, limit_eu_de, investment_year)
 
-    if snakemake.config["sector"]["import"]["limit_non_eu_de"] or snakemake.config["sector"]["import"]["limit_eu_de"]:
-        limit_non_eu_de = snakemake.config["sector"]["import"]["limit_non_eu_de"]
-        limit_eu_de = snakemake.config["sector"]["import"]["limit_eu_de"]
-        import_limit_de(n, snapshots, limit_non_eu_de, limit_eu_de)
-
-    if snakemake.config["sector"]["import"]["limit_total_de"]:
-        logger.info("Adding total import limit for Germany")
-        limit_de = snakemake.config["sector"]["import"]["limit_total_de"]
-        limit_total_import_de(n, snapshots, limit_de, int(snakemake.wildcards.planning_horizons[-4:]))
+    limit_de = snakemake.config["sector"]["import"]["limit_total_de"]
+    if limit_de:
+        logger.info("Adding total import limit for Germany")        
+        limit_total_import_de(n, snapshots, limit_de, investment_year)

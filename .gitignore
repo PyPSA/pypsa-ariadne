@@ -13,6 +13,9 @@ results/
 resources/
 data/
 config/scenarios.automated.yaml
+report/
+workflow/notebooks/
+cluster_runs/
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
