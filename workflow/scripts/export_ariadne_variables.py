@@ -39,20 +39,20 @@ def _get_oil_fossil_fraction(n, region):
     if "DE" in region:
         total_oil_supply =  n.statistics.supply(
             bus_carrier="oil", **kwargs
-        ).groupby("name").sum().get([
+        ).groupby("name").sum().reindex([
             "DE oil",
             "DE renewable oil -> DE oil",
             "EU renewable oil -> DE oil",
-        ])
+        ]).dropna() # If links are not used they are dropped here
 
     else:
         total_oil_supply =  n.statistics.supply(
             bus_carrier="oil", **kwargs
-        ).groupby("name").sum().get([
+        ).groupby("name").sum().reindex([
             "EU oil",
             "DE renewable oil -> EU oil",
             "EU renewable oil -> EU oil",
-        ])
+        ]).dropna()
 
     oil_fossil_fraction = (
         total_oil_supply[~total_oil_supply.index.str.contains("renewable")].sum()
@@ -1168,18 +1168,19 @@ def get_secondary_energy(n, region, _industry_demand):
             )
         ).multiply(MWh2PJ).sum()
 
-    var["Secondary Energy|Electricity|Transmission Losses"] = \
-        n.statistics.withdrawal(
-            bus_carrier=["AC", "low voltage"], **kwargs
-        ).filter(like=region).groupby(["carrier"]).sum().get(
-            ["AC", "DC", "electricity distribution grid"]
-        ).subtract(
-            n.statistics.supply(
-                bus_carrier=["AC", "low voltage"], **kwargs
-            ).filter(like=region).groupby(["carrier"]).sum().get(
-                ["AC", "DC", "electricity distribution grid"]
-            )
-        ).multiply(MWh2PJ).sum()
+    # TODO Compute transmission losses via links_t
+    # var["Secondary Energy|Electricity|Transmission Losses"] = \
+    #     n.statistics.withdrawal(
+    #         bus_carrier=["AC", "low voltage"], **kwargs
+    #     ).filter(like=region).groupby(["carrier"]).sum().get(
+    #         ["AC", "DC", "electricity distribution grid"]
+    #     ).subtract(
+    #         n.statistics.supply(
+    #             bus_carrier=["AC", "low voltage"], **kwargs
+    #         ).filter(like=region).groupby(["carrier"]).sum().get(
+    #             ["AC", "DC", "electricity distribution grid"]
+    #         )
+    #     ).multiply(MWh2PJ).sum()
 
     # supply - withdrawal
     # var["Secondary Energy|Electricity|Storage"] = \
@@ -1419,9 +1420,7 @@ def get_secondary_energy(n, region, _industry_demand):
         bus_carrier=["low voltage", "AC"], **kwargs
     ).filter(like=region).groupby(
         ["carrier"]
-    ).sum().multiply(MWh2PJ).drop(
-        ["AC", "DC", "electricity distribution grid"],
-    )
+    ).sum().multiply(MWh2PJ)
     
     var["Secondary Energy Input|Electricity|Hydrogen"] = \
         electricity_withdrawal.get("H2 Electrolysis", 0)
@@ -1685,7 +1684,7 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, _sector_ratios
     ).groupby("carrier").sum().drop([ # chargers affect all sectors equally
         "urban decentral water tanks charger",
         "rural water tanks charger",
-    ]).multiply(MWh2PJ)
+    ], errors="ignore").multiply(MWh2PJ)
 
     decentral_heat_residential_and_commercial_fraction = (
         sum_load(n, ["urban decentral heat", "rural heat"], region) 
@@ -2019,6 +2018,10 @@ def get_emissions(n, region, _energy_totals):
         bus_carrier ="co2 stored",**kwargs
     ).filter(like=region).groupby("carrier").sum().multiply(t2Mt)
 
+    # Assert neglible numerical errors / leakage in stored CO2
+    assert co2_storage.get("co2 stored", 0) < 0.1
+    co2_storage.drop("co2 stored", inplace=True, errors="ignore")
+
     CHP_emissions = n.statistics.supply(
         bus_carrier="co2",**kwargs
     ).filter(like=region).filter(like="CHP").multiply(t2Mt)
@@ -2096,57 +2099,57 @@ def get_emissions(n, region, _energy_totals):
 
     CHP_E_fraction =  CHP_E_to_H * (1 / (CHP_E_to_H + 1))
 
-
-    fossil_cc = co2_storage.reindex(
-        [
-            "SMR CC", 
-            "gas for industry CC", 
-            "process emissions CC", 
-            "urban central gas CHP CC", 
-            "waste CHP CC"
-        ])
-
-    negative_cc = co2_storage.reindex(
-        [
-            "DAC", 
-            "biogas to gas CC", 
-            "solid biomass for industry CC", 
-            "urban central solid biomass CHP CC"
-        ])
+    ccs_carriers = co2_storage.index.intersection(
+        co2_atmosphere_withdrawal.index)
+    fossil_cc_carriers = co2_storage.index.difference(
+        co2_atmosphere_withdrawal.index)
+    
+    negative_cc = co2_storage.reindex(ccs_carriers)
+    fossil_cc = co2_storage.reindex(fossil_cc_carriers)
 
     assert isclose(
         fossil_cc.sum() + negative_cc.sum(),
-        co2_storage.drop("co2 stored").sum()
+        co2_storage.sum()
     )
-    # Assert neglible numerical errors in stored CO2
-    assert co2_storage["co2 stored"] < 0.1
 
-    total_ccs = n.statistics.supply(
-            bus_carrier="co2 sequestered",**kwargs
-        ).filter(like=region).get("Link").groupby(
-            "carrier"
-        ).sum().multiply(t2Mt).sum() 
-   # TODO should we account for e-fuels here???
+    try:
+        total_ccs = n.statistics.supply(
+                bus_carrier="co2 sequestered",**kwargs
+            ).filter(like=region).get("Link").groupby(
+                "carrier"
+            ).sum().multiply(t2Mt).sum() 
+    except AttributeError: # no sequestration in 2020 -> NoneType
+        total_ccs = 0.0
    
-    # All captures fossil should be sequestered for e-fuels to be carbon neutral
-    # We allow for a small margin of error (0.1 Mt CO2)
-    # If this assert fails repeatedly we will need to add a hard constraint for this
-    if not total_ccs + 0.1 > fossil_cc.sum():
-        print("WARNING! Not all CO2 capture from fossil sources is captured!!!")
-        print("total_ccs - fossil_cc: ", total_ccs - fossil_cc.sum())
 
     negative_ccs = total_ccs - fossil_cc.sum()
 
-    co2_negative_emissions = co2_storage.multiply(
-        negative_ccs / co2_storage.sum()
-        ).reindex(
-        co2_atmosphere_withdrawal.index).fillna(0.0)
-    
-    biomass_CHP_correction_factor = min(
-        1, # Can not be > 1, taking minimum to avoid numerical errors
-        co2_negative_emissions["urban central solid biomass CHP CC"]
-        / co2_atmosphere_withdrawal["urban central solid biomass CHP CC"],
+    co2_negative_emissions = negative_cc.multiply(
+        negative_ccs / negative_cc.sum()
     )
+    
+    if negative_ccs < 0:
+        co2_negative_emissions *= 0
+        # If not enough CO2 is captured, than additional emissions occur
+        fossil_cc_emissions = - fossil_cc.multiply(
+            negative_ccs / fossil_cc.sum()
+        )
+        # All captured fossil should be sequestered for e-fuels to be carbon neutral
+        # If this warning appears repeatedly we will need to add a hard constraint
+        print("WARNING! Not all CO2 capture from fossil sources is captured!!!")
+        print("total_ccs - fossil_cc: ", total_ccs - fossil_cc.sum())
+        # TODO what to do with fossil_cc_emissions???
+        if n.links.build_year.max() == 2045:
+            raise Exception("Not enough CCS in 2045!")
+    
+    if not co2_atmosphere_withdrawal.get("urban central solid biomass CHP CC"):
+        biomass_CHP_correction_factor = 0
+    else:
+        biomass_CHP_correction_factor = min(
+            1, # Can not be > 1, taking minimum to avoid numerical errors
+            co2_negative_emissions.get("urban central solid biomass CHP CC")
+            / co2_atmosphere_withdrawal.get("urban central solid biomass CHP CC"),
+        )
 
     negative_CHP_emissions = n.statistics.withdrawal(
         bus_carrier="co2",**kwargs
