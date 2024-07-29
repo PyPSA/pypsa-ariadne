@@ -132,7 +132,7 @@ limits_capacity_max:
       DE:
         2020: 7.8
         2025: 8
-        2030: 70
+        2030: 30
         2035: 70
         2040: 70
         2045: 70
@@ -241,12 +241,12 @@ sector:
   solar_thermal: false
   v2g: false
   district_heating:
-    potential: 0.4
+    potential: 0.3
     progress:
       2020: 0.0
       2025: 0.15
       2030: 0.3
-      2036: 0.45
+      2035: 0.45
       2040: 0.6
       2045: 0.8
       2050: 1.0
@@ -408,6 +408,8 @@ electricity:
   powerplants_filter: (DateOut >= 2019 or DateOut != DateOut) and not (Country == "DE" and Set == "CHP")
   custom_powerplants: True
   custom_file: resources/german_chp.csv
+  estimate_renewable_capacities:
+    year: 2019
 
 pypsa_eur:
   Bus:
