@@ -413,7 +413,7 @@ rule plot_ariadne_variables:
 
 rule ariadne_all:
     input:
-        expand(RESULTS + "graphs/costs.pdf", run=config_provider("run", "name")),
+        expand(RESULTS + "graphs/costs.svg", run=config_provider("run", "name")),
         expand(RESULTS + "ariadne/capacity_detailed.png", run=config_provider("run", "name")),
         exported_variables=expand(RESULTS + "ariadne/exported_variables_full.xlsx", run=config_provider("run", "name")),
     script:
