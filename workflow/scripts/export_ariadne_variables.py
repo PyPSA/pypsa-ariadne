@@ -3042,11 +3042,11 @@ def get_grid_investments(n, costs, region, dg_cost_factor=1.0, length_factor=1.0
     var = pd.Series()
 
     offwind = n.generators.filter(like="offwind",axis=0).filter(like="DE", axis=0)
-    offwind_connection_investment = (
+    offwind_connection_overnight_cost = (
         (offwind.p_nom_opt - offwind.p_nom) 
-        * offwind.connection_investment) * 1e-9
-    offwind_connection_ac = offwind_connection_investment.filter(like="ac")
-    offwind_connection_dc = offwind_connection_investment.filter(regex="dc|float")
+        * offwind.connection_overnight_cost) * 1e-9
+    offwind_connection_ac = offwind_connection_overnight_cost.filter(like="ac")
+    offwind_connection_dc = offwind_connection_overnight_cost.filter(regex="dc|float")
     var["Investment|Energy Supply|Electricity|Transmission|Offwind-AC"] = offwind_connection_ac.sum() / 5
     var["Investment|Energy Supply|Electricity|Transmission|Offwind-DC"] = offwind_connection_dc.sum() / 5
     dc_links = n.links[
