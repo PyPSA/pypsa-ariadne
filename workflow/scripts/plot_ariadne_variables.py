@@ -43,10 +43,6 @@ def ariadne_subplot(
     df, ax, title, 
     select_regex="", drop_regex="", stacked=True, unit=None,
 ):  
-    # Check that all values have the same Unit
-
-
-
     df = df.T.copy()
 
     if select_regex:
@@ -57,7 +53,7 @@ def ariadne_subplot(
         df = df.filter(
             regex=drop_regex,
         )
-
+        
     # Check that all values have the same Unit
     if not unit:
         unit = df.columns.get_level_values("Unit").unique().dropna().item()
