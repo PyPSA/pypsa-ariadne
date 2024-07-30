@@ -185,7 +185,7 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
             build_year=wkn_new.build_year.values,
             length=wkn_new.length.values,
             capital_cost=costs.at["H2 (g) pipeline", "fixed"] * wkn_new.length.values,
-            investment=costs.at["H2 (g) pipeline", "investment"] * wkn_new.length.values,
+            overnight_cost=costs.at["H2 (g) pipeline", "investment"] * wkn_new.length.values,
             carrier="H2 pipeline (Kernnetz)",
             lifetime=costs.at["H2 (g) pipeline", "lifetime"],
         )
@@ -375,7 +375,7 @@ def transmission_costs_from_modified_cost_data(n, costs, transmission, length_fa
         + costs.at["HVDC inverter pair", "capital_cost"]
     )
 
-    investment = (
+    overnight_cost = (
         n.links.loc[dc_b, "length"]
         * length_factor
         * (
@@ -387,7 +387,7 @@ def transmission_costs_from_modified_cost_data(n, costs, transmission, length_fa
         + costs.at["HVDC inverter pair", "investment"]
     )
     n.links.loc[dc_b, "capital_cost"] = capital_cost
-    n.links.loc[dc_b, "investment"] = investment
+    n.links.loc[dc_b, "investment"] = overnight_cost
 
 def must_run_biomass(n, p_min_pu, regions):
     """

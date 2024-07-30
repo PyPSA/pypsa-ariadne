@@ -189,7 +189,7 @@ def get_capacity_additions(n, region):
 
 def get_investments(n, costs, region):
     def _f(**kwargs):
-        return n.statistics.expanded_capex(**kwargs, cost_attribute="investment")
+        return n.statistics.expanded_capex(**kwargs, cost_attribute="overnight_cost")
     return _get_capacities(
         n, 
         region, 
