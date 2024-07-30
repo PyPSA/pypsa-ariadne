@@ -344,7 +344,7 @@ def transmission_costs_from_modified_cost_data(n, costs, transmission, length_fa
     n.lines["capital_cost"] = (
         n.lines["length"] * length_factor * costs.at["HVAC overhead", "capital_cost"]
     )
-    n.lines["investment"] = (
+    n.lines["overnight_cost"] = (
         n.lines["length"] * length_factor * costs.at["HVAC overhead", "investment"]
     )
 
@@ -387,7 +387,7 @@ def transmission_costs_from_modified_cost_data(n, costs, transmission, length_fa
         + costs.at["HVDC inverter pair", "investment"]
     )
     n.links.loc[dc_b, "capital_cost"] = capital_cost
-    n.links.loc[dc_b, "investment"] = overnight_cost
+    n.links.loc[dc_b, "overnight_cost"] = overnight_cost
 
 def must_run_biomass(n, p_min_pu, regions):
     """
