@@ -262,6 +262,7 @@ sector:
   regional_oil_demand: true  #set to true if regional CO2 constraints needed
   regional_coal_demand: true  #set to true if regional CO2 constraints needed
   gas_network: false
+  regional_gas_demand: true
   biogas_upgrading_cc: true
   cluster_heat_buses: true
   # calculated based on ariadne "Stock|Space Heating"

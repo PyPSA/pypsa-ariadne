@@ -371,93 +371,7 @@ def unravel_gasbus(n, costs):
         overnight_cost=costs.at["gas storage", "investment"],
     )
 
-    ### take care of biogas potential in DE
-    biomass_potentials = pd.read_csv(snakemake.input.biomass_potentials, index_col=0)
-    biogas_potential_DE = biomass_potentials[biomass_potentials.index.str[:2] == "DE"].biogas.sum()
-    
-    n.add("Bus",
-          "DE biogas",
-          location="DE",
-          x=10.5,
-          y=51.2,
-          carrier="biogas")
-
-    # copy biogas store
-    n.add(
-        "Store",
-        "DE biogas",
-        bus="DE biogas",
-        carrier="biogas",
-        e_nom=biogas_potential_DE,
-        marginal_cost=costs.at["biogas", "fuel"],
-        e_initial=biogas_potential_DE,
-    )
-    # reduce biogas potential EU-DE
-    n.stores.loc["EU biogas", "e_nom"] -= biogas_potential_DE
-    n.stores.loc["EU biogas", "e_initial"] -= biogas_potential_DE
-
-    # deal with biogas - gas links
-    n.add("Link",
-          "DE biogas to gas",
-          bus0="DE biogas",
-          bus1="DE gas",
-          bus2="co2 atmosphere",
-          carrier="biogas to gas",
-          capital_cost=costs.at["biogas", "fixed"]
-            + costs.at["biogas upgrading", "fixed"],
-          overnight_cost=costs.at["biogas", "investment"]
-            + costs.at["biogas upgrading", "investment"],
-          marginal_cost=costs.at["biogas upgrading", "VOM"],
-          efficiency=costs.at["biogas", "efficiency"],
-          efficiency2=-costs.at["gas", "CO2 intensity"],
-          p_nom_extendable=True,)
-    
-    biogas_CC_links = n.links[(n.links.carrier == "biogas to gas CC") &
-                              (n.links.index.str[:2] == "DE")]
-    n.links.loc[biogas_CC_links.index, "bus0"] = "DE biogas"
-    n.links.loc[biogas_CC_links.index, "bus1"] = "DE gas"
-
-    ### take care of industry gas demand
-    nhours = n.snapshot_weightings.generators.sum()
-    nyears = nhours / 8760
-    industrial_demand = (
-        pd.read_csv(snakemake.input.industrial_demand, index_col=0) * 1e6
-    ) * nyears
-    DE_industrial_demand = industrial_demand[industrial_demand.index.str[:2] == "DE"].methane.sum()  / nhours
-
-    n.add(
-        "Bus",
-        "DE industry gas",
-        location="DE",
-        carrier="gas for industry",
-        unit="MWh_LHV",
-    )
-    
-    n.add("Load",
-          "DE industry gas",
-          bus="DE industry gas",
-          p_set=DE_industrial_demand,
-          )
-    
-    n.add(
-        "Link",
-        "DE gas for industry",
-        bus0="DE gas",
-        bus1="DE industry gas", 
-        bus2="co2 atmosphere",
-        carrier="gas for industry",
-        p_nom_extendable=True,
-        efficiency=1.0,
-        efficiency2=costs.at["gas", "CO2 intensity"],
-    )
-    DE_industry_CC = n.links[(n.links.carrier == "gas for industry CC") &
-                             (n.links.index.str[:2] == "DE")]
-    n.links.loc[DE_industry_CC.index, "bus0"] = "DE gas"
-    n.links.loc[DE_industry_CC.index, "bus1"] = "DE industry gas"
-    
-    n.loads.loc["gas for industry", "p_set"] -= DE_industrial_demand
-
-    # create renewable gas carrier/buses
+    ### create renewable gas buses
     n.add("Carrier", "renewable gas")
 
     n.add(
@@ -475,20 +389,33 @@ def unravel_gasbus(n, costs):
         carrier="renewable gas",
     )
 
-    # reconnect sabatier to renewable gas buses
-    EU_sabatier = n.links[
-        (n.links.carrier == "Sabatier") & 
-        (n.links.index.str[:2] != "DE")
-    ].index
-    n.links.loc[EU_sabatier, "bus1"] = "EU renewable gas"
+    ### biogas is counted as renewable gas
+    biogas_carrier = ["biogas to gas", "biogas to gas CC"]
+    biogas_DE = n.links[(n.links.carrier.isin(biogas_carrier)) & 
+                        (n.links.index.str[:2] == "DE")]
+    n.links.loc[biogas_DE.index, "bus1"] = "DE renewable gas"
 
-    DE_sabatier = n.links[
-        (n.links.carrier == "Sabatier") &
-        (n.links.index.str[:2] == "DE")
-    ].index
-    n.links.loc[DE_sabatier, "bus0"] = "DE renewable gas"
+    biogas_EU = n.links[(n.links.carrier.isin(biogas_carrier)) &
+                        (n.links.index.str[:2] != "DE")]
+    n.links.loc[biogas_EU.index, "bus0"] = "EU renewable gas"
 
-    # add link between renewable gas buses
+    ### Sabatier is counted as renewable gas
+    sabatier_carrier = ["Sabatier", "Sabatier CC"]
+    sabatier_DE = n.links[(n.links.carrier.isin(sabatier_carrier)) &
+                            (n.links.index.str[:2] == "DE")]
+    n.links.loc[sabatier_DE.index, "bus0"] = "DE renewable gas"
+
+    sabatier_EU = n.links[(n.links.carrier.isin(sabatier_carrier)) &
+                            (n.links.index.str[:2] != "DE")]
+    n.links.loc[sabatier_EU.index, "bus1"] = "EU renewable gas"
+
+
+    ### change buses of German gas links
+    fossil_links = n.links[(n.links.bus0 == "EU gas") & 
+                           (n.links.index.str[:2] == "DE")]
+    n.links.loc[fossil_links.index, "bus0"] = "DE gas"
+    
+    ### add import/export links
     n.madd("Link",
         ["EU renewable gas -> DE renewable gas", "DE renewable gas -> EU renewable gas"],
         bus0=["EU renewable gas", "DE renewable gas"],
@@ -498,10 +425,15 @@ def unravel_gasbus(n, costs):
         p_min_pu=0,
     )
 
-    # reconnect all fossil DE gas links to DE gas bus
-    DE_gas_links = n.links[(n.links.bus0 == "EU gas") & 
-                           (n.links.index.str[:2] == "DE")]
-    n.links.loc[DE_gas_links.index, "bus0"] = "DE gas"
+    ### add links between renewable and fossil gas buses
+    n.madd("Link",
+        ["EU renewable gas -> EU gas", "DE renewable gas -> DE gas"],
+        bus0=["EU renewable gas", "DE renewable gas"],
+        bus1=["EU gas", "DE gas"],
+        carrier="renewable gas",
+        p_nom=1e6,
+        p_min_pu=0,
+    )
 
 
 def transmission_costs_from_modified_cost_data(n, costs, transmission, length_factor=1.0):
@@ -634,7 +566,7 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts="none",
-            planning_horizons="2030",
+            planning_horizons="2020",
             run="KN2045_Bal_v4"
         )
 
