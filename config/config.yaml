@@ -106,7 +106,7 @@ clustering:
     'PL': 0.0454
     'SE': 0.0454
   temporal:
-    resolution_sector: 365H
+    resolution_sector: 8760H
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:

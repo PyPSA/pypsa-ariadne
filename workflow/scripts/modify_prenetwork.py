@@ -357,7 +357,21 @@ def unravel_gas(n, config):
                                 "rural gas boiler",
                                 "urban decentral gas boiler",
                                 "SMR",
-                                "SMR CC"]
+                                # "SMR CC",
+                                ]
+    
+    # # delete SMR CC links
+    # SMR_CC = n.links[n.links.carrier == "SMR CC"]
+    # n.links.drop(SMR_CC.index, inplace=True)
+    # copy SMR links
+    # SMR_links = n.links[n.links.carrier == "SMR"]
+    # SMR_CC_links = SMR_links.copy()
+    # SMR_CC_links["carrier"] = "SMR CC"
+    # SMR_CC_links.index = SMR_CC_links.index.str.replace("SMR", "SMR CC")
+    # n.import_components_from_dataframe(SMR_CC_links, "Link")
+    # n.links.loc[(n.links.carrier == "SMR CC").index, "bus3"] = ""
+    # n.links.loc[(n.links.carrier == "SMR CC").index, "efficiency3"] = np.nan
+    # n.links.loc[(n.links.carrier == "SMR CC").index, "efficiency2"] = 0.198
 
     renewable_carriers = ["Sabatier", "biogas to gas", "biogas to gas CC"]
 
