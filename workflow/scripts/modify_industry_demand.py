@@ -41,7 +41,7 @@ if __name__ == "__main__":
     leitmodell="FORECAST v1.0"
 
     year = snakemake.input.industrial_production_per_country_tomorrow.split("_")[-1].split(".")[0]
-    if (snakemake.config["iiasa_database"]["db_name"] == "ariadne2_intern" 
+    if (snakemake.params.db_name == "ariadne2_intern" 
         and year == "2020"):
         logger.warning(f"Assuming {leitmodell} uses 2021 as base year instead of 2020.")
         year = "2021"

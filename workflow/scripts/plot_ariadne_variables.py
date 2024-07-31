@@ -3,11 +3,48 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 
+
+def secondary_energy_plot(ddf, name="Secondary Energy"): 
+    # Get Secondary Energy data
+    df = ddf[
+        ddf.index.get_level_values(
+            "Variable"
+        ).str.startswith(name)]
+    # Get Unit and delete Multiindex
+    unit = df.index.get_level_values("Unit").unique().dropna().item()
+    df.index = df.index.droplevel("Unit")
+
+    # Simplify variable names
+    df.index = pd.Index(
+        map(
+            lambda x: x[(x.find("|") + 1):], 
+            df.index,
+        ),
+        name=df.index.names[0],
+    )
+
+    # Get detailed data
+    exclude = ("Fossil", "Renewables", "Losses") # include Losses once fixed
+    detailed = df[
+        (df.index.str.count("[|]") == 1)
+        & ~df.index.str.endswith(exclude)]
+    
+    ax = detailed.T.plot.area(ylabel=unit, title="Detailed" + name)
+    ax.legend(bbox_to_anchor=(1, 1))
+
+    coarse = df[
+        (df.index.str.count("[|]") == 0)]
+    
+    ax = coarse.T.plot.area(ylabel=unit, title=name)
+    ax.legend(bbox_to_anchor=(1, 1))
+
+
 def ariadne_subplot(
     df, ax, title, 
-    select_regex="", drop_regex="", stacked=True,
-):
+    select_regex="", drop_regex="", stacked=True, unit=None,
+):  
     df = df.T.copy()
+
     if select_regex:
         df = df.filter(
             regex=select_regex,
@@ -16,19 +53,32 @@ def ariadne_subplot(
         df = df.filter(
             regex=drop_regex,
         )
+        
     # Check that all values have the same Unit
-    assert df.columns.unique(level="Unit").size == 1
+    if not unit:
+        unit = df.columns.get_level_values("Unit").unique().dropna().item()
+ 
+    df.columns = df.columns.droplevel("Unit")
+
 
     # Simplify variable names
     df.columns = pd.Index(
         map(
-            lambda x: x[0][(x[0].find("|") + 1):], 
+            lambda x: x[(x.find("|") + 1):], 
             df.columns,
         ),
         name=df.columns.names[0],
     )
 
-    return df.plot.area(ax=ax, title=title, legend=False, stacked=stacked)
+    if df.empty:
+            # Create an empty plot if DataFrame is empty
+            ax.plot([], [])
+            ax.set_title("Ooops! Empty DataFrame")
+            return ax
+
+
+    return df.plot.area(ax=ax, title=title, legend=False, stacked=stacked, ylabel=unit)
+
 
 
 
@@ -36,9 +86,11 @@ def side_by_side_plot(
         df, dfhybrid, title, savepath,
         rshift=1.25, **kwargs
     ):
-    idx = df.index.intersection(dfhybrid.index)
-    df = df.loc[idx]
-    dfhybrid = dfhybrid.loc[idx]
+
+    idx = df.index.union(dfhybrid.index, sort=False)
+    
+    df = df.reindex(idx)
+    dfhybrid = dfhybrid.reindex(idx)
 
     fig, axes = plt.subplots(ncols=2, sharey=True)
     ax = ariadne_subplot(df, axes[0], "PyPSA-Eur", **kwargs)
@@ -122,10 +174,10 @@ def within_plot(df, df2,
 def elec_val_plot(df, savepath):
     # electricity validation for 2020
     elec_capacities = pd.DataFrame(index=["ror", "hydro", "battery", "biomass", "nuclear", "lignite", "coal", "oil", "gas", "wind_onshore", "wind_offshore", "solar"])
-    elec_generation = pd.DataFrame(index=["ror", "hydro", "battery", "biomass", "nuclear", "lignite", "coal", "oil", "gas", "wind", "solar"])
+    elec_generation = pd.DataFrame(index=["net exports", "ror", "hydro", "battery", "biomass", "nuclear", "lignite", "coal", "oil", "gas", "wind", "solar", "sum_real-sum_pypsa"])
 
     elec_capacities["real"] = [4.94, 9.69, 2.4, 8.72, 8.11, 20.86, 23.74, 4.86, 32.54, 54.25, 7.86, 54.36] # https://energy-charts.info/charts/installed_power/chart.htm?l=en&c=DE&year=2020
-    elec_generation["real"] = [np.nan, 18.7, np.nan, 45, 64, 91, 43, 4.7, 95, 132, 50] # https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Energie/Erzeugung/Tabellen/bruttostromerzeugung.html
+    elec_generation["real"] = [18.9, np.nan, 18.7, np.nan, 45, 64, 91, 43, 4.7, 95, 132, 50, np.nan] # https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Energie/Erzeugung/Tabellen/bruttostromerzeugung.html
     elec_capacities["pypsa"] = [
         0,
         df.loc[("Capacity|Electricity|Hydro", "GW"), "2020"],
@@ -142,6 +194,7 @@ def elec_val_plot(df, savepath):
     ]
 
     elec_generation["pypsa"] = [
+        df.loc[("Trade|Secondary Energy|Electricity|Volume", "PJ/yr"), "2020"] / 3.6,
         0,
         df.loc[("Secondary Energy|Electricity|Hydro", "PJ/yr"), "2020"] / 3.6,
         0,
@@ -153,8 +206,13 @@ def elec_val_plot(df, savepath):
         df.loc[("Secondary Energy|Electricity|Gas", "PJ/yr"), "2020"] / 3.6,
         df.loc[("Secondary Energy|Electricity|Wind", "PJ/yr"), "2020"] / 3.6,
         df.loc[("Secondary Energy|Electricity|Solar", "PJ/yr"), "2020"] / 3.6,
+        np.nan
     ]
 
+    #elec_generation.loc["sum/10"] = elec_generation.sum().div(10)
+    elec_generation.loc["sum_real-sum_pypsa", "sum_real-sum_pypsa"] = elec_generation.sum()["real"] - elec_generation.sum()["pypsa"]
+    
+    
     fig, axes = plt.subplots(1, 2, figsize=(10, 5))
     elec_capacities.plot(kind="bar", ax=axes[0])
     axes[0].set_ylabel("GW")
@@ -187,8 +245,9 @@ if __name__ == "__main__":
             opts="",
             ll="v1.2",
             sector_opts="None",
-            planning_horizons="2050",
-            run="KN2045_Bal_v4"
+            planning_horizons="2045",
+            run="KN2045_Bal_v4",
+            #configfiles="config/config.public.yaml"
         )
 
     df = pd.read_excel(
@@ -205,7 +264,7 @@ if __name__ == "__main__":
         snakemake.input.ariadne_database,
         index_col=["model", "scenario", "region", "variable", "unit"]
     ).loc[
-        leitmodell, snakemake.params.iiasa_scenario, "Deutschland"
+        leitmodell, snakemake.params.fallback_reference_scenario, "Deutschland"
     ][df.columns]
     dfremind.index.names = df.index.names
 
@@ -247,6 +306,12 @@ if __name__ == "__main__":
         # Not ending in Fossil or Renewables (i.e., categories)
         drop_regex= "^(?!.*(Fossil|Renewables|Losses|Price|Volume)).+" 
     )
+
+    if df.loc["Final Energy|Industry excl Non-Energy Use|Hydrogen", "2020"].item() < 0:
+        val = df.loc["Final Energy|Industry excl Non-Energy Use|Hydrogen", "2020"]
+        df.loc["Final Energy|Industry excl Non-Energy Use|Hydrogen", "2020"] = 0
+        df.loc["Final Energy|Hydrogen", "2020"] = 0
+        print("WARNING! NEGATIVE HYDROGEN DEMAND IN INDUSTRY IN 2020! ", val)
 
     side_by_side_plot(
         df,
@@ -312,7 +377,8 @@ if __name__ == "__main__":
         savepath=snakemake.output.co2_emissions,
         select_regex="Emissions\|CO2\|[^|]*$",
         stacked=False,
-        #drop_regex="^(?!.*(and)).+"
+        #drop_regex="^(?!.*(and)).+",
+        unit="Mt CO2-equiv/yr"
     )
 
     within_plot(

@@ -12,76 +12,52 @@ from pathlib import Path
 import pandas as pd
 import os
 
-def get_transport_shares(df, planning_horizons):
-    # Get share of vehicles for transport sector - neglecting heavy duty vehicles
-    total_transport = df.loc["Aladin v1", "Stock|Transportation|LDV"]
-    tech_transport = df.loc["Aladin v1"].loc[[ 
-        "Stock|Transportation|LDV|ICE",
-        "Stock|Transportation|LDV|BEV",
-        "Stock|Transportation|LDV|PHEV",
-    ]]
-
-    transport_share = tech_transport / total_transport
-    transport_share = transport_share[planning_horizons]
-    transport_share.set_index(pd.Index(["ICE", "BEV", "PHEV"]), inplace=True)
-
-    # Get share of Navigation fuels from corresponding "Ariadne Leitmodell"
-    total_navigation = \
-        df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation"] + \
-        df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation"]
-    navigation_liquid = \
-        df.loc["REMIND-EU v1.1", "Final Energy|Bunkers|Navigation|Liquids"] + \
-        df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation|Liquids"]
-    
-    navigation_h2 = df.loc["Aladin v1", "Final Energy|Transportation|Domestic Navigation|Hydrogen"]    
-
-    h2_share = navigation_h2 / total_navigation
-    liquid_share = navigation_liquid / total_navigation
-    methanol_share = (1 - h2_share - liquid_share).round(6)
-    
-    naval_share = pd.concat(
-            [liquid_share, h2_share, methanol_share]).set_index(
-            pd.Index(["Oil", "H2", "MeOH"])
-        )[planning_horizons]
-
-    return transport_share, naval_share
-
 def get_transport_growth(df, planning_horizons):
     # Aviation growth factor - using REMIND-EU v1.1 since Aladin v1 does not include bunkers
-    aviation_model = "REMIND-EU v1.1"
-    aviation = df.loc[aviation_model,"Final Energy|Bunkers|Aviation", "PJ/yr"]
+    aviation_model = snakemake.params.leitmodelle["general"]
+    try:
+        aviation = df.loc[aviation_model,"Final Energy|Bunkers|Aviation", "PJ/yr"]
+    except KeyError:
+        aviation = df.loc[aviation_model,"Final Energy|Bunkers|Aviation", "TWh/yr"] * 3.6 # TWh to PJ
+
     aviation_growth_factor = aviation / aviation[2020]
 
-    # Transport growth factor - using REMIND until Aladin v1 uploads variables
-    transport_model = "REMIND-EU v1.1"
-    freight = df.loc[transport_model, "Energy Service|Transportation|Freight|Road", "bn tkm/yr"]
-    person = df.loc[transport_model, "Energy Service|Transportation|Passenger|Road", "bn pkm/yr"]
-    freight_PJ = df.loc[transport_model, "Final Energy|Transportation|Truck", "PJ/yr"]
-    person_PJ = df.loc[transport_model, "Final Energy|Transportation|LDV", "PJ/yr"]
-    
-    transport_growth_factor = pd.Series()
-    for year in planning_horizons:
-        share = (person_PJ[year] / (person_PJ[year] + freight_PJ[year]))
-        transport_growth_factor.loc[year] = share * (person[year] / person[2020]) + (1 - share) * (freight[year] / freight[2020])
-
-    return aviation_growth_factor[planning_horizons], transport_growth_factor
+    return aviation_growth_factor[planning_horizons]
 
 
 def get_primary_steel_share(df, planning_horizons):
     # Get share of primary steel production
-    model = "FORECAST v1.0"
+    model = snakemake.params.leitmodelle["industry"]
     total_steel = df.loc[model, "Production|Steel"]
     primary_steel = df.loc[model, "Production|Steel|Primary"]
     
     primary_steel_share = primary_steel / total_steel
     primary_steel_share = primary_steel_share[planning_horizons]
 
-    if model == "FORECAST v1.0" and planning_horizons[0] == 2020:
+    if model == "FORECAST v1.0" and (planning_horizons[0] == 2020) and snakemake.params.db_name == "ariadne2_intern":
         logger.warning("FORECAST v1.0 does not have data for 2020. Using 2021 data for Production|Steel instead.")
         primary_steel_share[2020] = primary_steel[2021] / total_steel[2021]
 
     
     return primary_steel_share.set_index(pd.Index(["Primary_Steel_Share"]))
+
+def get_DRI_share(df, planning_horizons):
+    # Get share of DRI steel production
+    model = "FORECAST v1.0"
+    total_steel = df.loc[model, "Production|Steel|Primary"]
+    # Assuming that only hydrogen DRI steel is sustainable and DRI using natural gas is phased out
+    DRI_steel = df.loc[model, "Production|Steel|Primary|Direct Reduction Hydrogen"]
+
+    DRI_steel_share = DRI_steel / total_steel
+
+    if model == "FORECAST v1.0" and planning_horizons[0] == 2020:
+        logger.warning("FORECAST v1.0 does not have data for 2020. Using 2021 data for DRI fraction instead.")
+        DRI_steel_share[2020] = DRI_steel_share[2021] / total_steel[2021]
+    
+    DRI_steel_share = DRI_steel_share[planning_horizons]
+
+    return DRI_steel_share.set_index(pd.Index(["DRI_Steel_Share"]))
+
 
 def get_co2_budget(df, source):
     # relative to the DE emissions in 1990 *including bunkers*; also
@@ -116,16 +92,36 @@ def get_co2_budget(df, source):
         raise ValueError("Invalid source for CO2 budget.")
     ## Compute nonco2 from Ariadne-Leitmodell (REMIND)
 
+    # co2 = (
+    #     df.loc["Emissions|CO2 incl Bunkers","Mt CO2/yr"]  
+    #     - df.loc["Emissions|CO2|Land-Use Change","Mt CO2-equiv/yr"]
+    #     - df.loc["Emissions|CO2|Energy|Demand|Bunkers","Mt CO2/yr"]
+    # )
+    # ghg = (
+    #     df.loc["Emissions|Kyoto Gases","Mt CO2-equiv/yr"]
+    #     - df.loc["Emissions|Kyoto Gases|Land-Use Change","Mt CO2-equiv/yr"]
+    #     # No Kyoto Gas emissions for Bunkers recorded in Ariadne DB
+    # )
+
+    try: 
+        co2_land_use_change = df.loc["Emissions|CO2|Land-Use Change","Mt CO2-equiv/yr"]
+    except KeyError: # Key not in Ariadne public database
+        co2_land_use_change = df.loc["Emissions|CO2|AFOLU","Mt CO2/yr"]
+
     co2 = (
-        df.loc["Emissions|CO2 incl Bunkers","Mt CO2/yr"]  
-        - df.loc["Emissions|CO2|Land-Use Change","Mt CO2-equiv/yr"]
-        - df.loc["Emissions|CO2|Energy|Demand|Bunkers","Mt CO2/yr"]
+        df.loc["Emissions|CO2","Mt CO2/yr"]
+        - co2_land_use_change
     )
 
+    try:
+        kyoto_land_use_change = df.loc["Emissions|Kyoto Gases|Land-Use Change","Mt CO2-equiv/yr"]
+    except KeyError: # Key not in Ariadne public database
+        # Guesstimate of difference from Ariadne 2 data
+        kyoto_land_use_change = co2_land_use_change + 4.5
+    
     ghg = (
         df.loc["Emissions|Kyoto Gases","Mt CO2-equiv/yr"]
-        - df.loc["Emissions|Kyoto Gases|Land-Use Change","Mt CO2-equiv/yr"]
-        # No Kyoto Gas emissions for Bunkers recorded in Ariadne DB
+        - kyoto_land_use_change
     )
 
     nonco2 = ghg - co2
@@ -152,55 +148,36 @@ def write_to_scenario_yaml(
     config = yaml.load(file_path)
     for scenario in scenarios:
         reference_scenario = config[scenario]["iiasa_database"]["reference_scenario"]
+        fallback_reference_scenario = config[scenario]["iiasa_database"]["fallback_reference_scenario"]
+        if reference_scenario == "KN2045plus_EasyRide":
+            fallback_reference_scenario = reference_scenario
         co2_budget_source = config[scenario]["co2_budget_DE_source"]
 
         co2_budget_fractions = get_co2_budget(
-            df.loc["REMIND-EU v1.1", reference_scenario],
+            df.loc[snakemake.params.leitmodelle["general"], fallback_reference_scenario],
             co2_budget_source
         )
         
         planning_horizons = [2020, 2025, 2030, 2035, 2040, 2045] # for 2050 we still need data
-
-        transport_share, naval_share = get_transport_shares(
-            df.loc[:, reference_scenario, :],
-            planning_horizons,
-        )
         
-        aviation_demand_factor, land_transport_demand_factor = get_transport_growth(df.loc[:, reference_scenario, :], planning_horizons)
-
-        mapping_transport = {
-            'PHEV': 'land_transport_fuel_cell_share',
-            'BEV': 'land_transport_electric_share',
-            'ICE': 'land_transport_ice_share'
-        }
-        mapping_navigation = {
-            'H2': 'shipping_hydrogen_share',
-            'MeOH': 'shipping_methanol_share',
-            'Oil': 'shipping_oil_share',
-        }
+        aviation_demand_factor = get_transport_growth(df.loc[:, fallback_reference_scenario, :], planning_horizons)
 
         config[scenario]["sector"] = {}
-        for key, sector_mapping in mapping_transport.items():
-            config[scenario]["sector"][sector_mapping] = {}
-            for year in transport_share.columns:
-                config[scenario]["sector"][sector_mapping][year] = round(transport_share.loc[key, year].item(), 4)
-
-        for key, sector_mapping in mapping_navigation.items():
-            config[scenario]["sector"][sector_mapping] = {}
-            for year in naval_share.columns:
-                config[scenario]["sector"][sector_mapping][year] = round(naval_share.loc[key, year].item(), 4)
-        config[scenario]["sector"]["land_transport_demand_factor"] = {}
+        
         config[scenario]["sector"]["aviation_demand_factor"] = {}
         for year in planning_horizons:
             config[scenario]["sector"]["aviation_demand_factor"][year] = round(aviation_demand_factor.loc[year].item(), 4)
-            config[scenario]["sector"]["land_transport_demand_factor"][year] = round(land_transport_demand_factor.loc[year].item(), 4)
 
         st_primary_fraction = get_primary_steel_share(df.loc[:, reference_scenario, :], planning_horizons)
         
-        config[scenario]["industry"] = {}
+        dri_fraction = get_DRI_share(df.loc[:, reference_scenario, :], planning_horizons)
+
         config[scenario]["industry"]["St_primary_fraction"] = {}
+        config[scenario]["industry"]["DRI_fraction"] = {}
         for year in st_primary_fraction.columns:
             config[scenario]["industry"]["St_primary_fraction"][year] = round(st_primary_fraction.loc["Primary_Steel_Share", year].item(), 4)
+            config[scenario]["industry"]["DRI_fraction"][year] = round(dri_fraction.loc["DRI_Steel_Share", year].item(), 4)
+
         config[scenario]["co2_budget_national"] = {}
         for year, target in co2_budget_fractions.items():
             config[scenario]["co2_budget_national"][year] = {}
