@@ -55,10 +55,10 @@ def load_egon():
     return egon_gdf
 
 
-def update_urban_loads_de(egon_gdf, n_pre):
+def update_urban_loads(egon_gdf, n_pre):
     """
     Update district heating demands of clusters according to shares in egon data on NUTS3 level for Germany.
-    Other heat loads are adjusted accodingly to ensure consistency of the nodal heat demand.
+    Other heat loads are adjusted accordingly to ensure consistency of the nodal heat demand.
     """
 
     n = n_pre.copy()
@@ -106,7 +106,7 @@ def update_urban_loads_de(egon_gdf, n_pre):
         .sub(nodal_uc_losses, fill_value=0)
     )
 
-    # Modify index of nodal_heat demand to align with urban central loads and aggregatze loads
+    # Modify index of nodal_heat demand to align with urban central loads and aggregate loads
     nodal_heat_demand.index = nodal_heat_demand.index.str.replace(
         "decentral", "central"
     ).str.replace("rural", "urban central")
@@ -139,7 +139,7 @@ def update_urban_loads_de(egon_gdf, n_pre):
     return
 
 
-def prepare_subnodes_de(egon_gdf):
+def prepare_subnodes(egon_gdf, head=40):
     # TODO: Embed I&O in snakemake rule, add potentials, match CHP capacities
 
     # Load and prepare Triebs data
@@ -153,17 +153,23 @@ def prepare_subnodes_de(egon_gdf):
     )
     dh_areas_triebs = gpd.GeoDataFrame(dh_areas_triebs, geometry="geometry")
 
-    # Merge merged_gdf with dh_areas_triebs using the nuts3 id
-    merged_gdf = egon_gdf.merge(
-        dh_areas_triebs, left_on="index", right_on="NUTS3", how="right"
-    )
-    # Create additional column nuts_3_matchshape that contains the value of the index column in merged_gdf of the row where the geometry column of dh_areas_triebs intersects with the geometry column of nuts3_shapes
+    # Keep only n largest district heating networks according to head parameter
+    to_keep = ["Stadtname", "NUTS3", "Einwohnerzahl [-]", "geometry"]
 
-    merged_gdf.loc[merged_gdf.geometry_x.isna(), "geometry_x"] = merged_gdf.loc[
-        merged_gdf.geometry_x.isna()
+    dh_areas_triebs = dh_areas_triebs.sort_values(
+        by="Einwohnerzahl [-]", ascending=False
+    ).head(head)[to_keep]
+
+    # Merge merged_gdf with dh_areas_triebs using the nuts3 id
+    merged_gdf = dh_areas_triebs.merge(
+        egon_gdf, left_on="NUTS3", right_on="index", how="left"
+    )
+    # DH systems without matching NUTS3 id the surrounding region is assigned using the geometries
+    merged_gdf.loc[merged_gdf.geometry_y.isna(), "geometry_y"] = merged_gdf.loc[
+        merged_gdf.geometry_y.isna()
     ].apply(
         lambda x: egon_gdf.loc[
-            egon_gdf.geometry.contains(x.geometry_y), "geometry"
+            egon_gdf.geometry.contains(x.geometry_x), "geometry"
         ].item(),
         axis=1,
     )
@@ -171,7 +177,15 @@ def prepare_subnodes_de(egon_gdf):
         merged_gdf["index"].isna()
     ].apply(
         lambda x: egon_gdf.loc[
-            egon_gdf.geometry.contains(x.geometry_y), "index"
+            egon_gdf.geometry.contains(x.geometry_x), "index"
+        ].item(),
+        axis=1,
+    )
+    merged_gdf.loc[merged_gdf["cluster"].isna(), "cluster"] = merged_gdf.loc[
+        merged_gdf["cluster"].isna()
+    ].apply(
+        lambda x: egon_gdf.loc[
+            egon_gdf.geometry.contains(x.geometry_x), "cluster"
         ].item(),
         axis=1,
     )
@@ -179,12 +193,12 @@ def prepare_subnodes_de(egon_gdf):
         merged_gdf["District heating"].isna(), "District heating"
     ] = merged_gdf.loc[merged_gdf["District heating"].isna()].apply(
         lambda x: egon_gdf.loc[
-            egon_gdf.geometry.contains(x.geometry_y), "District heating"
+            egon_gdf.geometry.contains(x.geometry_x), "District heating"
         ].item(),
         axis=1,
     )
 
-    # Intraregional distribution key according to population
+    # Intraregional distribution key according to population for NUTS3 regions with multiple DH systems
     merged_gdf["intrareg_dist_key"] = merged_gdf.apply(
         lambda reg: reg["Einwohnerzahl [-]"]
         / merged_gdf.loc[
@@ -193,11 +207,73 @@ def prepare_subnodes_de(egon_gdf):
         axis=1,
     ).sort_values()
     # Multiply column District heating with distribution key
-    merged_gdf["demand_dh_subnode"] = (
+    merged_gdf["dh_hh_subnode"] = (
         merged_gdf["District heating"] * merged_gdf["intrareg_dist_key"]
     )
 
+    # Convert district heating counts to percentage of cluster demand
+
+    merged_gdf["demand_share_subnode"] = merged_gdf.apply(
+        lambda x: x["dh_hh_subnode"]
+        / egon_gdf.loc[egon_gdf.cluster == x.cluster, "District heating"].sum(),
+        axis=1,
+    )
+
+    # TODO: Function to assign CHPs to subnodes
     return merged_gdf
+
+
+def add_subnodes(n, subnodes, head=40):
+    """
+    Add subnodes to the network and adjust loads and capacities accordingly.
+    """
+
+    n_sub = n.copy()
+
+    # Add subnodes to network
+    for idx, row in subnodes.iterrows():
+        name = f'{row["cluster"]} {row["Stadtname"]} urban central heat'
+
+        # Add buses
+        n.madd(
+            "Bus",
+            [name],
+            y=row.geometry_x.y,
+            x=row.geometry_x.x,
+            country="DE",
+            location=row["cluster"],
+            carrier="urban central heat",
+            unit="MWh_th",
+        )
+
+        # Add heat loads
+        heat_load = row["demand_share_subnode"] * n.loads_t.p_set.filter(
+            regex=f"{row['cluster']} urban central heat"
+        ).rename(
+            {
+                f"{row['cluster']} urban central heat": f"{row['cluster']} {row['Stadtname']} urban central heat"
+            },
+            axis=1,
+        )
+        n.madd(
+            "Load",
+            [name],
+            bus=name,
+            p_set=heat_load,
+            carrier="urban central heat",
+            location=row["cluster"],
+            profile=row["cluster"],
+        )
+
+    # Adjust loads of cluster buses
+    for idx, row in (
+        subnodes.groupby("cluster", as_index=False).sum(numeric_only=True).iterrows()
+    ):
+        n.loads_t.p_set.loc[:, f'{row["cluster"]} urban central heat'] *= (
+            1 - row["demand_share_subnode"]
+        )
+
+    return
 
 
 if __name__ == "__main__":
@@ -225,7 +301,8 @@ if __name__ == "__main__":
 
     n = pypsa.Network(snakemake.input.network)
     egon_gdf = load_egon()
-    update_urban_loads_de(egon_gdf, n)
+    update_urban_loads(egon_gdf, n)
 
-    if snakemake.params.enable_subnodes_de:
-        prepare_subnodes_de(egon_gdf)
+    if snakemake.params.add_subnodes_de:
+        subnodes = prepare_subnodes(egon_gdf, snakemake.params.add_subnodes_de)
+        add_subnodes(n, subnodes)
