@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240730overnight_costs
+  prefix: unravel_CH4_coarse
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -30,6 +30,7 @@ run:
   debug_co2_limit: false
   debug_h2deriv_limit: false
   debug_unravel_oilbus: false
+  debug_unravel_gasbus: false
 
 iiasa_database:
   db_name: ariadne2_intern
@@ -260,7 +261,7 @@ sector:
   regional_methanol_demand: true  #set to true if regional CO2 constraints needed
   regional_oil_demand: true  #set to true if regional CO2 constraints needed
   regional_coal_demand: true  #set to true if regional CO2 constraints needed
-  gas_network: true
+  gas_network: false
   biogas_upgrading_cc: true
   cluster_heat_buses: true
   # calculated based on ariadne "Stock|Space Heating"
