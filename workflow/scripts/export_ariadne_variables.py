@@ -69,7 +69,7 @@ def _get_gas_fractions(n):
     }
     total_gas_supply =  n.statistics.supply(
         bus_carrier="gas", **kwargs
-    ).drop("Store").groupby("carrier").sum()
+    ).drop("Store", errors="ignore").groupby("carrier").sum()
 
     drops = ["gas pipeline", "gas pipeline new"]
     for d in drops:
@@ -91,7 +91,7 @@ def _get_h2_fossil_fraction(n):
     }
     total_h2_supply = n.statistics.supply(
         bus_carrier="H2", **kwargs
-    ).drop("Store").groupby("carrier").sum()
+    ).drop("Store", errors="ignore").groupby("carrier").sum()
 
     h2_fossil_fraction = (
         total_h2_supply.get("SMR")
@@ -839,7 +839,7 @@ def get_primary_energy(n, region):
         **kwargs
     ).filter(
         like=region
-    ).drop("Store").groupby(
+    ).drop("Store", errors="ignore").groupby(
         "carrier"
     ).sum().multiply(oil_fossil_fraction).multiply(MWh2PJ)
 

@@ -46,6 +46,8 @@ def fix_new_boiler_profiles(n):
         return
 
     boiler_loads = n.links.loc[decentral_boilers,"bus1"]
+    boiler_loads = boiler_loads[boiler_loads.isin(n.loads_t.p_set.columns)]
+    decentral_boilers = boiler_loads.index
     boiler_profiles_pu = n.loads_t.p_set[boiler_loads].div(n.loads_t.p_set[boiler_loads].max(),axis=1)
     boiler_profiles_pu.columns = decentral_boilers
 
@@ -463,11 +465,11 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "modify_prenetwork",
             simpl="",
-            clusters=22,
+            clusters=44,
             opts="",
             ll="vopt",
-            sector_opts="none",
-            planning_horizons="2030",
+            sector_opts= "None",
+            planning_horizons="2020",
             run="KN2045_Bal_v4"
         )
 
