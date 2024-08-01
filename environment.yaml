@@ -8,7 +8,7 @@ dependencies:
 - pip
 
 - atlite>=0.2.9
-- pypsa>=0.28.0
+- pypsa>=0.29.0
 - linopy
 - dask
 
@@ -25,7 +25,7 @@ dependencies:
 - powerplantmatching>=0.5.11
 - numpy
 - pandas>=2.1
-- geopandas>=0.11.0
+- geopandas>=1.0
 - xarray>=2023.11.0
 - rioxarray
 - netcdf4
@@ -65,4 +65,5 @@ dependencies:
   - snakemake-executor-plugin-slurm
   - snakemake-executor-plugin-cluster-generic
   - highspy
+  # - git+https://github.com/PyPSA/pypsa@master # Until new release
 
