@@ -627,3 +627,7 @@ KN2045minus_SupplyFocus:
           2035: 215 # not forcing more EE
           2040: 215
           2045: 215
+  industry:
+    steam_biomass_fraction: 0.4
+    steam_hydrogen_fraction: 0.3
+    steam_electricity_fraction: 0.3
