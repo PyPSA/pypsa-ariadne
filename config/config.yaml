@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240731newcutout
+  prefix: 20240801offwindconnectioncosts
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -13,7 +13,7 @@ run:
   # - KN2045plus_EasyRide
   # - KN2045plus_LowDemand
   # - KN2045minus_WorstCase
-  # - KN2045minus_SupplyFocus
+  - KN2045minus_SupplyFocus
   scenarios:
     enable: true
     manual_file: config/scenarios.manual.yaml
