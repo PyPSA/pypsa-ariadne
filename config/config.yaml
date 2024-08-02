@@ -99,14 +99,19 @@ atlite:
       dx: 0.3
       dy: 0.3
       time: ['2019', '2019']
+
+    
 renewable:
   onwind:
     cutout: europe-2019-sarah3-era5-compressed
   offwind-ac:
+    capacity_per_sqkm: 6
     cutout: europe-2019-sarah3-era5-compressed
   offwind-dc:
+    capacity_per_sqkm: 6
     cutout: europe-2019-sarah3-era5-compressed
   offwind-float:
+    capacity_per_sqkm: 6
     cutout: europe-2019-sarah3-era5-compressed
   solar:
     cutout: europe-2019-sarah3-era5-compressed
@@ -263,11 +268,7 @@ first_technology_occurrence:
     H2 Electrolysis: 2025
     H2 pipeline retrofitted: 2025
 
-renewable:
-  offwind-ac:
-    capacity_per_sqkm: 6
-  offwind-dc:
-    capacity_per_sqkm: 6
+
 
 costs:
   horizon: "mean" # "optimist", "pessimist" or "mean"
