@@ -28,13 +28,16 @@ run:
 
   scenarios:
     enable: true
-    file: config/scenarios.automated.yaml # config/scenarios.automated.yaml
+    file: config/scenarios.yaml # config/scenarios.automated.yaml
+    manual_file: config/scenarios.manual.yaml
   shared_resources: 
     policy: true #stops recalculating
     exclude:
       - existing_heating.csv # specify files which should not be shared between scenarios
       - costs
       - retrieve_cost # This is necessary to save retrieve_cost_data_{year}.log in the correct folder
+      - industry_sector_ratios
+      - build_industry_sector_ratios # This is necessary to save build_industry_sector_ratios_data.log in the correct folder
   disable_progressbar: true
   debug_co2_limit: false
   debug_h2deriv_limit: false
@@ -43,10 +46,10 @@ run:
 iiasa_database:
   db_name: ariadne2_intern
   leitmodelle:
-    - REMIND-EU v1.1
-    - REMod v1.0
-    - Aladin v1
-    - FORECAST v1.0
+    general: REMIND-EU v1.1
+    buildings: REMod v1.0
+    transport: Aladin v1
+    industry: FORECAST v1.0
   scenarios:
     - CurrentPolicies
     - KN2045_Elec_v4
@@ -118,6 +121,47 @@ existing_capacities:
 # Germany plus 12 "Stromnachbarn"
 countries: ['AL', 'AT', 'BA', 'BE', 'BG', 'CH', 'CZ', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GB', 'GR', 'HR', 'HU', 'IE', 'IT', 'LT', 'LU', 'LV', 'ME', 'MK', 'NL', 'NO', 'PL', 'PT', 'RO', 'RS', 'SE', 'SI', 'SK']
 
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#snapshots
+snapshots:
+  start: "2019-01-01"
+  end: "2020-01-01"
+  inclusive: 'left'
+
+atlite:
+  default_cutout: europe-2019-sarah3-era5
+  cutouts:
+    europe-2019-sarah3-era5:
+      module: [sarah, era5] # in priority order
+      x: [-12., 42.]
+      y: [33., 72]
+      dx: 0.3
+      dy: 0.3
+      time: ['2019', '2019']
+
+    
+renewable:
+  onwind:
+    cutout: europe-2019-sarah3-era5
+  offwind-ac:
+    capacity_per_sqkm: 6
+    cutout: europe-2019-sarah3-era5
+  offwind-dc:
+    capacity_per_sqkm: 6
+    cutout: europe-2019-sarah3-era5
+  offwind-float:
+    capacity_per_sqkm: 6
+    cutout: europe-2019-sarah3-era5
+  solar:
+    cutout: europe-2019-sarah3-era5
+  solar-hsat:
+    cutout: europe-2019-sarah3-era5
+  hydro:
+    cutout: europe-2019-sarah3-era5
+
+lines:
+  dynamic_line_rating:
+    cutout: europe-2019-sarah3-era5
+
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
   retrieve: false # set to false once initial data is retrieved
@@ -140,6 +184,22 @@ clustering:
     'NO': 0.0454
     'PL': 0.0454
     'SE': 0.0454
+# # high spatial resolution: change clusters to 44
+#   focus_weights:
+#   # 44 nodes: 30 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn" (high spatial)  
+#     'DE': 0.6818 # 30/44 
+#     'AT': 0.0227 #  1/44 
+#     'BE': 0.0227 
+#     'CH': 0.0227 
+#     'CZ': 0.0227 
+#     'DK': 0.0455 # 2/44 
+#     'FR': 0.0227 
+#     'GB': 0.0455 
+#     'LU': 0.0227 
+#     'NL': 0.0227 
+#     'NO': 0.0227 
+#     'PL': 0.0227 
+#     'SE': 0.0227 
   temporal:
     resolution_sector: 365H
 
@@ -167,7 +227,7 @@ limits_capacity_max:
       DE:
         2020: 7.8
         2025: 8
-        2030: 70
+        2030: 30
         2035: 70
         2040: 70
         2045: 70
@@ -225,11 +285,7 @@ first_technology_occurrence:
     H2 Electrolysis: 2025
     H2 pipeline retrofitted: 2025
 
-renewable:
-  offwind-ac:
-    capacity_per_sqkm: 6
-  offwind-dc:
-    capacity_per_sqkm: 6
+
 
 costs:
   horizon: "mean" # "optimist", "pessimist" or "mean"
@@ -252,12 +308,12 @@ sector:
   solar_thermal: false
   v2g: false
   district_heating:
-    potential: 0.4
+    potential: 0.3
     progress:
       2020: 0.0
       2025: 0.15
       2030: 0.3
-      2036: 0.45
+      2035: 0.45
       2040: 0.6
       2045: 0.8
       2050: 1.0
@@ -362,7 +418,6 @@ industry:
   waste_to_energy: true
   waste_to_energy_cc: true
 
-
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
 solving:
   runtime: 12h
@@ -423,6 +478,8 @@ electricity:
   powerplants_filter: (DateOut >= 2019 or DateOut != DateOut) and not (Country == "DE" and Set == "CHP")
   custom_powerplants: True
   custom_file: resources/german_chp.csv
+  estimate_renewable_capacities:
+    year: 2019
 
 pypsa_eur:
   Generator:

@@ -43,10 +43,6 @@ def ariadne_subplot(
     df, ax, title, 
     select_regex="", drop_regex="", stacked=True, unit=None,
 ):  
-    # Check that all values have the same Unit
-
-
-
     df = df.T.copy()
 
     if select_regex:
@@ -57,10 +53,13 @@ def ariadne_subplot(
         df = df.filter(
             regex=drop_regex,
         )
+        
+    # Check that all values have the same Unit
     if not unit:
         unit = df.columns.get_level_values("Unit").unique().dropna().item()
  
     df.columns = df.columns.droplevel("Unit")
+
 
     # Simplify variable names
     df.columns = pd.Index(
@@ -71,7 +70,15 @@ def ariadne_subplot(
         name=df.columns.names[0],
     )
 
+    if df.empty:
+            # Create an empty plot if DataFrame is empty
+            ax.plot([], [])
+            ax.set_title("Ooops! Empty DataFrame")
+            return ax
+
+
     return df.plot.area(ax=ax, title=title, legend=False, stacked=stacked, ylabel=unit)
+
 
 
 
@@ -238,8 +245,9 @@ if __name__ == "__main__":
             opts="",
             ll="v1.2",
             sector_opts="None",
-            planning_horizons="2050",
-            run="KN2045_Bal_v4"
+            planning_horizons="2045",
+            run="KN2045_Bal_v4",
+            #configfiles="config/config.public.yaml"
         )
 
     df = pd.read_excel(
@@ -277,11 +285,7 @@ if __name__ == "__main__":
         select_regex="Primary Energy\|[^|]*\|[^|]*$",
         drop_regex="^(?!.*(CCS|Price|Volume)).+"
     )
-    if df.loc["Final Energy|Industry excl Non-Energy Use|Hydrogen", "2025"].item() < 0:
-        val = df.loc["Final Energy|Industry excl Non-Energy Use|Hydrogen", "2025"]
-        df.loc["Final Energy|Industry excl Non-Energy Use|Hydrogen", "2025"] = 0
-        df.loc["Final Energy|Hydrogen", "2025"] = 0
-        print("WARNING! NEGATIVE HYDROGEN DEMAND IN INDUSTRY IN 2025! ", val)
+
     side_by_side_plot(
         df,
         dfremind,
@@ -302,6 +306,12 @@ if __name__ == "__main__":
         # Not ending in Fossil or Renewables (i.e., categories)
         drop_regex= "^(?!.*(Fossil|Renewables|Losses|Price|Volume)).+" 
     )
+
+    if df.loc["Final Energy|Industry excl Non-Energy Use|Hydrogen", "2020"].item() < 0:
+        val = df.loc["Final Energy|Industry excl Non-Energy Use|Hydrogen", "2020"]
+        df.loc["Final Energy|Industry excl Non-Energy Use|Hydrogen", "2020"] = 0
+        df.loc["Final Energy|Hydrogen", "2020"] = 0
+        print("WARNING! NEGATIVE HYDROGEN DEMAND IN INDUSTRY IN 2020! ", val)
 
     side_by_side_plot(
         df,
@@ -368,7 +378,7 @@ if __name__ == "__main__":
         select_regex="Emissions\|CO2\|[^|]*$",
         stacked=False,
         #drop_regex="^(?!.*(and)).+",
-        unit="Mt CO2equiv/yr"
+        unit="Mt CO2-equiv/yr"
     )
 
     within_plot(
