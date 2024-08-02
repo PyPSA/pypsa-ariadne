@@ -3266,7 +3266,7 @@ def get_trade(n, region):
     #     exports_h2 * MWh2PJ
     
     # Trade|Secondary Energy|Liquids|Hydrogen|Volume
-    exports_oil_renew, imports_oil_renew = get_export_import_links(n, region, ["renewable oil"])
+    exports_oil_renew, imports_oil_renew = get_export_import_links(n, region, ["renewable oil", "methanol"])
     var["Trade|Secondary Energy|Liquids|Hydrogen|Volume"] = \
         (exports_oil_renew - imports_oil_renew) * MWh2PJ
     var["Trade|Secondary Energy|Liquids|Hydrogen|Gross Import|Volume"] = \
@@ -3276,7 +3276,7 @@ def get_trade(n, region):
 
     # Trade|Secondary Energy|Gases|Hydrogen|Volume
 
-    # TODO add methanol trade, renewable gas trade
+    # TODO add renewable gas trade
 
     # Trade|Primary Energy|Coal|Volume
     # Trade|Primary Energy|Gas|Volume
