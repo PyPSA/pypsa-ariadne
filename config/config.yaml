@@ -90,9 +90,9 @@ snapshots:
   inclusive: 'left'
 
 atlite:
-  default_cutout: europe-2019-sarah3-era5-compressed
+  default_cutout: europe-2019-sarah3-era5
   cutouts:
-    europe-2019-sarah3-era5-compressed:
+    europe-2019-sarah3-era5:
       module: [sarah, era5] # in priority order
       x: [-12., 42.]
       y: [33., 72]
@@ -103,26 +103,26 @@ atlite:
     
 renewable:
   onwind:
-    cutout: europe-2019-sarah3-era5-compressed
+    cutout: europe-2019-sarah3-era5
   offwind-ac:
     capacity_per_sqkm: 6
-    cutout: europe-2019-sarah3-era5-compressed
+    cutout: europe-2019-sarah3-era5
   offwind-dc:
     capacity_per_sqkm: 6
-    cutout: europe-2019-sarah3-era5-compressed
+    cutout: europe-2019-sarah3-era5
   offwind-float:
     capacity_per_sqkm: 6
-    cutout: europe-2019-sarah3-era5-compressed
+    cutout: europe-2019-sarah3-era5
   solar:
-    cutout: europe-2019-sarah3-era5-compressed
+    cutout: europe-2019-sarah3-era5
   solar-hsat:
-    cutout: europe-2019-sarah3-era5-compressed
+    cutout: europe-2019-sarah3-era5
   hydro:
-    cutout: europe-2019-sarah3-era5-compressed
+    cutout: europe-2019-sarah3-era5
 
 lines:
   dynamic_line_rating:
-    cutout: europe-2019-sarah3-era5-compressed
+    cutout: europe-2019-sarah3-era5
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
