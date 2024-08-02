@@ -295,8 +295,21 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
              / snakemake.config["sector"]["MWh_MeOH_per_tCO2"]
              * n.snapshot_weightings.generators).sum())
         
-        # Methane still missing, because its complicated
+        # Methane
+        incoming_CH4 = n.links.index[n.links.index == "EU renewable gas -> DE renewable gas"]
+        outgoing_CH4 = n.links.index[n.links.index == "DE renewable gas -> EU renewable gas"]
 
+        lhs.append(
+            (-1 * n.model["Link-p"].loc[:, incoming_CH4]
+             * 0.198
+             * n.snapshot_weightings.generators).sum())
+        
+        lhs.append(
+            (n.model["Link-p"].loc[:, outgoing_CH4]
+             * 0.198
+             * n.snapshot_weightings.generators).sum())
+
+        
         lhs = sum(lhs)
 
         cname = f"co2_limit-{ct}"
