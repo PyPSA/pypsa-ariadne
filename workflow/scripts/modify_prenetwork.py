@@ -46,6 +46,8 @@ def fix_new_boiler_profiles(n):
         return
 
     boiler_loads = n.links.loc[decentral_boilers,"bus1"]
+    boiler_loads = boiler_loads[boiler_loads.isin(n.loads_t.p_set.columns)]
+    decentral_boilers = boiler_loads.index
     boiler_profiles_pu = n.loads_t.p_set[boiler_loads].div(n.loads_t.p_set[boiler_loads].max(),axis=1)
     boiler_profiles_pu.columns = decentral_boilers
 
@@ -185,6 +187,7 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
             build_year=wkn_new.build_year.values,
             length=wkn_new.length.values,
             capital_cost=costs.at["H2 (g) pipeline", "fixed"] * wkn_new.length.values,
+            overnight_cost=costs.at["H2 (g) pipeline", "investment"] * wkn_new.length.values,
             carrier="H2 pipeline (Kernnetz)",
             lifetime=costs.at["H2 (g) pipeline", "lifetime"],
         )
@@ -343,6 +346,9 @@ def transmission_costs_from_modified_cost_data(n, costs, transmission, length_fa
     n.lines["capital_cost"] = (
         n.lines["length"] * length_factor * costs.at["HVAC overhead", "capital_cost"]
     )
+    n.lines["overnight_cost"] = (
+        n.lines["length"] * length_factor * costs.at["HVAC overhead", "investment"]
+    )
 
     if n.links.empty:
         return
@@ -359,7 +365,7 @@ def transmission_costs_from_modified_cost_data(n, costs, transmission, length_fa
     elif transmission == "underground":
         links_costs = "HVDC submarine"
 
-    costs = (
+    capital_cost = (
         n.links.loc[dc_b, "length"]
         * length_factor
         * (
@@ -370,7 +376,20 @@ def transmission_costs_from_modified_cost_data(n, costs, transmission, length_fa
         )
         + costs.at["HVDC inverter pair", "capital_cost"]
     )
-    n.links.loc[dc_b, "capital_cost"] = costs
+
+    overnight_cost = (
+        n.links.loc[dc_b, "length"]
+        * length_factor
+        * (
+            (1.0 - n.links.loc[dc_b, "underwater_fraction"])
+            * costs.at[links_costs, "investment"]
+            + n.links.loc[dc_b, "underwater_fraction"]
+            * costs.at["HVDC submarine", "investment"]
+        )
+        + costs.at["HVDC inverter pair", "investment"]
+    )
+    n.links.loc[dc_b, "capital_cost"] = capital_cost
+    n.links.loc[dc_b, "overnight_cost"] = overnight_cost
 
 def must_run_biomass(n, p_min_pu, regions):
     """
@@ -446,11 +465,11 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "modify_prenetwork",
             simpl="",
-            clusters=22,
+            clusters=44,
             opts="",
             ll="vopt",
-            sector_opts="none",
-            planning_horizons="2030",
+            sector_opts= "None",
+            planning_horizons="2020",
             run="KN2045_Bal_v4"
         )
 
