@@ -83,6 +83,47 @@ existing_capacities:
 # Germany plus 12 "Stromnachbarn"
 countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'PL', 'SE']
 
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#snapshots
+snapshots:
+  start: "2019-01-01"
+  end: "2020-01-01"
+  inclusive: 'left'
+
+atlite:
+  default_cutout: europe-2019-sarah3-era5
+  cutouts:
+    europe-2019-sarah3-era5:
+      module: [sarah, era5] # in priority order
+      x: [-12., 42.]
+      y: [33., 72]
+      dx: 0.3
+      dy: 0.3
+      time: ['2019', '2019']
+
+    
+renewable:
+  onwind:
+    cutout: europe-2019-sarah3-era5
+  offwind-ac:
+    capacity_per_sqkm: 6
+    cutout: europe-2019-sarah3-era5
+  offwind-dc:
+    capacity_per_sqkm: 6
+    cutout: europe-2019-sarah3-era5
+  offwind-float:
+    capacity_per_sqkm: 6
+    cutout: europe-2019-sarah3-era5
+  solar:
+    cutout: europe-2019-sarah3-era5
+  solar-hsat:
+    cutout: europe-2019-sarah3-era5
+  hydro:
+    cutout: europe-2019-sarah3-era5
+
+lines:
+  dynamic_line_rating:
+    cutout: europe-2019-sarah3-era5
+
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
   retrieve: false # set to false once initial data is retrieved
@@ -243,11 +284,7 @@ first_technology_occurrence:
     H2 Electrolysis: 2025
     H2 pipeline retrofitted: 2025
 
-renewable:
-  offwind-ac:
-    capacity_per_sqkm: 6
-  offwind-dc:
-    capacity_per_sqkm: 6
+
 
 costs:
   horizon: "mean" # "optimist", "pessimist" or "mean"
