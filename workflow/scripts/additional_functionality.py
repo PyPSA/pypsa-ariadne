@@ -415,42 +415,6 @@ def add_h2_derivate_limit(n, snapshots, investment_year, config):
                 carrier_attribute="",
             )
 
-def retrofit_gas_plants(n, params, year):
-
-    if params["force"] >= year:
-        logger.info("Retrofitting already forced.")
-    
-    if params["start"] <= year:
-        logger.info("Retrofitting not enabled yet.")
-
-    else:
-        logger.info("Retrofitting gas plants to H2 plants")
-
-        plant_types = [
-            ("urban central gas CHP", "urban central H2 retro CHP"),
-            ("OCGT", "H2 retro OCGT"),
-            ("CCGT", "H2 retro CCGT"),
-        ]
-
-        # get all gas plants
-        for gas_carrier, h2_carrier in plant_types:
-            gas_plants = n.links[(n.links.carrier == gas_carrier) &
-                                        (n.links.bus0.str[:2] == "DE") &
-                                        (n.links.build_year >= params["start"])].index
-            
-            h2_plants = n.links[(n.links.carrier == h2_carrier) &
-                                        (n.links.bus0.str[:2] == "DE") &
-                                        (n.links.build_year >= params["start"])].index
-            
-            if gas_plants.empty or h2_plants.empty:
-                continue
-
-            lhs = n.model["Link-p_nom"].loc[gas_plants] + n.model["Link-p_nom"].loc[h2_plants]
-            rhs = n.links.loc[h2_plants, "p_nom_max"]
-
-            n.model.add_constraints(lhs, "<=", rhs, name=f"Retrofit-{h2_carrier}")
-        
-
 
 def additional_functionality(n, snapshots, snakemake):
 
@@ -479,6 +443,3 @@ def additional_functionality(n, snapshots, snakemake):
         limit_countries = snakemake.config["co2_budget_national"][investment_year]
         add_co2limit_country(n, limit_countries, snakemake,                  
             debug=snakemake.config["run"]["debug_co2_limit"])
-
-    if snakemake.config["electricity"]["H2_plants_DE"]["retrofit_CH4_to_H2"]["enable"]:
-        retrofit_gas_plants(n, snakemake.config["electricity"]["H2_plants_DE"]["retrofit_CH4_to_H2"], investment_year)
