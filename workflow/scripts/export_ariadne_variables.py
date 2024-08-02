@@ -40,7 +40,7 @@ def _get_oil_fossil_fraction(n, region):
         total_oil_supply =  n.statistics.supply(
             bus_carrier="oil", **kwargs
         ).groupby("name").sum().reindex([
-            "DE oil",
+            "DE oil refining",
             "DE renewable oil -> DE oil",
             "EU renewable oil -> DE oil",
         ]).dropna() # If links are not used they are dropped here
@@ -49,7 +49,7 @@ def _get_oil_fossil_fraction(n, region):
         total_oil_supply =  n.statistics.supply(
             bus_carrier="oil", **kwargs
         ).groupby("name").sum().reindex([
-            "EU oil",
+            "EU oil refining",
             "DE renewable oil -> EU oil",
             "EU renewable oil -> EU oil",
         ]).dropna()
@@ -833,7 +833,7 @@ def get_primary_energy(n, region):
     var = pd.Series()
 
     oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
-    
+    primary_oil_factor = n.links.query("carrier=='oil refining'").efficiency.unique().item()
     oil_usage = n.statistics.withdrawal(
         bus_carrier="oil", 
         **kwargs
@@ -850,14 +850,20 @@ def get_primary_energy(n, region):
     ## Primary Energy
 
     var["Primary Energy|Oil|Heat"] = \
-        oil_usage.filter(like="urban central oil boiler").sum() + oil_CHP_H_usage 
+        (oil_usage.filter(like="urban central oil boiler").sum() + oil_CHP_H_usage) * primary_oil_factor 
 
     
     var["Primary Energy|Oil|Electricity"] = \
-        oil_usage.get("oil", 0) + oil_CHP_E_usage 
+        (oil_usage.get("oil", 0) + oil_CHP_E_usage) * primary_oil_factor    
     
-    var["Primary Energy|Oil"] = oil_usage.sum()
+    var["Primary Energy|Oil"] = oil_usage.sum() * primary_oil_factor
     
+    # At the moment, everyting that is not electricity or heat is counted as liquid fuel
+    var["Primary Energy|Oil|Liquids"] = (
+        var["Primary Energy|Oil"]
+        - var["Primary Energy|Oil|Electricity"]
+        - var["Primary Energy|Oil|Heat"]
+    )
 
     gas_fractions = _get_gas_fractions(n)
 
@@ -1285,7 +1291,7 @@ def get_secondary_energy(n, region, _industry_demand):
         hydrogen_production.get('H2 Electrolysis', 0)
 
     var["Secondary Energy|Hydrogen|Gas"] = \
-        hydrogen_production.get(["SMR","SMR CC"]).sum()
+        hydrogen_production.reindex(["SMR","SMR CC"]).sum()
 
     var["Secondary Energy|Hydrogen"] = (
         var["Secondary Energy|Hydrogen|Electricity"] 
@@ -1317,7 +1323,10 @@ def get_secondary_energy(n, region, _industry_demand):
             "kerosene for aviation",
             "land transport oil",
             "naphtha for industry",
-            "shipping oil"
+            "shipping oil",
+            # TODO is decentral heating oil considered a fuel?
+            "rural oil boiler",
+            "urban decentral oil boiler"
         ]
     )
 
@@ -1496,7 +1505,6 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, _sector_ratios
         var[f"Final Energy|Non-Energy Use|Gases|{gas_type}"] = \
             var["Final Energy|Non-Energy Use|Gases"] * gas_fractions[gas_type]
 
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
     var["Final Energy|Non-Energy Use|Liquids"] = non_energy.naphtha
 
     var["Final Energy|Non-Energy Use|Liquids|Petroleum"] = non_energy.naphtha * oil_fossil_fraction
@@ -1726,7 +1734,6 @@ def get_final_energy(n, region, _industry_demand, _energy_totals, _sector_ratios
 
     # var["Final Energy|Residential and Commercial|Hydrogen"] = \
     # ! Not implemented
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
     oil_usage = n.statistics.withdrawal(
         bus_carrier="oil", **kwargs
     ).filter(like=region).groupby(
@@ -2340,15 +2347,17 @@ def get_emissions(n, region, _energy_totals):
             "waste CHP CC",
         ]).sum()
 
-    # var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = \
-        # var["Emissions|CO2|Energy|Supply|Liquids"]
+    var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = \
+        var["Emissions|CO2|Energy|Supply|Liquids"] = \
+        co2_emissions.get("oil refining", 0)
+        
         # var["Emissions|CO2|Energy|Supply|Gases"] + \
     
     var["Emissions|CO2|Energy|Supply"] = \
         var["Emissions|CO2|Energy|Supply|Gases"] + \
         var["Emissions|CO2|Energy|Supply|Hydrogen"] + \
-        var["Emissions|CO2|Energy|Supply|Electricity and Heat"] # + \
-        # var["Emissions|CO2|Energy|Supply|Liquids"]
+        var["Emissions|CO2|Energy|Supply|Electricity and Heat"] + \
+        var["Emissions|CO2|Energy|Supply|Liquids"]
     
     # var["Emissions|CO2|Energy|Supply|Other Sector"] = \   
     # var["Emissions|CO2|Energy|Supply|Solids"] = \ 
