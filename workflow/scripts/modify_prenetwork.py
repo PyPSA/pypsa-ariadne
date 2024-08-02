@@ -455,7 +455,7 @@ def aladin_mobility_demand(n):
 def add_hydrogen_turbines(n):
     ''' 
     This adds links that instead of a gas turbine use a hydrogen turbine.
-    It is assumed that the efficiency is slightly reduced while the costs stay the same.
+    It is assumed that the efficiency stays the same.
     This function is only applied to German nodes.
     '''
     logger.info("Adding hydrogen turbine technologies for Germany.")
@@ -465,8 +465,6 @@ def add_hydrogen_turbines(n):
         gas_plants = n.links[(n.links.carrier == carrier) &
                          (n.links.index.str[:2] == "DE") & 
                          (n.links.p_nom_extendable)].index
-        # TODO: why CCGT in 2020 non extendable? different for 2025?
-        # copy those links
         if gas_plants.empty:
             continue
         h2_plants = n.links.loc[gas_plants].copy()
@@ -474,7 +472,6 @@ def add_hydrogen_turbines(n):
         h2_plants.index = h2_plants.index.str.replace(carrier, "H2 " + carrier)
         h2_plants.bus0 = h2_plants.bus0.str.replace("gas", "H2")
         h2_plants.bus2 = ""
-        h2_plants.efficiency -= 0.01
         h2_plants.efficiency2 = 0
         # add the new links
         n.import_components_from_dataframe(h2_plants, "Link")
@@ -488,7 +485,6 @@ def add_hydrogen_turbines(n):
     h2_plants.index = h2_plants.index.str.replace("gas", "H2")
     h2_plants.bus0 = h2_plants.bus0.str.replace("gas", "H2")
     h2_plants.bus3 = ""
-    h2_plants.efficiency -= 0.01
     h2_plants.efficiency3 = 0
     n.import_components_from_dataframe(h2_plants, "Link")
 
@@ -521,7 +517,7 @@ def force_retrofit(n, params):
         h2_plants.index = h2_plants.index.str.replace(carrier, "H2 retro " + carrier)
         h2_plants.bus0 = h2_plants.bus0.str.replace("gas", "H2")
         h2_plants.bus2 = ""
-        h2_plants.efficiency -= 0.01
+        h2_plants.efficiency -= params["efficiency_loss"]
         h2_plants.efficiency2 = 1 # default value
         h2_plants.capital_cost *= (1 + params["retrofit_cost"])
         # add the new links
