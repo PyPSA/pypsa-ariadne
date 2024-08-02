@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240731highspatial
+  prefix: "H2_plants_retrofit"
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -405,6 +405,12 @@ plotting:
     load: "#111100"
     H2 pipeline (Kernnetz): '#6b3161'
     renewable oil: '#c9c9c9'
+    urban central H2 retro CHP: '#ff0000'
+    H2 retro OCGT: '#ff0000'
+    H2 retro CCGT: '#ff0000'
+    H2 OCGT: '#ff0000'
+    H2 CCGT: '#ff0000'
+    urban central H2 CHP: '#ff0000'
   countries:
   - all
   - DE
@@ -426,6 +432,14 @@ electricity:
   custom_file: resources/german_chp.csv
   estimate_renewable_capacities:
     year: 2019
+  H2_plants_DE:
+    enable: true
+    retrofit_CH4_to_H2:
+      enable: true
+      efficiency_loss: 0.1
+      cost_increase: 0.1
+      start: 2025
+      force: 2035
 
 pypsa_eur:
   Bus:

@@ -452,6 +452,150 @@ def aladin_mobility_demand(n):
     if not dsm_i.empty:
         n.stores.loc[dsm_i].e_nom *= pd.Series(factor.values, index=dsm_i)
 
+def add_hydrogen_turbines(n):
+    ''' 
+    This adds links that instead of a gas turbine use a hydrogen turbine.
+    It is assumed that the efficiency is slightly reduced while the costs stay the same.
+    This function is only applied to German nodes.
+    '''
+    logger.info("Adding hydrogen turbine technologies for Germany.")
+
+    gas_carrier = ["OCGT", "CCGT"]
+    for carrier in gas_carrier:
+        gas_plants = n.links[(n.links.carrier == carrier) &
+                         (n.links.index.str[:2] == "DE") & 
+                         (n.links.p_nom_extendable)].index
+        # TODO: why CCGT in 2020 non extendable? different for 2025?
+        # copy those links
+        if gas_plants.empty:
+            continue
+        h2_plants = n.links.loc[gas_plants].copy()
+        h2_plants.carrier = h2_plants.carrier.str.replace(carrier, "H2 " + carrier)
+        h2_plants.index = h2_plants.index.str.replace(carrier, "H2 " + carrier)
+        h2_plants.bus0 = h2_plants.bus0.str.replace("gas", "H2")
+        h2_plants.bus2 = ""
+        h2_plants.efficiency -= 0.01
+        h2_plants.efficiency2 = 0
+        # add the new links
+        n.import_components_from_dataframe(h2_plants, "Link")
+
+    # special handling of CHPs
+    gas_plants = n.links[(n.links.carrier == "urban central gas CHP") &
+                        (n.links.index.str[:2] == "DE") & 
+                        (n.links.p_nom_extendable)].index
+    h2_plants = n.links.loc[gas_plants].copy()
+    h2_plants.carrier = h2_plants.carrier.str.replace("gas", "H2")
+    h2_plants.index = h2_plants.index.str.replace("gas", "H2")
+    h2_plants.bus0 = h2_plants.bus0.str.replace("gas", "H2")
+    h2_plants.bus3 = ""
+    h2_plants.efficiency -= 0.01
+    h2_plants.efficiency3 = 0
+    n.import_components_from_dataframe(h2_plants, "Link")
+
+
+def retrofit_gas_turbines(n, params, year):
+    ''' 
+    This function adds the possibility to retrofit gas turbines from a params["start"] on. If params["force"], all turbines are forced to use hydrogen and gas turbine links are deleted.
+    '''
+
+    if params["start"] <= year:
+        logger.info("Allow retrofitting of gas turbines to hydrogen turbines.")
+        retro_dict = {
+            "gas CHP": "H2 retro CHP",
+            "OCGT": "H2 retro OCGT",
+            "CCGT": "H2 retro CCGT",
+        }
+        for carrier in ["OCGT", "CCGT"]:
+            # get all gas plants that can be retrofitted
+            gas_plants = n.links[(n.links.carrier == carrier) &
+                             (n.links.index.str[:2] == "DE") & 
+                             (n.links.build_year >= params["start"]) & 
+                             ~(n.links.p_nom_extendable)].index
+            # check if there are any gas plants to take care of
+            if gas_plants.empty:
+                continue
+            for gas_plant in gas_plants:
+                new_name = gas_plant.replace(carrier, retro_dict[carrier])
+                # check if the link already exists - if so skip
+                if new_name in n.links.index:
+                    continue
+                plant = n.links.loc[gas_plant]
+                n.add("Link",
+                      new_name,
+                      bus0=plant.bus0.replace("gas", "H2"),
+                      bus1=plant.bus1,
+                      carrier=retro_dict[carrier],
+                      capital_cost=plant.capital_cost + params["cost_increase"],
+                      overnight_cost=plant.overnight_cost,
+                      marginal_cost=plant.marginal_cost,
+                      efficiency=plant.efficiency-params["efficiency_loss"],
+                      build_year=plant.build_year,
+                      lifetime=plant.lifetime,
+                      p_nom=0,
+                      p_nom_extendable=True,
+                      p_nom_max=plant.p_nom,
+                      )
+                n.links.loc[gas_plant, "p_nom_max"] = n.links.loc[gas_plant, "p_nom"]
+                n.links.loc[gas_plant, "p_nom_extendable"] = True
+        
+        # special handling of CHPs
+        chp_plants = n.links[(n.links.carrier == "urban central gas CHP") &
+                                (n.links.index.str[:2] == "DE") & 
+                                (n.links.build_year >= params["start"]) & 
+                                ~(n.links.p_nom_extendable)].index
+        if not chp_plants.empty:
+            for chp_plant in chp_plants:
+                new_name = chp_plant.replace("gas CHP", "H2 retro CHP")
+                if new_name in n.links.index:
+                    continue
+                plant = n.links.loc[chp_plant]
+                n.add("Link",
+                      new_name,
+                      bus0=plant.bus0.replace("gas", "H2"),
+                      bus1=plant.bus1,
+                      bus2=plant.bus2,
+                      carrier=retro_dict[carrier],
+                      capital_cost=plant.capital_cost + params["cost_increase"],
+                      overnight_cost=plant.overnight_cost,
+                      marginal_cost=plant.marginal_cost,
+                      efficiency=plant.efficiency-params["efficiency_loss"],
+                      efficiency2=plant.efficiency2,
+                      build_year=plant.build_year,
+                      lifetime=plant.lifetime,
+                      p_nom=0,
+                      p_nom_extendable=True,
+                      p_nom_max=plant.p_nom,
+                      )
+                n.links.loc[chp_plant, "p_nom_max"] = n.links.loc[chp_plant, "p_nom"]
+                n.links.loc[chp_plant, "p_nom_extendable"] = True
+
+    if params["force"] >= year:
+        logger.info("Forcing retrofit of gas turbines to hydrogen turbines.")
+
+        gas_carrier = ["OCGT", "CCGT", "urban central gas CHP"]
+        # deleting extendable gas turbine plants
+        to_drop = n.links[(n.links.carrier.isin(gas_carrier)) 
+                        & (n.links.p_nom_extendable)
+                        & (n.links.index.str[:2] == "DE")].index
+        n.links.drop(to_drop, inplace=True)
+
+        # forcing retrofit
+        # get all gas turbine plants from start on
+        gas_plants = n.links[(n.links.carrier.isin(gas_carrier))
+                        & (n.links.index.str[:2] == "DE") 
+                        & (n.links.build_year >= params["start"])].index
+        if gas_plants.empty:
+            return
+        for carrier in gas_carrier:
+            for gas_plant in gas_plants:
+                retro_plant = gas_plant.replace(carrier, retro_dict[carrier])
+                # delete gas plant
+                n.links.drop(gas_plant, inplace=True)
+                # force H2 plant
+                n.links.loc[retro_plant, "p_nom_extendable"] = False
+                n.links.loc[retro_plant, "p_nom"] = n.links.loc[retro_plant, "p_nom_max"]
+
+
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -465,11 +609,11 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "modify_prenetwork",
             simpl="",
-            clusters=44,
+            clusters=22,
             opts="",
             ll="vopt",
-            sector_opts= "None",
-            planning_horizons="2020",
+            sector_opts= "none",
+            planning_horizons="2030",
             run="KN2045_Bal_v4"
         )
 
@@ -521,5 +665,10 @@ if __name__ == "__main__":
 
     if snakemake.params.biomass_must_run["enable"]:
         must_run_biomass(n, snakemake.params.biomass_must_run["p_min_pu"], snakemake.params.biomass_must_run["regions"])
+
+    if snakemake.params.H2_plants["enable"]:
+        add_hydrogen_turbines(n)
+    if snakemake.params.H2_plants["retrofit_CH4_to_H2"]["enable"]:
+        retrofit_gas_turbines(n, snakemake.params.H2_plants["retrofit_CH4_to_H2"], int(snakemake.wildcards.planning_horizons))
 
     n.export_to_netcdf(snakemake.output.network)
