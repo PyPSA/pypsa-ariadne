@@ -519,7 +519,7 @@ def force_retrofit(n, params):
         h2_plants.bus2 = ""
         h2_plants.efficiency -= params["efficiency_loss"]
         h2_plants.efficiency2 = 1 # default value
-        h2_plants.capital_cost *= (1 + params["retrofit_cost"])
+        h2_plants.capital_cost *= (1 + params["cost_factor"])
         # add the new links
         n.import_components_from_dataframe(h2_plants, "Link")
     
@@ -537,7 +537,7 @@ def force_retrofit(n, params):
     h2_plants.bus3 = ""
     h2_plants.efficiency -= params["efficiency_loss"]
     h2_plants.efficiency3 = 1 # default value
-    h2_plants.capital_cost *= (1 + params["retrofit_cost"])
+    h2_plants.capital_cost *= (1 + params["cost_factor"])
     n.import_components_from_dataframe(h2_plants, "Link")
 
 
