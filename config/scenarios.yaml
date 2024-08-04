@@ -10,7 +10,11 @@ no_import_he:
     electrolysis_costs: "high"
     import:
       non_eu: false
-      limit_eu_de: 0
+      limit_eu_de: 
+        2030: 0
+        2035: 0
+        2040: 0
+        2045: 0
 
 ####################
 eu_import_le_all:

@@ -701,7 +701,7 @@ if __name__ == "__main__":
             ll="vopt",
             sector_opts="none",
             planning_horizons="2030",
-            run="no_import_le",
+            run="no_import_he",
         )
 
     logger.info("Adding Ariadne-specific functionality")
@@ -757,11 +757,11 @@ if __name__ == "__main__":
     if snakemake.params.biomass_must_run["enable"]:
         must_run_biomass(n, snakemake.params.biomass_must_run["p_min_pu"], snakemake.params.biomass_must_run["regions"])
 
-    if snakemake.config["sector"]["electrolysis_costs"]:
+    if snakemake.params.sector["electrolysis_costs"]:
         electrolysis = n.links[n.links.carrier == "H2 Electrolysis"].index
-        if snakemake.config["sector"]["electrolysis_costs"] == "low":
+        if snakemake.params.sector["electrolysis_costs"] == "low":
             n.links.loc[electrolysis, "capital_cost"] = costs.at["electrolysis", "fixed"] * 0.9
-        elif snakemake.config["sector"]["electrolysis_costs"] == "high":
+        elif snakemake.params.sector["electrolysis_costs"] == "high":
             n.links.loc[electrolysis, "capital_cost"] = costs.at["electrolysis", "fixed"] * 1.1
         else:
             raise ValueError("Invalid electrolysis costs option. Must be 'low', 'high' or false.")

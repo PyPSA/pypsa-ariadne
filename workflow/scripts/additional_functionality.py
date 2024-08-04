@@ -424,7 +424,10 @@ def import_limit_de(n, snapshots, limit_non_eu_de, limit_eu_de, investment_year)
         import_gens = n.generators.loc[n.generators.carrier.str.contains("import") & n.generators.index.str.contains("DE")].index
         import_links = n.links.loc[n.links.carrier.str.contains("import") & n.links.index.str.contains("DE")].index
 
-        limit = limit_non_eu_de[investment_year]
+        if isinstance(limit_non_eu_de, int):
+            limit = limit_non_eu_de
+        elif isinstance(limit_non_eu_de, dict):
+            limit = limit_non_eu_de[investment_year]
 
         if (import_gens.empty and import_links.empty):
             return
@@ -479,8 +482,11 @@ def import_limit_de(n, snapshots, limit_non_eu_de, limit_eu_de, investment_year)
 
         incoming_line_p = n.model["Line-s"].loc[snapshots, elec_lines_in]
         outgoing_line_p = n.model["Line-s"].loc[snapshots, elec_lines_out]
-
-        limit = limit_eu_de[investment_year]
+        
+        if isinstance(limit_eu_de, int):
+            limit = limit_eu_de
+        elif isinstance(limit_eu_de, dict):
+            limit = limit_eu_de[investment_year]
 
         weightings = n.snapshot_weightings.loc[snapshots, "generators"]
 
@@ -497,9 +503,11 @@ def import_limit_de(n, snapshots, limit_non_eu_de, limit_eu_de, investment_year)
         n.model.add_constraints(lhs, "==", rhs, name="energy_import_limit_eu_de")
 
 def limit_total_import_de(n, snapshots, limit_de, investment_year):
+    if isinstance(limit_de, int):
+        limit = limit_de
+    elif isinstance(limit_de, dict):
+        limit = limit_de[investment_year]
 
-    limit = limit_de[investment_year]
-    
     logger.info(f"Adding one total import limit for Germany of {limit} TWh/a.")
     
     import_gens = n.generators.loc[n.generators.carrier.str.contains("import") & n.generators.index.str.contains("DE")].index
@@ -598,11 +606,12 @@ def additional_functionality(n, snapshots, snakemake):
             debug=snakemake.config["run"]["debug_co2_limit"])
         
     limit_non_eu_de = snakemake.config["sector"]["import"]["limit_non_eu_de"]
-    limit_eu_de = snakemake.config["sector"]["import"]["limit_eu_de"]
-    if limit_non_eu_de or limit_eu_de:        
+    logger.info(snakemake.params)
+    limit_eu_de = snakemake.params.sector_opts["import"]["limit_eu_de"]
+    if isinstance(limit_non_eu_de, int) or isinstance(limit_eu_de, int):
         import_limit_de(n, snapshots, limit_non_eu_de, limit_eu_de, investment_year)
 
-    limit_de = snakemake.config["sector"]["import"]["limit_total_de"]
-    if limit_de:
-        logger.info("Adding total import limit for Germany")        
+    limit_de = snakemake.params.sector_opts["import"]["limit_total_de"]
+    if limit_de or isinstance(limit_de, int):
+        logger.info("Adding total import limit for Germany")
         limit_total_import_de(n, snapshots, limit_de, investment_year)
