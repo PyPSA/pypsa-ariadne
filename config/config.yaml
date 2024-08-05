@@ -292,7 +292,8 @@ costs:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
-  # solar_thermal: false
+  v2g: false
+  solar_thermal: false
   district_heating:
     potential: 0.3
     progress:
