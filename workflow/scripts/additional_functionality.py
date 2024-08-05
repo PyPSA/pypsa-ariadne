@@ -296,8 +296,8 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
              * n.snapshot_weightings.generators).sum())
         
         # Methane
-        incoming_CH4 = n.links.index[n.links.index == "EU renewable gas -> DE renewable gas"]
-        outgoing_CH4 = n.links.index[n.links.index == "DE renewable gas -> EU renewable gas"]
+        incoming_CH4 = n.links.index[n.links.index == "EU renewable gas -> DE gas"]
+        outgoing_CH4 = n.links.index[n.links.index == "DE renewable gas -> EU gas"]
 
         lhs.append(
             (-1 * n.model["Link-p"].loc[:, incoming_CH4]
@@ -404,8 +404,8 @@ def add_h2_derivate_limit(n, snapshots, investment_year, config):
 
         logger.info(f"limiting H2 derivate imports in {ct} to {limit/1e6} TWh/a")
 
-        incoming = n.links.loc[["EU renewable oil -> DE oil", "EU methanol -> DE methanol", "EU renewable gas -> DE renewable gas"]].index
-        outgoing = n.links.loc[["DE renewable oil -> EU oil", "DE methanol -> EU methanol", "DE renewable gas -> EU renewable gas"]].index
+        incoming = n.links.loc[["EU renewable oil -> DE oil", "EU methanol -> DE methanol", "EU renewable gas -> DE gas"]].index
+        outgoing = n.links.loc[["DE renewable oil -> EU oil", "DE methanol -> EU methanol", "DE renewable gas -> EU gas"]].index
 
         incoming_p = (n.model["Link-p"].loc[:, incoming]*n.snapshot_weightings.generators).sum()
         outgoing_p = (n.model["Link-p"].loc[:, outgoing]*n.snapshot_weightings.generators).sum()

@@ -419,9 +419,9 @@ def unravel_gasbus(n, costs):
     
     ### add import/export links
     n.madd("Link",
-        ["EU renewable gas -> DE renewable gas", "DE renewable gas -> EU renewable gas"],
+        ["EU renewable gas -> DE gas", "DE renewable gas -> EU gas"],
         bus0=["EU renewable gas", "DE renewable gas"],
-        bus1=["DE renewable gas", "EU renewable gas"],
+        bus1=["DE gas", "EU gas"],
         carrier="renewable gas",
         p_nom=1e6,
         p_min_pu=0,
