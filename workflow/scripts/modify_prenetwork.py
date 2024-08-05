@@ -567,7 +567,7 @@ if __name__ == "__main__":
             clusters=44,
             opts="",
             ll="vopt",
-            sector_opts="none",
+            sector_opts= "None",
             planning_horizons="2020",
             run="KN2045_Bal_v4"
         )
