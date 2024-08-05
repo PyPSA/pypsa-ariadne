@@ -522,6 +522,7 @@ def force_retrofit(n, params):
         h2_plants.capital_cost *= (1 + params["cost_factor"])
         # add the new links
         n.import_components_from_dataframe(h2_plants, "Link")
+        n.links.drop(gas_plants, inplace=True)
     
     # special handling of CHPs
     gas_plants = n.links[(n.links.carrier == "urban central gas CHP")
@@ -539,6 +540,7 @@ def force_retrofit(n, params):
     h2_plants.efficiency3 = 1 # default value
     h2_plants.capital_cost *= (1 + params["cost_factor"])
     n.import_components_from_dataframe(h2_plants, "Link")
+    n.links.drop(gas_plants, inplace=True)
 
 
 
@@ -558,7 +560,7 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts= "none",
-            planning_horizons="2030",
+            planning_horizons="2035",
             run="KN2045_Bal_v4"
         )
 
