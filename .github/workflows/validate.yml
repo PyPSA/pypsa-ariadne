@@ -29,9 +29,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - {artifact_name: "results (feature branch)", path: "~/pypsa-ariadne/feature/results"}
-          - {artifact_name: "results (base branch)", path: "~/pypsa-ariadne/main/results"}
-          - {artifact_name: "validator-metadata", path: "~/pypsa-ariadne/validator-metadata.yml"}
+          - {artifact_name: "results (feature branch)", path: "~/${{ github.repository }}/feature/results"}
+          - {artifact_name: "results (base branch)", path: "~/${{ github.repository }}/main/results"}
+          - {artifact_name: "validator-metadata", path: "~/${{ github.repository }}/validator-metadata.yml"}
     steps:
     - name: Upload artifacts - ${{ matrix.artifact_name }}
       uses: actions/upload-artifact@v4
@@ -56,8 +56,8 @@ jobs:
           # <scenario>/<plot_name>.png
           plots: >
             "
-            KN2045_Bal_v4/graphs/energy.svg
-            KN2045_Bal_v4/graphs/costs.svg
-            KN2045_Bal_v4/graphs/balances-AC.svg
+            KN2045_Bal_v4/ariadne/primary_energy.png
+            KN2045_Bal_v4/ariadne/secondary_energy.png
+            KN2045_Bal_v4/ariadne/final_energy.png
             "
           repo_private_key: ${{ secrets.REPO_PLOTS_PRIVATE_KEY }}
