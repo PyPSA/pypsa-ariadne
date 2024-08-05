@@ -9,18 +9,18 @@ from xarray import DataArray
 logger = logging.getLogger(__name__)
 
 
-def add_min_limits(n, investment_year, config):
+def add_min_limits(n, investment_year, limits_capacity_min):
 
-    for c in n.iterate_components(config["limits_capacity_min"]):
+    for c in n.iterate_components(limits_capacity_min):
         logger.info(f"Adding minimum constraints for {c.list_name}")
 
-        for carrier in config["limits_capacity_min"][c.name]:
+        for carrier in limits_capacity_min[c.name]:
 
-            for ct in config["limits_capacity_min"][c.name][carrier]:
+            for ct in limits_capacity_min[c.name][carrier]:
                 # check if the limit is defined for the investement year
-                if investment_year not in config["limits_capacity_min"][c.name][carrier][ct].keys():
+                if investment_year not in limits_capacity_min[c.name][carrier][ct].keys():
                     continue
-                limit = 1e3*config["limits_capacity_min"][c.name][carrier][ct][investment_year]
+                limit = 1e3*limits_capacity_min[c.name][carrier][ct][investment_year]
 
                 logger.info(f"Adding constraint on {c.name} {carrier} capacity in {ct} to be greater than {limit} MW")
 
@@ -55,17 +55,17 @@ def add_min_limits(n, investment_year, config):
                         carrier_attribute="",
                     )
                 
-def add_max_limits(n, investment_year, config):
+def add_max_limits(n, investment_year, limits_capacity_max):
 
-    for c in n.iterate_components(config["limits_capacity_max"]):
+    for c in n.iterate_components(limits_capacity_max):
         logger.info(f"Adding maximum constraints for {c.list_name}")
 
-        for carrier in config["limits_capacity_max"][c.name]:
+        for carrier in limits_capacity_max[c.name]:
 
-            for ct in config["limits_capacity_max"][c.name][carrier]:
-                if investment_year not in config["limits_capacity_max"][c.name][carrier][ct].keys():
+            for ct in limits_capacity_max[c.name][carrier]:
+                if investment_year not in limits_capacity_max[c.name][carrier][ct].keys():
                     continue
-                limit = 1e3*config["limits_capacity_max"][c.name][carrier][ct][investment_year]
+                limit = 1e3*limits_capacity_max[c.name][carrier][ct][investment_year]
 
                 valid_components = (
                     (c.df.index.str[:2] == ct) &
@@ -105,10 +105,10 @@ def add_max_limits(n, investment_year, config):
                     )
 
 
-def h2_import_limits(n, snapshots, investment_year, config):
+def h2_import_limits(n, snapshots, investment_year, limits_volume_max):
 
-    for ct in config["limits_volume_max"]["h2_import"]:
-        limit = config["limits_volume_max"]["h2_import"][ct][investment_year]*1e6
+    for ct in limits_volume_max["h2_import"]:
+        limit = limits_volume_max["h2_import"][ct][investment_year]*1e6
 
         logger.info(f"limiting H2 imports in {ct} to {limit/1e6} TWh/a")
 
@@ -136,16 +136,16 @@ def h2_import_limits(n, snapshots, investment_year, config):
                 carrier_attribute="",
             )
 
-def h2_production_limits(n, snapshots, investment_year, config):
+def h2_production_limits(n, snapshots, investment_year, limits_volume_min, limits_volume_max):
 
-    for ct in config["limits_volume_max"]["electrolysis"]:
-        if ct not in config["limits_volume_min"]["electrolysis"]:
+    for ct in limits_volume_max["electrolysis"]:
+        if ct not in limits_volume_min["electrolysis"]:
             logger.warning(f"no lower limit for H2 electrolysis in {ct} assuming 0 TWh/a")
             limit_lower = 0
         else:
-            limit_lower = config["limits_volume_min"]["electrolysis"][ct][investment_year]*1e6
+            limit_lower = limits_volume_min["electrolysis"][ct][investment_year]*1e6
         
-        limit_upper = config["limits_volume_max"]["electrolysis"][ct][investment_year]*1e6
+        limit_upper = limits_volume_max["electrolysis"][ct][investment_year]*1e6
 
         logger.info(f"limiting H2 electrolysis in DE between {limit_lower/1e6} and {limit_upper/1e6} TWh/a")
 
@@ -184,10 +184,10 @@ def h2_production_limits(n, snapshots, investment_year, config):
             )
 
 
-def electricity_import_limits(n, snapshots, investment_year, config):
+def electricity_import_limits(n, snapshots, investment_year, limits_volume_max):
 
-    for ct in config["limits_volume_max"]["electricity_import"]:
-        limit = config["limits_volume_max"]["electricity_import"][ct][investment_year]*1e6
+    for ct in limits_volume_max["electricity_import"]:
+        limit = limits_volume_max["electricity_import"][ct][investment_year]*1e6
 
         logger.info(f"limiting electricity imports in {ct} to {limit/1e6} TWh/a")
 
@@ -287,12 +287,12 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
 
         lhs.append(
             (-1 * n.model["Link-p"].loc[:, incoming_methanol]
-             / snakemake.config["sector"]["MWh_MeOH_per_tCO2"]
+             / snakemake.params.sector["MWh_MeOH_per_tCO2"]
              * n.snapshot_weightings.generators).sum())
         
         lhs.append(
             (n.model["Link-p"].loc[:, outgoing_methanol]
-             / snakemake.config["sector"]["MWh_MeOH_per_tCO2"]
+             / snakemake.params.sector["MWh_MeOH_per_tCO2"]
              * n.snapshot_weightings.generators).sum())
         
         # Methane still missing, because its complicated
@@ -422,16 +422,18 @@ def additional_functionality(n, snapshots, snakemake):
 
     investment_year = int(snakemake.wildcards.planning_horizons[-4:])
 
-    add_min_limits(n, investment_year, snakemake.config)
+    add_min_limits(n, investment_year, snakemake.params.limits_capacity_min)
 
-    add_max_limits(n, investment_year, snakemake.config)
+    add_max_limits(n, investment_year, snakemake.params.limits_capacity_max)
 
-    h2_import_limits(n, snapshots, investment_year, snakemake.config)
+    limits_volume_max = snakemake.params.limits_volume_max
+
+    h2_import_limits(n, snapshots, investment_year, limits_volume_max)
     
-    electricity_import_limits(n, snapshots, investment_year, snakemake.config)
+    electricity_import_limits(n, snapshots, investment_year, limits_volume_max)
     
     if investment_year >= 2025:
-        h2_production_limits(n, snapshots, investment_year, snakemake.config)
+        h2_production_limits(n, snapshots, investment_year, snakemake.params.limits_volume_min, limits_volume_max)
     
     if not snakemake.config["run"]["debug_h2deriv_limit"]:
         add_h2_derivate_limit(n, snapshots, investment_year, snakemake.config)
@@ -439,7 +441,7 @@ def additional_functionality(n, snapshots, snakemake):
     #force_boiler_profiles_existing_per_load(n)
     force_boiler_profiles_existing_per_boiler(n)
 
-    if snakemake.config["sector"]["co2_budget_national"]:
-        limit_countries = snakemake.config["co2_budget_national"][investment_year]
+    if snakemake.params.sector["co2_budget_national"]:
+        limit_countries = snakemake.params.co2_budget_national[investment_year]
         add_co2limit_country(n, limit_countries, snakemake,                  
             debug=snakemake.config["run"]["debug_co2_limit"])
