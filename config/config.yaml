@@ -445,6 +445,7 @@ plotting:
     load: "#111100"
     H2 pipeline (Kernnetz): '#6b3161'
     renewable oil: '#c9c9c9'
+    renewable gas: '#e05b09'
   countries:
   - all
   - DE
