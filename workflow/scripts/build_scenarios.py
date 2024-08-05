@@ -178,10 +178,10 @@ def write_to_scenario_yaml(
             config[scenario]["industry"]["St_primary_fraction"][year] = round(st_primary_fraction.loc["Primary_Steel_Share", year].item(), 4)
             config[scenario]["industry"]["DRI_fraction"][year] = round(dri_fraction.loc["DRI_Steel_Share", year].item(), 4)
 
-        config[scenario]["co2_budget_national"] = {}
+        config[scenario]["solving"]["constraints"]["co2_budget_national"] = {}
         for year, target in co2_budget_fractions.items():
-            config[scenario]["co2_budget_national"][year] = {}
-            config[scenario]["co2_budget_national"][year]["DE"] = target
+            config[scenario]["solving"]["constraints"]["co2_budget_national"][year] = {}
+            config[scenario]["solving"]["constraints"]["co2_budget_national"][year]["DE"] = target
 
     # write back to yaml file
     yaml.dump(config, Path(output))

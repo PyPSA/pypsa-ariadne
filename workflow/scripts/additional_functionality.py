@@ -287,12 +287,12 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
 
         lhs.append(
             (-1 * n.model["Link-p"].loc[:, incoming_methanol]
-             / snakemake.params.sector["MWh_MeOH_per_tCO2"]
+             / snakemake.config["sector"]["MWh_MeOH_per_tCO2"]
              * n.snapshot_weightings.generators).sum())
         
         lhs.append(
             (n.model["Link-p"].loc[:, outgoing_methanol]
-             / snakemake.params.sector["MWh_MeOH_per_tCO2"]
+             / snakemake.config["sector"]["MWh_MeOH_per_tCO2"]
              * n.snapshot_weightings.generators).sum())
         
         # Methane still missing, because its complicated
@@ -384,10 +384,10 @@ def force_boiler_profiles_existing_per_boiler(n):
     n.links["fixed_profile_scaling_opt"] = 0.
 
 
-def add_h2_derivate_limit(n, snapshots, investment_year, config):
+def add_h2_derivate_limit(n, snapshots, investment_year, limit_volume_max):
 
-    for ct in config["limits_volume_max"]["h2_derivate_import"]:
-        limit = config["limits_volume_max"]["h2_derivate_import"][ct][investment_year]*1e6
+    for ct in limit_volume_max["h2_derivate_import"]:
+        limit = limit_volume_max["h2_derivate_import"][ct][investment_year]*1e6
 
         logger.info(f"limiting H2 derivate imports in {ct} to {limit/1e6} TWh/a")
 
@@ -421,27 +421,26 @@ def additional_functionality(n, snapshots, snakemake):
     logger.info("Adding Ariadne-specific functionality")
 
     investment_year = int(snakemake.wildcards.planning_horizons[-4:])
+    bc = snakemake.params.solving["constraints"]
 
-    add_min_limits(n, investment_year, snakemake.params.limits_capacity_min)
+    add_min_limits(n, investment_year, bc["limits_capacity_min"])
 
-    add_max_limits(n, investment_year, snakemake.params.limits_capacity_max)
+    add_max_limits(n, investment_year, bc["limits_capacity_max"])
 
-    limits_volume_max = snakemake.params.limits_volume_max
-
-    h2_import_limits(n, snapshots, investment_year, limits_volume_max)
+    h2_import_limits(n, snapshots, investment_year, bc["limits_volume_max"])
     
-    electricity_import_limits(n, snapshots, investment_year, limits_volume_max)
+    electricity_import_limits(n, snapshots, investment_year, bc["limits_volume_max"])
     
     if investment_year >= 2025:
-        h2_production_limits(n, snapshots, investment_year, snakemake.params.limits_volume_min, limits_volume_max)
+        h2_production_limits(n, snapshots, investment_year, bc["limits_volume_min"], bc["limits_volume_max"])
     
     if not snakemake.config["run"]["debug_h2deriv_limit"]:
-        add_h2_derivate_limit(n, snapshots, investment_year, snakemake.config)
+        add_h2_derivate_limit(n, snapshots, investment_year, bc["limits_volume_max"])
 
     #force_boiler_profiles_existing_per_load(n)
     force_boiler_profiles_existing_per_boiler(n)
 
-    if snakemake.params.sector["co2_budget_national"]:
-        limit_countries = snakemake.params.co2_budget_national[investment_year]
+    if isinstance(bc["co2_budget_national"], dict):
+        limit_countries = bc["co2_budget_national"][investment_year]
         add_co2limit_country(n, limit_countries, snakemake,                  
             debug=snakemake.config["run"]["debug_co2_limit"])
