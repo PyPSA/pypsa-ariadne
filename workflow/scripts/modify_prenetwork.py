@@ -399,13 +399,13 @@ def unravel_gasbus(n, costs):
 
     biogas_EU = n.links[(n.links.carrier.isin(biogas_carrier)) &
                         (n.links.index.str[:2] != "DE")]
-    n.links.loc[biogas_EU.index, "bus0"] = "EU renewable gas"
+    n.links.loc[biogas_EU.index, "bus1"] = "EU renewable gas"
 
     ### Sabatier is counted as renewable gas
     sabatier_carrier = ["Sabatier", "Sabatier CC"]
     sabatier_DE = n.links[(n.links.carrier.isin(sabatier_carrier)) &
                             (n.links.index.str[:2] == "DE")]
-    n.links.loc[sabatier_DE.index, "bus0"] = "DE renewable gas"
+    n.links.loc[sabatier_DE.index, "bus1"] = "DE renewable gas"
 
     sabatier_EU = n.links[(n.links.carrier.isin(sabatier_carrier)) &
                             (n.links.index.str[:2] != "DE")]
