@@ -32,7 +32,7 @@ def first_technology_occurrence(n):
             if int(snakemake.wildcards.planning_horizons) < first_year:
                 logger.info(f"{carrier} not extendable before {first_year}.")
                 n.df(c).loc[n.df(c).carrier == carrier, "p_nom_extendable"] = False
-  
+
 
 def fix_new_boiler_profiles(n):
 
@@ -100,7 +100,7 @@ def coal_generation_ban(n):
             logger.info(f"Dropping {links}")
             n.links.drop(links,
                          inplace=True)
-            
+
 def nuclear_generation_ban(n):
 
     year = int(snakemake.wildcards.planning_horizons)
@@ -112,7 +112,7 @@ def nuclear_generation_ban(n):
             links = n.links.index[(n.links.index.str[:2] == ct) & n.links.carrier.isin(["nuclear"])]
             logger.info(f"Dropping {links}")
             n.links.drop(links,
-                         inplace=True)            
+                         inplace=True)
 
 
 def add_reversed_pipes(df):
@@ -141,7 +141,7 @@ def reduce_capacity(targets, origins, carrier, origin_attr="removed_gas_cap", ta
 
     def apply_cut(row):
         match = targets[
-            (targets.bus0 == row.bus0 + " " + carrier) & 
+            (targets.bus0 == row.bus0 + " " + carrier) &
             (targets.bus1 == row.bus1 + " " + carrier)
         ].sort_index()
         cut = row[origin_attr] * conversion_rate
@@ -249,33 +249,48 @@ def unravel_oilbus(n):
     # add buses
     n.add("Bus", "DE", location="DE", x=10.5, y=51.2, carrier="none")
     n.add("Bus", "DE oil", location="DE", x=10.5, y=51.2, carrier="oil")
+    n.add("Bus", "DE oil primary", location="DE", x=10.5, y=51.2, carrier="oil primary")
     n.add("Bus", "DE renewable oil", location="DE", x=10.5, y=51.2, carrier="renewable oil")
     n.add(
-        "Bus", 
-        "EU renewable oil", 
+        "Bus",
+        "EU renewable oil",
         location="EU",
         x=n.buses.loc["EU","x"],
         y=n.buses.loc["EU","y"],
         carrier="renewable oil"
     )
 
-    # add one generator for DE oil
+    # add one generator for DE oil primary
     n.add("Generator",
-          name="DE oil",
-          bus="DE oil",
-          carrier="oil",
+          name="DE oil primary",
+          bus="DE oil primary",
+          carrier="oil primary",
           p_nom_extendable=True,
-          marginal_cost=n.generators.loc["EU oil"].marginal_cost,
+          marginal_cost=n.generators.loc["EU oil primary"].marginal_cost,
           )
-    
+
+    # add link for DE oil refining
+    n.add(
+        "Link",
+        "DE oil refining",
+        bus0="DE oil primary",
+        bus1="DE oil",
+        bus2="co2 atmosphere",
+        location="DE",
+        carrier="oil refining",
+        p_nom=1e6,
+        efficiency=1 - (snakemake.config["industry"]["fuel_refining"]["oil"]["emissions"] / costs.at["oil", "CO2 intensity"]),
+        efficiency2=snakemake.config["industry"]["fuel_refining"]["oil"]["emissions"],
+    )
+
     # change links from EU oil to DE oil
     german_oil_links = n.links[(n.links.bus0=="EU oil") & (n.links.index.str.contains("DE"))].index
-    german_FT_links = n.links[(n.links.bus1=="EU oil") & (n.links.index.str.contains("DE"))].index
+    german_FT_links = n.links[(n.links.bus1=="EU oil") & (n.links.index.str.contains("DE")) & (n.links.index.str.contains("Fischer-Tropsch"))].index
     n.links.loc[german_oil_links, "bus0"] = "DE oil"
     n.links.loc[german_FT_links, "bus1"] = "DE renewable oil"
 
     # change FT links in rest of Europe
-    europ_FT_links = n.links[n.links.bus1=="EU oil"].index
+    europ_FT_links = n.links[(n.links.bus1=="EU oil")  & (n.links.index.str.contains("Fischer-Tropsch"))].index
     n.links.loc[europ_FT_links, "bus1"] = "EU renewable oil"
 
     # add links between oil buses
@@ -298,19 +313,19 @@ def unravel_oilbus(n):
           e_cyclic=True,
           capital_cost=0.02,
           )
-    
+
     # unravel meoh
     logger.info("Unraveling methanol bus")
     # add bus
     n.add(
-        "Bus", 
-        "DE methanol", 
+        "Bus",
+        "DE methanol",
         location="DE",
         x=n.buses.loc["DE","x"],
         y=n.buses.loc["DE","y"],
         carrier="methanol"
     )
-    
+
     # change links from EU meoh to DE meoh
     DE_meoh_out = n.links[(n.links.bus0=="EU methanol") & (n.links.index.str[:2]=="DE")].index
     n.links.loc[DE_meoh_out, "bus0"] = "DE methanol"
@@ -495,7 +510,7 @@ if __name__ == "__main__":
     remove_old_boiler_profiles(n)
 
     coal_generation_ban(n)
-    
+
     nuclear_generation_ban(n)
 
     first_technology_occurrence(n)
