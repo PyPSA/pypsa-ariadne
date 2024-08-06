@@ -55,7 +55,7 @@ def load_egon():
     return egon_gdf
 
 
-def update_urban_loads(egon_gdf, n_pre):
+def update_urban_loads(n_pre, egon_gdf):
     """
     Update district heating demands of clusters according to shares in egon data on NUTS3 level for Germany.
     Other heat loads are adjusted accordingly to ensure consistency of the nodal heat demand.
@@ -140,6 +140,9 @@ def update_urban_loads(egon_gdf, n_pre):
 
 
 def prepare_subnodes(egon_gdf, head=40):
+    """
+    Prepare subnodes for the network based on the Triebs data and the egon data.
+    """
     # TODO: Embed I&O in snakemake rule, add potentials, match CHP capacities
 
     # Load and prepare Triebs data
@@ -219,7 +222,6 @@ def prepare_subnodes(egon_gdf, head=40):
         axis=1,
     )
 
-    # TODO: Function to assign CHPs to subnodes
     return merged_gdf
 
 
@@ -276,6 +278,20 @@ def add_subnodes(n, subnodes, head=40):
     return
 
 
+def modify_chps(chps):
+    """
+    Modify the CHP dataframe to include the subnodes
+    """
+
+    chps["subnode"] = chps.apply(
+        lambda x: f'{x["cluster"]} {x["Stadtname"]} urban central heat', axis=1
+    )
+
+    chps["capacity"] = chps["capacity"] * chps["demand_share_subnode"]
+
+    return chps
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
@@ -301,8 +317,13 @@ if __name__ == "__main__":
 
     n = pypsa.Network(snakemake.input.network)
     egon_gdf = load_egon()
-    update_urban_loads(egon_gdf, n)
+    update_urban_loads(n, egon_gdf)
+    chps = pd.read_csv(snakemake.input.german_chp)
 
     if snakemake.params.add_subnodes_de:
         subnodes = prepare_subnodes(egon_gdf, snakemake.params.add_subnodes_de)
         add_subnodes(n, subnodes)
+        modify_chps(chps, subnodes)
+
+    n.export_to_netcdf(snakemake.output.network)
+    chps.to_csv(snakemake.output.german_chp, index=False)
