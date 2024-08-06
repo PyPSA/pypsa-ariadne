@@ -184,6 +184,9 @@ rule modify_prenetwork:
         transmission_costs=config_provider("costs", "transmission"),
         biomass_must_run=config_provider("must_run_biomass"),
         clustering=config_provider("clustering", "temporal", "resolution_sector"),
+        land_transport_electric_share=config_provider(
+            "sector", "land_transport_electric_share"
+        ),
     input:
         network=RESULTS
         + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",

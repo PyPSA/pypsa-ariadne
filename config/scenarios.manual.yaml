@@ -30,75 +30,75 @@ CurrentPolicies:
     horizon: "mean"
     NEP: 2023
     transmission: "underground" # either overhead line ("overhead") or underground cable ("underground")
-
-  limits_capacity_min:
-    Generator:
-      onwind:
-        DE:
-          2030: 86.5   # 75 % Wind-an-Land Law
-          2035: 86.5
-          2040: 86.5
-          2045: 86.5
-      offwind:
-        DE:
-          2030: 22.5   # 75 % Wind-auf-See Law
-          2035: 22.5
-          2040: 22.5
-          2045: 22.5
-      solar:
-        DE:
-          2030: 161.25   # 75 % PV strategy
-          2035: 161.25
-          2040: 161.25
-          2045: 161.25
-
-  # boundary condition of maximum volumes
-  limits_volume_max:
-    # constrain electricity import in TWh
-    electricity_import:
-      DE:
-        2020: -20
-        2025: 0
-        2030: 0
-        2035: 40
-        2040: 80
-        2045: 125
-    electrolysis:
-    # boundary condition lower?
-      DE:
-        2020: 0
-        2025: 5
-        2030: 45
-        2035: 130
-        2040: 215
-        2045: 300
-    h2_derivate_import:
-    # boundary condition lower?
-      DE:
-        2020: 0
-        2025: 0
-        2030: 10
-        2035: 105
-        2040: 200
-        2045: 300
-    h2_import:
-    # boundary condition lower?
-      DE:
-        2020: 0
-        2025: 5
-        2030: 15
-        2035: 115
-        2040: 220
-        2045: 325
-  limits_volume_min:
-    electrolysis:
-      DE:
-        2020: 0
-        2025: 0
-        2030: 0
-        2035: 0
-        2040: 0
-        2045: 0
+  solving:
+    constraints:
+      limits_capacity_min:
+        Generator:
+          onwind:
+            DE:
+              2030: 86.5   # 75 % Wind-an-Land Law
+              2035: 86.5
+              2040: 86.5
+              2045: 86.5
+          offwind:
+            DE:
+              2030: 22.5   # 75 % Wind-auf-See Law
+              2035: 22.5
+              2040: 22.5
+              2045: 22.5
+          solar:
+            DE:
+              2030: 161.25   # 75 % PV strategy
+              2035: 161.25
+              2040: 161.25
+              2045: 161.25
+      # boundary condition of maximum volumes
+      limits_volume_max:
+        # constrain electricity import in TWh
+        electricity_import:
+          DE:
+            2020: -20
+            2025: 0
+            2030: 0
+            2035: 40
+            2040: 80
+            2045: 125
+        electrolysis:
+        # boundary condition lower?
+          DE:
+            2020: 0
+            2025: 5
+            2030: 45
+            2035: 130
+            2040: 215
+            2045: 300
+        h2_derivate_import:
+        # boundary condition lower?
+          DE:
+            2020: 0
+            2025: 0
+            2030: 10
+            2035: 105
+            2040: 200
+            2045: 300
+        h2_import:
+        # boundary condition lower?
+          DE:
+            2020: 0
+            2025: 5
+            2030: 15
+            2035: 115
+            2040: 220
+            2045: 325
+      limits_volume_min:
+        electrolysis:
+          DE:
+            2020: 0
+            2025: 0
+            2030: 0
+            2035: 0
+            2040: 0
+            2045: 0
 
   industry:
     steam_biomass_fraction: 0.4
@@ -127,51 +127,52 @@ KN2045_Bal_v4:
     horizon: "mean"
     NEP: 2023
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
-
-  # boundary condition of maximum volumes
-  limits_volume_max:
-    # constrain electricity import in TWh
-    electricity_import:
-      DE:
-        2020: -20
-        2025: 0
-        2030: 0
-        2035: 40
-        2040: 80
-        2045: 125
-    electrolysis:
-      DE:
-        2020: 0
-        2025: 5
-        2030: 45
-        2035: 130
-        2040: 215
-        2045: 300
-    h2_derivate_import:
-      DE:
-        2020: 0
-        2025: 0
-        2030: 10
-        2035: 105
-        2040: 200
-        2045: 300
-    h2_import:
-      DE:
-        2020: 0
-        2025: 5
-        2030: 15
-        2035: 115
-        2040: 220
-        2045: 325
-  limits_volume_min:
-    electrolysis:
-      DE:
-        2020: 0
-        2025: 0
-        2030: 0
-        2035: 0
-        2040: 0
-        2045: 0
+  solving:
+    constraints:
+      # boundary condition of maximum volumes
+      limits_volume_max:
+        # constrain electricity import in TWh
+        electricity_import:
+          DE:
+            2020: -20
+            2025: 0
+            2030: 0
+            2035: 40
+            2040: 80
+            2045: 125
+        electrolysis:
+          DE:
+            2020: 0
+            2025: 5
+            2030: 45
+            2035: 130
+            2040: 215
+            2045: 300
+        h2_derivate_import:
+          DE:
+            2020: 0
+            2025: 0
+            2030: 10
+            2035: 105
+            2040: 200
+            2045: 300
+        h2_import:
+          DE:
+            2020: 0
+            2025: 5
+            2030: 15
+            2035: 115
+            2040: 220
+            2045: 325
+      limits_volume_min:
+        electrolysis:
+          DE:
+            2020: 0
+            2025: 0
+            2030: 0
+            2035: 0
+            2040: 0
+            2045: 0
 
   industry:
     steam_biomass_fraction: 0.4
@@ -193,50 +194,51 @@ KN2045_Elec_v4:
     horizon: "mean"
     NEP: 2023
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
-
-  limits_volume_max:
-    # constrain electricity import in TWh
-    electricity_import:
-      DE:
-        2020: -20
-        2025: 0
-        2030: 0
-        2035: 50
-        2040: 100
-        2045: 150
-    electrolysis:
-      DE:
-        2020: 0
-        2025: 5
-        2030: 45
-        2035: 95
-        2040: 145
-        2045: 200
-    h2_derivate_import:
-      DE:
-        2020: 0
-        2025: 0
-        2030: 10
-        2035: 70
-        2040: 130
-        2045: 200
-    h2_import:
-      DE:
-        2020: 0
-        2025: 5
-        2030: 10
-        2035: 90
-        2040: 170
-        2045: 250
-  limits_volume_min:
-    electrolysis:
-      DE:
-        2020: 0
-        2025: 0
-        2030: 0
-        2035: 0
-        2040: 0
-        2045: 0
+  solving:
+    constraints:
+      limits_volume_max:
+        # constrain electricity import in TWh
+        electricity_import:
+          DE:
+            2020: -20
+            2025: 0
+            2030: 0
+            2035: 50
+            2040: 100
+            2045: 150
+        electrolysis:
+          DE:
+            2020: 0
+            2025: 5
+            2030: 45
+            2035: 95
+            2040: 145
+            2045: 200
+        h2_derivate_import:
+          DE:
+            2020: 0
+            2025: 0
+            2030: 10
+            2035: 70
+            2040: 130
+            2045: 200
+        h2_import:
+          DE:
+            2020: 0
+            2025: 5
+            2030: 10
+            2035: 90
+            2040: 170
+            2045: 250
+      limits_volume_min:
+        electrolysis:
+          DE:
+            2020: 0
+            2025: 0
+            2030: 0
+            2035: 0
+            2040: 0
+            2045: 0
 
   industry:
     steam_biomass_fraction: 0.4
@@ -258,53 +260,54 @@ KN2045_H2_v4:
     horizon: "mean"
     NEP: 2023
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
+  solving:
+    constraints:
+      limits_volume_max:
+        # constrain electricity import in TWh
+        electricity_import:
+          DE:
+            2020: -20
+            2025: 0
+            2030: 0
+            2035: 30
+            2040: 70
+            2045: 100 # scenario guidelines
 
-  limits_volume_max:
-    # constrain electricity import in TWh
-    electricity_import:
-      DE:
-        2020: -20
-        2025: 0
-        2030: 0
-        2035: 30
-        2040: 70
-        2045: 100 # scenario guidelines
+        # constrain hydrogen import in TWh
+        h2_import:
+          DE:
+            2020: 0
+            2025: 5
+            2030: 45 # scenario guidelines
+            2035: 155
+            2040: 265
+            2045: 400 # scenario guidelines
+        # import of h2 derivatives in TWh
+        h2_derivate_import:
+          DE:
+            2020: 0
+            2025: 0
+            2030: 10 # scenario guidelines
+            2035: 140
+            2040: 270
+            2045: 400 # scenario guidelines
+        electrolysis:
+          DE:
+            2020: 0
+            2025: 5
+            2030: 45 # scenario guidelines
+            2035: 160
+            2040: 275
+            2045: 400 # scenario guidelines
 
-    # constrain hydrogen import in TWh
-    h2_import:
-      DE:
-        2020: 0
-        2025: 5
-        2030: 45 # scenario guidelines
-        2035: 155
-        2040: 265
-        2045: 400 # scenario guidelines
-    # import of h2 derivatives in TWh
-    h2_derivate_import:
-      DE:
-        2020: 0
-        2025: 0
-        2030: 10 # scenario guidelines
-        2035: 140
-        2040: 270
-        2045: 400 # scenario guidelines
-    electrolysis:
-      DE:
-        2020: 0
-        2025: 5
-        2030: 45 # scenario guidelines
-        2035: 160
-        2040: 275
-        2045: 400 # scenario guidelines
-
-  limits_volume_min:
-    electrolysis:
-      DE:
-        2025: 0
-        2030: 0
-        2035: 0
-        2040: 0
-        2045: 200
+      limits_volume_min:
+        electrolysis:
+          DE:
+            2025: 0
+            2030: 0
+            2035: 0
+            2040: 0
+            2045: 200
 
   industry:
     steam_biomass_fraction: 0.4
@@ -326,51 +329,52 @@ KN2045plus_EasyRide:
     horizon: "optimist"
     NEP: 2023
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
-
-  # boundary condition of maximum volumes
-  limits_volume_max: # following the Bal scenario
-    # constrain electricity import in TWh
-    electricity_import:
-      DE:
-        2020: -20
-        2025: 0
-        2030: 0
-        2035: 40
-        2040: 80
-        2045: 125
-    electrolysis:
-      DE:
-        2020: 0
-        2025: 5
-        2030: 45
-        2035: 130
-        2040: 215
-        2045: 300
-    h2_derivate_import:
-      DE:
-        2020: 0
-        2025: 0
-        2030: 10
-        2035: 105
-        2040: 200
-        2045: 300
-    h2_import:
-      DE:
-        2020: 0
-        2025: 5
-        2030: 15
-        2035: 115
-        2040: 220
-        2045: 325
-  limits_volume_min:
-    electrolysis:
-      DE:
-        2020: 0
-        2025: 0
-        2030: 0
-        2035: 0
-        2040: 0
-        2045: 0
+  solving:
+    constraints:
+      # boundary condition of maximum volumes
+      limits_volume_max: # following the Bal scenario
+        # constrain electricity import in TWh
+        electricity_import:
+          DE:
+            2020: -20
+            2025: 0
+            2030: 0
+            2035: 40
+            2040: 80
+            2045: 125
+        electrolysis:
+          DE:
+            2020: 0
+            2025: 5
+            2030: 45
+            2035: 130
+            2040: 215
+            2045: 300
+        h2_derivate_import:
+          DE:
+            2020: 0
+            2025: 0
+            2030: 10
+            2035: 105
+            2040: 200
+            2045: 300
+        h2_import:
+          DE:
+            2020: 0
+            2025: 5
+            2030: 15
+            2035: 115
+            2040: 220
+            2045: 325
+      limits_volume_min:
+        electrolysis:
+          DE:
+            2020: 0
+            2025: 0
+            2030: 0
+            2035: 0
+            2040: 0
+            2045: 0
 
   industry:
     steam_biomass_fraction: 0.4
@@ -390,51 +394,52 @@ KN2045plus_LowDemand:
     horizon: "optimist"
     NEP: 2023
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
-
-  # boundary condition of maximum volumes
-  limits_volume_max: # Half of the Bal scenario
-    # constrain electricity import in TWh
-    electricity_import:
-      DE:
-        2020: -20
-        2025: 0
-        2030: 0
-        2035: 20
-        2040: 40
-        2045: 62.5
-    electrolysis:
-      DE:
-        2020: 0
-        2025: 2.5
-        2030: 22.5
-        2035: 65
-        2040: 107.5
-        2045: 150
-    h2_derivate_import:
-      DE:
-        2020: 0
-        2025: 0
-        2030: 5
-        2035: 52.5
-        2040: 100
-        2045: 150
-    h2_import:
-      DE:
-        2020: 0
-        2025: 2.5
-        2030: 7.5
-        2035: 57.5
-        2040: 110
-        2045: 162.5
-  limits_volume_min:
-    electrolysis:
-      DE:
-        2020: 0
-        2025: 0
-        2030: 0
-        2035: 0
-        2040: 0
-        2045: 0
+  solving:
+    constraints:
+      # boundary condition of maximum volumes
+      limits_volume_max: # Half of the Bal scenario
+        # constrain electricity import in TWh
+        electricity_import:
+          DE:
+            2020: -20
+            2025: 0
+            2030: 0
+            2035: 20
+            2040: 40
+            2045: 62.5
+        electrolysis:
+          DE:
+            2020: 0
+            2025: 2.5
+            2030: 22.5
+            2035: 65
+            2040: 107.5
+            2045: 150
+        h2_derivate_import:
+          DE:
+            2020: 0
+            2025: 0
+            2030: 5
+            2035: 52.5
+            2040: 100
+            2045: 150
+        h2_import:
+          DE:
+            2020: 0
+            2025: 2.5
+            2030: 7.5
+            2035: 57.5
+            2040: 110
+            2045: 162.5
+      limits_volume_min:
+        electrolysis:
+          DE:
+            2020: 0
+            2025: 0
+            2030: 0
+            2035: 0
+            2040: 0
+            2045: 0
 
   industry:
     steam_biomass_fraction: 0.4
@@ -466,71 +471,72 @@ KN2045minus_WorstCase:
     horizon: "pessimist"
     NEP: 2023
     transmission: "underground" # either overhead line ("overhead") or underground cable ("underground")
-
-  # boundary condition of maximum volumes
-  limits_volume_max: # Half of the Bal scenario
-    # constrain electricity import in TWh
-    electricity_import:
-      DE:
-        2020: -20
-        2025: 0
-        2030: 0
-        2035: 20
-        2040: 40
-        2045: 62.5
-    electrolysis:
-      DE:
-        2020: 0
-        2025: 2.5
-        2030: 22.5
-        2035: 65
-        2040: 107.5
-        2045: 150
-    h2_derivate_import:
-      DE:
-        2020: 0
-        2025: 0
-        2030: 5
-        2035: 52.5
-        2040: 100
-        2045: 150
-    h2_import:
-      DE:
-        2020: 0
-        2025: 2.5
-        2030: 7.5
-        2035: 57.5
-        2040: 110
-        2045: 162.5
-  limits_volume_min:
-    electrolysis:
-      DE:
-        2020: 0
-        2025: 0
-        2030: 0
-        2035: 0
-        2040: 0
-        2045: 0
-  limits_capacity_min:
-    Generator:
-      onwind:
-        DE:
-          2030: 86.5   # 75 % Wind-an-Land Law
-          2035: 86.5
-          2040: 86.5
-          2045: 86.5
-      offwind:
-        DE:
-          2030: 22.5   # 75 % Wind-auf-See Law
-          2035: 22.5
-          2040: 22.5
-          2045: 22.5
-      solar:
-        DE:
-          2030: 161.25   # 75 % PV strategy
-          2035: 161.25
-          2040: 161.25
-          2045: 161.25
+  solving:
+    constraints:
+      # boundary condition of maximum volumes
+      limits_volume_max: # Half of the Bal scenario
+        # constrain electricity import in TWh
+        electricity_import:
+          DE:
+            2020: -20
+            2025: 0
+            2030: 0
+            2035: 20
+            2040: 40
+            2045: 62.5
+        electrolysis:
+          DE:
+            2020: 0
+            2025: 2.5
+            2030: 22.5
+            2035: 65
+            2040: 107.5
+            2045: 150
+        h2_derivate_import:
+          DE:
+            2020: 0
+            2025: 0
+            2030: 5
+            2035: 52.5
+            2040: 100
+            2045: 150
+        h2_import:
+          DE:
+            2020: 0
+            2025: 2.5
+            2030: 7.5
+            2035: 57.5
+            2040: 110
+            2045: 162.5
+      limits_volume_min:
+        electrolysis:
+          DE:
+            2020: 0
+            2025: 0
+            2030: 0
+            2035: 0
+            2040: 0
+            2045: 0
+      limits_capacity_min:
+        Generator:
+          onwind:
+            DE:
+              2030: 86.5   # 75 % Wind-an-Land Law
+              2035: 86.5
+              2040: 86.5
+              2045: 86.5
+          offwind:
+            DE:
+              2030: 22.5   # 75 % Wind-auf-See Law
+              2035: 22.5
+              2040: 22.5
+              2045: 22.5
+          solar:
+            DE:
+              2030: 161.25   # 75 % PV strategy
+              2035: 161.25
+              2040: 161.25
+              2045: 161.25
 
   industry:
     steam_biomass_fraction: 0.4
@@ -562,71 +568,73 @@ KN2045minus_SupplyFocus:
     2040: 0.450
     2045: 0.450
     2050: 0.450
-  # boundary condition of maximum volumes
-  limits_volume_max: # following the Bal scenario
-    # constrain electricity import in TWh
-    electricity_import:
-      DE:
-        2020: -20
-        2025: 0
-        2030: 0
-        2035: 40
-        2040: 80
-        2045: 125
-    electrolysis:
-      DE:
-        2020: 0
-        2025: 5
-        2030: 45
-        2035: 130
-        2040: 215
-        2045: 300
-    h2_derivate_import:
-      DE:
-        2020: 0
-        2025: 0
-        2030: 10
-        2035: 105
-        2040: 200
-        2045: 300
-    h2_import:
-      DE:
-        2020: 0
-        2025: 5
-        2030: 15
-        2035: 115
-        2040: 220
-        2045: 325
-  limits_volume_min:
-    electrolysis:
-      DE:
-        2020: 0
-        2025: 0
-        2030: 0
-        2035: 0
-        2040: 0
-        2045: 0
-  limits_capacity_min:
-    Generator:
-      onwind:
-        DE:
-          2030: 115 # Wind-an-Land Law
-          2035: 115 # not forcing more EE
-          2040: 115
-          2045: 115
-      offwind:
-        DE:
-          2030: 30 # Wind-auf-See Law
-          2035: 30 # not forcing more EE
-          2040: 30
-          2045: 30
-      solar:
-        DE:
-          2025: 101
-          2030: 215 # PV strategy
-          2035: 215 # not forcing more EE
-          2040: 215
-          2045: 215
+  solving:
+    constraints:
+      # boundary condition of maximum volumes
+      limits_volume_max: # following the Bal scenario
+        # constrain electricity import in TWh
+        electricity_import:
+          DE:
+            2020: -20
+            2025: 0
+            2030: 0
+            2035: 40
+            2040: 80
+            2045: 125
+        electrolysis:
+          DE:
+            2020: 0
+            2025: 5
+            2030: 45
+            2035: 130
+            2040: 215
+            2045: 300
+        h2_derivate_import:
+          DE:
+            2020: 0
+            2025: 0
+            2030: 10
+            2035: 105
+            2040: 200
+            2045: 300
+        h2_import:
+          DE:
+            2020: 0
+            2025: 5
+            2030: 15
+            2035: 115
+            2040: 220
+            2045: 325
+      limits_volume_min:
+        electrolysis:
+          DE:
+            2020: 0
+            2025: 0
+            2030: 0
+            2035: 0
+            2040: 0
+            2045: 0
+      limits_capacity_min:
+        Generator:
+          onwind:
+            DE:
+              2030: 115 # Wind-an-Land Law
+              2035: 115 # not forcing more EE
+              2040: 115
+              2045: 115
+          offwind:
+            DE:
+              2030: 30 # Wind-auf-See Law
+              2035: 30 # not forcing more EE
+              2040: 30
+              2045: 30
+          solar:
+            DE:
+              2025: 101
+              2030: 215 # PV strategy
+              2035: 215 # not forcing more EE
+              2040: 215
+              2045: 215
   industry:
     steam_biomass_fraction: 0.4
     steam_hydrogen_fraction: 0.3

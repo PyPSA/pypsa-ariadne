@@ -177,94 +177,6 @@ co2_budget:
   2045: 0.050
   2050: 0.000 # climate-neutral by 2050
 
-limits_capacity_max:
-  Generator:
-    onwind:
-      DE:
-        2020: 54.5
-        2025: 69
-        2030: 160
-        2035: 160
-        2040: 160
-        2045: 160
-    offwind:
-      DE:
-        2020: 7.8
-        2025: 8
-        2030: 30
-        2035: 70
-        2040: 70
-        2045: 70
-    solar:
-      DE:
-        2020: 53.7
-        2025: 110 # EEG2023; assumes for 2026: 128 GW, assuming a fair share reached by end of 2025
-        2030: 400
-        2035: 400
-        2040: 400
-        2045: 400
-
-limits_capacity_min:
-  Generator:
-    onwind:
-      DE:
-        2030: 115   # Wind-an-Land Law
-        2035: 115   # Wind-an-Land Law
-        2040: 115   # Wind-an-Land Law
-        2045: 115
-    offwind:
-      DE:
-        2030: 30   # Wind-auf-See Law
-        2035: 30
-        2040: 30
-        2045: 30
-    solar:
-      DE:
-          # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW,
-          # assuming at least 1/3 of difference reached in 2025
-        2025: 101
-        2030: 101
-        2035: 101
-        2040: 101
-        2045: 101
-
-
-# limits_capacity_min:
-#     Generator:
-#       onwind:
-#         DE:
-#           2030: 115 # Wind-an-Land Law
-#           2035: 157 # Wind-an-Land Law
-#           2040: 160 # Wind-an-Land Law
-#           2045: 160
-#       offwind:
-#         DE:
-#           2030: 30 # Wind-auf-See Law
-#           2035: 40 # 40 Wind-auf-See Law
-#           # assuming at least 1/3 of difference reached in 2040
-#           2040: 50
-#           2045: 70 #70 Wind-auf-See Law
-#       solar:
-#         DE:
-#           # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW,
-#           # assuming at least 1/3 of difference reached in 2025
-#           2025: 101
-#           2030: 215 # PV strategy
-#           2035: 309
-#           2040: 400 # PV strategy
-#           2045: 400
-#           # What about the EEG2023 "Strommengenpfad"?
-
-h2_import_max:
-  DE:
-    2020: 0
-    2025: 5
-    2030: 20
-    2035: 50
-    2040: 100
-    2045: 150
-    2050: 200
-
 wasserstoff_kernnetz:
   enable: false
   reload_locations: false
@@ -306,7 +218,6 @@ sector:
       2045: 0.8
       2050: 1.0
   central_heat_vent: true
-  co2_budget_national: true
   co2_spatial: true
   biomass_spatial: true
   #TBD what to include in config
@@ -431,6 +342,129 @@ solving:
         H2 pipeline: 0.3
         H2 pipeline (Kernnetz): 0.3
         H2 pipeline retrofitted: 0.3
+  constraints:
+    limits_capacity_max:
+      Generator:
+        onwind:
+          DE:
+            2020: 54.5
+            2025: 69
+            2030: 160
+            2035: 160
+            2040: 160
+            2045: 160
+        offwind:
+          DE:
+            2020: 7.8
+            2025: 8
+            2030: 30
+            2035: 70
+            2040: 70
+            2045: 70
+        solar:
+          DE:
+            2020: 53.7
+            2025: 110 # EEG2023; assumes for 2026: 128 GW, assuming a fair share reached by end of 2025
+            2030: 400
+            2035: 400
+            2040: 400
+            2045: 400
+    limits_capacity_min:
+      Generator:
+        onwind:
+          DE:
+            2030: 115   # Wind-an-Land Law
+            2035: 115   # Wind-an-Land Law
+            2040: 115   # Wind-an-Land Law
+            2045: 115
+        offwind:
+          DE:
+            2030: 30   # Wind-auf-See Law
+            2035: 30
+            2040: 30
+            2045: 30
+        solar:
+          DE:
+              # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW,
+              # assuming at least 1/3 of difference reached in 2025
+            2025: 101
+            2030: 101
+            2035: 101
+            2040: 101
+            2045: 101
+  # For reference, this are the values specified in the laws
+  # limits_capacity_min:
+  #     Generator:
+  #       onwind:
+  #         DE:
+  #           2030: 115 # Wind-an-Land Law
+  #           2035: 157 # Wind-an-Land Law
+  #           2040: 160 # Wind-an-Land Law
+  #           2045: 160
+  #       offwind:
+  #         DE:
+  #           2030: 30 # Wind-auf-See Law
+  #           2035: 40 # 40 Wind-auf-See Law
+  #           # assuming at least 1/3 of difference reached in 2040
+  #           2040: 50
+  #           2045: 70 #70 Wind-auf-See Law
+  #       solar:
+  #         DE:
+  #           # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW,
+  #           # assuming at least 1/3 of difference reached in 2025
+  #           2025: 101
+  #           2030: 215 # PV strategy
+  #           2035: 309
+  #           2040: 400 # PV strategy
+  #           2045: 400
+  #           # What about the EEG2023 "Strommengenpfad"?
+    # boundary condition of maximum volumes
+    limits_volume_max:
+      # constrain electricity import in TWh
+      electricity_import:
+        DE:
+          2020: -20
+          2025: 0
+          2030: 0
+          2035: 40
+          2040: 80
+          2045: 125
+      electrolysis:
+      # boundary condition lower?
+        DE:
+          2020: 0
+          2025: 5
+          2030: 45
+          2035: 130
+          2040: 215
+          2045: 300
+      h2_derivate_import:
+      # boundary condition lower?
+        DE:
+          2020: 0
+          2025: 0
+          2030: 10
+          2035: 105
+          2040: 200
+          2045: 300
+      h2_import:
+      # boundary condition lower?
+        DE:
+          2020: 0
+          2025: 5
+          2030: 15
+          2035: 115
+          2040: 220
+          2045: 325
+    limits_volume_min:
+      electrolysis:
+        DE:
+          2020: 0
+          2025: 0
+          2030: 0
+          2035: 0
+          2040: 0
+          2045: 0
   # solver:
   #   options: gurobi-numeric-focus
   # solver_options:
