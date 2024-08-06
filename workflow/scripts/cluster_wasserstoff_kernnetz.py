@@ -10,22 +10,22 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+import os
+import sys
+
 import pandas as pd
+import pyproj
 from shapely import wkt
 from shapely.geometry import LineString, Point
 from shapely.ops import transform
-import pyproj
-
-import os
-import sys
 
 paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
 for path in paths:
     sys.path.insert(0, os.path.abspath(path))
 from cluster_gas_network import (
+    build_clustered_gas_network,
     load_bus_regions,
     reindex_pipes,
-    build_clustered_gas_network,
 )
 
 # Define a function for projecting points to meters
@@ -97,7 +97,8 @@ def split_line_by_length(line, segment_length_km):
 
 def divide_pipes(df, segment_length=10):
     """
-    Divide a GeoPandas DataFrame of LineString geometries into segments of a specified length.
+    Divide a GeoPandas DataFrame of LineString geometries into segments of a
+    specified length.
 
     Parameters:
     - df (GeoDataFrame): The input DataFrame containing LineString geometries.
@@ -122,6 +123,7 @@ def divide_pipes(df, segment_length=10):
 
     return result
 
+
 def aggregate_parallel_pipes(df):
     strategies = {
         "bus0": "first",
@@ -137,7 +139,6 @@ def aggregate_parallel_pipes(df):
         "removed_gas_cap": "sum",
     }
     return df.groupby(df.index).agg(strategies)
-
 
 
 if __name__ == "__main__":

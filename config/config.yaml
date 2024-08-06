@@ -23,11 +23,11 @@ run:
   shared_resources:
     policy: base #stops recalculating
     exclude:
-      - existing_heating.csv # specify files which should not be shared between scenarios
-      - costs
-      - retrieve_cost # This is necessary to save retrieve_cost_data_{year}.log in the correct folder
-      - industry_sector_ratios
-      - build_industry_sector_ratios # This is necessary to save build_industry_sector_ratios_data.log in the correct folder
+    - existing_heating.csv   # specify files which should not be shared between scenarios
+    - costs
+    - retrieve_cost   # This is necessary to save retrieve_cost_data_{year}.log in the correct folder
+    - industry_sector_ratios
+    - build_industry_sector_ratios   # This is necessary to save build_industry_sector_ratios_data.log in the correct folder
   disable_progressbar: true
   debug_co2_limit: false
   debug_h2deriv_limit: false
@@ -41,14 +41,14 @@ iiasa_database:
     transport: Aladin v1
     industry: FORECAST v1.0
   scenarios:
-    - CurrentPolicies
-    - KN2045_Elec_v4
-    - KN2045_H2_v4
-    - KN2045_Bal_v4
-    - KN2045plus_EasyRide
-    - KN2045plus_LowDemand
-    - KN2045minus_WorstCase
-    - KN2045minus_SupplyFocus
+  - CurrentPolicies
+  - KN2045_Elec_v4
+  - KN2045_H2_v4
+  - KN2045_Bal_v4
+  - KN2045plus_EasyRide
+  - KN2045plus_LowDemand
+  - KN2045minus_WorstCase
+  - KN2045minus_SupplyFocus
   reference_scenario: KN2045_Bal_v4
   region: Deutschland
 
@@ -67,7 +67,7 @@ scenario:
   opts:
   - ''
   sector_opts:
-    - none
+  - none
   planning_horizons:
   - 2020
   - 2025
@@ -102,7 +102,7 @@ atlite:
       dy: 0.3
       time: ['2019', '2019']
 
-    
+
 renewable:
   onwind:
     cutout: europe-2019-sarah3-era5
@@ -205,28 +205,28 @@ limits_capacity_max:
         2045: 400
 
 limits_capacity_min:
-    Generator:
-      onwind:
-        DE:
-          2030: 115 # Wind-an-Land Law
-          2035: 115 # Wind-an-Land Law
-          2040: 115 # Wind-an-Land Law
-          2045: 115
-      offwind:
-        DE:
-          2030: 30 # Wind-auf-See Law
-          2035: 30
-          2040: 30
-          2045: 30
-      solar:
-        DE:
+  Generator:
+    onwind:
+      DE:
+        2030: 115   # Wind-an-Land Law
+        2035: 115   # Wind-an-Land Law
+        2040: 115   # Wind-an-Land Law
+        2045: 115
+    offwind:
+      DE:
+        2030: 30   # Wind-auf-See Law
+        2035: 30
+        2040: 30
+        2045: 30
+    solar:
+      DE:
           # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW,
           # assuming at least 1/3 of difference reached in 2025
-          2025: 101
-          2030: 101
-          2035: 101
-          2040: 101
-          2045: 101
+        2025: 101
+        2030: 101
+        2035: 101
+        2040: 101
+        2045: 101
 
 
 # limits_capacity_min:
@@ -461,7 +461,7 @@ plotting:
 #powerplants_filter: (DateOut >= 2019 or DateOut != DateOut)
 electricity:
   powerplants_filter: (DateOut >= 2019 or DateOut != DateOut) and not (Country == "DE" and Set == "CHP")
-  custom_powerplants: True
+  custom_powerplants: true
   custom_file: resources/german_chp.csv
   estimate_renewable_capacities:
     year: 2019
