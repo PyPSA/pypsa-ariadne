@@ -551,7 +551,7 @@ def aladin_mobility_demand(n):
         * 1e6
         / (
             number_cars
-            * snakemake.config["sector"]["land_transport_electric_share"][
+            * snakemake.params.land_transport_electric_share[
                 int(snakemake.wildcards.planning_horizons)
             ]
         )
