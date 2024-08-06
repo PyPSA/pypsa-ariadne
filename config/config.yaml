@@ -15,7 +15,7 @@ run:
   # - KN2045plus_EasyRide
   # - KN2045plus_LowDemand
   # - KN2045minus_WorstCase
-  - KN2045minus_SupplyFocus
+  # - KN2045minus_SupplyFocus
   scenarios:
     enable: true
     manual_file: config/scenarios.manual.yaml
