@@ -66,4 +66,3 @@ dependencies:
   - snakemake-executor-plugin-cluster-generic
   - highspy
   # - git+https://github.com/PyPSA/pypsa@master # Until new release
-
