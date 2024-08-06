@@ -163,7 +163,7 @@ clustering:
 #     'PL': 0.0227 
 #     'SE': 0.0227 
   temporal:
-    resolution_sector: 365H
+    resolution_sector: 780H
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:
@@ -491,4 +491,7 @@ must_run_biomass:
   enable: true
   p_min_pu: 0.7 
   regions: ['DE']
+
+emissions_upstream:
+  enable: true
 

@@ -453,6 +453,22 @@ def aladin_mobility_demand(n):
         n.stores.loc[dsm_i].e_nom *= pd.Series(factor.values, index=dsm_i)
 
 
+def remove_downstream_constraint(n):
+    """
+    Delete current downstream constraint and save global co2 limit in n.meta.
+
+    Parameters:
+        n (pypsa.Network): The PyPSA network object.
+
+    Returns:
+        None
+    """
+    logger.info(f"Remove global downstream co2 constraint.")
+    n.meta["_global_co2_limit"] = n.global_constraints.loc["CO2Limit","constant"] 
+    n.remove("GlobalConstraint", "CO2Limit")
+
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
@@ -521,5 +537,8 @@ if __name__ == "__main__":
 
     if snakemake.params.biomass_must_run["enable"]:
         must_run_biomass(n, snakemake.params.biomass_must_run["p_min_pu"], snakemake.params.biomass_must_run["regions"])
+
+    if snakemake.params.emissions_upstream["enable"]:
+        remove_downstream_constraint(n)
 
     n.export_to_netcdf(snakemake.output.network)
