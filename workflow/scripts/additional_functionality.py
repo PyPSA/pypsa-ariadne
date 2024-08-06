@@ -421,26 +421,27 @@ def additional_functionality(n, snapshots, snakemake):
     logger.info("Adding Ariadne-specific functionality")
 
     investment_year = int(snakemake.wildcards.planning_horizons[-4:])
-    bc = snakemake.params.solving["constraints"]
+    constraints = snakemake.params.solving["constraints"]
 
-    add_min_limits(n, investment_year, bc["limits_capacity_min"])
+    add_min_limits(n, investment_year, constraints["limits_capacity_min"])
 
-    add_max_limits(n, investment_year, bc["limits_capacity_max"])
+    add_max_limits(n, investment_year, constraints["limits_capacity_max"])
 
-    h2_import_limits(n, snapshots, investment_year, bc["limits_volume_max"])
+    h2_import_limits(n, snapshots, investment_year, constraints["limits_volume_max"])
     
-    electricity_import_limits(n, snapshots, investment_year, bc["limits_volume_max"])
+    electricity_import_limits(n, snapshots, investment_year, constraints["limits_volume_max"])
     
     if investment_year >= 2025:
-        h2_production_limits(n, snapshots, investment_year, bc["limits_volume_min"], bc["limits_volume_max"])
+        h2_production_limits(n, snapshots, investment_year, constraints["limits_volume_min"], constraints["limits_volume_max"])
     
     if not snakemake.config["run"]["debug_h2deriv_limit"]:
-        add_h2_derivate_limit(n, snapshots, investment_year, bc["limits_volume_max"])
+        add_h2_derivate_limit(n, snapshots, investment_year, constraints["limits_volume_max"])
 
-    #force_boiler_profiles_existing_per_load(n)
     force_boiler_profiles_existing_per_boiler(n)
 
-    if isinstance(bc["co2_budget_national"], dict):
-        limit_countries = bc["co2_budget_national"][investment_year]
+    if isinstance(constraints["co2_budget_national"], dict):
+        limit_countries = constraints["co2_budget_national"][investment_year]
         add_co2limit_country(n, limit_countries, snakemake,                  
             debug=snakemake.config["run"]["debug_co2_limit"])
+    else:
+        logger.warning("No national CO2 budget specified!")
