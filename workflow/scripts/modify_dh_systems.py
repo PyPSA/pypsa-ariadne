@@ -35,7 +35,12 @@ def load_egon():
         218: "Biomass (excluding wood, biogas)",
     }
 
-    df = pd.read_json(snakemake.input.fn)
+    # Load Json from snakemakeinput and write into dataframe df
+
+    with open(snakemake.input.fn) as datafile:
+        data = json.load(datafile)["data"]
+    df = pd.DataFrame(data)
+
     id_region = pd.read_json(snakemake.input.fn_map)
 
     df["internal_id"] = df["internal_id"].apply(lambda x: x[0])
@@ -139,67 +144,6 @@ def update_urban_loads_de(egon_gdf, n_pre):
     return
 
 
-def prepare_subnodes_de(egon_gdf):
-    # TODO: Embed I&O in snakemake rule, add potentials, match CHP capacities
-
-    # Load and prepare Triebs data
-    dh_areas_triebs = pd.read_excel(
-        snakemake.input.triebs,
-        sheet_name="Staedte",
-    )
-    # convert dataframe dh_areas_triebs to geopandas dataframe using the Latirude and Longitude columns for geometry column as point coordinates
-    dh_areas_triebs["geometry"] = gpd.points_from_xy(
-        dh_areas_triebs["Longitude"], dh_areas_triebs["Latitude"]
-    )
-    dh_areas_triebs = gpd.GeoDataFrame(dh_areas_triebs, geometry="geometry")
-
-    # Merge merged_gdf with dh_areas_triebs using the nuts3 id
-    merged_gdf = egon_gdf.merge(
-        dh_areas_triebs, left_on="index", right_on="NUTS3", how="right"
-    )
-    # Create additional column nuts_3_matchshape that contains the value of the index column in merged_gdf of the row where the geometry column of dh_areas_triebs intersects with the geometry column of nuts3_shapes
-
-    merged_gdf.loc[merged_gdf.geometry_x.isna(), "geometry_x"] = merged_gdf.loc[
-        merged_gdf.geometry_x.isna()
-    ].apply(
-        lambda x: egon_gdf.loc[
-            egon_gdf.geometry.contains(x.geometry_y), "geometry"
-        ].item(),
-        axis=1,
-    )
-    merged_gdf.loc[merged_gdf["index"].isna(), "index"] = merged_gdf.loc[
-        merged_gdf["index"].isna()
-    ].apply(
-        lambda x: egon_gdf.loc[
-            egon_gdf.geometry.contains(x.geometry_y), "index"
-        ].item(),
-        axis=1,
-    )
-    merged_gdf.loc[
-        merged_gdf["District heating"].isna(), "District heating"
-    ] = merged_gdf.loc[merged_gdf["District heating"].isna()].apply(
-        lambda x: egon_gdf.loc[
-            egon_gdf.geometry.contains(x.geometry_y), "District heating"
-        ].item(),
-        axis=1,
-    )
-
-    # Intraregional distribution key according to population
-    merged_gdf["intrareg_dist_key"] = merged_gdf.apply(
-        lambda reg: reg["Einwohnerzahl [-]"]
-        / merged_gdf.loc[
-            merged_gdf["index"] == reg["index"], "Einwohnerzahl [-]"
-        ].sum(),
-        axis=1,
-    ).sort_values()
-    # Multiply column District heating with distribution key
-    merged_gdf["demand_dh_subnode"] = (
-        merged_gdf["District heating"] * merged_gdf["intrareg_dist_key"]
-    )
-
-    return merged_gdf
-
-
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
@@ -227,5 +171,4 @@ if __name__ == "__main__":
     egon_gdf = load_egon()
     update_urban_loads_de(egon_gdf, n)
 
-    if snakemake.params.enable_subnodes_de:
-        prepare_subnodes_de(egon_gdf)
+    n.export_to_netcdf(snakemake.output[0])
