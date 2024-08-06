@@ -384,10 +384,10 @@ def force_boiler_profiles_existing_per_boiler(n):
     n.links["fixed_profile_scaling_opt"] = 0.
 
 
-def add_h2_derivate_limit(n, snapshots, investment_year, limit_volume_max):
+def add_h2_derivate_limit(n, investment_year, limits_volume_max):
 
-    for ct in limit_volume_max["h2_derivate_import"]:
-        limit = limit_volume_max["h2_derivate_import"][ct][investment_year]*1e6
+    for ct in limits_volume_max["h2_derivate_import"]:
+        limit = limits_volume_max["h2_derivate_import"][ct][investment_year]*1e6
 
         logger.info(f"limiting H2 derivate imports in {ct} to {limit/1e6} TWh/a")
 
@@ -436,7 +436,8 @@ def additional_functionality(n, snapshots, snakemake):
     
     if not snakemake.config["run"]["debug_h2deriv_limit"]:
         add_h2_derivate_limit(n, snapshots, investment_year, constraints["limits_volume_max"])
-
+    
+    #force_boiler_profiles_existing_per_load(n)
     force_boiler_profiles_existing_per_boiler(n)
 
     if isinstance(constraints["co2_budget_national"], dict):
