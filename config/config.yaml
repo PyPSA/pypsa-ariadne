@@ -416,7 +416,53 @@ solving:
   #           2040: 400 # PV strategy
   #           2045: 400
   #           # What about the EEG2023 "Strommengenpfad"?
-        
+    # boundary condition of maximum volumes
+    limits_volume_max:
+      # constrain electricity import in TWh
+      electricity_import:
+        DE:
+          2020: -20
+          2025: 0
+          2030: 0
+          2035: 40
+          2040: 80
+          2045: 125
+      electrolysis:
+      # boundary condition lower?
+        DE:
+          2020: 0
+          2025: 5
+          2030: 45
+          2035: 130
+          2040: 215
+          2045: 300
+      h2_derivate_import:
+      # boundary condition lower?
+        DE:
+          2020: 0
+          2025: 0
+          2030: 10
+          2035: 105
+          2040: 200
+          2045: 300
+      h2_import:
+      # boundary condition lower?
+        DE:
+          2020: 0
+          2025: 5
+          2030: 15
+          2035: 115
+          2040: 220
+          2045: 325
+    limits_volume_min:
+      electrolysis:
+        DE:
+          2020: 0
+          2025: 0
+          2030: 0
+          2035: 0
+          2040: 0
+          2045: 0      
   # solver:
   #   options: gurobi-numeric-focus
   # solver_options:
