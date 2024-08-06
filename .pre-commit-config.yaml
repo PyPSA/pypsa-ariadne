@@ -81,5 +81,3 @@ repos:
   hooks:
   - id: jupyter-notebook-cleanup
     exclude: examples/solve-on-remote.ipynb
-
-

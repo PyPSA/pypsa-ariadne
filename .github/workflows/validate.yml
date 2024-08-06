@@ -29,16 +29,16 @@ jobs:
     strategy:
       matrix:
         include:
-          - {artifact_name: "results (feature branch)", path: "~/${{ github.repository }}/feature/results"}
-          - {artifact_name: "results (base branch)", path: "~/${{ github.repository }}/main/results"}
-          - {artifact_name: "validator-metadata", path: "~/${{ github.repository }}/validator-metadata.yml"}
+        - {artifact_name: "results (feature branch)", path: "~/${{ github.repository }}/feature/results"}
+        - {artifact_name: "results (base branch)", path: "~/${{ github.repository }}/main/results"}
+        - {artifact_name: "validator-metadata", path: "~/${{ github.repository }}/validator-metadata.yml"}
     steps:
     - name: Upload artifacts - ${{ matrix.artifact_name }}
       uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.artifact_name }}
         path: |
-            ${{ matrix.path }}
+          ${{ matrix.path }}
         if-no-files-found: error
         retention-days: 90
 
@@ -47,17 +47,17 @@ jobs:
     needs: upload-artifacts
     runs-on: ubuntu-latest
     steps:
-      - uses: lkstrp/pypsa-validator@main
-        with:
-          step: create-comment
-          snakemake_config: config/config.yaml
+    - uses: lkstrp/pypsa-validator@main
+      with:
+        step: create-comment
+        snakemake_config: config/config.yaml
           # The path starting from prefix in config
           # For plot results/<prefix>/<scenario>/<plot_name>.png pass
           # <scenario>/<plot_name>.png
-          plots: >
-            "
-            KN2045_Bal_v4/ariadne/primary_energy.png
-            KN2045_Bal_v4/ariadne/secondary_energy.png
-            KN2045_Bal_v4/ariadne/final_energy.png
-            "
-          repo_private_key: ${{ secrets.REPO_PLOTS_PRIVATE_KEY }}
+        plots: >
+          "
+          KN2045_Bal_v4/ariadne/primary_energy.png
+          KN2045_Bal_v4/ariadne/secondary_energy.png
+          KN2045_Bal_v4/ariadne/final_energy.png
+          "
+        repo_private_key: ${{ secrets.REPO_PLOTS_PRIVATE_KEY }}
