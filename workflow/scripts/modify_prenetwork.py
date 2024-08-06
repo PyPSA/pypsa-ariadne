@@ -546,7 +546,16 @@ def aladin_mobility_demand(n):
         "number cars"
     ].filter(like="DE")
 
-    factor = aladin_demand.number_of_cars*1e6 / (number_cars*snakemake.params.land_transport_electric_share[int(snakemake.wildcards.planning_horizons)])
+    factor = (
+        aladin_demand.number_of_cars
+        * 1e6
+        / (
+            number_cars
+            * snakemake.params.land_transport_electric_share[
+                int(snakemake.wildcards.planning_horizons)
+            ]
+        )
+    )
 
     BEV_charger_i = n.links[
         (n.links.carrier == "BEV charger") & (n.links.bus0.str.startswith("DE"))

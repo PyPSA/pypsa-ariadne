@@ -211,7 +211,9 @@ def write_to_scenario_yaml(input, output, scenarios, df):
         config[scenario]["solving"]["constraints"]["co2_budget_national"] = {}
         for year, target in co2_budget_fractions.items():
             config[scenario]["solving"]["constraints"]["co2_budget_national"][year] = {}
-            config[scenario]["solving"]["constraints"]["co2_budget_national"][year]["DE"] = target
+            config[scenario]["solving"]["constraints"]["co2_budget_national"][year][
+                "DE"
+            ] = target
 
     # write back to yaml file
     yaml.dump(config, Path(output))

@@ -18,11 +18,16 @@ def add_min_capacity_limits(n, investment_year, limits_capacity_min):
 
             for ct in limits_capacity_min[c.name][carrier]:
                 # check if the limit is defined for the investement year
-                if investment_year not in limits_capacity_min[c.name][carrier][ct].keys():
+                if (
+                    investment_year
+                    not in limits_capacity_min[c.name][carrier][ct].keys()
+                ):
                     continue
-                limit = 1e3*limits_capacity_min[c.name][carrier][ct][investment_year]
+                limit = 1e3 * limits_capacity_min[c.name][carrier][ct][investment_year]
 
-                logger.info(f"Adding constraint on {c.name} {carrier} capacity in {ct} to be greater than {limit} MW")
+                logger.info(
+                    f"Adding constraint on {c.name} {carrier} capacity in {ct} to be greater than {limit} MW"
+                )
 
                 valid_components = (
                     (c.df.index.str[:2] == ct)
@@ -57,7 +62,8 @@ def add_min_capacity_limits(n, investment_year, limits_capacity_min):
                         type="",
                         carrier_attribute="",
                     )
-                
+
+
 def add_max_capacity_limits(n, investment_year, limits_capacity_max):
 
     for c in n.iterate_components(limits_capacity_max):
@@ -66,9 +72,12 @@ def add_max_capacity_limits(n, investment_year, limits_capacity_max):
         for carrier in limits_capacity_max[c.name]:
 
             for ct in limits_capacity_max[c.name][carrier]:
-                if investment_year not in limits_capacity_max[c.name][carrier][ct].keys():
+                if (
+                    investment_year
+                    not in limits_capacity_max[c.name][carrier][ct].keys()
+                ):
                     continue
-                limit = 1e3*limits_capacity_max[c.name][carrier][ct][investment_year]
+                limit = 1e3 * limits_capacity_max[c.name][carrier][ct][investment_year]
 
                 valid_components = (
                     (c.df.index.str[:2] == ct)
@@ -117,7 +126,7 @@ def add_max_capacity_limits(n, investment_year, limits_capacity_max):
 def h2_import_limits(n, investment_year, limits_volume_max):
 
     for ct in limits_volume_max["h2_import"]:
-        limit = limits_volume_max["h2_import"][ct][investment_year]*1e6
+        limit = limits_volume_max["h2_import"][ct][investment_year] * 1e6
 
         logger.info(f"limiting H2 imports in {ct} to {limit/1e6} TWh/a")
 
@@ -155,16 +164,19 @@ def h2_import_limits(n, investment_year, limits_volume_max):
                 carrier_attribute="",
             )
 
+
 def h2_production_limits(n, investment_year, limits_volume_min, limits_volume_max):
 
     for ct in limits_volume_max["electrolysis"]:
         if ct not in limits_volume_min["electrolysis"]:
-            logger.warning(f"no lower limit for H2 electrolysis in {ct} assuming 0 TWh/a")
+            logger.warning(
+                f"no lower limit for H2 electrolysis in {ct} assuming 0 TWh/a"
+            )
             limit_lower = 0
         else:
-            limit_lower = limits_volume_min["electrolysis"][ct][investment_year]*1e6
-        
-        limit_upper = limits_volume_max["electrolysis"][ct][investment_year]*1e6
+            limit_lower = limits_volume_min["electrolysis"][ct][investment_year] * 1e6
+
+        limit_upper = limits_volume_max["electrolysis"][ct][investment_year] * 1e6
 
         logger.info(
             f"limiting H2 electrolysis in DE between {limit_lower/1e6} and {limit_upper/1e6} TWh/a"
@@ -212,7 +224,7 @@ def h2_production_limits(n, investment_year, limits_volume_min, limits_volume_ma
 def electricity_import_limits(n, investment_year, limits_volume_max):
 
     for ct in limits_volume_max["electricity_import"]:
-        limit = limits_volume_max["electricity_import"][ct][investment_year]*1e6
+        limit = limits_volume_max["electricity_import"][ct][investment_year] * 1e6
 
         logger.info(f"limiting electricity imports in {ct} to {limit/1e6} TWh/a")
 
@@ -486,7 +498,7 @@ def force_boiler_profiles_existing_per_boiler(n):
 def add_h2_derivate_limit(n, investment_year, limits_volume_max):
 
     for ct in limits_volume_max["h2_derivate_import"]:
-        limit = limits_volume_max["h2_derivate_import"][ct][investment_year]*1e6
+        limit = limits_volume_max["h2_derivate_import"][ct][investment_year] * 1e6
 
         logger.info(f"limiting H2 derivate imports in {ct} to {limit/1e6} TWh/a")
 
@@ -533,21 +545,30 @@ def additional_functionality(n, snapshots, snakemake):
     add_max_capacity_limits(n, investment_year, constraints["limits_capacity_max"])
 
     h2_import_limits(n, investment_year, constraints["limits_volume_max"])
-    
+
     electricity_import_limits(n, investment_year, constraints["limits_volume_max"])
-    
+
     if investment_year >= 2025:
-        h2_production_limits(n, investment_year, constraints["limits_volume_min"], constraints["limits_volume_max"])
-    
+        h2_production_limits(
+            n,
+            investment_year,
+            constraints["limits_volume_min"],
+            constraints["limits_volume_max"],
+        )
+
     if not snakemake.config["run"]["debug_h2deriv_limit"]:
         add_h2_derivate_limit(n, investment_year, constraints["limits_volume_max"])
-    
-    #force_boiler_profiles_existing_per_load(n)
+
+    # force_boiler_profiles_existing_per_load(n)
     force_boiler_profiles_existing_per_boiler(n)
 
     if isinstance(constraints["co2_budget_national"], dict):
         limit_countries = constraints["co2_budget_national"][investment_year]
-        add_co2limit_country(n, limit_countries, snakemake,                  
-            debug=snakemake.config["run"]["debug_co2_limit"])
+        add_co2limit_country(
+            n,
+            limit_countries,
+            snakemake,
+            debug=snakemake.config["run"]["debug_co2_limit"],
+        )
     else:
         logger.warning("No national CO2 budget specified!")

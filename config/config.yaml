@@ -370,28 +370,28 @@ solving:
             2040: 400
             2045: 400
     limits_capacity_min:
-        Generator:
-          onwind:
-            DE:
-              2030: 115 # Wind-an-Land Law
-              2035: 115 # Wind-an-Land Law
-              2040: 115 # Wind-an-Land Law
-              2045: 115
-          offwind:
-            DE:
-              2030: 30 # Wind-auf-See Law
-              2035: 30 
-              2040: 30
-              2045: 30 
-          solar:
-            DE:
-              # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW, 
+      Generator:
+        onwind:
+          DE:
+            2030: 115   # Wind-an-Land Law
+            2035: 115   # Wind-an-Land Law
+            2040: 115   # Wind-an-Land Law
+            2045: 115
+        offwind:
+          DE:
+            2030: 30   # Wind-auf-See Law
+            2035: 30
+            2040: 30
+            2045: 30
+        solar:
+          DE:
+              # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW,
               # assuming at least 1/3 of difference reached in 2025
-              2025: 101 
-              2030: 101 
-              2035: 101
-              2040: 101
-              2045: 101
+            2025: 101
+            2030: 101
+            2035: 101
+            2040: 101
+            2045: 101
   # For reference, this are the values specified in the laws
   # limits_capacity_min:
   #     Generator:
@@ -410,9 +410,9 @@ solving:
   #           2045: 70 #70 Wind-auf-See Law
   #       solar:
   #         DE:
-  #           # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW, 
+  #           # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW,
   #           # assuming at least 1/3 of difference reached in 2025
-  #           2025: 101 
+  #           2025: 101
   #           2030: 215 # PV strategy
   #           2035: 309
   #           2040: 400 # PV strategy
@@ -464,7 +464,7 @@ solving:
           2030: 0
           2035: 0
           2040: 0
-          2045: 0      
+          2045: 0
   # solver:
   #   options: gurobi-numeric-focus
   # solver_options:

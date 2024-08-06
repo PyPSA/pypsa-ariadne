@@ -278,7 +278,7 @@ KN2045_H2_v4:
           DE:
             2020: 0
             2025: 5
-            2030: 45 # scenario guidelines 
+            2030: 45 # scenario guidelines
             2035: 155
             2040: 265
             2045: 400 # scenario guidelines
@@ -630,7 +630,7 @@ KN2045minus_SupplyFocus:
               2045: 30
           solar:
             DE:
-              2025: 101 
+              2025: 101
               2030: 215 # PV strategy
               2035: 215 # not forcing more EE
               2040: 215
