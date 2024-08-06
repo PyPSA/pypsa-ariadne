@@ -427,15 +427,15 @@ def additional_functionality(n, snapshots, snakemake):
 
     add_max_capacity_limits(n, investment_year, constraints["limits_capacity_max"])
 
-    h2_import_limits(n, snapshots, investment_year, constraints["limits_volume_max"])
+    h2_import_limits(n, investment_year, constraints["limits_volume_max"])
     
-    electricity_import_limits(n, snapshots, investment_year, constraints["limits_volume_max"])
+    electricity_import_limits(n, investment_year, constraints["limits_volume_max"])
     
     if investment_year >= 2025:
-        h2_production_limits(n, snapshots, investment_year, constraints["limits_volume_min"], constraints["limits_volume_max"])
+        h2_production_limits(n, investment_year, constraints["limits_volume_min"], constraints["limits_volume_max"])
     
     if not snakemake.config["run"]["debug_h2deriv_limit"]:
-        add_h2_derivate_limit(n, snapshots, investment_year, constraints["limits_volume_max"])
+        add_h2_derivate_limit(n, investment_year, constraints["limits_volume_max"])
     
     #force_boiler_profiles_existing_per_load(n)
     force_boiler_profiles_existing_per_boiler(n)
