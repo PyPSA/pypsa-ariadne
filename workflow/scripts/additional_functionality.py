@@ -9,7 +9,7 @@ from xarray import DataArray
 logger = logging.getLogger(__name__)
 
 
-def add_min_limits(n, investment_year, limits_capacity_min):
+def add_min_capacity_limits(n, investment_year, limits_capacity_min):
 
     for c in n.iterate_components(limits_capacity_min):
         logger.info(f"Adding minimum constraints for {c.list_name}")
@@ -55,7 +55,7 @@ def add_min_limits(n, investment_year, limits_capacity_min):
                         carrier_attribute="",
                     )
                 
-def add_max_limits(n, investment_year, limits_capacity_max):
+def add_max_capacity_limits(n, investment_year, limits_capacity_max):
 
     for c in n.iterate_components(limits_capacity_max):
         logger.info(f"Adding maximum constraints for {c.list_name}")
@@ -105,7 +105,7 @@ def add_max_limits(n, investment_year, limits_capacity_max):
                     )
 
 
-def h2_import_limits(n, snapshots, investment_year, limits_volume_max):
+def h2_import_limits(n, investment_year, limits_volume_max):
 
     for ct in limits_volume_max["h2_import"]:
         limit = limits_volume_max["h2_import"][ct][investment_year]*1e6
@@ -136,7 +136,7 @@ def h2_import_limits(n, snapshots, investment_year, limits_volume_max):
                 carrier_attribute="",
             )
 
-def h2_production_limits(n, snapshots, investment_year, limits_volume_min, limits_volume_max):
+def h2_production_limits(n, investment_year, limits_volume_min, limits_volume_max):
 
     for ct in limits_volume_max["electrolysis"]:
         if ct not in limits_volume_min["electrolysis"]:
@@ -184,7 +184,7 @@ def h2_production_limits(n, snapshots, investment_year, limits_volume_min, limit
             )
 
 
-def electricity_import_limits(n, snapshots, investment_year, limits_volume_max):
+def electricity_import_limits(n, investment_year, limits_volume_max):
 
     for ct in limits_volume_max["electricity_import"]:
         limit = limits_volume_max["electricity_import"][ct][investment_year]*1e6
@@ -423,9 +423,9 @@ def additional_functionality(n, snapshots, snakemake):
     investment_year = int(snakemake.wildcards.planning_horizons[-4:])
     constraints = snakemake.params.solving["constraints"]
 
-    add_min_limits(n, investment_year, constraints["limits_capacity_min"])
+    add_min_capacity_limits(n, investment_year, constraints["limits_capacity_min"])
 
-    add_max_limits(n, investment_year, constraints["limits_capacity_max"])
+    add_max_capacity_limits(n, investment_year, constraints["limits_capacity_max"])
 
     h2_import_limits(n, snapshots, investment_year, constraints["limits_volume_max"])
     
