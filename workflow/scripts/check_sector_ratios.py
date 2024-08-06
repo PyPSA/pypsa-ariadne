@@ -1,7 +1,7 @@
+# -*- coding: utf-8 -*-
 import logging
 
 import pandas as pd
-
 import pypsa
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ if __name__ == "__main__":
             ll="v1.2",
             sector_opts="None",
             planning_horizons="2030",
-            run="KN2045_Bal_v4"
+            run="KN2045_Bal_v4",
         )
     logger.info("Check sector ratios")
 

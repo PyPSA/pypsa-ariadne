@@ -381,9 +381,9 @@ KN2045plus_EasyRide:
     steam_hydrogen_fraction: 0.3
     steam_electricity_fraction: 0.3
 
-        
+
 KN2045plus_LowDemand:
-# Im Vergleich zu Easy Ride eher knappe EE Erzeugung 
+# Im Vergleich zu Easy Ride eher knappe EE Erzeugung
 # innerhalb Deutschlands und knappe Importe EE möglich
   iiasa_database:
     reference_scenario: KN2045plus_LowDemand # TODO: wait for database
