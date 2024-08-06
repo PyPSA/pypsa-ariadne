@@ -1285,7 +1285,7 @@ def get_secondary_energy(n, region, _industry_demand):
         hydrogen_production.get('H2 Electrolysis', 0)
 
     var["Secondary Energy|Hydrogen|Gas"] = \
-        hydrogen_production.get(["SMR","SMR CC"]).sum()
+        hydrogen_production.reindex(["SMR","SMR CC"]).sum()
 
     var["Secondary Energy|Hydrogen"] = (
         var["Secondary Energy|Hydrogen|Electricity"] 
