@@ -4,7 +4,9 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240801offwindconnectioncosts
+
+  prefix: 240806oilrefineries
+
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -18,7 +20,7 @@ run:
     enable: true
     manual_file: config/scenarios.manual.yaml
     file: config/scenarios.automated.yaml
-  shared_resources: 
+  shared_resources:
     policy: base #stops recalculating
     exclude:
       - existing_heating.csv # specify files which should not be shared between scenarios
@@ -148,20 +150,20 @@ clustering:
     'SE': 0.0454
 # # high spatial resolution: change clusters to 44
 #   focus_weights:
-#   # 44 nodes: 30 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn" (high spatial)  
-#     'DE': 0.6818 # 30/44 
-#     'AT': 0.0227 #  1/44 
-#     'BE': 0.0227 
-#     'CH': 0.0227 
-#     'CZ': 0.0227 
-#     'DK': 0.0455 # 2/44 
-#     'FR': 0.0227 
-#     'GB': 0.0455 
-#     'LU': 0.0227 
-#     'NL': 0.0227 
-#     'NO': 0.0227 
-#     'PL': 0.0227 
-#     'SE': 0.0227 
+#   # 44 nodes: 30 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn" (high spatial)
+#     'DE': 0.6818 # 30/44
+#     'AT': 0.0227 #  1/44
+#     'BE': 0.0227
+#     'CH': 0.0227
+#     'CZ': 0.0227
+#     'DK': 0.0455 # 2/44
+#     'FR': 0.0227
+#     'GB': 0.0455
+#     'LU': 0.0227
+#     'NL': 0.0227
+#     'NO': 0.0227
+#     'PL': 0.0227
+#     'SE': 0.0227
   temporal:
     resolution_sector: 365H
 
@@ -213,17 +215,17 @@ limits_capacity_min:
       offwind:
         DE:
           2030: 30 # Wind-auf-See Law
-          2035: 30 
+          2035: 30
           2040: 30
-          2045: 30 
+          2045: 30
       solar:
         DE:
-          # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW, 
+          # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW,
           # assuming at least 1/3 of difference reached in 2025
-          2025: 101 
-          2030: 101 
+          2025: 101
+          2030: 101
           2035: 101
-          2040: 101 
+          2040: 101
           2045: 101
 
 
@@ -244,9 +246,9 @@ limits_capacity_min:
 #           2045: 70 #70 Wind-auf-See Law
 #       solar:
 #         DE:
-#           # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW, 
+#           # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW,
 #           # assuming at least 1/3 of difference reached in 2025
-#           2025: 101 
+#           2025: 101
 #           2030: 215 # PV strategy
 #           2035: 309
 #           2040: 400 # PV strategy
@@ -484,11 +486,10 @@ pypsa_eur:
 
 
 co2_price_add_on_fossils:
-  2020: 25 
+  2020: 25
   2025: 60
-  
+
 must_run_biomass:
   enable: true
-  p_min_pu: 0.7 
+  p_min_pu: 0.7
   regions: ['DE']
-
