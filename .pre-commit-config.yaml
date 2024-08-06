@@ -1,6 +1,3 @@
-# SPDX-FileCopyrightText: : 2022 The PyPSA-Eur Authors
-#
-# SPDX-License-Identifier: CC0-1.0
 exclude: "^LICENSES"
 
 repos:
@@ -85,8 +82,4 @@ repos:
   - id: jupyter-notebook-cleanup
     exclude: examples/solve-on-remote.ipynb
 
-  # Check for FSFE REUSE compliance (licensing)
-- repo: https://github.com/fsfe/reuse-tool
-  rev: v4.0.3
-  hooks:
-  - id: reuse
+
