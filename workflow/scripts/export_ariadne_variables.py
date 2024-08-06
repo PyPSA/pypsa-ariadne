@@ -1017,7 +1017,7 @@ def get_primary_energy(n, region):
     ).multiply(MWh2PJ).sum()
 
     var["Primary Energy|Hydro"] = \
-        renewable_electricity.get([
+        renewable_electricity.reindex([
             "ror", "PHS", "hydro",
         ]).sum()
     

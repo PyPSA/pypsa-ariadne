@@ -11,4 +11,13 @@ HVDC inverter pair,investment,597015,EUR2020/MW,NEP2021+NEP2023
 HVDC overhead,investment,995,EUR2020/MW/km,NEP2021+NEP2023
 HVDC submarine,investment,3234,EUR2020/MW/km,NEP2021
 HVAC overhead,investment,1215,EUR2020/MW/km,NEP2023
-HVDC submarine,investment,3183,EUR2020/MW/km,NEP2023
+HVDC submarine,investment,3183,EUR2020/MW/km,NEP2023,"equal to HVDC underground"
+offwind-float-connection-submarine,investment,3183,EUR2020/MW/km,NEP2023,"equal to HVDC underground"
+offwind-float-connection-underground,investment,3183,EUR2020/MW/km,NEP2023,"equal to HVDC underground"
+offwind-dc-connection-submarine,investment,3183,EUR2020/MW/km,NEP2023,"equal to HVDC underground"
+offwind-dc-connection-underground,investment,3183,EUR2020/MW/km,NEP2023,"equal to HVDC underground"
+offwind-ac-connection-submarine,investment,4225,EUR2020/MW/km,NEP2023,"equal to AC underground"
+offwind-ac-connection-underground,investment,1215,EUR2020/MW/km,NEP2023,"equal to AC overhead"
+offwind-float-station,investment,700,EUR2020/kW,NEP2023,"cost of two stations"
+offwind-dc-station,investment,700,EUR2020/kW,NEP2023,"cost of two stations"
+
