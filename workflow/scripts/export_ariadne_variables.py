@@ -1008,7 +1008,8 @@ def get_primary_energy(n, region):
                 "Store",
                 ("Link", "gas pipeline"),
                 ("Link", "gas pipeline new"),
-            ], errors="ignore"
+            ],
+            errors="ignore",
         )
         .groupby("carrier")
         .sum()
@@ -1154,7 +1155,8 @@ def get_primary_energy(n, region):
                 # Assuming renewables are only generators and StorageUnits
                 "Link",
                 "Line",
-            ], errors="ignore"
+            ],
+            errors="ignore",
         )
         .filter(like=region)
         .groupby("carrier")

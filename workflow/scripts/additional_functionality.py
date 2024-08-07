@@ -543,7 +543,7 @@ def additional_functionality(n, snapshots, snakemake):
     add_min_capacity_limits(n, investment_year, constraints["limits_capacity_min"])
 
     add_max_capacity_limits(n, investment_year, constraints["limits_capacity_max"])
-    
+
     if int(snakemake.wildcards.clusters) != 1:
         h2_import_limits(n, investment_year, constraints["limits_volume_max"])
 

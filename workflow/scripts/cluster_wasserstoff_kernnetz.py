@@ -176,7 +176,9 @@ if __name__ == "__main__":
 
     if not wasserstoff_kernnetz.empty:
         wasserstoff_kernnetz[["bus0", "bus1"]] = (
-            wasserstoff_kernnetz[["bus0", "bus1"]].apply(sorted, axis=1).apply(pd.Series)
+            wasserstoff_kernnetz[["bus0", "bus1"]]
+            .apply(sorted, axis=1)
+            .apply(pd.Series)
         )
 
         reindex_pipes(wasserstoff_kernnetz, prefix="H2 pipeline")
