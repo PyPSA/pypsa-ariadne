@@ -81,7 +81,6 @@ rule clean:
         "Remove all build results but keep downloaded data."
     run:
         import shutil
-
         shutil.rmtree("resources")
         shutil.rmtree("results")
         print("Data downloaded to data/ has not been cleaned.")
@@ -171,7 +170,6 @@ rule build_mobility_demand:
     script:
         "scripts/build_mobility_demand.py"
 
-
 rule modify_dh_systems:
     input:
         network=RESULTS
@@ -191,8 +189,8 @@ rule modify_dh_systems:
         mem_mb=1000,
     script:
         "scripts/modify_dh_systems.py"
-
-
+        
+        
 rule modify_prenetwork:
     params:
         enable_kernnetz=config_provider("wasserstoff_kernnetz", "enable"),
