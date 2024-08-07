@@ -425,6 +425,110 @@ def unravel_oilbus(n):
     )
 
 
+def unravel_gasbus(n, costs):
+    """
+    Unravel European gas bus to enable energy balances for import of gas
+    products.
+    """
+    logger.info("Unraveling gas bus")
+
+    ### create DE gas bus/generator/store
+    n.add(
+        "Bus",
+        "DE gas",
+        location="DE",
+        x=10.5,
+        y=51.2,
+        carrier="gas",
+    )
+    n.add(
+        "Generator",
+        "DE gas",
+        bus="DE gas",
+        p_nom_extendable=True,
+        carrier="gas",
+        marginal_cost=costs.at["gas", "fuel"],
+    )
+    n.add(
+        "Store",
+        "DE gas Store",
+        bus="DE gas",
+        carrier="gas",
+        e_nom_extendable=True,
+        e_cyclic=True,
+        capital_cost=costs.at["gas storage", "fixed"],
+        overnight_cost=costs.at["gas storage", "investment"],
+    )
+
+    ### create renewable gas buses
+    n.add("Carrier", "renewable gas")
+
+    n.add(
+        "Bus",
+        "DE renewable gas",
+        location="DE",
+        carrier="renewable gas",
+        x=10.5,
+        y=51.2,
+    )
+    n.add(
+        "Bus",
+        "EU renewable gas",
+        location="EU",
+        carrier="renewable gas",
+    )
+
+    ### biogas is counted as renewable gas
+    biogas_carrier = ["biogas to gas", "biogas to gas CC"]
+    biogas_DE = n.links[
+        (n.links.carrier.isin(biogas_carrier)) & (n.links.index.str[:2] == "DE")
+    ]
+    n.links.loc[biogas_DE.index, "bus1"] = "DE renewable gas"
+
+    biogas_EU = n.links[
+        (n.links.carrier.isin(biogas_carrier)) & (n.links.index.str[:2] != "DE")
+    ]
+    n.links.loc[biogas_EU.index, "bus1"] = "EU renewable gas"
+
+    ### Sabatier is counted as renewable gas
+    sabatier_carrier = ["Sabatier"]
+    sabatier_DE = n.links[
+        (n.links.carrier.isin(sabatier_carrier)) & (n.links.index.str[:2] == "DE")
+    ]
+    n.links.loc[sabatier_DE.index, "bus1"] = "DE renewable gas"
+
+    sabatier_EU = n.links[
+        (n.links.carrier.isin(sabatier_carrier)) & (n.links.index.str[:2] != "DE")
+    ]
+    n.links.loc[sabatier_EU.index, "bus1"] = "EU renewable gas"
+
+    ### change buses of German gas links
+    fossil_links = n.links[(n.links.bus0 == "EU gas") & (n.links.index.str[:2] == "DE")]
+    n.links.loc[fossil_links.index, "bus0"] = "DE gas"
+
+    ### add import/export links
+    n.madd(
+        "Link",
+        ["EU renewable gas -> DE gas", "DE renewable gas -> EU gas"],
+        bus0=["EU renewable gas", "DE renewable gas"],
+        bus1=["DE gas", "EU gas"],
+        carrier="renewable gas",
+        p_nom=1e6,
+        p_min_pu=0,
+    )
+
+    ### add links between renewable and fossil gas buses
+    n.madd(
+        "Link",
+        ["EU renewable gas -> EU gas", "DE renewable gas -> DE gas"],
+        bus0=["EU renewable gas", "DE renewable gas"],
+        bus1=["EU gas", "DE gas"],
+        carrier="renewable gas",
+        p_nom=1e6,
+        p_min_pu=0,
+    )
+
+
 def transmission_costs_from_modified_cost_data(
     n, costs, transmission, length_factor=1.0
 ):
@@ -623,6 +727,9 @@ if __name__ == "__main__":
 
     if not snakemake.config["run"]["debug_unravel_oilbus"]:
         unravel_oilbus(n)
+
+    if not snakemake.config["run"]["debug_unravel_gasbus"]:
+        unravel_gasbus(n, costs)
 
     if snakemake.params.enable_kernnetz:
         fn = snakemake.input.wkn

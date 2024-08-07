@@ -4,9 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-
-  prefix: 20240807fix_hydrogen_import_constraint
-
+  prefix: 20240807unravelCH4coarse
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -32,6 +30,7 @@ run:
   debug_co2_limit: false
   debug_h2deriv_limit: false
   debug_unravel_oilbus: false
+  debug_unravel_gasbus: false
 
 iiasa_database:
   db_name: ariadne2_intern
@@ -205,8 +204,8 @@ costs:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
-  solar_thermal: false
   v2g: false
+  solar_thermal: false
   district_heating:
     potential: 0.3
     progress:
@@ -226,7 +225,9 @@ sector:
   regional_methanol_demand: true  #set to true if regional CO2 constraints needed
   regional_oil_demand: true  #set to true if regional CO2 constraints needed
   regional_coal_demand: true  #set to true if regional CO2 constraints needed
-  gas_network: true
+  gas_network: false
+  regional_gas_demand: true
+  H2_retrofit: true
   biogas_upgrading_cc: true
   cluster_heat_buses: true
   # calculated based on ariadne "Stock|Space Heating"
@@ -478,6 +479,7 @@ plotting:
     load: "#111100"
     H2 pipeline (Kernnetz): '#6b3161'
     renewable oil: '#c9c9c9'
+    renewable gas: '#e05b09'
   countries:
   - all
   - DE

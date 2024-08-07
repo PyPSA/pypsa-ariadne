@@ -200,6 +200,12 @@ rule modify_prenetwork:
             "mobility_demand_aladin_{simpl}_{clusters}_{planning_horizons}.csv"
         ),
         transport_data=resources("transport_data_s{simpl}_{clusters}.csv"),
+        biomass_potentials=resources(
+            "biomass_potentials_s{simpl}_{clusters}_{planning_horizons}.csv"
+        ),
+        industrial_demand=resources(
+            "industrial_energy_demand_elec_s{simpl}_{clusters}_{planning_horizons}.csv"
+        ),
     output:
         network=RESULTS
         + "prenetworks-final/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
