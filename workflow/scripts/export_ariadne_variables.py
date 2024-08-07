@@ -1306,9 +1306,8 @@ def get_secondary_energy(n, region, _industry_demand):
         + var["Secondary Energy|Electricity|Wind"]
     )
 
-    var["Secondary Energy|Electricity|Hydrogen"] = electricity_supply.get(
-        "H2 Fuel Cell", 0
-    )
+    var["Secondary Energy|Electricity|Hydrogen"] = electricity_supply.reindex(
+        ["H2 Fuel Cell", "H2 OCGT", "H2 CCGT", "urban central H2 CHP", "H2 retro OCGT", "H2 retro CCGT", "urban central H2 retro CHP"]).sum()
     # ! Add H2 Turbines if they get implemented
 
     var["Secondary Energy|Electricity|Waste"] = electricity_supply.filter(
@@ -1414,6 +1413,7 @@ def get_secondary_energy(n, region, _industry_demand):
     # var["Secondary Energy|Heat|Nuclear"] = \
     # var["Secondary Energy|Heat|Other"] = \
     # ! Not implemented
+    var["Secondary Energy|Heat|Hydrogen"] = heat_supply.filter(like="urban central H2").sum()
 
     var["Secondary Energy|Heat|Oil"] = heat_supply.filter(
         like="urban central oil"
@@ -1452,6 +1452,7 @@ def get_secondary_energy(n, region, _industry_demand):
         + var["Secondary Energy|Heat|Other"]
         + var["Secondary Energy|Heat|Coal"]
         + var["Secondary Energy|Heat|Waste"]
+        + var["Secondary Energy|Heat|Hydrogen"]
     )
     assert isclose(
         var["Secondary Energy|Heat"],
