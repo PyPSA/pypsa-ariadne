@@ -1008,7 +1008,8 @@ def get_primary_energy(n, region):
                 "Store",
                 ("Link", "gas pipeline"),
                 ("Link", "gas pipeline new"),
-            ]
+            ],
+            errors="ignore",
         )
         .groupby("carrier")
         .sum()
@@ -1154,7 +1155,8 @@ def get_primary_energy(n, region):
                 # Assuming renewables are only generators and StorageUnits
                 "Link",
                 "Line",
-            ]
+            ],
+            errors="ignore",
         )
         .filter(like=region)
         .groupby("carrier")
@@ -1232,6 +1234,7 @@ def get_secondary_energy(n, region, _industry_demand):
         .multiply(MWh2PJ)
         .drop(
             ["AC", "DC", "electricity distribution grid"],
+            errors="ignore",
         )
     )
 
@@ -1544,7 +1547,7 @@ def get_secondary_energy(n, region, _industry_demand):
         .groupby(["carrier", "component"])
         .sum()
         .multiply(MWh2PJ)
-        .drop(["gas pipeline", "gas pipeline new", ("gas", "Store")])
+        .drop(["gas pipeline", "gas pipeline new", ("gas", "Store")], errors="ignore")
         .groupby("carrier")
         .sum()
     )
