@@ -90,6 +90,16 @@ def update_urban_loads_de(egon_gdf, n_pre):
         "pop", axis=1
     ).sum(axis=1)
 
+    dh_shares = pd.read_csv(snakemake.input.district_heat_share, index_col=0)
+    urban_fraction = dh_shares["urban fraction"]
+    max_dh_share = snakemake.params.district_heating["potential"]
+    progress = snakemake.params.district_heating["progress"][
+        int(snakemake.wildcards.planning_horizons)
+    ]
+
+    diff = ((urban_fraction * max_dh_share) - nodal_dh_shares).clip(lower=0).dropna()
+    nodal_dh_shares += diff * progress
+
     nodal_dh_shares.index += " urban central heat"
 
     # District heating demands by cluster in German nodes before heat distribution
@@ -117,7 +127,7 @@ def update_urban_loads_de(egon_gdf, n_pre):
         .sub(nodal_uc_losses, fill_value=0)
     )
 
-    # Modify index of nodal_heat demand to align with urban central loads and aggregatze loads
+    # Modify index of nodal_heat demand to align with urban central loads and aggregate loads
     nodal_heat_demand.index = nodal_heat_demand.index.str.replace(
         "decentral", "central"
     ).str.replace("rural", "urban central")
@@ -125,7 +135,7 @@ def update_urban_loads_de(egon_gdf, n_pre):
     nodal_heat_demand = nodal_heat_demand.groupby(nodal_heat_demand.index).sum()
 
     # Old district heating share
-    nodal_uc_shares = nodal_uc_demand / nodal_heat_demand
+    nodal_uc_shares = (nodal_uc_demand / nodal_heat_demand).fillna(0)
 
     # Scaling factor for update of urban central heat loads
 
@@ -164,7 +174,7 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "modify_dh_systems",
             simpl="",
-            clusters=22,
+            clusters=44,
             opts="",
             ll="vopt",
             sector_opts="none",
