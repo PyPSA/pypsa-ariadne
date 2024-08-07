@@ -577,6 +577,3 @@ def additional_functionality(n, snapshots, snakemake):
         )
     else:
         logger.warning("No national CO2 budget specified!")
-
-    if snakemake.config["electricity"]["H2_plants_DE"]["retrofit_CH4_to_H2"]["enable"]:
-        retrofit_gas_plants(n, snakemake.config["electricity"]["H2_plants_DE"]["retrofit_CH4_to_H2"], investment_year)
