@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240731highspatial
+  prefix: 240807-2045-redispatchnice-25
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -67,11 +67,6 @@ scenario:
   sector_opts:
     - none
   planning_horizons:
-  - 2020
-  - 2025
-  - 2030
-  - 2035
-  - 2040
   - 2045
 
 existing_capacities:
@@ -122,7 +117,7 @@ clustering:
 #     'PL': 0.0227 
 #     'SE': 0.0227 
   temporal:
-    resolution_sector: 365H
+    resolution_sector: 25H
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:
