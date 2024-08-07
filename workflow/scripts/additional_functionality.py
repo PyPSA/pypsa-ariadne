@@ -129,14 +129,18 @@ def h2_import_limits(n, investment_year, limits_volume_max):
         limit = limits_volume_max["h2_import"][ct][investment_year] * 1e6
 
         logger.info(f"limiting H2 imports in {ct} to {limit/1e6} TWh/a")
-
+        pipeline_carrier = [
+            "H2 pipeline",
+            "H2 pipeline (Kernnetz)",
+            "H2 pipeline retrofitted",
+        ]
         incoming = n.links.index[
-            (n.links.carrier == "H2 pipeline")
+            (n.links.carrier.isin(pipeline_carrier))
             & (n.links.bus0.str[:2] != ct)
             & (n.links.bus1.str[:2] == ct)
         ]
         outgoing = n.links.index[
-            (n.links.carrier == "H2 pipeline")
+            (n.links.carrier.isin(pipeline_carrier))
             & (n.links.bus0.str[:2] == ct)
             & (n.links.bus1.str[:2] != ct)
         ]

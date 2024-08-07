@@ -681,9 +681,9 @@ if __name__ == "__main__":
             clusters=22,
             opts="",
             ll="vopt",
-            sector_opts= "none",
-            planning_horizons="2035",
-            run="KN2045_Bal_v4"
+            sector_opts="none",
+            planning_horizons="2020",
+            run="KN2045_Bal_v4",
         )
 
     logger.info("Adding Ariadne-specific functionality")
