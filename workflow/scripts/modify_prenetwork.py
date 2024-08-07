@@ -587,10 +587,10 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "modify_prenetwork",
             simpl="",
-            clusters=44,
+            clusters=22,
             opts="",
             ll="vopt",
-            sector_opts="None",
+            sector_opts="none",
             planning_horizons="2020",
             run="KN2045_Bal_v4",
         )
