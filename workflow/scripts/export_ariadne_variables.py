@@ -67,45 +67,71 @@ def _get_gas_fractions(n, region):
         'at_port': True,
         'nice_names': False,
     }
+
+    renewable_gas_supply = n.statistics.supply(
+        bus_carrier="renewable gas", **kwargs
+    ).groupby(["bus","carrier"]).sum()
+
+    total_gas_supply =  n.statistics.supply(
+        bus_carrier="gas", **kwargs
+    ).groupby(["name", "carrier"]).sum()
+
     if "DE" in region:
-        total_gas_supply =  n.statistics.supply(
-            bus_carrier="gas", **kwargs
-        ).groupby(["name", "carrier"]).sum().reindex([
+        domestic_gas_supply =  total_gas_supply.reindex([
             ("DE gas", "gas"),
             ("DE renewable gas -> DE gas", "renewable gas"),
             ("EU renewable gas -> DE gas", "renewable gas"),
-        ]).dropna( # If links are not used they are dropped here
-        ).groupby("carrier").sum()
-
+        ]).dropna().groupby("carrier").sum() # If links are not used they are dropped here
+        total_imported_renewable_gas = total_gas_supply.get(
+            ("EU renewable gas -> DE gas", "renewable gas"), 0)
+        total_exported_renewable_gas = total_gas_supply.get(
+            ("DE renewable gas -> EU gas", "renewable gas"), 0)
+        domestic_renewable_gas = renewable_gas_supply.loc["DE renewable gas"]
+        foreign_renewable_gas = renewable_gas_supply.loc["EU renewable gas"]
     else:
-        total_gas_supply =  n.statistics.supply(
-            bus_carrier="gas", **kwargs
-        ).groupby("name").sum().reindex([
+        domestic_gas_supply =  total_gas_supply.reindex([
             ("EU gas", "gas"),
             ("DE renewable gas -> EU gas", "renewable gas"),
             ("EU renewable gas -> EU gas", "renewable gas"),
-        ]).dropna()
-
+        ]).dropna().groupby("carrier").sum()
+        total_imported_renewable_gas = total_gas_supply.get(
+            ("DE renewable gas -> EU gas", "renewable gas"), 0)
+        total_exported_renewable_gas = total_gas_supply.get(
+            ("EU renewable gas -> DE gas", "renewable gas"), 0)
+        domestic_renewable_gas = renewable_gas_supply.loc["EU renewable gas"]
+        foreign_renewable_gas = renewable_gas_supply.loc["DE renewable gas"]
+        
     # Legacy code for dropping gas pipelines (now deactivated)
     drops = ["gas pipeline", "gas pipeline new"]
     for d in drops:
         if d in total_gas_supply.index:
             total_gas_supply.drop(d, inplace=True)
-
-    renewable_gas_supply = n.statistics.supply(
-        bus_carrier="renewable gas", **kwargs
-    ).filter(like=region).groupby("carrier").sum()
     
-    # Rescale to account for rounding errors in n.statistics
-    renewable_gas_supply = renewable_gas_supply.multiply(
-        total_gas_supply.get("renewable gas", 0)
-    ).divide(renewable_gas_supply.sum())
+    imported_renewable_gas = (
+        foreign_renewable_gas / foreign_renewable_gas.sum()
+        * total_imported_renewable_gas 
+    )
 
+    exported_renewable_gas = (
+        domestic_renewable_gas / domestic_renewable_gas.sum()
+        * total_exported_renewable_gas
+    )
+    renewable_gas_supply = (
+        domestic_renewable_gas 
+        + imported_renewable_gas 
+        - exported_renewable_gas
+    )
+    # Check for small differences
+    assert domestic_gas_supply.get("renewable gas", 0) - renewable_gas_supply.sum() < 1
+    
     gas_fractions = pd.Series({
-            "Natural Gas": total_gas_supply.get("gas", 0),
+            "Natural Gas": domestic_gas_supply.get("gas", 0),
             "Biomass": renewable_gas_supply.filter(like="biogas").sum(),
             "Efuel": renewable_gas_supply.get("Sabatier", 0),
-        }).divide(total_gas_supply.sum())
+        }).divide(domestic_gas_supply.sum())
+    
+    assert isclose(gas_fractions.sum(), 1)
+
     return gas_fractions
 
 def _get_h2_fossil_fraction(n):
