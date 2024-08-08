@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240807unravelCH4coarse
+  prefix: 20240808withSpain
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -132,21 +132,27 @@ enable:
 clustering:
   # simplify_network:
   #   to_substations: true
+  # Code snippet for editing focus_weights
+  # fw = pd.Series(snakemake.config["clustering"]["focus_weights"])
+  # fw = fw.div(fw.min()).round()
+  # fw["ES"] = 1
+  # print(fw.div(fw.sum()).round(4).to_dict().__repr__().replace(",","\n"))
   focus_weights:
-  # 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
-    'DE': 0.3636 # 8/22
-    'AT': 0.0455 # 1/22
-    'BE': 0.0455
-    'CH': 0.0455
-    'CZ': 0.0455
-    'DK': 0.0909 # 2/22
-    'FR': 0.0454
-    'GB': 0.0909 # 2/22
-    'LU': 0.0454
-    'NL': 0.0454
-    'NO': 0.0454
-    'PL': 0.0454
-    'SE': 0.0454
+  # 23 nodes: 8 for Germany, 1 for Spain, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
+    'DE': 0.3478
+    'AT': 0.0435
+    'BE': 0.0435
+    'CH': 0.0435
+    'CZ': 0.0435
+    'DK': 0.087
+    'FR': 0.0435
+    'GB': 0.087
+    'LU': 0.0435
+    'NL': 0.0435
+    'NO': 0.0435
+    'PL': 0.0435
+    'SE': 0.0435
+    'ES': 0.0435
 # # high spatial resolution: change clusters to 44
 #   focus_weights:
 #   # 44 nodes: 30 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn" (high spatial)
