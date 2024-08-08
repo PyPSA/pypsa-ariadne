@@ -479,9 +479,9 @@ plotting:
     load: "#111100"
     H2 pipeline (Kernnetz): '#6b3161'
     renewable oil: '#c9c9c9'
-    urban central H2 retro CHP: '#ff0000'
-    H2 retro OCGT: '#ff0000'
-    H2 retro CCGT: '#ff0000'
+    urban central H2 retrofit CHP: '#ff0000'
+    H2 retrofit OCGT: '#ff0000'
+    H2 retrofit CCGT: '#ff0000'
     H2 OCGT: '#ff0000'
     H2 CCGT: '#ff0000'
     urban central H2 CHP: '#ff0000'

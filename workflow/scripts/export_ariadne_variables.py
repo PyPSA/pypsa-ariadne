@@ -1368,9 +1368,9 @@ def get_secondary_energy(n, region, _industry_demand):
             "H2 OCGT",
             "H2 CCGT",
             "urban central H2 CHP",
-            "H2 retro OCGT",
-            "H2 retro CCGT",
-            "urban central H2 retro CHP",
+            "H2 retrofit OCGT",
+            "H2 retrofit CCGT",
+            "urban central H2 retrofit CHP",
         ]
     ).sum()
     # ! Add H2 Turbines if they get implemented
