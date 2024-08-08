@@ -299,9 +299,6 @@ sector:
   electrolysis_costs: "low" # false, "low" or "high"
   import:
     non_eu: false # adds non_EU imports in prepare_sector_network
-    limit_non_eu_de: false # false or list in TWh limit sense ==
-    limit_eu_de: false # false or list TWh limit sense ==
-    limit_total_de: false # false or list TWh limit sense ==
     carriers: "all" # false "all" or "eleh2"
     cost_factor: 1.0
     endogenous_hvdc_import:
@@ -579,6 +576,24 @@ solving:
   #     NumericFocus: 1
   #     FeasibilityTol: 1.e-4
   #     BarHomogeneous: 1
+    co2_budget_national:
+      2020:
+        DE: 0.724
+      2025:
+        DE: 0.576
+      2030:
+        DE: 0.401
+      2035:
+        DE: 0.265
+      2040:
+        DE: 0.131
+      2045:
+        DE: -0.02
+      2050:
+        DE: -0.018
+    limit_non_eu_de: false # false or list in TWh limit sense ==
+    limit_eu_de: false # false or list TWh limit sense ==
+    limit_total_de: false # false or list TWh limit sense ==
 
 plotting:
   tech_colors:

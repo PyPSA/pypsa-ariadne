@@ -1,9 +1,20 @@
 no_import_le:
+  solving:
+    constraints:
+      limit_eu_de: 0
   sector:
     electrolysis_costs: "low"
     import:
       non_eu: false
+
+no_import_he:
+  solving:
+    constraints:
       limit_eu_de: 0
+  sector:
+    electrolysis_costs: "high"
+    import:
+      non_eu: false
 
 no_import_he:
   sector:

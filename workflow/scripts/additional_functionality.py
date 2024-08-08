@@ -762,12 +762,12 @@ def additional_functionality(n, snapshots, snakemake):
     else:
         logger.warning("No national CO2 budget specified!")
 
-    limit_non_eu_de = snakemake.config["sector"]["import"]["limit_non_eu_de"]
-    limit_eu_de = snakemake.params.sector_opts["import"]["limit_eu_de"]
+    limit_non_eu_de = constraints["limit_non_eu_de"]
+    limit_eu_de = constraints["limit_eu_de"]
     if isinstance(limit_non_eu_de, int) or isinstance(limit_eu_de, int):
         import_limit_de(n, snapshots, limit_non_eu_de, limit_eu_de, investment_year)
 
-    limit_de = snakemake.params.sector_opts["import"]["limit_total_de"]
+    limit_de = constraints["limit_total_de"]
     if limit_de or isinstance(limit_de, int):
         logger.info("Adding total import limit for Germany")
         limit_total_import_de(n, snapshots, limit_de, investment_year)
