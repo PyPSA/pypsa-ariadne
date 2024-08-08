@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import pyam
 
 if __name__ == "__main__":
@@ -10,11 +11,11 @@ if __name__ == "__main__":
         from _helpers import mock_snakemake
 
         snakemake = mock_snakemake("retrieve_ariadne_database")
-    
+
     db = pyam.read_iiasa(
         snakemake.params.db_name,
         model=snakemake.params.leitmodelle.values(),
-        scenario=snakemake.params.scenarios, 
+        scenario=snakemake.params.scenarios,
         # Download only the most recent iterations of scenarios
     )
 
