@@ -678,19 +678,23 @@ def aladin_mobility_demand(n):
     if not dsm_i.empty:
         n.stores.loc[dsm_i].e_nom *= pd.Series(factor.values, index=dsm_i)
 
+
 def add_hydrogen_turbines(n):
-    ''' 
+    """
     This adds links that instead of a gas turbine use a hydrogen turbine.
-    It is assumed that the efficiency stays the same.
-    This function is only applied to German nodes.
-    '''
+
+    It is assumed that the efficiency stays the same. This function is
+    only applied to German nodes.
+    """
     logger.info("Adding hydrogen turbine technologies for Germany.")
 
     gas_carrier = ["OCGT", "CCGT"]
     for carrier in gas_carrier:
-        gas_plants = n.links[(n.links.carrier == carrier) &
-                         (n.links.index.str[:2] == "DE") & 
-                         (n.links.p_nom_extendable)].index
+        gas_plants = n.links[
+            (n.links.carrier == carrier)
+            & (n.links.index.str[:2] == "DE")
+            & (n.links.p_nom_extendable)
+        ].index
         if gas_plants.empty:
             continue
         h2_plants = n.links.loc[gas_plants].copy()
@@ -703,9 +707,11 @@ def add_hydrogen_turbines(n):
         n.import_components_from_dataframe(h2_plants, "Link")
 
     # special handling of CHPs
-    gas_plants = n.links[(n.links.carrier == "urban central gas CHP") &
-                        (n.links.index.str[:2] == "DE") & 
-                        (n.links.p_nom_extendable)].index
+    gas_plants = n.links[
+        (n.links.carrier == "urban central gas CHP")
+        & (n.links.index.str[:2] == "DE")
+        & (n.links.p_nom_extendable)
+    ].index
     h2_plants = n.links.loc[gas_plants].copy()
     h2_plants.carrier = h2_plants.carrier.str.replace("gas", "H2")
     h2_plants.index = h2_plants.index.str.replace("gas", "H2")
@@ -716,58 +722,66 @@ def add_hydrogen_turbines(n):
 
 
 def force_retrofit(n, params):
-    ''' 
+    """
     This function forces the retrofit of gas turbines from params["force"] on.
+
     Extendable gas links are deleted.
-    '''
+    """
 
     logger.info("Forcing retrofit of gas turbines to hydrogen turbines.")
 
     gas_carrier = ["OCGT", "CCGT", "urban central gas CHP"]
     # deleting extendable gas turbine plants
-    to_drop = n.links[(n.links.carrier.isin(gas_carrier)) 
-                    & (n.links.p_nom_extendable)
-                    & (n.links.index.str[:2] == "DE")].index
+    to_drop = n.links[
+        (n.links.carrier.isin(gas_carrier))
+        & (n.links.p_nom_extendable)
+        & (n.links.index.str[:2] == "DE")
+    ].index
     n.links.drop(to_drop, inplace=True)
 
     # forcing retrofit
     for carrier in ["OCGT", "CCGT"]:
-        gas_plants = n.links[(n.links.carrier == carrier)
-                    & (n.links.index.str[:2] == "DE") 
-                    & (n.links.build_year >= params["start"])].index
+        gas_plants = n.links[
+            (n.links.carrier == carrier)
+            & (n.links.index.str[:2] == "DE")
+            & (n.links.build_year >= params["start"])
+        ].index
         if gas_plants.empty:
             continue
-    
+
         h2_plants = n.links.loc[gas_plants].copy()
-        h2_plants.carrier = h2_plants.carrier.str.replace(carrier, "H2 retro " + carrier)
+        h2_plants.carrier = h2_plants.carrier.str.replace(
+            carrier, "H2 retro " + carrier
+        )
         h2_plants.index = h2_plants.index.str.replace(carrier, "H2 retro " + carrier)
         h2_plants.bus0 = h2_plants.bus0.str.replace("gas", "H2")
         h2_plants.bus2 = ""
         h2_plants.efficiency -= params["efficiency_loss"]
-        h2_plants.efficiency2 = 1 # default value
-        h2_plants.capital_cost *= (1 + params["cost_factor"])
+        h2_plants.efficiency2 = 1  # default value
+        h2_plants.capital_cost *= 1 + params["cost_factor"]
         # add the new links
         n.import_components_from_dataframe(h2_plants, "Link")
         n.links.drop(gas_plants, inplace=True)
-    
+
     # special handling of CHPs
-    gas_plants = n.links[(n.links.carrier == "urban central gas CHP")
-                    & (n.links.index.str[:2] == "DE") 
-                    & (n.links.build_year >= params["start"])].index
+    gas_plants = n.links[
+        (n.links.carrier == "urban central gas CHP")
+        & (n.links.index.str[:2] == "DE")
+        & (n.links.build_year >= params["start"])
+    ].index
     if gas_plants.empty:
         return
-    
+
     h2_plants = n.links.loc[gas_plants].copy()
     h2_plants.carrier = h2_plants.carrier.str.replace("gas", "H2 retro")
     h2_plants.index = h2_plants.index.str.replace("gas", "H2 retro")
     h2_plants.bus0 = h2_plants.bus0.str.replace("gas", "H2 retro")
     h2_plants.bus3 = ""
     h2_plants.efficiency -= params["efficiency_loss"]
-    h2_plants.efficiency3 = 1 # default value
-    h2_plants.capital_cost *= (1 + params["cost_factor"])
+    h2_plants.efficiency3 = 1  # default value
+    h2_plants.capital_cost *= 1 + params["cost_factor"]
     n.import_components_from_dataframe(h2_plants, "Link")
     n.links.drop(gas_plants, inplace=True)
-
 
 
 if __name__ == "__main__":
@@ -851,9 +865,13 @@ if __name__ == "__main__":
         )
 
     if snakemake.params.H2_plants["enable"]:
-        if snakemake.params.H2_plants["start"] <= int(snakemake.wildcards.planning_horizons):
+        if snakemake.params.H2_plants["start"] <= int(
+            snakemake.wildcards.planning_horizons
+        ):
             add_hydrogen_turbines(n)
-        if snakemake.params.H2_plants["force"] <= int(snakemake.wildcards.planning_horizons):
+        if snakemake.params.H2_plants["force"] <= int(
+            snakemake.wildcards.planning_horizons
+        ):
             force_retrofit(n, snakemake.params.H2_plants)
 
     n.export_to_netcdf(snakemake.output.network)
