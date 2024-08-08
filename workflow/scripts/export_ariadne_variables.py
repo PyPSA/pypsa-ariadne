@@ -576,7 +576,8 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
             "H2 retrofit OCGT",
             "H2 retrofit CCGT",
             "urban central H2 retrofit CHP",
-        ]).sum()
+        ]
+    ).sum()
 
     var[cap_string + "Electricity|Nuclear"] = capacities_electricity.get("nuclear", 0)
 
@@ -805,7 +806,9 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
         }
     ).sum()
 
-    var[cap_string + "Heat|Hydrogen"] = capacities_central_heat.reindex(["urban central H2 CHP", "urban central H2 retrofit CHP"]).sum()
+    var[cap_string + "Heat|Hydrogen"] = capacities_central_heat.reindex(
+        ["urban central H2 CHP", "urban central H2 retrofit CHP"]
+    ).sum()
 
     # !!! Missing in the Ariadne database
 
@@ -1694,19 +1697,20 @@ def get_secondary_energy(n, region, _industry_demand):
         .multiply(MWh2PJ)
     )
 
-    H2_CHP_E_usage, H2_CHP_H_usage = get_CHP_E_and_H_usage(
-        n, "H2", region
-    )
+    H2_CHP_E_usage, H2_CHP_H_usage = get_CHP_E_and_H_usage(n, "H2", region)
 
-    var["Secondary Energy Input|Hydrogen|Electricity"] = hydrogen_withdrawal.reindex(
-        [
-            "H2 Fuel Cell",
-            "H2 OCGT",
-            "H2 CCGT",
-            "H2 retrofit OCGT",
-            "H2 retrofit CCGT",
-        ]
-    ).sum() + H2_CHP_E_usage
+    var["Secondary Energy Input|Hydrogen|Electricity"] = (
+        hydrogen_withdrawal.reindex(
+            [
+                "H2 Fuel Cell",
+                "H2 OCGT",
+                "H2 CCGT",
+                "H2 retrofit OCGT",
+                "H2 retrofit CCGT",
+            ]
+        ).sum()
+        + H2_CHP_E_usage
+    )
 
     var["Secondary Energy Input|Hydrogen|Heat"] = H2_CHP_H_usage
 
