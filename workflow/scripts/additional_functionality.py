@@ -606,7 +606,6 @@ def additional_functionality(n, snapshots, snakemake):
             debug=snakemake.config["run"]["debug_co2_limit"])
         
     limit_non_eu_de = snakemake.config["sector"]["import"]["limit_non_eu_de"]
-    logger.info(snakemake.params)
     limit_eu_de = snakemake.params.sector_opts["import"]["limit_eu_de"]
     if isinstance(limit_non_eu_de, int) or isinstance(limit_eu_de, int):
         import_limit_de(n, snapshots, limit_non_eu_de, limit_eu_de, investment_year)

@@ -287,6 +287,18 @@ use rule build_population_weighted_energy_totals from pypsaeur with:
         energy_totals=resources("energy_totals-modified.csv"),
 
 
+rule modify_import_costs:
+    params:
+        costs=config_provider("costs"),
+    input:
+        import_costs="data/imports/results-230505.csv",
+        costs=resources("costs_{planning_horizons}.csv"),
+    output:
+        import_costs=resources("import_costs_{planning_horizons}.csv"),
+    script:
+        "scripts/modify_import_costs.py"
+
+
 rule build_wasserstoff_kernnetz:
     params:
         reload_locations=config_provider("wasserstoff_kernnetz", "reload_locations"),
