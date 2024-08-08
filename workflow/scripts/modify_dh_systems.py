@@ -135,25 +135,28 @@ def update_urban_loads_de(egon_gdf, n_pre):
     nodal_heat_demand = nodal_heat_demand.groupby(nodal_heat_demand.index).sum()
 
     # Old district heating share
-    nodal_uc_shares = (nodal_uc_demand / nodal_heat_demand).fillna(0)
+    nodal_uc_shares = (nodal_uc_demand / nodal_heat_demand).dropna()
 
     # Scaling factor for update of urban central heat loads
-
     scaling_factor = nodal_dh_shares / nodal_uc_shares
     scaling_factor.dropna(
         inplace=True
     )  # To deal with shape anomaly described in https://github.com/PyPSA/pypsa-eur/issues/1100
 
-    # Update urban heat loads changing distribution and restoring old scale
+    # Update spatial urban heat loads distribution but preserve aggregate urban central heat demand
     old_uc_loads = n.loads_t.p_set.filter(regex="DE.*urban central heat")
     new_uc_loads = (
         n.loads_t.p_set.filter(regex="DE.*urban central heat") * scaling_factor
     )
     restore_scalar = new_uc_loads.sum().sum() / old_uc_loads.sum().sum()
     new_uc_loads = new_uc_loads / restore_scalar
+
+    # Preserve total of decentral and central urban heat demand (adjusted for grid losses)
     diff_update = new_uc_loads - old_uc_loads
     diff_update.columns = diff_update.columns.str.replace("central", "decentral")
-
+    diff_update = diff_update.div(
+        1 + snakemake.config["sector"]["district_heating"]["district_heating_loss"]
+    )
     n_pre.loads_t.p_set[new_uc_loads.columns] = new_uc_loads
     n_pre.loads_t.p_set[diff_update.columns] -= diff_update
 
