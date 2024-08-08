@@ -385,7 +385,26 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
             ).sum()
         )
 
-        # Methane still missing, because its complicated
+        # Methane
+        incoming_CH4 = n.links.index[n.links.index == "EU renewable gas -> DE gas"]
+        outgoing_CH4 = n.links.index[n.links.index == "DE renewable gas -> EU gas"]
+
+        lhs.append(
+            (
+                -1
+                * n.model["Link-p"].loc[:, incoming_CH4]
+                * 0.198
+                * n.snapshot_weightings.generators
+            ).sum()
+        )
+
+        lhs.append(
+            (
+                n.model["Link-p"].loc[:, outgoing_CH4]
+                * 0.198
+                * n.snapshot_weightings.generators
+            ).sum()
+        )
 
         lhs = sum(lhs)
 
@@ -507,10 +526,18 @@ def add_h2_derivate_limit(n, investment_year, limits_volume_max):
         logger.info(f"limiting H2 derivate imports in {ct} to {limit/1e6} TWh/a")
 
         incoming = n.links.loc[
-            ["EU renewable oil -> DE oil", "EU methanol -> DE methanol"]
+            [
+                "EU renewable oil -> DE oil",
+                "EU methanol -> DE methanol",
+                "EU renewable gas -> DE gas",
+            ]
         ].index
         outgoing = n.links.loc[
-            ["DE renewable oil -> EU oil", "DE methanol -> EU methanol"]
+            [
+                "DE renewable oil -> EU oil",
+                "DE methanol -> EU methanol",
+                "DE renewable gas -> EU gas",
+            ]
         ].index
 
         incoming_p = (
