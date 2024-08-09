@@ -185,6 +185,7 @@ rule modify_prenetwork:
         biomass_must_run=config_provider("must_run_biomass"),
         sector=config_provider("sector"),
         clustering=config_provider("clustering", "temporal", "resolution_sector"),
+        H2_plants=config_provider("electricity", "H2_plants_DE"),
         land_transport_electric_share=config_provider(
             "sector", "land_transport_electric_share"
         ),

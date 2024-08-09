@@ -567,7 +567,17 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
     # Q: What about retrofitted gas power plants? -> Lisa
     var[cap_string + "Electricity|Hydrogen"] = var[
         cap_string + "Electricity|Hydrogen|FC"
-    ] = capacities_electricity.get("H2 Fuel Cell", 0)
+    ] = capacities_electricity.reindex(
+        [
+            "H2 Fuel Cell",
+            "H2 OCGT",
+            "H2 CCGT",
+            "urban central H2 CHP",
+            "H2 retrofit OCGT",
+            "H2 retrofit CCGT",
+            "urban central H2 retrofit CHP",
+        ]
+    ).sum()
 
     var[cap_string + "Electricity|Nuclear"] = capacities_electricity.get("nuclear", 0)
 
@@ -794,6 +804,10 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
                 "methanolisation",
             ]
         }
+    ).sum()
+
+    var[cap_string + "Heat|Hydrogen"] = capacities_central_heat.reindex(
+        ["urban central H2 CHP", "urban central H2 retrofit CHP"]
     ).sum()
 
     # !!! Missing in the Ariadne database
@@ -1362,9 +1376,17 @@ def get_secondary_energy(n, region, _industry_demand):
         + var["Secondary Energy|Electricity|Wind"]
     )
 
-    var["Secondary Energy|Electricity|Hydrogen"] = electricity_supply.get(
-        "H2 Fuel Cell", 0
-    )
+    var["Secondary Energy|Electricity|Hydrogen"] = electricity_supply.reindex(
+        [
+            "H2 Fuel Cell",
+            "H2 OCGT",
+            "H2 CCGT",
+            "urban central H2 CHP",
+            "H2 retrofit OCGT",
+            "H2 retrofit CCGT",
+            "urban central H2 retrofit CHP",
+        ]
+    ).sum()
     # ! Add H2 Turbines if they get implemented
 
     var["Secondary Energy|Electricity|Waste"] = electricity_supply.filter(
@@ -1470,6 +1492,9 @@ def get_secondary_energy(n, region, _industry_demand):
     # var["Secondary Energy|Heat|Nuclear"] = \
     # var["Secondary Energy|Heat|Other"] = \
     # ! Not implemented
+    var["Secondary Energy|Heat|Hydrogen"] = heat_supply.filter(
+        like="urban central H2"
+    ).sum()
 
     var["Secondary Energy|Heat|Oil"] = heat_supply.filter(
         like="urban central oil"
@@ -1508,6 +1533,7 @@ def get_secondary_energy(n, region, _industry_demand):
         + var["Secondary Energy|Heat|Other"]
         + var["Secondary Energy|Heat|Coal"]
         + var["Secondary Energy|Heat|Waste"]
+        + var["Secondary Energy|Heat|Hydrogen"]
     )
     assert isclose(
         var["Secondary Energy|Heat"],
@@ -1671,9 +1697,22 @@ def get_secondary_energy(n, region, _industry_demand):
         .multiply(MWh2PJ)
     )
 
-    var["Secondary Energy Input|Hydrogen|Electricity"] = hydrogen_withdrawal.get(
-        "H2 Fuel Cell", 0
+    H2_CHP_E_usage, H2_CHP_H_usage = get_CHP_E_and_H_usage(n, "H2", region)
+
+    var["Secondary Energy Input|Hydrogen|Electricity"] = (
+        hydrogen_withdrawal.reindex(
+            [
+                "H2 Fuel Cell",
+                "H2 OCGT",
+                "H2 CCGT",
+                "H2 retrofit OCGT",
+                "H2 retrofit CCGT",
+            ]
+        ).sum()
+        + H2_CHP_E_usage
     )
+
+    var["Secondary Energy Input|Hydrogen|Heat"] = H2_CHP_H_usage
 
     var["Secondary Energy Input|Hydrogen|Gases"] = hydrogen_withdrawal.get(
         "Sabatier", 0
