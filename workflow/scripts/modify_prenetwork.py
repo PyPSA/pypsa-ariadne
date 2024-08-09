@@ -702,7 +702,7 @@ def add_hydrogen_turbines(n):
         h2_plants.index = h2_plants.index.str.replace(carrier, "H2 " + carrier)
         h2_plants.bus0 = h2_plants.bus1 + " H2"
         h2_plants.bus2 = ""
-        h2_plants.efficiency2 = 0
+        h2_plants.efficiency2 = 1
         # add the new links
         n.import_components_from_dataframe(h2_plants, "Link")
 
@@ -717,7 +717,7 @@ def add_hydrogen_turbines(n):
     h2_plants.index = h2_plants.index.str.replace("gas", "H2")
     h2_plants.bus0 = h2_plants.bus1 + " H2"
     h2_plants.bus3 = ""
-    h2_plants.efficiency3 = 0
+    h2_plants.efficiency3 = 1
     n.import_components_from_dataframe(h2_plants, "Link")
 
 

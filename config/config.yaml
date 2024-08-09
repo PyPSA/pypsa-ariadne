@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: "H2_plants_retrofit"
+  prefix: 20240809H2_plants_retrofit
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
