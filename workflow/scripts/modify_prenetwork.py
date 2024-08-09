@@ -773,8 +773,8 @@ def force_retrofit(n, params):
         return
 
     h2_plants = n.links.loc[gas_plants].copy()
-    h2_plants.carrier = h2_plants.carrier.str.replace("gas", "H2 retro")
-    h2_plants.index = h2_plants.index.str.replace("gas", "H2 retro")
+    h2_plants.carrier = h2_plants.carrier.str.replace("gas", "H2 retrofit")
+    h2_plants.index = h2_plants.index.str.replace("gas", "H2 retrofit")
     h2_plants.bus0 = h2_plants.bus1 + " H2"
     h2_plants.bus3 = ""
     h2_plants.efficiency -= params["efficiency_loss"]
