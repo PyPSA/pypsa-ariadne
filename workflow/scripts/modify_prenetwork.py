@@ -700,7 +700,7 @@ def add_hydrogen_turbines(n):
         h2_plants = n.links.loc[gas_plants].copy()
         h2_plants.carrier = h2_plants.carrier.str.replace(carrier, "H2 " + carrier)
         h2_plants.index = h2_plants.index.str.replace(carrier, "H2 " + carrier)
-        h2_plants.bus0 = h2_plants.bus0.str.replace("gas", "H2")
+        h2_plants.bus0 = h2_plants.bus1 + " H2"
         h2_plants.bus2 = ""
         h2_plants.efficiency2 = 0
         # add the new links
@@ -715,7 +715,7 @@ def add_hydrogen_turbines(n):
     h2_plants = n.links.loc[gas_plants].copy()
     h2_plants.carrier = h2_plants.carrier.str.replace("gas", "H2")
     h2_plants.index = h2_plants.index.str.replace("gas", "H2")
-    h2_plants.bus0 = h2_plants.bus0.str.replace("gas", "H2")
+    h2_plants.bus0 = h2_plants.bus1 + " H2"
     h2_plants.bus3 = ""
     h2_plants.efficiency3 = 0
     n.import_components_from_dataframe(h2_plants, "Link")
@@ -754,7 +754,7 @@ def force_retrofit(n, params):
             carrier, "H2 retrofit " + carrier
         )
         h2_plants.index = h2_plants.index.str.replace(carrier, "H2 retrofit " + carrier)
-        h2_plants.bus0 = h2_plants.bus0.str.replace("gas", "H2")
+        h2_plants.bus0 = h2_plants.bus1 + " H2"
         h2_plants.bus2 = ""
         h2_plants.efficiency -= params["efficiency_loss"]
         h2_plants.efficiency2 = 1  # default value
@@ -775,7 +775,7 @@ def force_retrofit(n, params):
     h2_plants = n.links.loc[gas_plants].copy()
     h2_plants.carrier = h2_plants.carrier.str.replace("gas", "H2 retro")
     h2_plants.index = h2_plants.index.str.replace("gas", "H2 retro")
-    h2_plants.bus0 = h2_plants.bus0.str.replace("gas", "H2 retro")
+    h2_plants.bus0 = h2_plants.bus1 + " H2"
     h2_plants.bus3 = ""
     h2_plants.efficiency -= params["efficiency_loss"]
     h2_plants.efficiency3 = 1  # default value
