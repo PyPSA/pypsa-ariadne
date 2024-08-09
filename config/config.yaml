@@ -136,26 +136,26 @@ clustering:
   # fw = pd.Series(snakemake.config["clustering"]["focus_weights"])
   # fw = fw.div(fw.min()).round()
   # fw["ES"] = 1
-  # print(fw.div(fw.sum()).round(4).to_dict().__repr__().replace(",","\n"))
+  # print(fw.div(fw.sum()).subtract(5e-5).round(4).to_dict().__repr__().replace(",","\n"))
   focus_weights:
   # 23 nodes: 8 for Germany, 1 for Spain, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
     'DE': 0.3478
-    'AT': 0.0435
-    'BE': 0.0435
-    'CH': 0.0435
-    'CZ': 0.0435
-    'DK': 0.087
-    'FR': 0.0435
-    'GB': 0.087
-    'LU': 0.0435
-    'NL': 0.0435
-    'NO': 0.0435
-    'PL': 0.0435
-    'SE': 0.0435
-    'ES': 0.0435
+    'AT': 0.0434
+    'BE': 0.0434
+    'CH': 0.0434
+    'CZ': 0.0434
+    'DK': 0.0869
+    'FR': 0.0434
+    'GB': 0.0869
+    'LU': 0.0434
+    'NL': 0.0434
+    'NO': 0.0434
+    'PL': 0.0434
+    'SE': 0.0434
+    'ES': 0.0434
   # high spatial resolution: change clusters to 45
   # 45 nodes: 30 for Germany, 1 for Spain, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
-    # 'DE': 0.6667
+    # 'DE': 0.6666
     # 'AT': 0.0222
     # 'BE': 0.0222
     # 'CH': 0.0222
