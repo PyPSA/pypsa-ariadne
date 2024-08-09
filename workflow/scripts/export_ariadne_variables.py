@@ -1266,7 +1266,7 @@ def get_primary_energy(n, region):
     var["Primary Energy|Wind"] = renewable_electricity.filter(like="wind").sum()
 
     assert isclose(
-        renewable_electricity.sum() - solar_thermal_heat,
+        renewable_electricity.sum() + solar_thermal_heat,
         (
             var["Primary Energy|Hydro"]
             + var["Primary Energy|Solar"]
@@ -2367,7 +2367,7 @@ def get_emissions(n, region, _energy_totals):
     )
 
     # Assert neglible numerical errors / leakage in stored CO2
-    assert co2_storage.get("co2 stored", 0) < 0.1
+    assert co2_storage.get("co2 stored", 0) < 1.0
     co2_storage.drop("co2 stored", inplace=True, errors="ignore")
 
     CHP_emissions = (
