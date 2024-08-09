@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240807unravelCH4coarse
+  prefix: 20240809H2_plants_retrofit
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -479,6 +479,12 @@ plotting:
     load: "#111100"
     H2 pipeline (Kernnetz): '#6b3161'
     renewable oil: '#c9c9c9'
+    urban central H2 retrofit CHP: '#ff0000'
+    H2 retrofit OCGT: '#ff0000'
+    H2 retrofit CCGT: '#ff0000'
+    H2 OCGT: '#ff0000'
+    H2 CCGT: '#ff0000'
+    urban central H2 CHP: '#ff0000'
     renewable gas: '#e05b09'
   countries:
   - all
@@ -501,6 +507,12 @@ electricity:
   custom_file: resources/german_chp.csv
   estimate_renewable_capacities:
     year: 2019
+  H2_plants_DE:
+    enable: true
+    start: 2030 # should be < force
+    force: 2035
+    cost_factor: 0.15 # repurposing cost of OCGT gas to H2 in % investment cost in EUR/MW source: Christidis et al (2023) - H2-Ready-Gaskraftwerke, Table 3 https://reiner-lemoine-institut.de/wp-content/uploads/2023/11/RLI-Studie-H2-ready_DE.pdf
+    efficiency_loss: 0.05
 
 pypsa_eur:
   Bus:
