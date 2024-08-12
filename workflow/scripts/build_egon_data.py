@@ -1,4 +1,14 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2024- The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+"""
+Load and prepares the data of the eGo^N DemandRegio project about district
+heating in Germany on NUTS3 level.
+
+(https://opendata.ffe.de/project/demandregio/).
+"""
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -6,15 +16,6 @@ import json
 
 import geopandas as gpd
 import pandas as pd
-
-"""
-    Load and prepares the egon data about district heating in Germany on NUTS3
-    level.
-
-    Output:
-        GeoDataFrame: A GeoDataFrame containing the processed egon data.
-"""
-
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -51,11 +52,11 @@ internal_id = {
     218: "Biomass (excluding wood, biogas)",
 }
 
-with open(snakemake.input.fn) as datafile:
+with open(snakemake.input.demandregio_spatial) as datafile:
     data = json.load(datafile)["data"]
 df = pd.DataFrame(data)
 
-id_region = pd.read_json(snakemake.input.fn_map)
+id_region = pd.read_json(snakemake.input.mapping_38_to_4)
 
 df["internal_id"] = df["internal_id"].apply(lambda x: x[0])
 

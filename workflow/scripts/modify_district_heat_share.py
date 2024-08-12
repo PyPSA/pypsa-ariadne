@@ -1,4 +1,12 @@
 # -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2024- The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+"""
+This script modifies district heating shares based on EGON data for NUTS3
+regions in Germany.
+"""
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -7,14 +15,14 @@ import pandas as pd
 from shapely.geometry import Point
 
 
-def cluster_egon(heat_techs):
+def cluster_egon(heat_techs, regions_onshore):
     """
     Map NUTS3 regions of egon data to corresponding clusters according to
     maximum overlap.
     """
 
-    regions_onshore = gpd.read_file(snakemake.input.regions_onshore)
     regions_onshore.set_index("name", inplace=True)
+
     # Map NUTS3 regions of egon data to corresponding clusters according to maximum overlap
 
     heat_techs["cluster"] = heat_techs.apply(
@@ -80,11 +88,15 @@ if __name__ == "__main__":
             planning_horizons="2020",
             run="KN2045_Bal_v4",
         )
+
+    logging.basicConfig(level=snakemake.config["logging"]["level"])
     logger.info("Updating district heating shares with egon data")
 
     heat_techs = gpd.read_file(snakemake.input.heating_technologies_nuts3)
+    regions_onshore = gpd.read_file(snakemake.input.regions_onshore)
 
-    heat_techs_clustered = cluster_egon(heat_techs)
+    heat_techs_clustered = cluster_egon(heat_techs, regions_onshore)
+
     dh_shares = update_urban_loads_de(heat_techs_clustered)
 
     dh_shares.to_csv(snakemake.output.district_heat_share)
