@@ -181,8 +181,8 @@ rule build_mobility_demand:
 
 rule build_egon_data:
     input:
-        fn="data/egon/demandregio_spatial_2018.json",
-        fn_map=storage(
+        demandregio_spatial="data/egon/demandregio_spatial_2018.json",
+        mapping_38_to_4=storage(
             "https://ffeopendatastorage.blob.core.windows.net/opendata/mapping_from_4_to_38.json",
             keep_local=True,
         ),
