@@ -13,6 +13,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 import json
+import re
 
 import geopandas as gpd
 import pandas as pd
@@ -39,18 +40,23 @@ nuts3 = gpd.read_file(snakemake.input.nuts3)[
     ["index", "pop", "geometry"]
 ]  # Keep only necessary columns
 
-internal_id = {
-    9: "Hard coal",
-    10: "Brown coal",
-    11: "Natural gas",
-    34: "Heating oil",
-    35: "Biomass (solid)",
-    68: "Ambient heating",
-    69: "Solar heat",
-    71: "District heating",
-    72: "Electrical energy",
-    218: "Biomass (excluding wood, biogas)",
-}
+#  Parse dictionary from string
+description = pd.read_json(snakemake.input.mapping_technologies).loc["resources"][
+    "oep_metadata"
+][0]["schema"]["fields"][5]["description"]
+# Extract the part after the colon
+key_value_part = description.split(":", 1)[1].strip()
+
+# Split into individual key-value pairs
+pairs = re.split(r";\s*", key_value_part)
+
+# Initialize dictionary
+internal_id = {}
+
+# Process each pair
+for pair in pairs:
+    key, value = pair.split(":", 1)
+    internal_id[int(key.strip())] = value.strip()
 
 with open(snakemake.input.demandregio_spatial) as datafile:
     data = json.load(datafile)["data"]

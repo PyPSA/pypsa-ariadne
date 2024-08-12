@@ -89,10 +89,12 @@ rule clean:
 
 rule retrieve_egon_data:
     output:
-        "data/egon/demandregio_spatial_2018.json",
+        spatial="data/egon/demandregio_spatial_2018.json",
+        mapping="data/egon/mapping_technologies.json",
     shell:
         """
-        wget -O {output} "https://api.opendata.ffe.de/demandregio/demandregio_spatial?id_spatial=5&year=2018"
+        wget -O {output.spatial} "https://api.opendata.ffe.de/demandregio/demandregio_spatial?id_spatial=5&year=2018"
+        wget -O {output.mapping} "https://api.opendata.ffe.de/demandregio/demandregio_spatial_description?id_spatial=5"
         """
 
 
@@ -186,6 +188,7 @@ rule build_egon_data:
             "https://ffeopendatastorage.blob.core.windows.net/opendata/mapping_from_4_to_38.json",
             keep_local=True,
         ),
+        mapping_technologies="data/egon/mapping_technologies.json",
         nuts3=resources("nuts3_shapes.geojson"),
     output:
         heating_technologies_nuts3=resources("heating_technologies_nuts3.geojson"),

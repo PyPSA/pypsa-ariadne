@@ -45,9 +45,9 @@ def update_urban_loads_de(heat_techs_clustered):
     the nodal heat demand.
     """
 
-    nodal_dh_shares = heat_techs_clustered[
-        "District heating"
-    ] / heat_techs_clustered.drop("pop", axis=1).sum(axis=1)
+    nodal_dh_shares = heat_techs_clustered["Fernwaerme"] / heat_techs_clustered.drop(
+        "pop", axis=1
+    ).sum(axis=1)
 
     dh_shares = pd.read_csv(snakemake.input.district_heat_share, index_col=0)
     urban_fraction = dh_shares["urban fraction"]
