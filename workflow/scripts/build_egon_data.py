@@ -3,10 +3,8 @@
 #
 # SPDX-License-Identifier: MIT
 """
-Load and prepares the data of the eGo^N DemandRegio project about district
+Load and prepares the data of the eGo^N DemandRegio project <https://opendata.ffe.de/project/demandregio/> about district
 heating in Germany on NUTS3 level.
-
-(https://opendata.ffe.de/project/demandregio/).
 """
 
 import logging

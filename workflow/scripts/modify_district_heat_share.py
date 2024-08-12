@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: MIT
 """
-This script modifies district heating shares based on EGON data for NUTS3
+This script modifies district heating shares based on eGo^N data for NUTS3
 regions in Germany.
 """
 
