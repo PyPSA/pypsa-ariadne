@@ -339,16 +339,16 @@ solving:
         DC: 2000
         gas pipeline: 1500
         gas pipeline new: 1500
-        H2 pipeline: 1200
-        H2 pipeline (Kernnetz): 1200
-        H2 pipeline retrofitted: 1200
+        H2 pipeline: 13000
+        H2 pipeline (Kernnetz): 13000
+        H2 pipeline retrofitted: 13000
       link_threshold:
         DC: 0.3
         gas pipeline: 0.3
         gas pipeline new: 0.3
-        H2 pipeline: 0.3
-        H2 pipeline (Kernnetz): 0.3
-        H2 pipeline retrofitted: 0.3
+        H2 pipeline: 0.05
+        H2 pipeline (Kernnetz): 0.05
+        H2 pipeline retrofitted: 0.05
   constraints:
     limits_capacity_max:
       Generator:
