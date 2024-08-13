@@ -5,6 +5,19 @@
 """
 This script modifies district heating shares based on eGo^N data for NUTS3
 regions in Germany.
+
+Inputs:
+    - resources/heating_technologies_nuts3.geojson: Path to the GeoJSON file containing heating technologies data for NUTS3 regions.
+    - resources/regions_onshore.geojson: Path to the GeoJSON file containing onshore regions data.
+    - resources/district_heat_share.csv: Path to the CSV file containing district heating shares.
+
+Outputs:
+    - resources/updated_district_heat_share.csv: Path to the CSV file where the updated district heating shares will be saved.
+
+Parameters:
+    - sector.district_heating["potential"]: Maximum potential district heating share.
+    - sector.district_heating["progress"]: Progress of district heating share over planning horizons.
+    - wildcards.planning_horizons: Planning horizon year.
 """
 
 import logging
@@ -19,6 +32,13 @@ def cluster_egon(heat_techs, regions_onshore):
     """
     Map NUTS3 regions of egon data to corresponding clusters according to
     maximum overlap.
+
+    Inputs:
+        - heat_techs (GeoDataFrame): GeoDataFrame containing heating technologies data for NUTS3 regions.
+        - regions_onshore (GeoDataFrame): GeoDataFrame containing onshore regions data of network clusters.
+
+    Outputs:
+        - GeoDataFrame: Updated GeoDataFrame with NUTS3 regions aggregated according to cluster structure.
     """
 
     regions_onshore.set_index("name", inplace=True)
@@ -36,20 +56,27 @@ def cluster_egon(heat_techs, regions_onshore):
     return heat_techs_clustered
 
 
-def update_urban_loads_de(heat_techs_clustered):
+def update_district_heat_share(heat_techs_clustered, dh_shares):
     """
-    Update district heating demands of clusters according to shares in egon
-    data on NUTS3 level for Germany.
+    Update district heating demands of clusters according to shares in eGo^N
+    data on NUTS3 level for Germany taking into account expansion of systems.
 
-    Other heat loads are adjusted accodingly to ensure consistency of
-    the nodal heat demand.
+    Inputs:
+        - heat_techs_clustered (GeoDataFrame): GeoDataFrame containing clustered heating technologies data.
+        - dh_shares (DataFrame): DataFrame containing district heating shares and urban fractions to be updated.
+
+    Outputs:
+        - DataFrame: Updated DataFrame with adjusted district heating shares and urban fractions.
     """
 
-    nodal_dh_shares = heat_techs_clustered["Fernwaerme"] / heat_techs_clustered.drop(
+    nodal_dh_shares = heat_techs_clustered[
+        "Fernwaerme"
+    ] / heat_techs_clustered.drop(  # Fernwaerme is the German term for district heating
         "pop", axis=1
-    ).sum(axis=1)
+    ).sum(
+        axis=1
+    )
 
-    dh_shares = pd.read_csv(snakemake.input.district_heat_share, index_col=0)
     urban_fraction = dh_shares["urban fraction"]
     max_dh_share = snakemake.params.district_heating["potential"]
     progress = snakemake.params.district_heating["progress"][
@@ -94,9 +121,10 @@ if __name__ == "__main__":
 
     heat_techs = gpd.read_file(snakemake.input.heating_technologies_nuts3)
     regions_onshore = gpd.read_file(snakemake.input.regions_onshore)
+    dh_shares = pd.read_csv(snakemake.input.district_heat_share, index_col=0)
 
     heat_techs_clustered = cluster_egon(heat_techs, regions_onshore)
 
-    dh_shares = update_urban_loads_de(heat_techs_clustered)
+    dh_shares = update_district_heat_share(heat_techs_clustered, dh_shares)
 
     dh_shares.to_csv(snakemake.output.district_heat_share)

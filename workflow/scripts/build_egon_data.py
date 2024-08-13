@@ -3,8 +3,17 @@
 #
 # SPDX-License-Identifier: MIT
 """
-Load and prepares the data of the eGo^N DemandRegio project <https://opendata.ffe.de/project/demandregio/> about district
-heating in Germany on NUTS3 level.
+Load and prepares the data of the eGo^N DemandRegio project <https://opendata.ffe.de/project/demandregio/>
+about district heating in Germany on NUTS3 level.
+
+Inputs:
+    - resources/nuts3.geojson: Path to the GeoJSON file containing NUTS3 regions data.
+    - resources/mapping_technologies.json: Path to the JSON file containing the mapping of technologies.
+    - resources/demandregio_spatial.json: Path to the JSON file containing spatially resolved heating structure data from the DemandRegio project.
+    - resources/mapping_38_to_4.json: Path to the JSON file containing the mapping of regions.
+
+Outputs:
+    - resources/heating_technologies_nuts3.geojson: Path to the GeoJSON file where the processed heating technologies data will be saved.
 """
 
 import logging
