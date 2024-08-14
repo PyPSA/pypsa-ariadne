@@ -14,6 +14,9 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
     for c in n.iterate_components(limits_capacity):
         logger.info(f"Adding {sense} constraints for {c.list_name}")
 
+        attr = "e" if c.name == "Store" else "p"
+        units = "MWh or tCO2" if c.name == "Store" else "MW"
+
         for carrier in limits_capacity[c.name]:
 
             for ct in limits_capacity[c.name][carrier]:
@@ -26,7 +29,7 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
                 limit = 1e3 * limits_capacity[c.name][carrier][ct][investment_year]
 
                 logger.info(
-                    f"Adding constraint on {c.name} {carrier} capacity in {ct} to be {sense} {limit} MW"
+                    f"Adding constraint on {c.name} {carrier} capacity in {ct} to be {sense} {limit} {units}"
                 )
 
                 valid_components = (
@@ -35,18 +38,18 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
                     & ~c.df.carrier.str.contains("thermal")
                 )  # exclude solar thermal
 
-                existing_index = c.df.index[valid_components & ~c.df.p_nom_extendable]
-                extendable_index = c.df.index[valid_components & c.df.p_nom_extendable]
+                existing_index = c.df.index[valid_components & ~c.df[attr + "_nom_extendable"]]
+                extendable_index = c.df.index[valid_components & c.df[attr + "_nom_extendable"]]
 
-                existing_capacity = c.df.loc[existing_index, "p_nom"].sum()
+                existing_capacity = c.df.loc[existing_index, attr + "_nom"].sum()
 
                 logger.info(
-                    f"Existing {c.name} {carrier} capacity in {ct}: {existing_capacity} MW"
+                    f"Existing {c.name} {carrier} capacity in {ct}: {existing_capacity} {units}"
                 )
 
-                p_nom = n.model[c.name + "-p_nom"].loc[extendable_index]
+                nom = n.model[c.name + "-" + attr + "_nom"].loc[extendable_index]
 
-                lhs = p_nom.sum()
+                lhs = nom.sum()
 
                 cname = f"capacity_{sense}-{ct}-{c.name}-{carrier.replace(' ','-')}"
 
