@@ -20,10 +20,7 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
         for carrier in limits_capacity[c.name]:
 
             for ct in limits_capacity[c.name][carrier]:
-                if (
-                    investment_year
-                    not in limits_capacity[c.name][carrier][ct].keys()
-                ):
+                if investment_year not in limits_capacity[c.name][carrier][ct].keys():
                     continue
 
                 limit = 1e3 * limits_capacity[c.name][carrier][ct][investment_year]
@@ -38,8 +35,12 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
                     & ~c.df.carrier.str.contains("thermal")
                 )  # exclude solar thermal
 
-                existing_index = c.df.index[valid_components & ~c.df[attr + "_nom_extendable"]]
-                extendable_index = c.df.index[valid_components & c.df[attr + "_nom_extendable"]]
+                existing_index = c.df.index[
+                    valid_components & ~c.df[attr + "_nom_extendable"]
+                ]
+                extendable_index = c.df.index[
+                    valid_components & c.df[attr + "_nom_extendable"]
+                ]
 
                 existing_capacity = c.df.loc[existing_index, attr + "_nom"].sum()
 
@@ -55,7 +56,9 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
 
                 if sense == "maximum":
                     if limit - existing_capacity <= 0:
-                        n.model.add_constraints(lhs <= 0, name=f"GlobalConstraint-{cname}")
+                        n.model.add_constraints(
+                            lhs <= 0, name=f"GlobalConstraint-{cname}"
+                        )
                         logger.warning(
                             f"Existing capacity in {ct} for carrier {carrier} already exceeds the limit of {limit} MW. Limiting capacity expansion for this investment period to 0."
                         )
@@ -66,7 +69,8 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
                         )
                 elif sense == "minimum":
                     n.model.add_constraints(
-                        lhs >= limit - existing_capacity, name=f"GlobalConstraint-{cname}"
+                        lhs >= limit - existing_capacity,
+                        name=f"GlobalConstraint-{cname}",
                     )
                 else:
                     logger.error("sense {sense} not recognised")
@@ -81,7 +85,6 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
                         type="",
                         carrier_attribute="",
                     )
-
 
 
 def h2_import_limits(n, investment_year, limits_volume_max):
@@ -532,9 +535,13 @@ def additional_functionality(n, snapshots, snakemake):
     investment_year = int(snakemake.wildcards.planning_horizons[-4:])
     constraints = snakemake.params.solving["constraints"]
 
-    add_capacity_limits(n, investment_year, constraints["limits_capacity_min"], "minimum")
+    add_capacity_limits(
+        n, investment_year, constraints["limits_capacity_min"], "minimum"
+    )
 
-    add_capacity_limits(n, investment_year, constraints["limits_capacity_max"], "maximum")
+    add_capacity_limits(
+        n, investment_year, constraints["limits_capacity_max"], "maximum"
+    )
 
     if int(snakemake.wildcards.clusters) != 1:
         h2_import_limits(n, investment_year, constraints["limits_volume_max"])
