@@ -13,6 +13,7 @@ concurrency:
 jobs:
   run-validation:
     name: Run validation
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: self-hosted
     steps:
     - uses: lkstrp/pypsa-validator@dev
@@ -28,6 +29,7 @@ jobs:
 
   upload-artifacts:
     name: Upload artifacts
+    if: github.event.pull_request.head.repo.full_name == github.repository
     needs: run-validation
     runs-on: self-hosted
     steps:
@@ -59,6 +61,7 @@ jobs:
 
   comment-on-pr:
     name: Comment on pull request
+    if: github.event.pull_request.head.repo.full_name == github.repository
     needs: upload-artifacts
     runs-on: ubuntu-latest
     steps:
