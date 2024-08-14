@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240813windcfs
+  prefix: 20240814windcfs
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -106,7 +106,7 @@ renewable:
   onwind:
     cutout: europe-2019-sarah3-era5
     resource:
-      smooth: true
+      smooth: false  #this is false until correction to onshore wind speeds from GWA implemented
       #based on Vestas_V112_3MW, but changing hub_height from 80m with time
       turbine:
         2020:
