@@ -87,6 +87,17 @@ rule clean:
         print("Data downloaded to data/ has not been cleaned.")
 
 
+rule retrieve_egon_data:
+    output:
+        spatial="data/egon/demandregio_spatial_2018.json",
+        mapping="data/egon/mapping_technologies.json",
+    shell:
+        """
+        wget -O {output.spatial} "https://api.opendata.ffe.de/demandregio/demandregio_spatial?id_spatial=5&year=2018"
+        wget -O {output.mapping} "https://api.opendata.ffe.de/demandregio/demandregio_spatial_description?id_spatial=5"
+        """
+
+
 rule retrieve_ariadne_database:
     params:
         db_name=config_provider("iiasa_database", "db_name"),
@@ -102,18 +113,25 @@ rule retrieve_ariadne_database:
         "scripts/retrieve_ariadne_database.py"
 
 
-# def input_profile_offwind(w):
-#     return {
-#         f"profile_{tech}": resources(f"profile_{tech}.nc")
-#         for tech in ["offwind-ac", "offwind-dc"]
-#         if (tech in config["electricity"]["renewable_carriers"])
-#     }
+def input_profile_offwind(w):
+    return {
+        f"profile_{tech}": resources(f"profile_{tech}.nc")
+        for tech in ["offwind-ac", "offwind-dc", "offwind-float"]
+        if (tech in config["electricity"]["renewable_carriers"])
+    }
 
-# use rule prepare_sector_network from pypsaeur with:
-#     input:
-#         unpack(input_profile_offwind),
-#         # **{k: v for k, v in rules.prepare_sector_network.input.items() if k != "costs"},
-# 	    # costs=resources("modified-costs_{planning_horizons}.csv"),
+
+use rule prepare_sector_network from pypsaeur with:
+    input:
+        unpack(input_profile_offwind),
+        **{
+            k: v
+            for k, v in rules.prepare_sector_network.input.items()
+            if k != "district_heat_share"
+        },
+        district_heat_share=resources(
+            "district_heat_share_elec_s{simpl}_{clusters}_{planning_horizons}-modified.csv"
+        ),
 
 
 rule modify_cost_data:
@@ -161,6 +179,43 @@ rule build_mobility_demand:
         mem_mb=1000,
     script:
         "scripts/build_mobility_demand.py"
+
+
+rule build_egon_data:
+    input:
+        demandregio_spatial="data/egon/demandregio_spatial_2018.json",
+        mapping_38_to_4=storage(
+            "https://ffeopendatastorage.blob.core.windows.net/opendata/mapping_from_4_to_38.json",
+            keep_local=True,
+        ),
+        mapping_technologies="data/egon/mapping_technologies.json",
+        nuts3=resources("nuts3_shapes.geojson"),
+    output:
+        heating_technologies_nuts3=resources("heating_technologies_nuts3.geojson"),
+    script:
+        "scripts/build_egon_data.py"
+
+
+ruleorder: modify_district_heat_share > build_district_heat_share
+
+
+rule modify_district_heat_share:
+    params:
+        district_heating=config_provider("sector", "district_heating"),
+    input:
+        heating_technologies_nuts3=resources("heating_technologies_nuts3.geojson"),
+        regions_onshore=resources("regions_onshore_elec_s{simpl}_{clusters}.geojson"),
+        district_heat_share=resources(
+            "district_heat_share_elec_s{simpl}_{clusters}_{planning_horizons}.csv"
+        ),
+    output:
+        district_heat_share=resources(
+            "district_heat_share_elec_s{simpl}_{clusters}_{planning_horizons}-modified.csv"
+        ),
+    resources:
+        mem_mb=1000,
+    script:
+        "scripts/modify_district_heat_share.py"
 
 
 rule modify_prenetwork:
