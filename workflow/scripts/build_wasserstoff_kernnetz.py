@@ -11,28 +11,21 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-import uuid
-
+import os
+import sys
 import uuid
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 from pypsa.geo import haversine_pts
-import pandas as pd
-from pypsa.geo import haversine_pts
 from shapely import wkt
 from shapely.geometry import LineString, Point
-
-import os
-import sys
 
 paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
 for path in paths:
     sys.path.insert(0, os.path.abspath(path))
-from build_gas_network import (
-    diameter_to_capacity
-)
+from build_gas_network import diameter_to_capacity
 
 MANUAL_ADDRESSES = {
     "Oude Statenzijl": (7.205108658430258, 53.20183834422634),
@@ -58,22 +51,23 @@ MANUAL_ADDRESSES = {
     "Eynatten": (6.083339457526605, 50.69260916361823),
     "Vlieghuis": (6.8382504272201095, 52.66036497820981),
     "Kalle": (6.921180663621839, 52.573992586428425),
-    'Carling': (6.713267207127634, 49.16738919353264),
-    'Legden': (7.099754098013676, 52.03269789265483),
-    'Ledgen': (7.099754098013676, 52.03269789265483),
-    'Reiningen': (8.374879149975513, 52.50849502371421),
-    'Buchholz': (12.929212986885771, 52.15737808332214),
-    'Sandkrug': (8.257391972093515, 53.05387937393471),
+    "Carling": (6.713267207127634, 49.16738919353264),
+    "Legden": (7.099754098013676, 52.03269789265483),
+    "Ledgen": (7.099754098013676, 52.03269789265483),
+    "Reiningen": (8.374879149975513, 52.50849502371421),
+    "Buchholz": (12.929212986885771, 52.15737808332214),
+    "Sandkrug": (8.257391972093515, 53.05387937393471),
 }
 
 
 def diameter_to_capacity_h2(pipe_diameter_mm):
     """
-    Calculate pipe capacity in MW based on diameter in mm. Linear interpolation.
+    Calculate pipe capacity in MW based on diameter in mm. Linear
+    interpolation.
 
-    20 inch (500 mm)  50 bar -> 1.2   GW H2 pipe capacity (LHV)
-    36 inch (900 mm)  50 bar -> 4.7   GW H2 pipe capacity (LHV)
-    48 inch (1200 mm) 80 bar -> 16.9  GW H2 pipe capacity (LHV)
+    20 inch (500 mm)  50 bar -> 1.2   GW H2 pipe capacity (LHV) 36 inch
+    (900 mm)  50 bar -> 4.7   GW H2 pipe capacity (LHV) 48 inch (1200
+    mm) 80 bar -> 16.9  GW H2 pipe capacity (LHV)
 
     Based on table 4 of
     https://ehb.eu/files/downloads/EHB-Analysing-the-future-demand-supply-and-transport-of-hydrogen-June-2021-v3.pdf
@@ -164,7 +158,7 @@ def load_and_merge_raw(fn1, fn2):
         "Nenndurchmesser (DN)": "diameter_mm",
         "Länge (km)": "length",
         "Druckstufe (DP)[mind. 30 barg]": "max_pressure_bar",
-        "IPCEI-Projekt(Name/ nein)" : "ipcei",
+        "IPCEI-Projekt(Name/ nein)": "ipcei",
     }
 
     df_fn2_new["retrofitted"] = False
@@ -203,10 +197,7 @@ def prepare_dataset(df):
 
     # clean build_year
     df.build_year = (
-        df.build_year.astype(str)
-        .str.extract(r"(\b\d{4}\b)")
-        .astype(float)
-        .fillna(2032)
+        df.build_year.astype(str).str.extract(r"(\b\d{4}\b)").astype(float).fillna(2032)
     )
 
     # create bidirectional and set true
@@ -260,9 +251,7 @@ def geocode_locations(df):
     def get_location(row):
         def get_loc_A(loc="location", add_info=""):
             loc_A = Point(
-                gpd.tools.geocode(row[loc] + ", " + add_info, timeout=7)[
-                    "geometry"
-                ][0]
+                gpd.tools.geocode(row[loc] + ", " + add_info, timeout=7)["geometry"][0]
             )
             return loc_A
 
