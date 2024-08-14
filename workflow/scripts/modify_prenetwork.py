@@ -425,6 +425,110 @@ def unravel_oilbus(n):
     )
 
 
+def unravel_gasbus(n, costs):
+    """
+    Unravel European gas bus to enable energy balances for import of gas
+    products.
+    """
+    logger.info("Unraveling gas bus")
+
+    ### create DE gas bus/generator/store
+    n.add(
+        "Bus",
+        "DE gas",
+        location="DE",
+        x=10.5,
+        y=51.2,
+        carrier="gas",
+    )
+    n.add(
+        "Generator",
+        "DE gas",
+        bus="DE gas",
+        p_nom_extendable=True,
+        carrier="gas",
+        marginal_cost=costs.at["gas", "fuel"],
+    )
+    n.add(
+        "Store",
+        "DE gas Store",
+        bus="DE gas",
+        carrier="gas",
+        e_nom_extendable=True,
+        e_cyclic=True,
+        capital_cost=costs.at["gas storage", "fixed"],
+        overnight_cost=costs.at["gas storage", "investment"],
+    )
+
+    ### create renewable gas buses
+    n.add("Carrier", "renewable gas")
+
+    n.add(
+        "Bus",
+        "DE renewable gas",
+        location="DE",
+        carrier="renewable gas",
+        x=10.5,
+        y=51.2,
+    )
+    n.add(
+        "Bus",
+        "EU renewable gas",
+        location="EU",
+        carrier="renewable gas",
+    )
+
+    ### biogas is counted as renewable gas
+    biogas_carrier = ["biogas to gas", "biogas to gas CC"]
+    biogas_DE = n.links[
+        (n.links.carrier.isin(biogas_carrier)) & (n.links.index.str[:2] == "DE")
+    ]
+    n.links.loc[biogas_DE.index, "bus1"] = "DE renewable gas"
+
+    biogas_EU = n.links[
+        (n.links.carrier.isin(biogas_carrier)) & (n.links.index.str[:2] != "DE")
+    ]
+    n.links.loc[biogas_EU.index, "bus1"] = "EU renewable gas"
+
+    ### Sabatier is counted as renewable gas
+    sabatier_carrier = ["Sabatier"]
+    sabatier_DE = n.links[
+        (n.links.carrier.isin(sabatier_carrier)) & (n.links.index.str[:2] == "DE")
+    ]
+    n.links.loc[sabatier_DE.index, "bus1"] = "DE renewable gas"
+
+    sabatier_EU = n.links[
+        (n.links.carrier.isin(sabatier_carrier)) & (n.links.index.str[:2] != "DE")
+    ]
+    n.links.loc[sabatier_EU.index, "bus1"] = "EU renewable gas"
+
+    ### change buses of German gas links
+    fossil_links = n.links[(n.links.bus0 == "EU gas") & (n.links.index.str[:2] == "DE")]
+    n.links.loc[fossil_links.index, "bus0"] = "DE gas"
+
+    ### add import/export links
+    n.madd(
+        "Link",
+        ["EU renewable gas -> DE gas", "DE renewable gas -> EU gas"],
+        bus0=["EU renewable gas", "DE renewable gas"],
+        bus1=["DE gas", "EU gas"],
+        carrier="renewable gas",
+        p_nom=1e6,
+        p_min_pu=0,
+    )
+
+    ### add links between renewable and fossil gas buses
+    n.madd(
+        "Link",
+        ["EU renewable gas -> EU gas", "DE renewable gas -> DE gas"],
+        bus0=["EU renewable gas", "DE renewable gas"],
+        bus1=["EU gas", "DE gas"],
+        carrier="renewable gas",
+        p_nom=1e6,
+        p_min_pu=0,
+    )
+
+
 def transmission_costs_from_modified_cost_data(
     n, costs, transmission, length_factor=1.0
 ):
@@ -575,6 +679,111 @@ def aladin_mobility_demand(n):
         n.stores.loc[dsm_i].e_nom *= pd.Series(factor.values, index=dsm_i)
 
 
+def add_hydrogen_turbines(n):
+    """
+    This adds links that instead of a gas turbine use a hydrogen turbine.
+
+    It is assumed that the efficiency stays the same. This function is
+    only applied to German nodes.
+    """
+    logger.info("Adding hydrogen turbine technologies for Germany.")
+
+    gas_carrier = ["OCGT", "CCGT"]
+    for carrier in gas_carrier:
+        gas_plants = n.links[
+            (n.links.carrier == carrier)
+            & (n.links.index.str[:2] == "DE")
+            & (n.links.p_nom_extendable)
+        ].index
+        if gas_plants.empty:
+            continue
+        h2_plants = n.links.loc[gas_plants].copy()
+        h2_plants.carrier = h2_plants.carrier.str.replace(carrier, "H2 " + carrier)
+        h2_plants.index = h2_plants.index.str.replace(carrier, "H2 " + carrier)
+        h2_plants.bus0 = h2_plants.bus1 + " H2"
+        h2_plants.bus2 = ""
+        h2_plants.efficiency2 = 1
+        # add the new links
+        n.import_components_from_dataframe(h2_plants, "Link")
+
+    # special handling of CHPs
+    gas_plants = n.links[
+        (n.links.carrier == "urban central gas CHP")
+        & (n.links.index.str[:2] == "DE")
+        & (n.links.p_nom_extendable)
+    ].index
+    h2_plants = n.links.loc[gas_plants].copy()
+    h2_plants.carrier = h2_plants.carrier.str.replace("gas", "H2")
+    h2_plants.index = h2_plants.index.str.replace("gas", "H2")
+    h2_plants.bus0 = h2_plants.bus1 + " H2"
+    h2_plants.bus3 = ""
+    h2_plants.efficiency3 = 1
+    n.import_components_from_dataframe(h2_plants, "Link")
+
+
+def force_retrofit(n, params):
+    """
+    This function forces the retrofit of gas turbines from params["force"] on.
+
+    Extendable gas links are deleted.
+    """
+
+    logger.info("Forcing retrofit of gas turbines to hydrogen turbines.")
+
+    gas_carrier = ["OCGT", "CCGT", "urban central gas CHP"]
+    # deleting extendable gas turbine plants
+    to_drop = n.links[
+        (n.links.carrier.isin(gas_carrier))
+        & (n.links.p_nom_extendable)
+        & (n.links.index.str[:2] == "DE")
+    ].index
+    n.links.drop(to_drop, inplace=True)
+
+    # forcing retrofit
+    for carrier in ["OCGT", "CCGT"]:
+        gas_plants = n.links[
+            (n.links.carrier == carrier)
+            & (n.links.index.str[:2] == "DE")
+            & (n.links.build_year >= params["start"])
+        ].index
+        if gas_plants.empty:
+            continue
+
+        h2_plants = n.links.loc[gas_plants].copy()
+        h2_plants.carrier = h2_plants.carrier.str.replace(
+            carrier, "H2 retrofit " + carrier
+        )
+        h2_plants.index = h2_plants.index.str.replace(carrier, "H2 retrofit " + carrier)
+        h2_plants.bus0 = h2_plants.bus1 + " H2"
+        h2_plants.bus2 = ""
+        h2_plants.efficiency -= params["efficiency_loss"]
+        h2_plants.efficiency2 = 1  # default value
+        h2_plants.capital_cost *= 1 + params["cost_factor"]
+        # add the new links
+        n.import_components_from_dataframe(h2_plants, "Link")
+        n.links.drop(gas_plants, inplace=True)
+
+    # special handling of CHPs
+    gas_plants = n.links[
+        (n.links.carrier == "urban central gas CHP")
+        & (n.links.index.str[:2] == "DE")
+        & (n.links.build_year >= params["start"])
+    ].index
+    if gas_plants.empty:
+        return
+
+    h2_plants = n.links.loc[gas_plants].copy()
+    h2_plants.carrier = h2_plants.carrier.str.replace("gas", "H2 retrofit")
+    h2_plants.index = h2_plants.index.str.replace("gas", "H2 retrofit")
+    h2_plants.bus0 = h2_plants.bus1 + " H2"
+    h2_plants.bus3 = ""
+    h2_plants.efficiency -= params["efficiency_loss"]
+    h2_plants.efficiency3 = 1  # default value
+    h2_plants.capital_cost *= 1 + params["cost_factor"]
+    n.import_components_from_dataframe(h2_plants, "Link")
+    n.links.drop(gas_plants, inplace=True)
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
@@ -587,10 +796,10 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "modify_prenetwork",
             simpl="",
-            clusters=44,
+            clusters=22,
             opts="",
             ll="vopt",
-            sector_opts="None",
+            sector_opts="none",
             planning_horizons="2020",
             run="KN2045_Bal_v4",
         )
@@ -624,6 +833,9 @@ if __name__ == "__main__":
     if not snakemake.config["run"]["debug_unravel_oilbus"]:
         unravel_oilbus(n)
 
+    if not snakemake.config["run"]["debug_unravel_gasbus"]:
+        unravel_gasbus(n, costs)
+
     if snakemake.params.enable_kernnetz:
         fn = snakemake.input.wkn
         wkn = pd.read_csv(fn, index_col=0)
@@ -651,5 +863,15 @@ if __name__ == "__main__":
             snakemake.params.biomass_must_run["p_min_pu"],
             snakemake.params.biomass_must_run["regions"],
         )
+
+    if snakemake.params.H2_plants["enable"]:
+        if snakemake.params.H2_plants["start"] <= int(
+            snakemake.wildcards.planning_horizons
+        ):
+            add_hydrogen_turbines(n)
+        if snakemake.params.H2_plants["force"] <= int(
+            snakemake.wildcards.planning_horizons
+        ):
+            force_retrofit(n, snakemake.params.H2_plants)
 
     n.export_to_netcdf(snakemake.output.network)

@@ -174,14 +174,17 @@ if __name__ == "__main__":
 
     wasserstoff_kernnetz = build_clustered_gas_network(df, bus_regions)
 
-    wasserstoff_kernnetz[["bus0", "bus1"]] = (
-        wasserstoff_kernnetz[["bus0", "bus1"]].apply(sorted, axis=1).apply(pd.Series)
-    )
+    if not wasserstoff_kernnetz.empty:
+        wasserstoff_kernnetz[["bus0", "bus1"]] = (
+            wasserstoff_kernnetz[["bus0", "bus1"]]
+            .apply(sorted, axis=1)
+            .apply(pd.Series)
+        )
 
-    reindex_pipes(wasserstoff_kernnetz, prefix="H2 pipeline")
+        reindex_pipes(wasserstoff_kernnetz, prefix="H2 pipeline")
 
-    wasserstoff_kernnetz["p_min_pu"] = 0
-    wasserstoff_kernnetz["p_nom_diameter"] = 0
-    wasserstoff_kernnetz = aggregate_parallel_pipes(wasserstoff_kernnetz)
+        wasserstoff_kernnetz["p_min_pu"] = 0
+        wasserstoff_kernnetz["p_nom_diameter"] = 0
+        wasserstoff_kernnetz = aggregate_parallel_pipes(wasserstoff_kernnetz)
 
     wasserstoff_kernnetz.to_csv(snakemake.output.clustered_h2_network)

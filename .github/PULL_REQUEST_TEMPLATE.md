@@ -5,4 +5,4 @@ Before asking for a review for this PR make sure to complete the following check
 - [ ] One or several figures that validate the changes in the PR have been posted as a comment
 - [ ] A brief description of the changes has been added to `Changelog.md`
 - [ ] The latest `main` has been merged into the PR
-- [ ] The config has a new prefix of the format `YYYYMMDDdescriptivetitle
+- [ ] The config has a new prefix of the format `YYYYMMDDdescriptive_title`
