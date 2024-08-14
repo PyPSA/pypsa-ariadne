@@ -24,7 +24,7 @@ jobs:
         main_command: "ariadne_all"
         dev: true
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ github.token }}
 
   upload-artifacts:
     name: Upload artifacts
@@ -78,5 +78,5 @@ jobs:
           ariadne_comparison/Trade-Secondary-Energy-Liquids-Hydrogen-Volume.png
           ariadne_comparison/Capacity-Electricity-Solar.png
           "
-        repo_private_key: ${{ secrets.REPO_PLOTS_PRIVATE_KEY }}
+        validator_key: ${{ secrets.VALIDATOR_KEY }}
         dev: true
