@@ -54,6 +54,12 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
 
                 cname = f"capacity_{sense}-{ct}-{c.name}-{carrier.replace(' ','-')}"
 
+                if cname in n.global_constraints.index:
+                    logger.warning(
+                        f"Global constraint {cname} already exists. Skipping."
+                    )
+                    continue
+
                 if sense == "maximum":
                     if limit - existing_capacity <= 0:
                         n.model.add_constraints(
@@ -75,16 +81,6 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
                 else:
                     logger.error("sense {sense} not recognised")
                     sys.exit()
-
-                if cname not in n.global_constraints.index:
-                    n.add(
-                        "GlobalConstraint",
-                        cname,
-                        constant=limit,
-                        sense="<=" if sense == "maximum" else ">=",
-                        type="",
-                        carrier_attribute="",
-                    )
 
 
 def h2_import_limits(n, investment_year, limits_volume_max):
