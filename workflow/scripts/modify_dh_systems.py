@@ -1,18 +1,21 @@
+# -*- coding: utf-8 -*-
 import logging
 
 logger = logging.getLogger(__name__)
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import geopandas as gpd
-from shapely.geometry import Point
 import json
+
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import pypsa
+from shapely.geometry import Point
 
 
 def load_egon():
     """
-    Load and prepares the egon data about district heating in Germany on NUTS3 level.
+    Load and prepares the egon data about district heating in Germany on NUTS3
+    level.
 
     Returns:
         GeoDataFrame: A GeoDataFrame containing the processed egon data.
@@ -57,8 +60,11 @@ def load_egon():
 
 def update_urban_loads(n_pre, egon_gdf):
     """
-    Update district heating demands of clusters according to shares in egon data on NUTS3 level for Germany.
-    Other heat loads are adjusted accordingly to ensure consistency of the nodal heat demand.
+    Update district heating demands of clusters according to shares in egon
+    data on NUTS3 level for Germany.
+
+    Other heat loads are adjusted accordingly to ensure consistency of
+    the nodal heat demand.
     """
 
     n = n_pre.copy()
@@ -141,7 +147,8 @@ def update_urban_loads(n_pre, egon_gdf):
 
 def prepare_subnodes(egon_gdf, head=40):
     """
-    Prepare subnodes for the network based on the Triebs data and the egon data.
+    Prepare subnodes for the network based on the Triebs data and the egon
+    data.
     """
     # TODO: Embed I&O in snakemake rule, add potentials, match CHP capacities
 
@@ -280,7 +287,7 @@ def add_subnodes(n, subnodes, head=40):
 
 def modify_chps(chps):
     """
-    Modify the CHP dataframe to include the subnodes
+    Modify the CHP dataframe to include the subnodes.
     """
 
     chps["subnode"] = chps.apply(
