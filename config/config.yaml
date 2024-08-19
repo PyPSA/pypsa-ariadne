@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240710limitwasteheat
+  prefix: 20240814limitseq
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -18,18 +18,19 @@ run:
     enable: true
     manual_file: config/scenarios.manual.yaml
     file: config/scenarios.automated.yaml
-  shared_resources: 
+  shared_resources:
     policy: base #stops recalculating
     exclude:
-      - existing_heating.csv # specify files which should not be shared between scenarios
-      - costs
-      - retrieve_cost # This is necessary to save retrieve_cost_data_{year}.log in the correct folder
-      - industry_sector_ratios
-      - build_industry_sector_ratios # This is necessary to save build_industry_sector_ratios_data.log in the correct folder
+    - existing_heating.csv   # specify files which should not be shared between scenarios
+    - costs
+    - retrieve_cost   # This is necessary to save retrieve_cost_data_{year}.log in the correct folder
+    - industry_sector_ratios
+    - build_industry_sector_ratios   # This is necessary to save build_industry_sector_ratios_data.log in the correct folder
   disable_progressbar: true
   debug_co2_limit: false
   debug_h2deriv_limit: false
   debug_unravel_oilbus: false
+  debug_unravel_gasbus: false
 
 iiasa_database:
   db_name: ariadne2_intern
@@ -39,14 +40,14 @@ iiasa_database:
     transport: Aladin v1
     industry: FORECAST v1.0
   scenarios:
-    - CurrentPolicies
-    - KN2045_Elec_v4
-    - KN2045_H2_v4
-    - KN2045_Bal_v4
-    - KN2045plus_EasyRide
-    - KN2045plus_LowDemand
-    - KN2045minus_WorstCase
-    - KN2045minus_SupplyFocus
+  - CurrentPolicies
+  - KN2045_Elec_v4
+  - KN2045_H2_v4
+  - KN2045_Bal_v4
+  - KN2045plus_EasyRide
+  - KN2045plus_LowDemand
+  - KN2045minus_WorstCase
+  - KN2045minus_SupplyFocus
   reference_scenario: KN2045_Bal_v4
   region: Deutschland
 
@@ -61,11 +62,11 @@ scenario:
   ll:
   - vopt
   clusters:
-  - 22
+  - 22 #current options: 22, 44
   opts:
   - ''
   sector_opts:
-    - none
+  - none
   planning_horizons:
   - 2020
   - 2025
@@ -81,7 +82,48 @@ existing_capacities:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
 # Germany plus 12 "Stromnachbarn"
-countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'PL', 'SE']
+countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'PL', 'SE', 'ES']
+
+# docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#snapshots
+snapshots:
+  start: "2019-01-01"
+  end: "2020-01-01"
+  inclusive: 'left'
+
+atlite:
+  default_cutout: europe-2019-sarah3-era5
+  cutouts:
+    europe-2019-sarah3-era5:
+      module: [sarah, era5] # in priority order
+      x: [-12., 42.]
+      y: [33., 72]
+      dx: 0.3
+      dy: 0.3
+      time: ['2019', '2019']
+
+
+renewable:
+  onwind:
+    cutout: europe-2019-sarah3-era5
+  offwind-ac:
+    capacity_per_sqkm: 6
+    cutout: europe-2019-sarah3-era5
+  offwind-dc:
+    capacity_per_sqkm: 6
+    cutout: europe-2019-sarah3-era5
+  offwind-float:
+    capacity_per_sqkm: 6
+    cutout: europe-2019-sarah3-era5
+  solar:
+    cutout: europe-2019-sarah3-era5
+  solar-hsat:
+    cutout: europe-2019-sarah3-era5
+  hydro:
+    cutout: europe-2019-sarah3-era5
+
+lines:
+  dynamic_line_rating:
+    cutout: europe-2019-sarah3-era5
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
@@ -90,21 +132,43 @@ enable:
 clustering:
   # simplify_network:
   #   to_substations: true
+  # Code snippet for editing focus_weights
+  # fw = pd.Series(snakemake.config["clustering"]["focus_weights"])
+  # fw = fw.div(fw.min()).round()
+  # fw["ES"] = 1
+  # print(fw.div(fw.sum()).subtract(5e-5).round(4).to_dict().__repr__().replace(",","\n"))
   focus_weights:
-  # 22 nodes: 8 for Germany, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
-    'DE': 0.3636 # 8/22
-    'AT': 0.0455 # 1/22
-    'BE': 0.0455
-    'CH': 0.0455
-    'CZ': 0.0455
-    'DK': 0.0909 # 2/22
-    'FR': 0.0454
-    'GB': 0.0909 # 2/22
-    'LU': 0.0454
-    'NL': 0.0454
-    'NO': 0.0454
-    'PL': 0.0454
-    'SE': 0.0454
+  # 23 nodes: 8 for Germany, 1 for Spain, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
+    'DE': 0.3478
+    'AT': 0.0434
+    'BE': 0.0434
+    'CH': 0.0434
+    'CZ': 0.0434
+    'DK': 0.0869
+    'FR': 0.0434
+    'GB': 0.0869
+    'LU': 0.0434
+    'NL': 0.0434
+    'NO': 0.0434
+    'PL': 0.0434
+    'SE': 0.0434
+    'ES': 0.0434
+  # high spatial resolution: change clusters to 45
+  # 45 nodes: 30 for Germany, 1 for Spain, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
+    # 'DE': 0.6666
+    # 'AT': 0.0222
+    # 'BE': 0.0222
+    # 'CH': 0.0222
+    # 'CZ': 0.0222
+    # 'DK': 0.0444
+    # 'FR': 0.0222
+    # 'GB': 0.0444
+    # 'LU': 0.0222
+    # 'NL': 0.0222
+    # 'NO': 0.0222
+    # 'PL': 0.0222
+    # 'SE': 0.0222
+    # 'ES': 0.0222
   temporal:
     resolution_sector: 365H
 
@@ -117,94 +181,6 @@ co2_budget:
   2040: 0.100 # goal to be set next year
   2045: 0.050
   2050: 0.000 # climate-neutral by 2050
-
-limits_capacity_max:
-  Generator:
-    onwind:
-      DE:
-        2020: 54.5
-        2025: 69
-        2030: 160
-        2035: 160
-        2040: 160
-        2045: 160
-    offwind:
-      DE:
-        2020: 7.8
-        2025: 8
-        2030: 30
-        2035: 70
-        2040: 70
-        2045: 70
-    solar:
-      DE:
-        2020: 53.7
-        2025: 110 # EEG2023; assumes for 2026: 128 GW, assuming a fair share reached by end of 2025
-        2030: 400
-        2035: 400
-        2040: 400
-        2045: 400
-
-limits_capacity_min:
-    Generator:
-      onwind:
-        DE:
-          2030: 115 # Wind-an-Land Law
-          2035: 115 # Wind-an-Land Law
-          2040: 115 # Wind-an-Land Law
-          2045: 115
-      offwind:
-        DE:
-          2030: 30 # Wind-auf-See Law
-          2035: 30 
-          2040: 30
-          2045: 30 
-      solar:
-        DE:
-          # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW, 
-          # assuming at least 1/3 of difference reached in 2025
-          2025: 101 
-          2030: 101 
-          2035: 101
-          2040: 101 
-          2045: 101
-
-
-# limits_capacity_min:
-#     Generator:
-#       onwind:
-#         DE:
-#           2030: 115 # Wind-an-Land Law
-#           2035: 157 # Wind-an-Land Law
-#           2040: 160 # Wind-an-Land Law
-#           2045: 160
-#       offwind:
-#         DE:
-#           2030: 30 # Wind-auf-See Law
-#           2035: 40 # 40 Wind-auf-See Law
-#           # assuming at least 1/3 of difference reached in 2040
-#           2040: 50
-#           2045: 70 #70 Wind-auf-See Law
-#       solar:
-#         DE:
-#           # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW, 
-#           # assuming at least 1/3 of difference reached in 2025
-#           2025: 101 
-#           2030: 215 # PV strategy
-#           2035: 309
-#           2040: 400 # PV strategy
-#           2045: 400
-#           # What about the EEG2023 "Strommengenpfad"?
-
-h2_import_max:
-  DE:
-    2020: 0
-    2025: 5
-    2030: 20
-    2035: 50
-    2040: 100
-    2045: 150
-    2050: 200
 
 wasserstoff_kernnetz:
   enable: false
@@ -227,19 +203,15 @@ first_technology_occurrence:
     H2 Electrolysis: 2025
     H2 pipeline retrofitted: 2025
 
-renewable:
-  offwind-ac:
-    capacity_per_sqkm: 6
-  offwind-dc:
-    capacity_per_sqkm: 6
+
 
 costs:
   horizon: "mean" # "optimist", "pessimist" or "mean"
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
-  solar_thermal: false
   v2g: false
+  solar_thermal: false
   district_heating:
     potential: 0.3
     progress:
@@ -251,7 +223,6 @@ sector:
       2045: 0.8
       2050: 1.0
   central_heat_vent: true
-  co2_budget_national: true
   co2_spatial: true
   biomass_spatial: true
   #TBD what to include in config
@@ -260,7 +231,9 @@ sector:
   regional_methanol_demand: true  #set to true if regional CO2 constraints needed
   regional_oil_demand: true  #set to true if regional CO2 constraints needed
   regional_coal_demand: true  #set to true if regional CO2 constraints needed
-  gas_network: true
+  gas_network: false
+  regional_gas_demand: true
+  H2_retrofit: true
   biogas_upgrading_cc: true
   cluster_heat_buses: true
   # calculated based on ariadne "Stock|Space Heating"
@@ -366,16 +339,148 @@ solving:
         DC: 2000
         gas pipeline: 1500
         gas pipeline new: 1500
-        H2 pipeline: 1200
-        H2 pipeline (Kernnetz): 1200
-        H2 pipeline retrofitted: 1200
+        H2 pipeline: 13000
+        H2 pipeline (Kernnetz): 13000
+        H2 pipeline retrofitted: 13000
       link_threshold:
         DC: 0.3
         gas pipeline: 0.3
         gas pipeline new: 0.3
-        H2 pipeline: 0.3
-        H2 pipeline (Kernnetz): 0.3
-        H2 pipeline retrofitted: 0.3
+        H2 pipeline: 0.05
+        H2 pipeline (Kernnetz): 0.05
+        H2 pipeline retrofitted: 0.05
+  constraints:
+    limits_capacity_max:
+      Generator:
+        onwind:
+          DE:
+            2020: 54.5
+            2025: 69
+            2030: 160
+            2035: 160
+            2040: 160
+            2045: 160
+        offwind:
+          DE:
+            2020: 7.8
+            2025: 8
+            2030: 30
+            2035: 70
+            2040: 70
+            2045: 70
+        solar:
+          DE:
+            2020: 53.7
+            2025: 110 # EEG2023; assumes for 2026: 128 GW, assuming a fair share reached by end of 2025
+            2030: 400
+            2035: 400
+            2040: 400
+            2045: 400
+      Store:
+        co2 sequestered:
+          DE:
+            2020: 0
+            2025: 0
+            2030: 10000
+            2035: 20000
+            2040: 50000
+            2045: 80000
+    limits_capacity_min:
+      Generator:
+        onwind:
+          DE:
+            2030: 115   # Wind-an-Land Law
+            2035: 115   # Wind-an-Land Law
+            2040: 115   # Wind-an-Land Law
+            2045: 115
+        offwind:
+          DE:
+            2030: 30   # Wind-auf-See Law
+            2035: 30
+            2040: 30
+            2045: 30
+        solar:
+          DE:
+              # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW,
+              # assuming at least 1/3 of difference reached in 2025
+            2025: 101
+            2030: 101
+            2035: 101
+            2040: 101
+            2045: 101
+  # For reference, this are the values specified in the laws
+  # limits_capacity_min:
+  #     Generator:
+  #       onwind:
+  #         DE:
+  #           2030: 115 # Wind-an-Land Law
+  #           2035: 157 # Wind-an-Land Law
+  #           2040: 160 # Wind-an-Land Law
+  #           2045: 160
+  #       offwind:
+  #         DE:
+  #           2030: 30 # Wind-auf-See Law
+  #           2035: 40 # 40 Wind-auf-See Law
+  #           # assuming at least 1/3 of difference reached in 2040
+  #           2040: 50
+  #           2045: 70 #70 Wind-auf-See Law
+  #       solar:
+  #         DE:
+  #           # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW,
+  #           # assuming at least 1/3 of difference reached in 2025
+  #           2025: 101
+  #           2030: 215 # PV strategy
+  #           2035: 309
+  #           2040: 400 # PV strategy
+  #           2045: 400
+  #           # What about the EEG2023 "Strommengenpfad"?
+    # boundary condition of maximum volumes
+    limits_volume_max:
+      # constrain electricity import in TWh
+      electricity_import:
+        DE:
+          2020: -20
+          2025: 0
+          2030: 0
+          2035: 40
+          2040: 80
+          2045: 125
+      electrolysis:
+      # boundary condition lower?
+        DE:
+          2020: 0
+          2025: 5
+          2030: 45
+          2035: 130
+          2040: 215
+          2045: 300
+      h2_derivate_import:
+      # boundary condition lower?
+        DE:
+          2020: 0
+          2025: 0
+          2030: 10
+          2035: 105
+          2040: 200
+          2045: 300
+      h2_import:
+      # boundary condition lower?
+        DE:
+          2020: 0
+          2025: 5
+          2030: 15
+          2035: 115
+          2040: 220
+          2045: 325
+    limits_volume_min:
+      electrolysis:
+        DE:
+          2020: 0
+          2025: 0
+          2030: 0
+          2035: 0
+          2040: 0
+          2045: 0
   # solver:
   #   options: gurobi-numeric-focus
   # solver_options:
@@ -389,6 +494,13 @@ plotting:
     load: "#111100"
     H2 pipeline (Kernnetz): '#6b3161'
     renewable oil: '#c9c9c9'
+    urban central H2 retrofit CHP: '#ff0000'
+    H2 retrofit OCGT: '#ff0000'
+    H2 retrofit CCGT: '#ff0000'
+    H2 OCGT: '#ff0000'
+    H2 CCGT: '#ff0000'
+    urban central H2 CHP: '#ff0000'
+    renewable gas: '#e05b09'
   countries:
   - all
   - DE
@@ -406,10 +518,16 @@ plotting:
 #powerplants_filter: (DateOut >= 2019 or DateOut != DateOut)
 electricity:
   powerplants_filter: (DateOut >= 2019 or DateOut != DateOut) and not (Country == "DE" and Set == "CHP")
-  custom_powerplants: True
+  custom_powerplants: true
   custom_file: resources/german_chp.csv
   estimate_renewable_capacities:
     year: 2019
+  H2_plants_DE:
+    enable: true
+    start: 2030 # should be < force
+    force: 2035
+    cost_factor: 0.15 # repurposing cost of OCGT gas to H2 in % investment cost in EUR/MW source: Christidis et al (2023) - H2-Ready-Gaskraftwerke, Table 3 https://reiner-lemoine-institut.de/wp-content/uploads/2023/11/RLI-Studie-H2-ready_DE.pdf
+    efficiency_loss: 0.05
 
 pypsa_eur:
   Bus:
@@ -431,11 +549,10 @@ pypsa_eur:
 
 
 co2_price_add_on_fossils:
-  2020: 25 
+  2020: 25
   2025: 60
-  
+
 must_run_biomass:
   enable: true
-  p_min_pu: 0.7 
+  p_min_pu: 0.7
   regions: ['DE']
-
