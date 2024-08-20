@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 import os
 import sys
 
+import geopandas as gpd
 import pandas as pd
 import pypsa
 from powerplantmatching.export import map_country_bus
@@ -203,13 +204,51 @@ def calculate_efficiency(CHP_de):
     return CHP_de
 
 
+def assign_subnode(CHP_de, subnodes):
+    """
+    Assign subnodes to the CHP plants based on their location.
+    """
+
+    # Make a geodataframe from CHP_de using the lat and lon columns
+    CHP_de = gpd.GeoDataFrame(
+        CHP_de, geometry=gpd.points_from_xy(CHP_de.lon, CHP_de.lat)
+    )
+    CHP_de.crs = subnodes.crs
+    # Set nuts_3 shape wkt column as geometry
+    subnodes["geometry"] = gpd.GeoSeries.from_wkt(subnodes["nuts3_shape"])
+    subnodes.drop("nuts3_shape", axis=1, inplace=True)
+    subnodes.index.rename("city", inplace=True)
+
+    # Assign subnode to CHP plants based on the nuts3 region
+    CHP_de = CHP_de.sjoin(subnodes, how="left", predicate="within")
+    CHP_de["subnode"] = CHP_de["cluster"] + " " + CHP_de["city"]
+    CHP_de.drop(["city", "cluster"], axis=1, inplace=True)
+
+    return CHP_de
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
+        import os
+
+        # Change directory to current script
+        os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
         path = "../submodules/pypsa-eur/scripts"
         sys.path.insert(0, os.path.abspath(path))
         from _helpers import mock_snakemake
 
-        snakemake = mock_snakemake("build_existing_chp_de")
+        snakemake = mock_snakemake(
+            "build_existing_chp_de",
+            simpl="",
+            clusters=44,
+            opts="",
+            ll="vopt",
+            sector_opts="none",
+            planning_horizons="2020",
+            run="KN2045_Bal_v4",
+        )
+        # snakemake = mock_snakemake("build_existing_chp_de")
 
     logging.basicConfig(level=snakemake.config["logging"]["level"])
 
@@ -232,5 +271,12 @@ if __name__ == "__main__":
     bn = pypsa.Network(snakemake.input.busmap)
     substations = bn.buses.query("substation_lv")
     CHP_de = map_country_bus(CHP_de, substations)
+
+    if snakemake.params.add_district_heating_subnodes:
+        subnodes = gpd.read_file(
+            snakemake.input.district_heating_subnodes,
+            columns=["Stadt", "cluster", "nuts3_shape"],
+        ).set_index("Stadt")
+        CHP_de = assign_subnode(CHP_de, subnodes)
 
     CHP_de.to_csv(snakemake.output.german_chp, index=False)
