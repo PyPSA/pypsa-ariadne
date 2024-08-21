@@ -212,6 +212,7 @@ if config["sector"]["district_heating"]["add_subnodes"] and config["sector"][
                 "regions_onshore_elec_s{simpl}_{clusters}.geojson"
             ),
             fernwaermeatlas="data/fernwaermeatlas/fernwaermeatlas.xlsx",
+            cities="data/fernwaermeatlas/cities_geolocations.geojson",
         output:
             network=RESULTS
             + "prenetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}_dh.nc",

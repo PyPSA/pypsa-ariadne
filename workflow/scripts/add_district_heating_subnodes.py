@@ -17,43 +17,26 @@ def encode_utf8(city_name):
     return city_name.encode("utf-8")
 
 
-def prepare_subnodes(subnodes, regions_onshore, heat_techs, head=40):
+def prepare_subnodes(subnodes, cities, regions_onshore, heat_techs, head=40):
     # TODO: Embed I&O in snakemake rule, add potentials, match CHP capacities
     # If head is boolean set it to 40 for default behavior
     if isinstance(head, bool):
         head = 40
-    # Keep only n largest district heating networks according to head parameter
-    subnodes = subnodes.sort_values(
-        by="Wärmeeinspeisung in GWh/a", ascending=False
-    ).head(head)
 
-    # Create a Nominatim object
-    nominatim = Nominatim(user_agent="cityEncoder")
-
-    subnodes["lat"] = np.nan
-    subnodes["lon"] = np.nan
     subnodes["Stadt"] = subnodes["Stadt"].str.split("_").str[0]
 
     # Drop duplicates if Gelsenkirchen, Kiel, or Flensburg is included and keep the one with higher Wärmeeinspeisung in GWh/a
     subnodes = subnodes.drop_duplicates(subset="Stadt", keep="first")
 
-    # Get the location of all cities in the dataset (Stadt column) and write them to column "location" do it as try ecxept to avoid errors
-    for i, row in subnodes.iterrows():
-        try:
-            location = nominatim.geocode(encode_utf8(row["Stadt"]), country_codes="DE")
-            # Extract the latitude and longitude from the location column
-            subnodes.at[i, "lat"] = location.latitude
-            subnodes.at[i, "lon"] = location.longitude
-            sleep_sec = 1
-            sleep(randint(1 * 100, sleep_sec * 100) / 100)
-        except:
-            logger.info(f"Location not found for {row['Stadt']}")
-            pass
+    # Keep only n largest district heating networks according to head parameter
+    subnodes = subnodes.sort_values(
+        by="Wärmeeinspeisung in GWh/a", ascending=False
+    ).head(head)
 
-    # Make a shapely point object from the lat and lon columns
-    subnodes["geometry"] = gpd.points_from_xy(subnodes["lon"], subnodes["lat"])
-    # Drop rows with missing geometry
-    logger.info("Cities without locations are dropped.")
+    subnodes["geometry"] = subnodes["Stadt"].apply(
+        lambda s: cities.loc[cities["Stadt"] == s, "geometry"].values[0]
+    )
+
     subnodes = subnodes.dropna(subset=["geometry"])
     # Convert the DataFrame to a GeoDataFrame
     subnodes = gpd.GeoDataFrame(subnodes, crs="EPSG:4326")
@@ -170,7 +153,7 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "add_district_heating_subnodes",
             simpl="",
-            clusters=44,
+            clusters=22,
             opts="",
             ll="vopt",
             sector_opts="none",
@@ -188,6 +171,7 @@ if __name__ == "__main__":
         snakemake.input.fernwaermeatlas,
         sheet_name="Fernwärmeatlas_öffentlich",
     )
+    cities = gpd.read_file(snakemake.input.cities)
     regions_onshore = gpd.read_file(snakemake.input.regions_onshore).set_index("name")
     # Assign onshore region to heat techs based on geometry
     heat_techs["cluster"] = heat_techs.apply(
@@ -197,6 +181,7 @@ if __name__ == "__main__":
 
     subnodes = prepare_subnodes(
         fernwaermeatlas,
+        cities,
         regions_onshore,
         heat_techs,
         head=snakemake.params.district_heating["add_subnodes"],
