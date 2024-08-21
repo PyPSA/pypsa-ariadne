@@ -19,7 +19,9 @@ def encode_utf8(city_name):
 
 def prepare_subnodes(subnodes, regions_onshore, heat_techs, head=40):
     # TODO: Embed I&O in snakemake rule, add potentials, match CHP capacities
-
+    # If head is boolean set it to 40 for default behavior
+    if isinstance(head, bool):
+        head = 40
     # Keep only n largest district heating networks according to head parameter
     subnodes = subnodes.sort_values(
         by="Wärmeeinspeisung in GWh/a", ascending=False
@@ -134,6 +136,18 @@ def add_subnodes(n, subnodes):
             carrier="urban central heat",
             location=row["cluster"],
             profile=row["cluster"],
+        )
+
+        n.madd(
+            "Generator",
+            [f"{name} gas boiler"],
+            bus=name,
+            carrier="gas",
+            p_nom_extendable=True,
+            p_nom_max=1e6,
+            capital_cost=10000,
+            marginal_cost=25,
+            efficiency=1,
         )
 
         # Adjust loads of cluster buses

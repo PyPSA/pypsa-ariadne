@@ -196,26 +196,32 @@ rule build_egon_data:
         "scripts/build_egon_data.py"
 
 
-rule add_district_heating_subnodes:
-    params:
-        district_heating=config_provider("sector", "district_heating"),
-    input:
-        network=RESULTS
-        + "prenetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
-        heating_technologies_nuts3=resources("heating_technologies_nuts3.geojson"),
-        nuts3=resources("nuts3_shapes.geojson"),
-        regions_onshore=resources("regions_onshore_elec_s{simpl}_{clusters}.geojson"),
-        fernwaermeatlas="data/fernwaermeatlas/Fernwärmeatlas_öffentlich.xlsx",
-    output:
-        network=RESULTS
-        + "prenetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}_dh.nc",
-        district_heating_subnodes=resources(
-            "district_heating_subnodes_elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.geojson"
-        ),
-    resources:
-        mem_mb=1000,
-    script:
-        "scripts/add_district_heating_subnodes.py"
+if config["sector"]["district_heating"]["add_subnodes"] and config["sector"][
+    "district_heating"
+].get("add_subnodes", True):
+
+    rule add_district_heating_subnodes:
+        params:
+            district_heating=config_provider("sector", "district_heating"),
+        input:
+            network=RESULTS
+            + "prenetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
+            heating_technologies_nuts3=resources("heating_technologies_nuts3.geojson"),
+            nuts3=resources("nuts3_shapes.geojson"),
+            regions_onshore=resources(
+                "regions_onshore_elec_s{simpl}_{clusters}.geojson"
+            ),
+            fernwaermeatlas="data/fernwaermeatlas/fernwaermeatlas.xlsx",
+        output:
+            network=RESULTS
+            + "prenetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}_dh.nc",
+            district_heating_subnodes=resources(
+                "district_heating_subnodes_elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.geojson"
+            ),
+        resources:
+            mem_mb=1000,
+        script:
+            "scripts/add_district_heating_subnodes.py"
 
 
 ruleorder: modify_district_heat_share > build_district_heat_share
@@ -362,8 +368,12 @@ rule build_existing_chp_de:
             keep_local=True,
         ),
         busmap=resources("networks/base.nc"),
-        district_heating_subnodes=resources(
-            "district_heating_subnodes_elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.geojson"
+        district_heating_subnodes=(
+            resources(
+                "district_heating_subnodes_elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.geojson"
+            )
+            if config["sector"]["district_heating"].get("add_subnodes", True)
+            else []
         ),
     output:
         german_chp=resources(
@@ -381,8 +391,13 @@ use rule add_existing_baseyear from pypsaeur with:
         ),
     input:
         **{k: v for k, v in rules.add_existing_baseyear.input.items() if k != "network"},
-        network=RESULTS
-        + "prenetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}_dh.nc",
+        network=(
+            RESULTS
+            + "prenetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}_dh.nc"
+            if config["sector"]["district_heating"].get("add_subnodes", True)
+            else RESULTS
+            + "prenetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc"
+        ),
         custom_powerplants=resources(
             "german_chp_elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.csv"
         ),
