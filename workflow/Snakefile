@@ -403,6 +403,18 @@ use rule add_existing_baseyear from pypsaeur with:
         ),
 
 
+use rule add_brownfield from pypsaeur with:
+    input:
+        **{k: v for k, v in rules.add_brownfield.input.items() if k != "network"},
+        network=(
+            RESULTS
+            + "prenetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}_dh.nc"
+            if config["sector"]["district_heating"].get("add_subnodes", True)
+            else RESULTS
+            + "prenetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc"
+        ),
+
+
 use rule build_existing_heating_distribution from pypsaeur with:
     input:
         **{
