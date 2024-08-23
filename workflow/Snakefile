@@ -404,8 +404,17 @@ use rule add_existing_baseyear from pypsaeur with:
         ),
 
 
+def input_profile_tech_brownfield(w):
+    return {
+        f"profile_{tech}": resources(f"profile_{tech}.nc")
+        for tech in config_provider("electricity", "renewable_carriers")(w)
+        if tech != "hydro"
+    }
+
+
 use rule add_brownfield from pypsaeur with:
     input:
+        unpack(input_profile_tech_brownfield),
         **{k: v for k, v in rules.add_brownfield.input.items() if k != "network"},
         network=(
             RESULTS

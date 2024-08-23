@@ -118,23 +118,61 @@ def add_subnodes(n, subnodes):
             p_set=heat_load,
             carrier="urban central heat",
             location=row["cluster"],
-            profile=row["cluster"],
         )
 
+        # Adjust loads of cluster buses
+        n.loads_t.p_set.loc[:, f'{row["cluster"]} urban central heat'] *= 1 - scalar
+
+        # Replicate district heating stores and links of mother node for subnodes
+        # TODO: Add heat pump links
+
+        n.madd(
+            "Bus",
+            [f"{row['cluster']} {row['Stadt']} urban central water tanks"],
+            location=row["cluster"],
+            carrier="urban central water tanks",
+            unit="MWh_th",
+        )
+
+        stores = (
+            n.stores.filter(like=f"{row['cluster']} urban central", axis=0)
+            .reset_index()
+            .replace(
+                {
+                    f"{row['cluster']} urban central": f"{row['cluster']} {row['Stadt']} urban central"
+                },
+                regex=True,
+            )
+            .set_index("Store")
+        )
+        n.madd("Store", stores.index, **stores)
+
+        links = (
+            n.links.loc[~n.links.carrier.str.contains("heat pump")]
+            .filter(like=f"{row['cluster']} urban central", axis=0)
+            .reset_index()
+            .replace(
+                {
+                    f"{row['cluster']} urban central": f"{row['cluster']} {row['Stadt']} urban central"
+                },
+                regex=True,
+            )
+            .set_index("Link")
+        )
+        n.madd("Link", links.index, **links)
+
+        # Add artificial gas boiler to subnode
         n.madd(
             "Generator",
-            [f"{name} gas boiler"],
+            [f"{name} load shedding"],
             bus=name,
             carrier="gas",
             p_nom_extendable=True,
             p_nom_max=1e6,
             capital_cost=10000,
-            marginal_cost=25,
+            marginal_cost=200,
             efficiency=1,
         )
-
-        # Adjust loads of cluster buses
-        n.loads_t.p_set.loc[:, f'{row["cluster"]} urban central heat'] *= 1 - scalar
 
     return
 
