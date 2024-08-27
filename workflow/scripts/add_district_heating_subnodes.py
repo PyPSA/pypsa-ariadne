@@ -9,6 +9,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pypsa
+import xarray as xr
 from geopy.geocoders import Nominatim
 
 
@@ -161,6 +162,28 @@ def add_subnodes(n, subnodes):
         )
         n.madd("Link", links.index, **links)
 
+        # Add heat pumps to subnode
+        heat_pumps = (
+            n.links.loc[n.links.carrier.str.contains("heat pump")]
+            .reset_index()
+            .replace(
+                {
+                    f"{row['cluster']} urban central": f"{row['cluster']} {row['Stadt']} urban central"
+                },
+                regex=True,
+            )
+            .set_index("Link")
+        ).drop("efficiency", axis=1)
+        heat_pumps_t = n.links_t.efficiency.filter(
+            regex=f"{row['cluster']} urban central.*heat pump"
+        ).rename(
+            {
+                f"{row['cluster']} urban central": f"{row['cluster']} {row['Stadt']} urban central"
+            },
+            axis=1,
+        )
+        n.madd("Link", heat_pumps.index, efficiency=heat_pumps_t, **heat_pumps)
+
         # Add artificial gas boiler to subnode
         n.madd(
             "Generator",
@@ -175,6 +198,30 @@ def add_subnodes(n, subnodes):
         )
 
     return
+
+
+def extend_cops(cops, subnodes):
+    """
+    Extend COPs by subnodes mirroring the timeseries of the corresponding
+    mother node.
+    """
+    cops_extended = cops.copy()
+
+    # Iterate over the DataFrame rows
+    for _, row in subnodes.iterrows():
+        cluster_name = row["cluster"]
+        city_name = row["city"]
+
+        # Select the xarray entry where name matches the cluster
+        selected_entry = cops.sel(name=cluster_name)
+
+        # Rename the selected entry
+        renamed_entry = selected_entry.assign_coords(name=f"{cluster_name}_{city_name}")
+
+        # Combine the renamed entry with the extended dataset
+        cops_extended = xr.concat([cops_extended, renamed_entry], dim="name")
+
+    return cops_extended
 
 
 if __name__ == "__main__":
@@ -228,4 +275,8 @@ if __name__ == "__main__":
 
     add_subnodes(n, subnodes)
 
+    if snakemake.config["foresight"] == "myopic":
+        cops = xr.open_dataarray(snakemake.input.cop_air_total)
+        cops_extended = extend_cops(cops, subnodes)
+        cops_extended.to_netcdf(snakemake.output.cop_air_total_extended)
     n.export_to_netcdf(snakemake.output.network)
