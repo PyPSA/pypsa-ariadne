@@ -164,7 +164,7 @@ def add_subnodes(n, subnodes):
 
         # Add heat pumps to subnode
         heat_pumps = (
-            n.links.loc[n.links.carrier.str.contains("heat pump")]
+            n.links.filter(regex=f"{row['cluster']} urban central.*heat pump", axis=0)
             .reset_index()
             .replace(
                 {
@@ -176,11 +176,10 @@ def add_subnodes(n, subnodes):
         ).drop("efficiency", axis=1)
         heat_pumps_t = n.links_t.efficiency.filter(
             regex=f"{row['cluster']} urban central.*heat pump"
-        ).rename(
-            {
-                f"{row['cluster']} urban central": f"{row['cluster']} {row['Stadt']} urban central"
-            },
-            axis=1,
+        )
+        heat_pumps_t.columns = heat_pumps_t.columns.str.replace(
+            f"{row['cluster']} urban central",
+            f"{row['cluster']} {row['Stadt']} urban central",
         )
         n.madd("Link", heat_pumps.index, efficiency=heat_pumps_t, **heat_pumps)
 
@@ -210,13 +209,13 @@ def extend_cops(cops, subnodes):
     # Iterate over the DataFrame rows
     for _, row in subnodes.iterrows():
         cluster_name = row["cluster"]
-        city_name = row["city"]
+        city_name = row["Stadt"]
 
         # Select the xarray entry where name matches the cluster
         selected_entry = cops.sel(name=cluster_name)
 
         # Rename the selected entry
-        renamed_entry = selected_entry.assign_coords(name=f"{cluster_name}_{city_name}")
+        renamed_entry = selected_entry.assign_coords(name=f"{cluster_name} {city_name}")
 
         # Combine the renamed entry with the extended dataset
         cops_extended = xr.concat([cops_extended, renamed_entry], dim="name")

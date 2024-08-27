@@ -408,7 +408,9 @@ use rule add_existing_baseyear from pypsaeur with:
             + "prenetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc"
         ),
         cop_air_total=(
-            resources("cop_air_total_elec_s{simpl}_{clusters}-extended.nc")
+            resources(
+                "cop_air_total_elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}-extended.nc"
+            )
             if config["sector"]["district_heating"].get("add_subnodes", True)
             else resources("cop_air_total_elec_s{simpl}_{clusters}.nc")
         ),
