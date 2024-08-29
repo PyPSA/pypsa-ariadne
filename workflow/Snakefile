@@ -342,6 +342,20 @@ rule build_existing_chp_de:
         "scripts/build_existing_chp_de.py"
 
 
+use rule build_transmission_projects from pypsaeur with:
+    input:
+        **{
+            k: v
+            for k, v in rules.build_transmission_projects.input.items()
+            if k != "transmission_projects"
+        },
+        transmission_projects=lambda w: [
+            "workflow/submodules/pypsa-eur/data/transmission_projects/" + name
+            for name, include in config_provider("transmission_projects", "include")(
+                w
+            ).items()
+            if include
+        ],
 use rule add_existing_baseyear from pypsaeur with:
     input:
         **rules.add_existing_baseyear.input,
