@@ -157,7 +157,9 @@ def _get_gas_fractions(n, region):
         * total_exported_renewable_gas
     )
     renewable_gas_supply = (
-        domestic_renewable_gas + imported_renewable_gas - exported_renewable_gas
+        domestic_renewable_gas
+        .add(imported_renewable_gas, fill_value=0)
+        .subtract(exported_renewable_gas, fill_value=0)
     )
     # Check for small differences
     assert domestic_gas_supply.get("renewable gas", 0) - renewable_gas_supply.sum() < 1
