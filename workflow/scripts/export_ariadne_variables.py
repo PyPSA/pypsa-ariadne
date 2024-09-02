@@ -10,9 +10,11 @@ import pandas as pd
 import pypsa
 from numpy import isclose
 
-paths = ["workflow/submodules/pypsa-eur/scripts",
-          "../submodules/pypsa-eur/scripts", 
-          "../submodules/pypsa-eur/"]
+paths = [
+    "workflow/submodules/pypsa-eur/scripts",
+    "../submodules/pypsa-eur/scripts",
+    "../submodules/pypsa-eur/",
+]
 for path in paths:
     sys.path.insert(0, os.path.abspath(path))
 
@@ -158,8 +160,8 @@ def _get_gas_fractions(n, region):
 
     if total_exported_renewable_gas == 0:
         exported_renewable_gas = pd.Series(
-            0, 
-            index=renewable_gas_supply.index.get_level_values("carrier"))
+            0, index=renewable_gas_supply.index.get_level_values("carrier")
+        )
     else:
         exported_renewable_gas = (
             domestic_renewable_gas
@@ -167,11 +169,9 @@ def _get_gas_fractions(n, region):
             * total_exported_renewable_gas
         )
 
-    renewable_gas_supply = (
-        imported_renewable_gas
-        .add(domestic_renewable_gas, fill_value=0)
-        .subtract(exported_renewable_gas, fill_value=0)
-    )
+    renewable_gas_supply = imported_renewable_gas.add(
+        domestic_renewable_gas, fill_value=0
+    ).subtract(exported_renewable_gas, fill_value=0)
     # Check for small differences
     assert domestic_gas_supply.get("renewable gas", 0) - renewable_gas_supply.sum() < 1
 
