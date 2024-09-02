@@ -115,8 +115,8 @@ def _get_gas_fractions(n, region):
         total_exported_renewable_gas = total_gas_supply.get(
             ("DE renewable gas -> EU gas", "renewable gas"), 0
         )
-        domestic_renewable_gas = renewable_gas_supply.loc["DE renewable gas"]
-        foreign_renewable_gas = renewable_gas_supply.loc["EU renewable gas"]
+        domestic_renewable_gas = renewable_gas_supply.get("DE renewable gas")
+        foreign_renewable_gas = renewable_gas_supply.get("EU renewable gas")
     else:
         domestic_gas_supply = (
             total_gas_supply.reindex(
@@ -136,8 +136,8 @@ def _get_gas_fractions(n, region):
         total_exported_renewable_gas = total_gas_supply.get(
             ("EU renewable gas -> DE gas", "renewable gas"), 0
         )
-        domestic_renewable_gas = renewable_gas_supply.loc["EU renewable gas"]
-        foreign_renewable_gas = renewable_gas_supply.loc["DE renewable gas"]
+        domestic_renewable_gas = renewable_gas_supply.get("EU renewable gas", 0)
+        foreign_renewable_gas = renewable_gas_supply.get("DE renewable gas", 0)
 
     # Legacy code for dropping gas pipelines (now deactivated)
     drops = ["gas pipeline", "gas pipeline new"]
@@ -145,20 +145,31 @@ def _get_gas_fractions(n, region):
         if d in total_gas_supply.index:
             total_gas_supply.drop(d, inplace=True)
 
-    imported_renewable_gas = (
-        foreign_renewable_gas
-        / foreign_renewable_gas.sum()
-        * total_imported_renewable_gas
-    )
+    if total_imported_renewable_gas == 0:
+        imported_renewable_gas = pd.Series(
+            0, index=renewable_gas_supply.index.get_level_values("carrier")
+        )
+    else:
+        imported_renewable_gas = (
+            foreign_renewable_gas
+            / foreign_renewable_gas.sum()
+            * total_imported_renewable_gas
+        )
 
-    exported_renewable_gas = (
-        domestic_renewable_gas
-        / domestic_renewable_gas.sum()
-        * total_exported_renewable_gas
-    )
+    if total_exported_renewable_gas == 0:
+        exported_renewable_gas = pd.Series(
+            0, 
+            index=renewable_gas_supply.index.get_level_values("carrier"))
+    else:
+        exported_renewable_gas = (
+            domestic_renewable_gas
+            / domestic_renewable_gas.sum()
+            * total_exported_renewable_gas
+        )
+
     renewable_gas_supply = (
-        domestic_renewable_gas
-        .add(imported_renewable_gas, fill_value=0)
+        imported_renewable_gas
+        .add(domestic_renewable_gas, fill_value=0)
         .subtract(exported_renewable_gas, fill_value=0)
     )
     # Check for small differences
