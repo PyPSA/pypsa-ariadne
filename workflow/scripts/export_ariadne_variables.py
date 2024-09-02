@@ -10,7 +10,9 @@ import pandas as pd
 import pypsa
 from numpy import isclose
 
-paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
+paths = ["workflow/submodules/pypsa-eur/scripts",
+          "../submodules/pypsa-eur/scripts", 
+          "../submodules/pypsa-eur/"]
 for path in paths:
     sys.path.insert(0, os.path.abspath(path))
 
