@@ -1572,14 +1572,15 @@ def get_secondary_energy(n, region, _industry_demand):
         ["SMR", "SMR CC"]
     ).sum()
 
-    var["Secondary Energy|Hydrogen|Other"] = hydrogen_production.get("H2 for industry", 0)
+    var["Secondary Energy|Hydrogen|Other"] = hydrogen_production.get(
+        "H2 for industry", 0
+    )
 
     var["Secondary Energy|Hydrogen"] = (
         var["Secondary Energy|Hydrogen|Electricity"]
         + var["Secondary Energy|Hydrogen|Gas"]
         + var["Secondary Energy|Hydrogen|Other"]
     )
-
 
     assert isclose(
         var["Secondary Energy|Hydrogen"],
