@@ -324,10 +324,10 @@ def unravel_oilbus(n):
         p_nom=1e6,
         efficiency=1
         - (
-            snakemake.config["industry"]["fuel_refining"]["oil"]["emissions"]
+            snakemake.config["industry"]["oil_refining_emissions"]
             / costs.at["oil", "CO2 intensity"]
         ),
-        efficiency2=snakemake.config["industry"]["fuel_refining"]["oil"]["emissions"],
+        efficiency2=snakemake.config["industry"]["oil_refining_emissions"],
     )
 
     # change links from EU oil to DE oil
