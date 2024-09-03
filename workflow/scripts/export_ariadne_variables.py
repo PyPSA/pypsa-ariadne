@@ -10,7 +10,11 @@ import pandas as pd
 import pypsa
 from numpy import isclose
 
-paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
+paths = [
+    "workflow/submodules/pypsa-eur/scripts",
+    "../submodules/pypsa-eur/scripts",
+    "../submodules/pypsa-eur/",
+]
 for path in paths:
     sys.path.insert(0, os.path.abspath(path))
 
@@ -113,8 +117,8 @@ def _get_gas_fractions(n, region):
         total_exported_renewable_gas = total_gas_supply.get(
             ("DE renewable gas -> EU gas", "renewable gas"), 0
         )
-        domestic_renewable_gas = renewable_gas_supply.loc["DE renewable gas"]
-        foreign_renewable_gas = renewable_gas_supply.loc["EU renewable gas"]
+        domestic_renewable_gas = renewable_gas_supply.get("DE renewable gas")
+        foreign_renewable_gas = renewable_gas_supply.get("EU renewable gas")
     else:
         domestic_gas_supply = (
             total_gas_supply.reindex(
@@ -134,8 +138,8 @@ def _get_gas_fractions(n, region):
         total_exported_renewable_gas = total_gas_supply.get(
             ("EU renewable gas -> DE gas", "renewable gas"), 0
         )
-        domestic_renewable_gas = renewable_gas_supply.loc["EU renewable gas"]
-        foreign_renewable_gas = renewable_gas_supply.loc["DE renewable gas"]
+        domestic_renewable_gas = renewable_gas_supply.get("EU renewable gas", 0)
+        foreign_renewable_gas = renewable_gas_supply.get("DE renewable gas", 0)
 
     # Legacy code for dropping gas pipelines (now deactivated)
     drops = ["gas pipeline", "gas pipeline new"]
@@ -143,20 +147,31 @@ def _get_gas_fractions(n, region):
         if d in total_gas_supply.index:
             total_gas_supply.drop(d, inplace=True)
 
-    imported_renewable_gas = (
-        foreign_renewable_gas
-        / foreign_renewable_gas.sum()
-        * total_imported_renewable_gas
-    )
+    if total_imported_renewable_gas == 0:
+        imported_renewable_gas = pd.Series(
+            0, index=renewable_gas_supply.index.get_level_values("carrier").unique()
+        )
+    else:
+        imported_renewable_gas = (
+            foreign_renewable_gas
+            / foreign_renewable_gas.sum()
+            * total_imported_renewable_gas
+        )
 
-    exported_renewable_gas = (
-        domestic_renewable_gas
-        / domestic_renewable_gas.sum()
-        * total_exported_renewable_gas
-    )
-    renewable_gas_supply = (
-        domestic_renewable_gas + imported_renewable_gas - exported_renewable_gas
-    )
+    if total_exported_renewable_gas == 0:
+        exported_renewable_gas = pd.Series(
+            0, index=renewable_gas_supply.index.get_level_values("carrier").unique()
+        )
+    else:
+        exported_renewable_gas = (
+            domestic_renewable_gas
+            / domestic_renewable_gas.sum()
+            * total_exported_renewable_gas
+        )
+
+    renewable_gas_supply = imported_renewable_gas.add(
+        domestic_renewable_gas, fill_value=0
+    ).subtract(exported_renewable_gas, fill_value=0)
     # Check for small differences
     assert domestic_gas_supply.get("renewable gas", 0) - renewable_gas_supply.sum() < 1
 
@@ -1557,9 +1572,14 @@ def get_secondary_energy(n, region, _industry_demand):
         ["SMR", "SMR CC"]
     ).sum()
 
+    var["Secondary Energy|Hydrogen|Other"] = hydrogen_production.get(
+        "H2 for industry", 0
+    )
+
     var["Secondary Energy|Hydrogen"] = (
         var["Secondary Energy|Hydrogen|Electricity"]
         + var["Secondary Energy|Hydrogen|Gas"]
+        + var["Secondary Energy|Hydrogen|Other"]
     )
 
     assert isclose(
