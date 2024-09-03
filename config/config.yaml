@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240814limitseq
+  prefix: 20240829mergemaster
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -127,7 +127,7 @@ lines:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
-  retrieve: false # set to false once initial data is retrieved
+  retrieve: true # set to false once initial data is retrieved
   retrieve_cutout: false # set to false once initial data is retrieved
 clustering:
   # simplify_network:
@@ -553,6 +553,6 @@ co2_price_add_on_fossils:
   2025: 60
 
 must_run_biomass:
-  enable: true
+  enable: false
   p_min_pu: 0.7
   regions: ['DE']
