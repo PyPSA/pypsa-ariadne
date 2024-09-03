@@ -196,6 +196,39 @@ rule build_egon_data:
         "scripts/build_egon_data.py"
 
 
+if config["sector"]["district_heating"]["add_subnodes"] and config["sector"][
+    "district_heating"
+].get("add_subnodes", True):
+
+    rule add_district_heating_subnodes:
+        params:
+            district_heating=config_provider("sector", "district_heating"),
+        input:
+            network=RESULTS
+            + "prenetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
+            heating_technologies_nuts3=resources("heating_technologies_nuts3.geojson"),
+            nuts3=resources("nuts3_shapes.geojson"),
+            regions_onshore=resources(
+                "regions_onshore_elec_s{simpl}_{clusters}.geojson"
+            ),
+            fernwaermeatlas="data/fernwaermeatlas/fernwaermeatlas.xlsx",
+            cities="data/fernwaermeatlas/cities_geolocations.geojson",
+            cop_air_total=resources("cop_air_total_elec_s{simpl}_{clusters}.nc"),
+        output:
+            network=RESULTS
+            + "prenetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}_dh.nc",
+            district_heating_subnodes=resources(
+                "district_heating_subnodes_elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.geojson"
+            ),
+            cop_air_total_extended=resources(
+                "cop_air_total_elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}-extended.nc"
+            ),
+        resources:
+            mem_mb=1000,
+        script:
+            "scripts/add_district_heating_subnodes.py"
+
+
 ruleorder: modify_district_heat_share > build_district_heat_share
 
 
@@ -328,6 +361,10 @@ rule retrieve_mastr:
 
 
 rule build_existing_chp_de:
+    params:
+        add_district_heating_subnodes=config_provider(
+            "sector", "district_heating", "add_subnodes"
+        ),
     input:
         mastr_biomass="data/mastr/bnetza_open_mastr_2023-08-08_B_biomass.csv",
         mastr_combustion="data/mastr/bnetza_open_mastr_2023-08-08_B_combustion.csv",
@@ -336,16 +373,71 @@ rule build_existing_chp_de:
             keep_local=True,
         ),
         busmap=resources("networks/base.nc"),
+        district_heating_subnodes=(
+            resources(
+                "district_heating_subnodes_elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.geojson"
+            )
+            if config["sector"]["district_heating"].get("add_subnodes", True)
+            else []
+        ),
     output:
-        german_chp=resources("german_chp.csv"),
+        german_chp=resources(
+            "german_chp_elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.csv"
+        ),
     script:
         "scripts/build_existing_chp_de.py"
 
 
 use rule add_existing_baseyear from pypsaeur with:
+    params:
+        **{k: v for k, v in rules.add_existing_baseyear.params.items()},
+        add_district_heating_subnodes=config_provider(
+            "sector", "district_heating", "add_subnodes"
+        ),
     input:
-        **rules.add_existing_baseyear.input,
-        custom_powerplants=resources("german_chp.csv"),
+        **{
+            k: v
+            for k, v in rules.add_existing_baseyear.input.items()
+            if k != "network" and k != "cop_air_total"
+        },
+        network=(
+            RESULTS
+            + "prenetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}_dh.nc"
+            if config["sector"]["district_heating"].get("add_subnodes", True)
+            else RESULTS
+            + "prenetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc"
+        ),
+        cop_air_total=(
+            resources(
+                "cop_air_total_elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}-extended.nc"
+            )
+            if config["sector"]["district_heating"].get("add_subnodes", True)
+            else resources("cop_air_total_elec_s{simpl}_{clusters}.nc")
+        ),
+        custom_powerplants=resources(
+            "german_chp_elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.csv"
+        ),
+
+
+def input_profile_tech_brownfield(w):
+    return {
+        f"profile_{tech}": resources(f"profile_{tech}.nc")
+        for tech in config_provider("electricity", "renewable_carriers")(w)
+        if tech != "hydro"
+    }
+
+
+use rule add_brownfield from pypsaeur with:
+    input:
+        unpack(input_profile_tech_brownfield),
+        **{k: v for k, v in rules.add_brownfield.input.items() if k != "network"},
+        network=(
+            RESULTS
+            + "prenetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}_dh.nc"
+            if config["sector"]["district_heating"].get("add_subnodes", True)
+            else RESULTS
+            + "prenetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc"
+        ),
 
 
 use rule build_existing_heating_distribution from pypsaeur with:
