@@ -225,7 +225,6 @@ sector:
   central_heat_vent: true
   co2_spatial: true
   biomass_spatial: true
-  biomass_transport: true
   #TBD what to include in config
   #relax so no infeasibility in 2050 with no land transport demand
   min_part_load_fischer_tropsch: 0.
@@ -554,6 +553,6 @@ co2_price_add_on_fossils:
   2025: 60
 
 must_run_biomass:
-  enable: true
+  enable: false
   p_min_pu: 0.7
   regions: ['DE']
