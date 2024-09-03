@@ -149,7 +149,7 @@ def _get_gas_fractions(n, region):
 
     if total_imported_renewable_gas == 0:
         imported_renewable_gas = pd.Series(
-            0, index=renewable_gas_supply.index.get_level_values("carrier")
+            0, index=renewable_gas_supply.index.get_level_values("carrier").unique()
         )
     else:
         imported_renewable_gas = (
@@ -160,7 +160,7 @@ def _get_gas_fractions(n, region):
 
     if total_exported_renewable_gas == 0:
         exported_renewable_gas = pd.Series(
-            0, index=renewable_gas_supply.index.get_level_values("carrier")
+            0, index=renewable_gas_supply.index.get_level_values("carrier").unique()
         )
     else:
         exported_renewable_gas = (
