@@ -9,24 +9,24 @@ from xarray import DataArray
 logger = logging.getLogger(__name__)
 
 
-def add_min_capacity_limits(n, investment_year, limits_capacity_min):
+def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
 
-    for c in n.iterate_components(limits_capacity_min):
-        logger.info(f"Adding minimum constraints for {c.list_name}")
+    for c in n.iterate_components(limits_capacity):
+        logger.info(f"Adding {sense} constraints for {c.list_name}")
 
-        for carrier in limits_capacity_min[c.name]:
+        attr = "e" if c.name == "Store" else "p"
+        units = "MWh or tCO2" if c.name == "Store" else "MW"
 
-            for ct in limits_capacity_min[c.name][carrier]:
-                # check if the limit is defined for the investement year
-                if (
-                    investment_year
-                    not in limits_capacity_min[c.name][carrier][ct].keys()
-                ):
+        for carrier in limits_capacity[c.name]:
+
+            for ct in limits_capacity[c.name][carrier]:
+                if investment_year not in limits_capacity[c.name][carrier][ct].keys():
                     continue
-                limit = 1e3 * limits_capacity_min[c.name][carrier][ct][investment_year]
+
+                limit = 1e3 * limits_capacity[c.name][carrier][ct][investment_year]
 
                 logger.info(
-                    f"Adding constraint on {c.name} {carrier} capacity in {ct} to be greater than {limit} MW"
+                    f"Adding constraint on {c.name} {carrier} capacity in {ct} to be {sense} {limit} {units}"
                 )
 
                 valid_components = (
@@ -35,92 +35,52 @@ def add_min_capacity_limits(n, investment_year, limits_capacity_min):
                     & ~c.df.carrier.str.contains("thermal")
                 )  # exclude solar thermal
 
-                existing_index = c.df.index[valid_components & ~c.df.p_nom_extendable]
-                extendable_index = c.df.index[valid_components & c.df.p_nom_extendable]
+                existing_index = c.df.index[
+                    valid_components & ~c.df[attr + "_nom_extendable"]
+                ]
+                extendable_index = c.df.index[
+                    valid_components & c.df[attr + "_nom_extendable"]
+                ]
 
-                existing_capacity = c.df.loc[existing_index, "p_nom"].sum()
-
-                logger.info(
-                    f"Existing {c.name} {carrier} capacity in {ct}: {existing_capacity} MW"
-                )
-
-                p_nom = n.model[c.name + "-p_nom"].loc[extendable_index]
-
-                lhs = p_nom.sum()
-
-                cname = f"capacity_minimum-{ct}-{c.name}-{carrier.replace(' ','-')}"
-
-                n.model.add_constraints(
-                    lhs >= limit - existing_capacity, name=f"GlobalConstraint-{cname}"
-                )
-                if cname not in n.global_constraints.index:
-                    n.add(
-                        "GlobalConstraint",
-                        cname,
-                        constant=limit,
-                        sense=">=",
-                        type="",
-                        carrier_attribute="",
-                    )
-
-
-def add_max_capacity_limits(n, investment_year, limits_capacity_max):
-
-    for c in n.iterate_components(limits_capacity_max):
-        logger.info(f"Adding maximum constraints for {c.list_name}")
-
-        for carrier in limits_capacity_max[c.name]:
-
-            for ct in limits_capacity_max[c.name][carrier]:
-                if (
-                    investment_year
-                    not in limits_capacity_max[c.name][carrier][ct].keys()
-                ):
-                    continue
-                limit = 1e3 * limits_capacity_max[c.name][carrier][ct][investment_year]
-
-                valid_components = (
-                    (c.df.index.str[:2] == ct)
-                    & (c.df.carrier.str[: len(carrier)] == carrier)
-                    & ~c.df.carrier.str.contains("thermal")
-                )  # exclude solar thermal
-
-                existing_index = c.df.index[valid_components & ~c.df.p_nom_extendable]
-                extendable_index = c.df.index[valid_components & c.df.p_nom_extendable]
-
-                existing_capacity = c.df.loc[existing_index, "p_nom"].sum()
+                existing_capacity = c.df.loc[existing_index, attr + "_nom"].sum()
 
                 logger.info(
-                    f"Existing {c.name} {carrier} capacity in {ct}: {existing_capacity} MW"
-                )
-                logger.info(
-                    f"Adding constraint on {c.name} {carrier} capacity in {ct} to be smaller than {limit} MW"
+                    f"Existing {c.name} {carrier} capacity in {ct}: {existing_capacity} {units}"
                 )
 
-                p_nom = n.model[c.name + "-p_nom"].loc[extendable_index]
+                nom = n.model[c.name + "-" + attr + "_nom"].loc[extendable_index]
 
-                lhs = p_nom.sum()
+                lhs = nom.sum()
 
-                cname = f"capacity_maximum-{ct}-{c.name}-{carrier.replace(' ','-')}"
-                if limit - existing_capacity <= 0:
-                    n.model.add_constraints(lhs <= 0, name=f"GlobalConstraint-{cname}")
+                cname = f"capacity_{sense}-{ct}-{c.name}-{carrier.replace(' ','-')}"
+
+                if cname in n.global_constraints.index:
                     logger.warning(
-                        f"Existing capacity in {ct} for carrier {carrier} already exceeds the limit of {limit} MW. Limiting capacity expansion for this investment period to 0."
+                        f"Global constraint {cname} already exists. Skipping."
                     )
-                else:
+                    continue
+
+                if sense == "maximum":
+                    if limit - existing_capacity <= 0:
+                        n.model.add_constraints(
+                            lhs <= 0, name=f"GlobalConstraint-{cname}"
+                        )
+                        logger.warning(
+                            f"Existing capacity in {ct} for carrier {carrier} already exceeds the limit of {limit} MW. Limiting capacity expansion for this investment period to 0."
+                        )
+                    else:
+                        n.model.add_constraints(
+                            lhs <= limit - existing_capacity,
+                            name=f"GlobalConstraint-{cname}",
+                        )
+                elif sense == "minimum":
                     n.model.add_constraints(
-                        lhs <= limit - existing_capacity,
+                        lhs >= limit - existing_capacity,
                         name=f"GlobalConstraint-{cname}",
                     )
-                if cname not in n.global_constraints.index:
-                    n.add(
-                        "GlobalConstraint",
-                        cname,
-                        constant=limit,
-                        sense="<=",
-                        type="",
-                        carrier_attribute="",
-                    )
+                else:
+                    logger.error("sense {sense} not recognised")
+                    sys.exit()
 
 
 def h2_import_limits(n, investment_year, limits_volume_max):
@@ -571,9 +531,13 @@ def additional_functionality(n, snapshots, snakemake):
     investment_year = int(snakemake.wildcards.planning_horizons[-4:])
     constraints = snakemake.params.solving["constraints"]
 
-    add_min_capacity_limits(n, investment_year, constraints["limits_capacity_min"])
+    add_capacity_limits(
+        n, investment_year, constraints["limits_capacity_min"], "minimum"
+    )
 
-    add_max_capacity_limits(n, investment_year, constraints["limits_capacity_max"])
+    add_capacity_limits(
+        n, investment_year, constraints["limits_capacity_max"], "maximum"
+    )
 
     if int(snakemake.wildcards.clusters) != 1:
         h2_import_limits(n, investment_year, constraints["limits_volume_max"])
