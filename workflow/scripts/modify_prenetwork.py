@@ -370,14 +370,16 @@ def unravel_oilbus(n):
     )
 
     # add stores
+    EU_oil_store = n.stores.loc["EU oil Store"].copy()
     n.add(
         "Store",
         "DE oil Store",
         bus="DE oil",
         carrier="oil",
-        e_nom_extendable=True,
-        e_cyclic=True,
-        capital_cost=0.02,
+        e_nom_extendable=EU_oil_store.e_nom_extendable,
+        e_cyclic=EU_oil_store.e_cyclic,
+        capital_cost=EU_oil_store.capital_cost,
+        overnight_cost=EU_oil_store.overnight_cost,
     )
 
     # unravel meoh
@@ -414,14 +416,16 @@ def unravel_oilbus(n):
     )
 
     # add stores
+    EU_meoh_store = n.stores.loc["EU methanol Store"].copy()
     n.add(
         "Store",
         "DE methanol Store",
         bus="DE methanol",
         carrier="methanol",
-        e_nom_extendable=True,
-        e_cyclic=True,
-        capital_cost=0.02,
+        e_nom_extendable=EU_meoh_store.e_nom_extendable,
+        e_cyclic=EU_meoh_store.e_cyclic,
+        capital_cost=EU_meoh_store.capital_cost,
+        overnight_cost=EU_meoh_store.overnight_cost,
     )
 
 
@@ -758,6 +762,7 @@ def force_retrofit(n, params):
         h2_plants.efficiency -= params["efficiency_loss"]
         h2_plants.efficiency2 = 1  # default value
         h2_plants.capital_cost *= 1 + params["cost_factor"]
+        h2_plants.overnight_cost *= 1 + params["cost_factor"]
         # add the new links
         n.import_components_from_dataframe(h2_plants, "Link")
         n.links.drop(gas_plants, inplace=True)
@@ -779,6 +784,7 @@ def force_retrofit(n, params):
     h2_plants.efficiency -= params["efficiency_loss"]
     h2_plants.efficiency3 = 1  # default value
     h2_plants.capital_cost *= 1 + params["cost_factor"]
+    h2_plants.overnight_cost *= 1 + params["cost_factor"]
     n.import_components_from_dataframe(h2_plants, "Link")
     n.links.drop(gas_plants, inplace=True)
 
