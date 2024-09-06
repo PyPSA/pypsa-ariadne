@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240829mergemaster
+  prefix: 20240904_biogas_baseload
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -62,7 +62,7 @@ scenario:
   ll:
   - vopt
   clusters:
-  - 22 #current options: 22, 44
+  - 23 #current options: 22, 44
   opts:
   - ''
   sector_opts:
@@ -552,7 +552,7 @@ co2_price_add_on_fossils:
   2020: 25
   2025: 60
 
-must_run_biomass:
+must_run_biogas:
   enable: false
-  p_min_pu: 0.7
+  p_min_pu: 0.6
   regions: ['DE']
