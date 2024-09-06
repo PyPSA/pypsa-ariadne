@@ -584,16 +584,15 @@ def transmission_costs_from_modified_cost_data(
     n.links.loc[dc_b, "overnight_cost"] = overnight_cost
 
 
-def must_run_biomass(n, p_min_pu, regions):
+def must_run_biogas(n, p_min_pu, regions):
     """
-    Set p_min_pu for biomass generators to the specified value.
+    Set p_min_pu for biogas generators to the specified value.
     """
     logger.info(
-        f"Must-run condition enabled: Setting p_min_pu = {p_min_pu} for biomass generators."
+        f"Must-run condition enabled: Setting p_min_pu = {p_min_pu} for biogas generators."
     )
     links_i = n.links[
-        (n.links.carrier == "solid biomass")
-        & (n.links.bus0.str.startswith(tuple(regions)))
+        (n.links.carrier == "biogas") & (n.links.bus0.str.startswith(tuple(regions)))
     ].index
     n.links.loc[links_i, "p_min_pu"] = p_min_pu
 
@@ -857,11 +856,11 @@ if __name__ == "__main__":
         snakemake.params.length_factor,
     )
 
-    if snakemake.params.biomass_must_run["enable"]:
-        must_run_biomass(
+    if snakemake.params.biogas_must_run["enable"]:
+        must_run_biogas(
             n,
-            snakemake.params.biomass_must_run["p_min_pu"],
-            snakemake.params.biomass_must_run["regions"],
+            snakemake.params.biogas_must_run["p_min_pu"],
+            snakemake.params.biogas_must_run["regions"],
         )
 
     if snakemake.params.H2_plants["enable"]:
