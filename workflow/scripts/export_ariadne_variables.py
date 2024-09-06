@@ -481,28 +481,26 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
     #     capacities_electricity = \
     #         capacities_electricity.multiply(MW2GW)
 
-    var[cap_string + "Electricity|Biomass|w/ CCS"] = \
-        capacities_electricity.get("urban central solid biomass CHP CC ", 0)
+    var[cap_string + "Electricity|Biomass|w/ CCS"] = capacities_electricity.get(
+        "urban central solid biomass CHP CC ", 0
+    )
 
-
-    var[cap_string + "Electricity|Biomass|w/o CCS"] = \
-        capacities_electricity.reindex(
-        [
-            "urban central solid biomass CHP", 
-            "solid biomass",
-            "biogas"
-        ]
+    var[cap_string + "Electricity|Biomass|w/o CCS"] = capacities_electricity.reindex(
+        ["urban central solid biomass CHP", "solid biomass", "biogas"]
     ).sum()
 
-    var[cap_string + "Electricity|Biomass|Solids"] = \
-        capacities_electricity.filter(like="solid biomass").sum()
+    var[cap_string + "Electricity|Biomass|Solids"] = capacities_electricity.filter(
+        like="solid biomass"
+    ).sum()
 
-    var[cap_string + "Electricity|Biomass|Gases and Liquids"] = \
+    var[cap_string + "Electricity|Biomass|Gases and Liquids"] = (
         capacities_electricity.get("biogas", 0)
+    )
 
-    var[cap_string + "Electricity|Biomass"] = var[
-        cap_string + "Electricity|Biomass|Solids"
-    ] + var[cap_string + "Electricity|Biomass|Gases and Liquids"]
+    var[cap_string + "Electricity|Biomass"] = (
+        var[cap_string + "Electricity|Biomass|Solids"]
+        + var[cap_string + "Electricity|Biomass|Gases and Liquids"]
+    )
 
     var[cap_string + "Electricity|Non-Renewable Waste"] = capacities_electricity.filter(
         like="waste CHP"
@@ -1205,9 +1203,9 @@ def get_primary_energy(n, region):
         ~biomass_usage.index.str.contains("CC")
     ].sum()
 
-    var["Primary Energy|Biomass|Electricity"] = biomass_CHP_E_usage + biomass_usage.reindex(
-        ["solid biomass", "biogas"]
-    ).sum()
+    var["Primary Energy|Biomass|Electricity"] = (
+        biomass_CHP_E_usage + biomass_usage.reindex(["solid biomass", "biogas"]).sum()
+    )
     var["Primary Energy|Biomass|Heat"] = biomass_CHP_H_usage + biomass_usage.get(
         "urban central solid biomass boiler", 0
     )
@@ -1353,15 +1351,17 @@ def get_secondary_energy(n, region, _industry_demand):
     )
 
     var["Secondary Energy|Electricity|Biomass|w/o CCS"] = electricity_supply.reindex(
-        ["urban central solid biomass CHP",
-         "solid biomass",
-         "biogas"]
+        ["urban central solid biomass CHP", "solid biomass", "biogas"]
     ).sum()
     var["Secondary Energy|Electricity|Biomass|w/ CCS"] = electricity_supply.get(
         "urban central solid biomass CHP CC", 0
     )
-    var["Secondary Energy|Electricity|Biomass|Solid"] = electricity_supply.filter(like="solid biomass").sum()
-    var["Secondary Energy|Electricity|Biomass|Gaseous and Liquid"] = electricity_supply.get("biogas")
+    var["Secondary Energy|Electricity|Biomass|Solid"] = electricity_supply.filter(
+        like="solid biomass"
+    ).sum()
+    var["Secondary Energy|Electricity|Biomass|Gaseous and Liquid"] = (
+        electricity_supply.get("biogas")
+    )
     var["Secondary Energy|Electricity|Biomass"] = (
         var["Secondary Energy|Electricity|Biomass|w/o CCS"]
         + var["Secondary Energy|Electricity|Biomass|w/ CCS"]

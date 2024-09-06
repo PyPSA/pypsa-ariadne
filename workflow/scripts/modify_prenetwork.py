@@ -592,8 +592,7 @@ def must_run_biogas(n, p_min_pu, regions):
         f"Must-run condition enabled: Setting p_min_pu = {p_min_pu} for biogas generators."
     )
     links_i = n.links[
-        (n.links.carrier == "biogas")
-        & (n.links.bus0.str.startswith(tuple(regions)))
+        (n.links.carrier == "biogas") & (n.links.bus0.str.startswith(tuple(regions)))
     ].index
     n.links.loc[links_i, "p_min_pu"] = p_min_pu
 
