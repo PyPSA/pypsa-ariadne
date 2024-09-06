@@ -1360,6 +1360,8 @@ def get_secondary_energy(n, region, _industry_demand):
     var["Secondary Energy|Electricity|Biomass|w/ CCS"] = electricity_supply.get(
         "urban central solid biomass CHP CC", 0
     )
+    var["Secondary Energy|Electricity|Biomass|Solid"] = electricity_supply.filter(like="solid biomass").sum()
+    var["Secondary Energy|Electricity|Biomass|Gaseous and Liquid"] = electricity_supply.get("biogas")
     var["Secondary Energy|Electricity|Biomass"] = (
         var["Secondary Energy|Electricity|Biomass|w/o CCS"]
         + var["Secondary Energy|Electricity|Biomass|w/ CCS"]
