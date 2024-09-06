@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240904_biogas_baseload
+  prefix: 20240905additaly
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -62,7 +62,7 @@ scenario:
   ll:
   - vopt
   clusters:
-  - 23 #current options: 22, 44
+  - 27 #current options: 27, 49
   opts:
   - ''
   sector_opts:
@@ -82,7 +82,7 @@ existing_capacities:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
 # Germany plus 12 "Stromnachbarn"
-countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'PL', 'SE', 'ES']
+countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'PL', 'SE', 'ES', 'IT']
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#snapshots
 snapshots:
@@ -138,37 +138,39 @@ clustering:
   # fw["ES"] = 1
   # print(fw.div(fw.sum()).subtract(5e-5).round(4).to_dict().__repr__().replace(",","\n"))
   focus_weights:
-  # 23 nodes: 8 for Germany, 1 for Spain, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
-    'DE': 0.3478
-    'AT': 0.0434
-    'BE': 0.0434
-    'CH': 0.0434
-    'CZ': 0.0434
-    'DK': 0.0869
-    'FR': 0.0434
-    'GB': 0.0869
-    'LU': 0.0434
-    'NL': 0.0434
-    'NO': 0.0434
-    'PL': 0.0434
-    'SE': 0.0434
-    'ES': 0.0434
-  # high spatial resolution: change clusters to 45
-  # 45 nodes: 30 for Germany, 1 for Spain, 2 each for Denmark and UK, 1 per each of other 10 "Stromnachbarn"
-    # 'DE': 0.6666
-    # 'AT': 0.0222
-    # 'BE': 0.0222
-    # 'CH': 0.0222
-    # 'CZ': 0.0222
-    # 'DK': 0.0444
-    # 'FR': 0.0222
-    # 'GB': 0.0444
-    # 'LU': 0.0222
-    # 'NL': 0.0222
-    # 'NO': 0.0222
-    # 'PL': 0.0222
-    # 'SE': 0.0222
-    # 'ES': 0.0222
+  # 27 nodes: 8 for Germany, 3 for Italy, 2 each for Denmark, UK and Spain, 1 per each of other 10 "Stromnachbarn"
+    'DE': 0.2966
+    'AT': 0.0370
+    'BE': 0.0370
+    'CH': 0.0370
+    'CZ': 0.0370
+    'DK': 0.0741
+    'FR': 0.0370
+    'GB': 0.0741
+    'LU': 0.0370
+    'NL': 0.0370
+    'NO': 0.0370
+    'PL': 0.0370
+    'SE': 0.0370
+    'ES': 0.0741
+    'IT': 0.1111
+  # high spatial resolution: change clusters to 46
+  # 49 nodes: 30 for Germany, 3 for Italy, 2 each for Denmark, UK and Spain, 1 per each of other 10 "Stromnachbarn"
+    # 'DE': 0.6124
+    # 'AT': 0.0204
+    # 'BE': 0.0204
+    # 'CH': 0.0204
+    # 'CZ': 0.0204
+    # 'DK': 0.0408
+    # 'FR': 0.0204
+    # 'GB': 0.0408
+    # 'LU': 0.0204
+    # 'NL': 0.0204
+    # 'NO': 0.0204
+    # 'PL': 0.0204
+    # 'SE': 0.0204
+    # 'ES': 0.0408
+    # 'IT': 0.0612
   temporal:
     resolution_sector: 365H
 
