@@ -785,6 +785,7 @@ def force_retrofit(n, params):
     h2_plants.efficiency -= params["efficiency_loss"]
     h2_plants.efficiency3 = 1  # default value
     h2_plants.capital_cost *= 1 + params["cost_factor"]
+    h2_plants.overnight_cost *= 1 + params["cost_factor"]
     n.import_components_from_dataframe(h2_plants, "Link")
     n.links.drop(gas_plants, inplace=True)
 
