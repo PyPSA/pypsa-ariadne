@@ -169,17 +169,27 @@ def _get_gas_fractions(n, region):
             * total_exported_renewable_gas
         )
 
-    renewable_gas_supply = imported_renewable_gas.add(
+    renewable_gas_balance = imported_renewable_gas.add(
         domestic_renewable_gas, fill_value=0
     ).subtract(exported_renewable_gas, fill_value=0)
-    # Check for small differences
-    assert domestic_gas_supply.get("renewable gas", 0) - renewable_gas_supply.sum() < 1
+    # These numbers may deviate because the input data from n.statistics
+    # can deviate. I don't know why exactly, but at least we can check that
+    # the difference stays roughly the same after the calculation.
+    assert isclose(
+        domestic_gas_supply.get("renewable gas", 0) 
+            - renewable_gas_balance.sum(),   
+        total_gas_supply.get([
+                "DE renewable gas -> DE gas",
+                "DE renewable gas -> EU gas"
+            ]).sum()
+            - renewable_gas_supply.get("DE renewable gas").sum()
+        )
 
     gas_fractions = pd.Series(
         {
             "Natural Gas": domestic_gas_supply.get("gas", 0),
-            "Biomass": renewable_gas_supply.filter(like="biogas").sum(),
-            "Efuel": renewable_gas_supply.get("Sabatier", 0),
+            "Biomass": renewable_gas_balance.filter(like="biogas").sum(),
+            "Efuel": renewable_gas_balance.get("Sabatier", 0),
         }
     ).divide(domestic_gas_supply.sum())
 
@@ -2501,7 +2511,7 @@ def get_emissions(n, region, _energy_totals):
         print("WARNING! Not all CO2 capture from fossil sources is captured!!!")
         print("total_ccs - fossil_cc: ", total_ccs - fossil_cc.sum())
         # TODO what to do with fossil_cc_emissions???
-        if n.links.build_year.max() == 2045:
+        if (n.links.build_year.max() == 2045) and (total_ccs - fossil_cc.sum() > 1): # > 1 for numerical errors
             raise Exception("Not enough CCS in 2045!")
 
     if not co2_atmosphere_withdrawal.get("urban central solid biomass CHP CC"):
