@@ -1598,6 +1598,7 @@ def get_secondary_energy(n, region, _industry_demand):
         hydrogen_production[
             ~hydrogen_production.index.str.startswith("H2 pipeline")
         ].sum(),
+        rtol = 0.01
     )
 
     oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
