@@ -788,6 +788,18 @@ def force_retrofit(n, params):
     n.import_components_from_dataframe(h2_plants, "Link")
     n.links.drop(gas_plants, inplace=True)
 
+def enforce_transmission_project_build_years(n,current_year):
+
+    #this step is necessary for any links w/
+    #current year >= build_year > previous year
+    #it undoes the p_nom_min = p_nom_opt from add_brownfield
+    dc_previously_deactivated = n.links.index[(n.links.carrier == "DC") & (n.links.p_nom > 0) & (n.links.p_nom_opt == 0)]
+    n.links.loc[dc_previously_deactivated,"p_nom_min"] = n.links.loc[dc_previously_deactivated,"p_nom"]
+
+    #this forces p_nom_opt = 0 for links w/ build_year > current year
+    dc_future = n.links.index[n.links.carrier.str.fullmatch("DC") & (n.links.build_year > current_year)]
+    n.links.loc[dc_future,"p_nom_min"] = 0.
+    n.links.loc[dc_future,"p_nom_max"] = 0.
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -878,5 +890,12 @@ if __name__ == "__main__":
             snakemake.wildcards.planning_horizons
         ):
             force_retrofit(n, snakemake.params.H2_plants)
+
+    current_year = int(snakemake.wildcards.planning_horizons)
+
+    enforce_transmission_project_build_years(
+        n,
+        current_year
+    )
 
     n.export_to_netcdf(snakemake.output.network)

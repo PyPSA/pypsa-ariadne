@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 202406windcf
+  prefix: 240911-keepdc
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -184,7 +184,7 @@ lines:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
-  retrieve: true # set to false once initial data is retrieved
+  retrieve: false # set to false once initial data is retrieved
   retrieve_cutout: false # set to false once initial data is retrieved
 clustering:
   # simplify_network:
@@ -612,3 +612,6 @@ must_run_biogas:
   enable: false
   p_min_pu: 0.6
   regions: ['DE']
+
+transmission_projects:
+  new_link_capacity: keep #keep or zero
