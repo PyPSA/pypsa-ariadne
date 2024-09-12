@@ -3,11 +3,10 @@ import logging
 import os
 import sys
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pypsa
-
-import geopandas as gpd
 from shapely.geometry import Point
 
 logger = logging.getLogger(__name__)
@@ -794,11 +793,12 @@ def force_retrofit(n, params):
 
 def force_connection_nep_offshore(n, current_year):
 
-    offshore = pd.read_csv(snakemake.input.offshore_connection_points,
-                           index_col=0)
+    offshore = pd.read_csv(snakemake.input.offshore_connection_points, index_col=0)
 
     goffshore = gpd.GeoDataFrame(
-        offshore, geometry=gpd.points_from_xy(offshore.lon,offshore.lat), crs="EPSG:4326"
+        offshore,
+        geometry=gpd.points_from_xy(offshore.lon, offshore.lat),
+        crs="EPSG:4326",
     )
 
     regions_onshore = gpd.read_file(snakemake.input.regions_onshore).set_index("name")
@@ -809,15 +809,23 @@ def force_connection_nep_offshore(n, current_year):
 
     # use for offshore profile of nodes connected in non-offshore nodes
     # point is chosen far out in EEZ duck
-    nordsee_duck_node = regions_offshore.index[regions_offshore.contains(Point(6.19628,54.38543))][0]
+    nordsee_duck_node = regions_offshore.index[
+        regions_offshore.contains(Point(6.19628, 54.38543))
+    ][0]
     nordsee_duck_off = f"{nordsee_duck_node} offwind-dc-{current_year}"
 
-    built_projects = goffshore[(goffshore.Inbetriebnahmejahr <= current_year) & goffshore.index.str.startswith("NOR")]
+    built_projects = goffshore[
+        (goffshore.Inbetriebnahmejahr <= current_year)
+        & goffshore.index.str.startswith("NOR")
+    ]
 
-    power = built_projects["Übertragungsleistung in MW"].groupby(built_projects.name).sum()
+    power = (
+        built_projects["Übertragungsleistung in MW"].groupby(built_projects.name).sum()
+    )
 
-
-    if (current_year >= int(snakemake.params.offshore_nep_force["cutin_year"])) and (current_year <= int(snakemake.params.offshore_nep_force["cutout_year"])):
+    if (current_year >= int(snakemake.params.offshore_nep_force["cutin_year"])) and (
+        current_year <= int(snakemake.params.offshore_nep_force["cutout_year"])
+    ):
 
         logger.info("Forcing in NEP offshore projects")
 
@@ -825,29 +833,38 @@ def force_connection_nep_offshore(n, current_year):
 
             node_off = f"{node} offwind-dc-{current_year}"
 
-            #warning: does not handle connection cost
+            # warning: does not handle connection cost
             if not node_off in n.generators.index:
                 logger.info(f"Adding generator {node_off}")
                 n.generators.loc[node_off] = n.generators.loc[nordsee_duck_off]
-                n.generators.at[node_off,"bus"] = node
-                n.generators_t.p_max_pu[node_off] = n.generators_t.p_max_pu[nordsee_duck_off]
+                n.generators.at[node_off, "bus"] = node
+                n.generators_t.p_max_pu[node_off] = n.generators_t.p_max_pu[
+                    nordsee_duck_off
+                ]
 
-            existing_gens =n.generators.index[(n.generators.bus == node) & (n.generators.carrier.str.contains("offwind"))]
-            existing_cap = n.generators.loc[existing_gens,"p_nom"].sum()
-            gap = max(0,power.loc[node]-existing_cap)
-            n.generators.at[node_off,"p_nom_min"] = gap
+            existing_gens = n.generators.index[
+                (n.generators.bus == node)
+                & (n.generators.carrier.str.contains("offwind"))
+            ]
+            existing_cap = n.generators.loc[existing_gens, "p_nom"].sum()
+            gap = max(0, power.loc[node] - existing_cap)
+            n.generators.at[node_off, "p_nom_min"] = gap
 
-    #this is a hack to stop solve_network.py > _add_land_use_constraint breaking
-    #if there are existing generators, add a new extendable one
-    existings = n.generators.index[(n.generators.carrier == "offwind-dc") & ~n.generators.p_nom_extendable]
+    # this is a hack to stop solve_network.py > _add_land_use_constraint breaking
+    # if there are existing generators, add a new extendable one
+    existings = n.generators.index[
+        (n.generators.carrier == "offwind-dc") & ~n.generators.p_nom_extendable
+    ]
     for existing in existings:
         node = n.generators.at[existing, "bus"]
         node_off = f"{node} offwind-dc-{current_year}"
         if node_off not in n.generators.index:
             logger.info(f"adding for dummy land constraint {node_off}")
             n.generators.loc[node_off] = n.generators.loc[nordsee_duck_off]
-            n.generators.at[node_off,"bus"] = node
-            n.generators_t.p_max_pu[node_off] = n.generators_t.p_max_pu[nordsee_duck_off]
+            n.generators.at[node_off, "bus"] = node
+            n.generators_t.p_max_pu[node_off] = n.generators_t.p_max_pu[
+                nordsee_duck_off
+            ]
 
 
 if __name__ == "__main__":
@@ -939,7 +956,6 @@ if __name__ == "__main__":
             snakemake.wildcards.planning_horizons
         ):
             force_retrofit(n, snakemake.params.H2_plants)
-
 
     current_year = int(snakemake.wildcards.planning_horizons)
 
