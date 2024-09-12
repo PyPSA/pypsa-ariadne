@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 202406windcf
+  prefix: 240912-offshore_regions-27
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -421,7 +421,7 @@ solving:
           DE:
             2020: 7.8
             2025: 8
-            2030: 30
+            2030: 32
             2035: 70
             2040: 70
             2045: 70
@@ -612,3 +612,9 @@ must_run_biogas:
   enable: false
   p_min_pu: 0.6
   regions: ['DE']
+
+#beware - may need to increase max offshore
+#to avoid infeasibilities
+offshore_nep_force:
+  cutin_year: 2030
+  cutout_year: 2030
