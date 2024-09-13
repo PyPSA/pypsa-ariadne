@@ -3819,6 +3819,47 @@ def get_trade(n, region):
 
     # Trade|Secondary Energy|Gases|Hydrogen|Volume
 
+    renewable_gas_supply = (
+        n.statistics.supply(bus_carrier="renewable gas", **kwargs)
+        .groupby(["bus", "carrier"])
+        .sum()
+    )
+
+    DE_renewable_gas = renewable_gas_supply.get("DE renewable gas", pd.Series(0))
+    EU_renewable_gas = renewable_gas_supply.get("EU renewable gas", pd.Series(0))
+
+    if DE_renewable_gas.sum() == 0:
+        DE_bio_fraction = 0
+    else:
+        DE_bio_fraction = DE_renewable_gas.filter(like="biogas to gas").sum() / DE_renewable_gas.sum()
+
+    if EU_renewable_gas.sum() == 0:
+        EU_bio_fraction = 0
+    else:
+        EU_bio_fraction = EU_renewable_gas.filter(like="biogas to gas").sum() / EU_renewable_gas.sum()
+
+    assert region == "DE" # only DE is implemented at the moment
+
+    exports_gas_renew, imports_gas_renew = get_export_import_links(
+        n, region, ["renewable gas"]
+    )
+    var["Trade|Secondary Energy|Gases|Hydrogen|Volume"] = (
+        exports_gas_renew * (1 - DE_bio_fraction) 
+        - imports_gas_renew * (1 - EU_bio_fraction)
+    ) * MWh2PJ
+    var["Trade|Secondary Energy|Gases|Hydrogen|Gross Import|Volume"] = (
+        imports_gas_renew * (1 - EU_bio_fraction) * MWh2PJ
+    )
+
+    var["Trade|Secondary Energy|Gases|Biomass|Volume"] = (
+        exports_gas_renew * DE_bio_fraction
+        - imports_gas_renew * EU_bio_fraction
+    ) * MWh2PJ
+    var["Trade|Secondary Energy|Gases|Biomass|Gross Import|Volume"] = (
+        imports_gas_renew * EU_bio_fraction * MWh2PJ
+    )
+
+
     # TODO add methanol trade, renewable gas trade
 
     # Trade|Primary Energy|Coal|Volume
