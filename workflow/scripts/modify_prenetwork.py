@@ -796,6 +796,8 @@ def enforce_transmission_project_build_years(n, current_year):
     # it undoes the p_nom_min = p_nom_opt from add_brownfield
     dc_previously_deactivated = n.links.index[
         (n.links.carrier == "DC") & (n.links.p_nom > 0) & (n.links.p_nom_opt == 0)
+        & (n.links.build_year <= snakemake.params.onshore_nep_force["cutout_year"])
+        & (n.links.build_year >= snakemake.params.onshore_nep_force["cutin_year"])
     ]
     n.links.loc[dc_previously_deactivated, "p_nom_min"] = n.links.loc[
         dc_previously_deactivated, "p_nom"

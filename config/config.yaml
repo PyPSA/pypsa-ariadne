@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 240911-keepdc
+  prefix: 240913-nepcutout
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -615,3 +615,7 @@ must_run_biogas:
 
 transmission_projects:
   new_link_capacity: keep #keep or zero
+
+onshore_nep_force:
+  cutin_year: 2020
+  cutout_year: 2030
