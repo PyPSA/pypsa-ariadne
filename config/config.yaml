@@ -4,10 +4,11 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 202406windcf
+  prefix: 20240906nolimit
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
+  - KN2045_Bal_v4_nolimit
   # - KN2045_Elec_v4
   # - KN2045_H2_v4
   # - KN2045plus_EasyRide
@@ -407,6 +408,7 @@ solving:
         H2 pipeline (Kernnetz): 0.05
         H2 pipeline retrofitted: 0.05
   constraints:
+    nolimit: false
     limits_capacity_max:
       Generator:
         onwind:

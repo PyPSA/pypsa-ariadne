@@ -558,7 +558,7 @@ def additional_functionality(n, snapshots, snakemake):
     # force_boiler_profiles_existing_per_load(n)
     force_boiler_profiles_existing_per_boiler(n)
 
-    if isinstance(constraints["co2_budget_national"], dict):
+    if isinstance(constraints["co2_budget_national"], dict) and not constraints["nolimit"]:
         limit_countries = constraints["co2_budget_national"][investment_year]
         add_co2limit_country(
             n,
