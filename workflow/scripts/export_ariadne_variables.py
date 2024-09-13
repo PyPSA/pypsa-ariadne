@@ -178,9 +178,10 @@ def _get_gas_fractions(n, region):
     assert isclose(
         domestic_gas_supply.get("renewable gas", 0) - renewable_gas_balance.sum(),
         total_gas_supply.get(
-            ["DE renewable gas -> DE gas", "DE renewable gas -> EU gas"]
+            ["DE renewable gas -> DE gas", "DE renewable gas -> EU gas"],
+            pd.Series(0)
         ).sum()
-        - renewable_gas_supply.get("DE renewable gas").sum(),
+        - renewable_gas_supply.get("DE renewable gas", pd.Series(0)).sum(),
     )
 
     gas_fractions = pd.Series(
@@ -2990,11 +2991,16 @@ def get_prices(n, region):
         "groupby": n.statistics.groupers.get_name_bus_and_carrier,
         "nice_names": False,
     }
+    try: 
+        co2_limit_de = n.global_constraints.loc["co2_limit-DE", "mu"]
+    except KeyError:
+        co2_limit_de = 0
+
 
     # co2 additions
     co2_price = (
         -n.global_constraints.loc["CO2Limit", "mu"]
-        - n.global_constraints.loc["co2_limit-DE", "mu"]
+        - co2_limit_de
     )
     # specific emissions in tons CO2/MWh according to n.links[n.links.carrier =="your_carrier].efficiency2.unique().item()
     specific_emisisons = {
@@ -3683,10 +3689,13 @@ def get_policy(n, investment_year):
         co2_price_add_on = snakemake.params.co2_price_add_on_fossils[investment_year]
     else:
         co2_price_add_on = 0.0
-
+    try: 
+        co2_limit_de = n.global_constraints.loc["co2_limit-DE", "mu"]
+    except KeyError:
+        co2_limit_de = 0
     var["Price|Carbon"] = (
         -n.global_constraints.loc["CO2Limit", "mu"]
-        - n.global_constraints.loc["co2_limit-DE", "mu"]
+        - co2_limit_de
         + co2_price_add_on
     )
 
@@ -3696,9 +3705,7 @@ def get_policy(n, investment_year):
 
     # Price|Carbon|EU-wide Regulation Non-ETS
 
-    var["Price|Carbon|National Climate Target"] = -n.global_constraints.loc[
-        "co2_limit-DE", "mu"
-    ]
+    var["Price|Carbon|National Climate Target"] = -co2_limit_de
 
     # Price|Carbon|National Climate Target Non-ETS
 
