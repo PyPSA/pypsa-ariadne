@@ -126,5 +126,5 @@ if __name__ == "__main__":
     # Assumption based on doi:10.1016/j.rser.2019.109506
     costs.at[("biomass boiler", "pelletizing cost"), "value"] += 8.8
     print(costs.loc["biomass boiler", "pelletizing cost"])
-    
+
     costs.to_csv(snakemake.output[0])
