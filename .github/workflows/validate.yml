@@ -23,7 +23,6 @@ jobs:
         snakemake_config: config/config.yaml
         pre_command: "build_scenarios -f"
         main_command: "ariadne_all"
-        dev: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -50,4 +49,3 @@ jobs:
           ariadne_comparison/Capacity-Electricity-Solar.png
           "
         validator_key: ${{ secrets.VALIDATOR_KEY }}
-        dev: true
