@@ -324,10 +324,10 @@ def unravel_oilbus(n):
         p_nom=1e6,
         efficiency=1
         - (
-            snakemake.config["industry"]["fuel_refining"]["oil"]["emissions"]
+            snakemake.config["industry"]["oil_refining_emissions"]
             / costs.at["oil", "CO2 intensity"]
         ),
-        efficiency2=snakemake.config["industry"]["fuel_refining"]["oil"]["emissions"],
+        efficiency2=snakemake.config["industry"]["oil_refining_emissions"],
     )
 
     # change links from EU oil to DE oil
@@ -370,14 +370,16 @@ def unravel_oilbus(n):
     )
 
     # add stores
+    EU_oil_store = n.stores.loc["EU oil Store"].copy()
     n.add(
         "Store",
         "DE oil Store",
         bus="DE oil",
         carrier="oil",
-        e_nom_extendable=True,
-        e_cyclic=True,
-        capital_cost=0.02,
+        e_nom_extendable=EU_oil_store.e_nom_extendable,
+        e_cyclic=EU_oil_store.e_cyclic,
+        capital_cost=EU_oil_store.capital_cost,
+        overnight_cost=EU_oil_store.overnight_cost,
     )
 
     # unravel meoh
@@ -414,14 +416,16 @@ def unravel_oilbus(n):
     )
 
     # add stores
+    EU_meoh_store = n.stores.loc["EU methanol Store"].copy()
     n.add(
         "Store",
         "DE methanol Store",
         bus="DE methanol",
         carrier="methanol",
-        e_nom_extendable=True,
-        e_cyclic=True,
-        capital_cost=0.02,
+        e_nom_extendable=EU_meoh_store.e_nom_extendable,
+        e_cyclic=EU_meoh_store.e_cyclic,
+        capital_cost=EU_meoh_store.capital_cost,
+        overnight_cost=EU_meoh_store.overnight_cost,
     )
 
 
@@ -584,16 +588,15 @@ def transmission_costs_from_modified_cost_data(
     n.links.loc[dc_b, "overnight_cost"] = overnight_cost
 
 
-def must_run_biomass(n, p_min_pu, regions):
+def must_run_biogas(n, p_min_pu, regions):
     """
-    Set p_min_pu for biomass generators to the specified value.
+    Set p_min_pu for biogas generators to the specified value.
     """
     logger.info(
-        f"Must-run condition enabled: Setting p_min_pu = {p_min_pu} for biomass generators."
+        f"Must-run condition enabled: Setting p_min_pu = {p_min_pu} for biogas generators."
     )
     links_i = n.links[
-        (n.links.carrier == "solid biomass")
-        & (n.links.bus0.str.startswith(tuple(regions)))
+        (n.links.carrier == "biogas") & (n.links.bus0.str.startswith(tuple(regions)))
     ].index
     n.links.loc[links_i, "p_min_pu"] = p_min_pu
 
@@ -759,6 +762,7 @@ def force_retrofit(n, params):
         h2_plants.efficiency -= params["efficiency_loss"]
         h2_plants.efficiency2 = 1  # default value
         h2_plants.capital_cost *= 1 + params["cost_factor"]
+        h2_plants.overnight_cost *= 1 + params["cost_factor"]
         # add the new links
         n.import_components_from_dataframe(h2_plants, "Link")
         n.links.drop(gas_plants, inplace=True)
@@ -780,6 +784,7 @@ def force_retrofit(n, params):
     h2_plants.efficiency -= params["efficiency_loss"]
     h2_plants.efficiency3 = 1  # default value
     h2_plants.capital_cost *= 1 + params["cost_factor"]
+    h2_plants.overnight_cost *= 1 + params["cost_factor"]
     n.import_components_from_dataframe(h2_plants, "Link")
     n.links.drop(gas_plants, inplace=True)
 
@@ -857,11 +862,11 @@ if __name__ == "__main__":
         snakemake.params.length_factor,
     )
 
-    if snakemake.params.biomass_must_run["enable"]:
-        must_run_biomass(
+    if snakemake.params.biogas_must_run["enable"]:
+        must_run_biogas(
             n,
-            snakemake.params.biomass_must_run["p_min_pu"],
-            snakemake.params.biomass_must_run["regions"],
+            snakemake.params.biogas_must_run["p_min_pu"],
+            snakemake.params.biogas_must_run["regions"],
         )
 
     if snakemake.params.H2_plants["enable"]:

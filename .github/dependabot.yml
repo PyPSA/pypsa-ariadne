@@ -6,7 +6,7 @@ updates:
 - package-ecosystem: github-actions
   directory: /
   schedule:
-    interval: monthly
+    interval: daily
   groups:
     # open a single pull-request for all GitHub actions updates
     github-actions:

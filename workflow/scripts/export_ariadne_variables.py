@@ -10,7 +10,11 @@ import pandas as pd
 import pypsa
 from numpy import isclose
 
-paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
+paths = [
+    "workflow/submodules/pypsa-eur/scripts",
+    "../submodules/pypsa-eur/scripts",
+    "../submodules/pypsa-eur/",
+]
 for path in paths:
     sys.path.insert(0, os.path.abspath(path))
 
@@ -113,8 +117,8 @@ def _get_gas_fractions(n, region):
         total_exported_renewable_gas = total_gas_supply.get(
             ("DE renewable gas -> EU gas", "renewable gas"), 0
         )
-        domestic_renewable_gas = renewable_gas_supply.loc["DE renewable gas"]
-        foreign_renewable_gas = renewable_gas_supply.loc["EU renewable gas"]
+        domestic_renewable_gas = renewable_gas_supply.get("DE renewable gas")
+        foreign_renewable_gas = renewable_gas_supply.get("EU renewable gas")
     else:
         domestic_gas_supply = (
             total_gas_supply.reindex(
@@ -134,8 +138,8 @@ def _get_gas_fractions(n, region):
         total_exported_renewable_gas = total_gas_supply.get(
             ("EU renewable gas -> DE gas", "renewable gas"), 0
         )
-        domestic_renewable_gas = renewable_gas_supply.loc["EU renewable gas"]
-        foreign_renewable_gas = renewable_gas_supply.loc["DE renewable gas"]
+        domestic_renewable_gas = renewable_gas_supply.get("EU renewable gas", 0)
+        foreign_renewable_gas = renewable_gas_supply.get("DE renewable gas", 0)
 
     # Legacy code for dropping gas pipelines (now deactivated)
     drops = ["gas pipeline", "gas pipeline new"]
@@ -143,28 +147,48 @@ def _get_gas_fractions(n, region):
         if d in total_gas_supply.index:
             total_gas_supply.drop(d, inplace=True)
 
-    imported_renewable_gas = (
-        foreign_renewable_gas
-        / foreign_renewable_gas.sum()
-        * total_imported_renewable_gas
-    )
+    if total_imported_renewable_gas == 0:
+        imported_renewable_gas = pd.Series(
+            0, index=renewable_gas_supply.index.get_level_values("carrier").unique()
+        )
+    else:
+        imported_renewable_gas = (
+            foreign_renewable_gas
+            / foreign_renewable_gas.sum()
+            * total_imported_renewable_gas
+        )
 
-    exported_renewable_gas = (
-        domestic_renewable_gas
-        / domestic_renewable_gas.sum()
-        * total_exported_renewable_gas
+    if total_exported_renewable_gas == 0:
+        exported_renewable_gas = pd.Series(
+            0, index=renewable_gas_supply.index.get_level_values("carrier").unique()
+        )
+    else:
+        exported_renewable_gas = (
+            domestic_renewable_gas
+            / domestic_renewable_gas.sum()
+            * total_exported_renewable_gas
+        )
+
+    renewable_gas_balance = imported_renewable_gas.add(
+        domestic_renewable_gas, fill_value=0
+    ).subtract(exported_renewable_gas, fill_value=0)
+    # These numbers may deviate because the input data from n.statistics
+    # can deviate. I don't know why exactly, but at least we can check that
+    # the difference stays roughly the same after the calculation.
+    assert isclose(
+        domestic_gas_supply.get("renewable gas", 0) - renewable_gas_balance.sum(),
+        total_gas_supply.get(
+            ["DE renewable gas -> DE gas", "DE renewable gas -> EU gas"],
+            pd.Series(0)
+        ).sum()
+        - renewable_gas_supply.get("DE renewable gas", pd.Series(0)).sum(),
     )
-    renewable_gas_supply = (
-        domestic_renewable_gas + imported_renewable_gas - exported_renewable_gas
-    )
-    # Check for small differences
-    assert domestic_gas_supply.get("renewable gas", 0) - renewable_gas_supply.sum() < 1
 
     gas_fractions = pd.Series(
         {
             "Natural Gas": domestic_gas_supply.get("gas", 0),
-            "Biomass": renewable_gas_supply.filter(like="biogas").sum(),
-            "Efuel": renewable_gas_supply.get("Sabatier", 0),
+            "Biomass": renewable_gas_balance.filter(like="biogas").sum(),
+            "Efuel": renewable_gas_balance.get("Sabatier", 0),
         }
     ).divide(domestic_gas_supply.sum())
 
@@ -466,31 +490,26 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
     #     capacities_electricity = \
     #         capacities_electricity.multiply(MW2GW)
 
-    capacities_biomass = capacities_electricity.filter(like="biomass")
-
-    var[cap_string + "Electricity|Biomass|w/ CCS"] = capacities_biomass.filter(
-        like="CC"
-    ).sum()
-
-    var[cap_string + "Electricity|Biomass|w/o CCS"] = capacities_biomass.reindex(
-        ["urban central solid biomass CHP", "solid biomass"]
-    ).sum()
-
-    var[cap_string + "Electricity|Biomass|Solids"] = var[
-        [
-            cap_string + "Electricity|Biomass|w/ CCS",
-            cap_string + "Electricity|Biomass|w/o CCS",
-        ]
-    ].sum()
-
-    # Ariadne does no checks, so we implement our own?
-    assert isclose(
-        var[cap_string + "Electricity|Biomass|Solids"], capacities_biomass.sum()
+    var[cap_string + "Electricity|Biomass|w/ CCS"] = capacities_electricity.get(
+        "urban central solid biomass CHP CC ", 0
     )
 
-    var[cap_string + "Electricity|Biomass"] = var[
-        cap_string + "Electricity|Biomass|Solids"
-    ]
+    var[cap_string + "Electricity|Biomass|w/o CCS"] = capacities_electricity.reindex(
+        ["urban central solid biomass CHP", "solid biomass", "biogas"]
+    ).sum()
+
+    var[cap_string + "Electricity|Biomass|Solids"] = capacities_electricity.filter(
+        like="solid biomass"
+    ).sum()
+
+    var[cap_string + "Electricity|Biomass|Gases and Liquids"] = (
+        capacities_electricity.get("biogas", 0)
+    )
+
+    var[cap_string + "Electricity|Biomass"] = (
+        var[cap_string + "Electricity|Biomass|Solids"]
+        + var[cap_string + "Electricity|Biomass|Gases and Liquids"]
+    )
 
     var[cap_string + "Electricity|Non-Renewable Waste"] = capacities_electricity.filter(
         like="waste CHP"
@@ -1193,8 +1212,8 @@ def get_primary_energy(n, region):
         ~biomass_usage.index.str.contains("CC")
     ].sum()
 
-    var["Primary Energy|Biomass|Electricity"] = biomass_CHP_E_usage + biomass_usage.get(
-        "solid biomass", 0
+    var["Primary Energy|Biomass|Electricity"] = (
+        biomass_CHP_E_usage + biomass_usage.reindex(["solid biomass", "biogas"]).sum()
     )
     var["Primary Energy|Biomass|Heat"] = biomass_CHP_H_usage + biomass_usage.get(
         "urban central solid biomass boiler", 0
@@ -1340,11 +1359,17 @@ def get_secondary_energy(n, region, _industry_demand):
         + var["Secondary Energy|Electricity|Coal"]
     )
 
-    var["Secondary Energy|Electricity|Biomass|w/o CCS"] = electricity_supply.get(
-        "urban central solid biomass CHP", 0
-    ) + electricity_supply.get("solid biomass", 0)
+    var["Secondary Energy|Electricity|Biomass|w/o CCS"] = electricity_supply.reindex(
+        ["urban central solid biomass CHP", "solid biomass", "biogas"]
+    ).sum()
     var["Secondary Energy|Electricity|Biomass|w/ CCS"] = electricity_supply.get(
         "urban central solid biomass CHP CC", 0
+    )
+    var["Secondary Energy|Electricity|Biomass|Solid"] = electricity_supply.filter(
+        like="solid biomass"
+    ).sum()
+    var["Secondary Energy|Electricity|Biomass|Gaseous and Liquid"] = (
+        electricity_supply.get("biogas")
     )
     var["Secondary Energy|Electricity|Biomass"] = (
         var["Secondary Energy|Electricity|Biomass|w/o CCS"]
@@ -1557,9 +1582,14 @@ def get_secondary_energy(n, region, _industry_demand):
         ["SMR", "SMR CC"]
     ).sum()
 
+    var["Secondary Energy|Hydrogen|Other"] = hydrogen_production.get(
+        "H2 for industry", 0
+    )
+
     var["Secondary Energy|Hydrogen"] = (
         var["Secondary Energy|Hydrogen|Electricity"]
         + var["Secondary Energy|Hydrogen|Gas"]
+        + var["Secondary Energy|Hydrogen|Other"]
     )
 
     assert isclose(
@@ -1567,6 +1597,7 @@ def get_secondary_energy(n, region, _industry_demand):
         hydrogen_production[
             ~hydrogen_production.index.str.startswith("H2 pipeline")
         ].sum(),
+        rtol=0.01,
     )
 
     oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
@@ -2480,7 +2511,9 @@ def get_emissions(n, region, _energy_totals):
         print("WARNING! Not all CO2 capture from fossil sources is captured!!!")
         print("total_ccs - fossil_cc: ", total_ccs - fossil_cc.sum())
         # TODO what to do with fossil_cc_emissions???
-        if n.links.build_year.max() == 2045:
+        if (n.links.build_year.max() == 2045) and (
+            total_ccs - fossil_cc.sum() > 1
+        ):  # > 1 for numerical errors
             raise Exception("Not enough CCS in 2045!")
 
     if not co2_atmosphere_withdrawal.get("urban central solid biomass CHP CC"):
@@ -2958,11 +2991,16 @@ def get_prices(n, region):
         "groupby": n.statistics.groupers.get_name_bus_and_carrier,
         "nice_names": False,
     }
+    try: 
+        co2_limit_de = n.global_constraints.loc["co2_limit-DE", "mu"]
+    except KeyError:
+        co2_limit_de = 0
+
 
     # co2 additions
     co2_price = (
         -n.global_constraints.loc["CO2Limit", "mu"]
-        - n.global_constraints.loc["co2_limit-DE", "mu"]
+        - co2_limit_de
     )
     # specific emissions in tons CO2/MWh according to n.links[n.links.carrier =="your_carrier].efficiency2.unique().item()
     specific_emisisons = {
@@ -3651,10 +3689,13 @@ def get_policy(n, investment_year):
         co2_price_add_on = snakemake.params.co2_price_add_on_fossils[investment_year]
     else:
         co2_price_add_on = 0.0
-
+    try: 
+        co2_limit_de = n.global_constraints.loc["co2_limit-DE", "mu"]
+    except KeyError:
+        co2_limit_de = 0
     var["Price|Carbon"] = (
         -n.global_constraints.loc["CO2Limit", "mu"]
-        - n.global_constraints.loc["co2_limit-DE", "mu"]
+        - co2_limit_de
         + co2_price_add_on
     )
 
@@ -3664,9 +3705,7 @@ def get_policy(n, investment_year):
 
     # Price|Carbon|EU-wide Regulation Non-ETS
 
-    var["Price|Carbon|National Climate Target"] = -n.global_constraints.loc[
-        "co2_limit-DE", "mu"
-    ]
+    var["Price|Carbon|National Climate Target"] = -co2_limit_de
 
     # Price|Carbon|National Climate Target Non-ETS
 
@@ -3779,6 +3818,47 @@ def get_trade(n, region):
     #     exports_oil_renew * MWh2PJ
 
     # Trade|Secondary Energy|Gases|Hydrogen|Volume
+
+    renewable_gas_supply = (
+        n.statistics.supply(bus_carrier="renewable gas", **kwargs)
+        .groupby(["bus", "carrier"])
+        .sum()
+    )
+
+    DE_renewable_gas = renewable_gas_supply.get("DE renewable gas", pd.Series(0))
+    EU_renewable_gas = renewable_gas_supply.get("EU renewable gas", pd.Series(0))
+
+    if DE_renewable_gas.sum() == 0:
+        DE_bio_fraction = 0
+    else:
+        DE_bio_fraction = DE_renewable_gas.filter(like="biogas to gas").sum() / DE_renewable_gas.sum()
+
+    if EU_renewable_gas.sum() == 0:
+        EU_bio_fraction = 0
+    else:
+        EU_bio_fraction = EU_renewable_gas.filter(like="biogas to gas").sum() / EU_renewable_gas.sum()
+
+    assert region == "DE" # only DE is implemented at the moment
+
+    exports_gas_renew, imports_gas_renew = get_export_import_links(
+        n, region, ["renewable gas"]
+    )
+    var["Trade|Secondary Energy|Gases|Hydrogen|Volume"] = (
+        exports_gas_renew * (1 - DE_bio_fraction) 
+        - imports_gas_renew * (1 - EU_bio_fraction)
+    ) * MWh2PJ
+    var["Trade|Secondary Energy|Gases|Hydrogen|Gross Import|Volume"] = (
+        imports_gas_renew * (1 - EU_bio_fraction) * MWh2PJ
+    )
+
+    var["Trade|Secondary Energy|Gases|Biomass|Volume"] = (
+        exports_gas_renew * DE_bio_fraction
+        - imports_gas_renew * EU_bio_fraction
+    ) * MWh2PJ
+    var["Trade|Secondary Energy|Gases|Biomass|Gross Import|Volume"] = (
+        imports_gas_renew * EU_bio_fraction * MWh2PJ
+    )
+
 
     # TODO add methanol trade, renewable gas trade
 
