@@ -116,4 +116,15 @@ if __name__ == "__main__":
         )
         costs = carbon_component_fossils(costs, co2_price)
 
+    logger.warning("Scaling onwind costs towards Fh-ISE  for Germany.")
+    # https://github.com/PyPSA/pypsa-ariadne/issues/179
+    # https://www.ise.fraunhofer.de/de/veroeffentlichungen/studien/studie-stromgestehungskosten-erneuerbare-energien.html
+    costs.at[("onwind", "investment"), "value"] *= 1.12
+    print(costs.loc["onwind", "investment"])
+
+    logger.warning("Adding transport costs of 8.8 EUR/MWh to pelletizing costs.")
+    # Assumption based on doi:10.1016/j.rser.2019.109506
+    costs.at[("biomass boiler", "pelletizing cost"), "value"] += 8.8
+    print(costs.loc["biomass boiler", "pelletizing cost"])
+
     costs.to_csv(snakemake.output[0])
