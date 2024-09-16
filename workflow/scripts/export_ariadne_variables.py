@@ -874,7 +874,8 @@ def get_primary_energy(n, region):
         "Store",
         ("Link", "gas pipeline"),
         ("Link", "gas pipeline new"),
-    ]).groupby(
+    ],errors="ignore"
+    ).groupby(
         "carrier"
     ).sum().multiply(gas_fractions["Natural Gas"]).multiply(MWh2PJ)
 
