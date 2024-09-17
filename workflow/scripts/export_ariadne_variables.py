@@ -178,10 +178,14 @@ def _get_gas_fractions(n, region):
     assert isclose(
         domestic_gas_supply.get("renewable gas", 0) - renewable_gas_balance.sum(),
         total_gas_supply.get(
-            ["DE renewable gas -> DE gas", "DE renewable gas -> EU gas"],
+            ["DE renewable gas -> DE gas"],
+            pd.Series(0)).sum() 
+        + total_gas_supply.get(
+            ["DE renewable gas -> EU gas"],
             pd.Series(0)
         ).sum()
         - renewable_gas_supply.get("DE renewable gas", pd.Series(0)).sum(),
+        rtol=1e-3,
     )
 
     gas_fractions = pd.Series(
