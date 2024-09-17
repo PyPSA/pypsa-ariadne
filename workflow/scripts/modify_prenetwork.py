@@ -363,10 +363,9 @@ def unravel_oilbus(n):
         carrier="renewable oil",
         p_nom=1e6,
         p_min_pu=0,
-        marginal_cost=0.01
-,
-    )    
-    
+        marginal_cost=0.01,
+    )
+
     n.madd(
         "Link",
         [
@@ -427,8 +426,7 @@ def unravel_oilbus(n):
         carrier="methanol",
         p_nom=1e6,
         p_min_pu=0,
-        marginal_cost=0.01
-,
+        marginal_cost=0.01,
     )
 
     # add stores
@@ -535,8 +533,7 @@ def unravel_gasbus(n, costs):
         carrier="renewable gas",
         p_nom=1e6,
         p_min_pu=0,
-        marginal_cost=0.01
-,
+        marginal_cost=0.01,
     )
 
     ### add links between renewable and fossil gas buses
@@ -813,7 +810,9 @@ def enforce_transmission_project_build_years(n, current_year):
     # current year >= build_year > previous year
     # it undoes the p_nom_min = p_nom_opt from add_brownfield
     dc_previously_deactivated = n.links.index[
-        (n.links.carrier == "DC") & (n.links.p_nom > 0) & (n.links.p_nom_opt == 0)
+        (n.links.carrier == "DC")
+        & (n.links.p_nom > 0)
+        & (n.links.p_nom_opt == 0)
         & (n.links.build_year <= snakemake.params.onshore_nep_force["cutout_year"])
         & (n.links.build_year >= snakemake.params.onshore_nep_force["cutin_year"])
     ]
