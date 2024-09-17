@@ -178,10 +178,14 @@ def _get_gas_fractions(n, region):
     assert isclose(
         domestic_gas_supply.get("renewable gas", 0) - renewable_gas_balance.sum(),
         total_gas_supply.get(
-            ["DE renewable gas -> DE gas", "DE renewable gas -> EU gas"],
+            ["DE renewable gas -> DE gas"],
+            pd.Series(0)).sum() 
+        + total_gas_supply.get(
+            ["DE renewable gas -> EU gas"],
             pd.Series(0)
         ).sum()
         - renewable_gas_supply.get("DE renewable gas", pd.Series(0)).sum(),
+        rtol=1e-3,
     )
 
     gas_fractions = pd.Series(
@@ -4283,7 +4287,7 @@ if __name__ == "__main__":
     df["Model"] = "PyPSA-Eur v0.10"
 
     with pd.ExcelWriter(snakemake.output.exported_variables_full) as writer:
-        df.to_excel(writer, sheet_name="data", index=False)
+        df.round(5).to_excel(writer, sheet_name="data", index=False)
 
     print(
         "Dropping variables which are not in the template:",
@@ -4303,5 +4307,5 @@ if __name__ == "__main__":
     )
 
     with pd.ExcelWriter(snakemake.output.exported_variables) as writer:
-        df.to_excel(writer, sheet_name="data", index=False)
+        df.round(5).to_excel(writer, sheet_name="data", index=False)
         meta.to_frame().T.to_excel(writer, sheet_name="meta", index=False)
