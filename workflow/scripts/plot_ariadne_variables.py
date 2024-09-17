@@ -325,7 +325,7 @@ if __name__ == "__main__":
         )
         .groupby(["Variable", "Unit"], dropna=False)
         .sum()
-    )
+    ).round(5)
 
     df.columns = df.columns.astype(str)
     leitmodell = "REMIND-EU v1.1"

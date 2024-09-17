@@ -351,17 +351,31 @@ def unravel_oilbus(n):
         "Link",
         [
             "EU renewable oil -> DE oil",
-            "EU renewable oil -> EU oil",
-            "DE renewable oil -> DE oil",
             "DE renewable oil -> EU oil",
         ],
         bus0=[
             "EU renewable oil",
-            "EU renewable oil",
-            "DE renewable oil",
             "DE renewable oil",
         ],
-        bus1=["DE oil", "EU oil", "DE oil", "EU oil"],
+        bus1=["DE oil", "EU oil"],
+        carrier="renewable oil",
+        p_nom=1e6,
+        p_min_pu=0,
+        marginal_cost=0.01
+,
+    )    
+    
+    n.madd(
+        "Link",
+        [
+            "EU renewable oil -> EU oil",
+            "DE renewable oil -> DE oil",
+        ],
+        bus0=[
+            "EU renewable oil",
+            "DE renewable oil",
+        ],
+        bus1=["EU oil", "DE oil"],
         carrier="renewable oil",
         p_nom=1e6,
         p_min_pu=0,
@@ -411,6 +425,8 @@ def unravel_oilbus(n):
         p_nom=1e6,
         marginal_cost=0.1,
         p_min_pu=0,
+        marginal_cost=0.01
+,
     )
 
     # add stores
@@ -741,6 +757,8 @@ def unravel_gasbus(n, costs):
         carrier="renewable gas",
         p_nom=1e6,
         p_min_pu=0,
+        marginal_cost=0.01
+,
     )
 
     ### add links between renewable and fossil gas buses
