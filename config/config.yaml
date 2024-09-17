@@ -4,10 +4,11 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240710limitwasteheat
+  prefix: 20240807UEOnlyGlobalComparison
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
+  - KN2045_Bal_v4_ue
   # - KN2045_Elec_v4
   # - KN2045_H2_v4
   # - KN2045plus_EasyRide
@@ -257,7 +258,7 @@ sector:
   regional_methanol_demand: true  #set to true if regional CO2 constraints needed
   regional_oil_demand: true  #set to true if regional CO2 constraints needed
   regional_coal_demand: true  #set to true if regional CO2 constraints needed
-  gas_network: true
+  gas_network: false
   biogas_upgrading_cc: true
   cluster_heat_buses: true
   # calculated based on ariadne "Stock|Space Heating"
@@ -352,7 +353,7 @@ solving:
   mem_mb: 70000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
   options:
     assign_all_duals: true
-    load_shedding: false
+    load_shedding: true
     skip_iterations: true # settings for post-discretization: false
     min_iterations: 1 # settings for post-discretization: 1
     max_iterations: 1 # settings for post-discretization: 1
