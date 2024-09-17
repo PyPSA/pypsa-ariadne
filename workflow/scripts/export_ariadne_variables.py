@@ -3523,7 +3523,7 @@ def get_discretized_value(value, disc_int, build_threshold=0.3):
     return add + discrete
 
 
-def get_grid_investments(n, costs, region, dg_cost_factor=1.0, length_factor=1.0):
+def get_grid_investments(n, costs, region, length_factor=1.0):
     # TODO gap between years should be read from config
     # TODO Discretization units should be read from config
     var = pd.Series()
@@ -3604,7 +3604,6 @@ def get_grid_investments(n, costs, region, dg_cost_factor=1.0, length_factor=1.0
     dg_investment = (
         dg_expansion
         * costs.at["electricity distribution grid", "investment"]
-        * dg_cost_factor
     )
     var["Investment|Energy Supply|Electricity|Distribution"] = dg_investment / 5
 
@@ -4066,7 +4065,6 @@ def get_ariadne_var(
                 n,
                 costs,
                 region,
-                dg_cost_factor=snakemake.params.dg_cost_factor,
                 length_factor=snakemake.params.length_factor,
             ),
             get_policy(n, year),
@@ -4235,7 +4233,6 @@ if __name__ == "__main__":
         region = "DE"
         cap_func = n.statistics.optimal_capacity
         cap_string = "Optimal Capacity|"
-        dg_cost_factor = snakemake.params.dg_cost_factor
         kwargs = {
             "groupby": n.statistics.groupers.get_bus_and_carrier,
             "at_port": True,
