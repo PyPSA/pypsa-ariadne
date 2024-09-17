@@ -4018,22 +4018,21 @@ def get_operational_and_capital_costs(year):
 
     return var
 
+
 def hack_transmission_projects(n, model_year):
     print("Hacking transmission projects for year", model_year)
     tprojs = n.links.loc[
-        (n.links.index.str.startswith("DC") 
-        | n.links.index.str.startswith("TYNDP"))
-        & ~n.links.reversed].index
+        (n.links.index.str.startswith("DC") | n.links.index.str.startswith("TYNDP"))
+        & ~n.links.reversed
+    ].index
 
-
-    future_projects = tprojs[
-        n.links.loc[tprojs, "build_year"] > model_year]
+    future_projects = tprojs[n.links.loc[tprojs, "build_year"] > model_year]
     current_projects = tprojs[
         (n.links.loc[tprojs, "build_year"] > (model_year - 5))
         & (n.links.loc[tprojs, "build_year"] <= model_year)
     ]
     past_projects = tprojs[n.links.loc[tprojs, "build_year"] <= (model_year - 5)]
-    
+
     # Future projects should not have any capacity
     assert isclose(n.links.loc[future_projects, "p_nom_opt"], 0).all()
     # Setting p_nom to 0 such that n.statistics does not compute negative expanded capex or capacity additions
@@ -4043,22 +4042,21 @@ def hack_transmission_projects(n, model_year):
     # until the year 2030 (Startnetz that we force in)
     if model_year <= 2030:
         assert isclose(
-            n.links.loc[current_projects, "p_nom_opt"], 
-            n.links.loc[current_projects, "p_nom"]).all()
+            n.links.loc[current_projects, "p_nom_opt"],
+            n.links.loc[current_projects, "p_nom"],
+        ).all()
 
         n.links.loc[current_projects, "p_nom"] = 0
 
-
     else:
-        n.links.loc[current_projects, "p_nom"] = n.links.loc[current_projects, "p_nom_min"]
+        n.links.loc[current_projects, "p_nom"] = n.links.loc[
+            current_projects, "p_nom_min"
+        ]
 
     # Past projects should have their p_nom_opt bigger or equal to p_nom
     assert (
-        n.links.loc[past_projects, "p_nom_opt"] >= 
-        n.links.loc[past_projects, "p_nom"]).all()
-
-
-
+        n.links.loc[past_projects, "p_nom_opt"] >= n.links.loc[past_projects, "p_nom"]
+    ).all()
 
 
 def get_ariadne_var(
@@ -4256,8 +4254,9 @@ if __name__ == "__main__":
     _networks = [pypsa.Network(fn) for fn in snakemake.input.networks]
     modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
     # Hack the transmission projects
-    networks = [hack_transmission_projects(n, int(my)) for n, my in zip(
-        _networks, modelyears)]
+    networks = [
+        hack_transmission_projects(n, int(my)) for n, my in zip(_networks, modelyears)
+    ]
 
     if "debug" == "debug":  # For debugging
         var = pd.Series()
