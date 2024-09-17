@@ -4018,6 +4018,48 @@ def get_operational_and_capital_costs(year):
 
     return var
 
+def hack_transmission_projects(n, model_year):
+    print("Hacking transmission projects for year", model_year)
+    tprojs = n.links.loc[
+        (n.links.index.str.startswith("DC") 
+        | n.links.index.str.startswith("TYNDP"))
+        & ~n.links.reversed].index
+
+
+    future_projects = tprojs[
+        n.links.loc[tprojs, "build_year"] > model_year]
+    current_projects = tprojs[
+        (n.links.loc[tprojs, "build_year"] > (model_year - 5))
+        & (n.links.loc[tprojs, "build_year"] <= model_year)
+    ]
+    past_projects = tprojs[n.links.loc[tprojs, "build_year"] <= (model_year - 5)]
+    
+    # Future projects should not have any capacity
+    assert isclose(n.links.loc[future_projects, "p_nom_opt"], 0).all()
+    # Setting p_nom to 0 such that n.statistics does not compute negative expanded capex or capacity additions
+    n.links.loc[future_projects, "p_nom"] = 0
+
+    # Current projects should have their p_nom_opt equal to p_nom
+    # until the year 2030 (Startnetz that we force in)
+    if model_year <= 2030:
+        assert isclose(
+            n.links.loc[current_projects, "p_nom_opt"], 
+            n.links.loc[current_projects, "p_nom"]).all()
+
+        n.links.loc[current_projects, "p_nom"] = 0
+
+
+    else:
+        n.links.loc[current_projects, "p_nom"] = n.links.loc[current_projects, "p_nom_min"]
+
+    # Past projects should have their p_nom_opt bigger or equal to p_nom
+    assert (
+        n.links.loc[past_projects, "p_nom_opt"] >= 
+        n.links.loc[past_projects, "p_nom"]).all()
+
+
+
+
 
 def get_ariadne_var(
     n,
@@ -4136,23 +4178,23 @@ if __name__ == "__main__":
             run="KN2045_Bal_v4",
         )
 
-    storage_costs_dict = {
-        "H2": "hydrogen storage underground",
-        "EV battery": None,  # 0 i think
-        "PHS": None,  #'PHS', accounted already as generator??
-        "battery": "battery storage",
-        "biogas": None,  # not a typical store, 0 i think
-        "co2 sequestered": snakemake.params.co2_sequestration_cost,  # TODO how to consider the co2_sequestration_lifetime here
-        "co2 stored": "CO2 storage tank",
-        "gas": "gas storage",
-        "home battery": "home battery storage",
-        "hydro": None,  # `hydro`, , accounted already as generator??
-        "oil": 0.02,
-        "rural water tanks": "decentral water tank storage",
-        "solid biomass": None,  # not a store, but a potential, 0 i think
-        "urban central water tanks": "central water tank storage",
-        "urban decentral water tanks": "decentral water tank storage",
-    }
+    # storage_costs_dict = {
+    #     "H2": "hydrogen storage underground",
+    #     "EV battery": None,  # 0 i think
+    #     "PHS": None,  #'PHS', accounted already as generator??
+    #     "battery": "battery storage",
+    #     "biogas": None,  # not a typical store, 0 i think
+    #     "co2 sequestered": snakemake.params.co2_sequestration_cost,
+    #     "co2 stored": "CO2 storage tank",
+    #     "gas": "gas storage",
+    #     "home battery": "home battery storage",
+    #     "hydro": None,  # `hydro`, , accounted already as generator??
+    #     "oil": 0.02,
+    #     "rural water tanks": "decentral water tank storage",
+    #     "solid biomass": None,  # not a store, but a potential, 0 i think
+    #     "urban central water tanks": "central water tank storage",
+    #     "urban decentral water tanks": "decentral water tank storage",
+    # }
 
     config = snakemake.config
     planning_horizons = snakemake.params.planning_horizons
@@ -4210,8 +4252,12 @@ if __name__ == "__main__":
             snakemake.input.costs,
         )
     )
-
-    networks = [pypsa.Network(n) for n in snakemake.input.networks]
+    # Load data
+    _networks = [pypsa.Network(fn) for fn in snakemake.input.networks]
+    modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
+    # Hack the transmission projects
+    networks = [hack_transmission_projects(n, int(my)) for n, my in zip(
+        _networks, modelyears)]
 
     if "debug" == "debug":  # For debugging
         var = pd.Series()
