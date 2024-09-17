@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MIT
 """
 Using BNetzA data to get a high resolution map of German CHP plants.
+
 (https://open-mastr.readthedocs.io/en/latest/).
 """
 
@@ -11,9 +12,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-import pandas as pd
 import os
 import sys
+
+import pandas as pd
 import pypsa
 from powerplantmatching.export import map_country_bus
 
@@ -21,6 +23,7 @@ from powerplantmatching.export import map_country_bus
 def clean_data(combustion, biomass, geodata):
     """
     Clean the data and return a dataframe with the relevant information.
+
     PLZ is translated to longitude and latitude using the pyGeoDb data.
     """
     biomass.dropna(subset="Postleitzahl", inplace=True)
@@ -177,8 +180,11 @@ def clean_data(combustion, biomass, geodata):
 
 def calculate_efficiency(CHP_de):
     """
-    Calculate the efficiency of the CHP plants depending on Capacity and DateIn.
-    Following Triebs et al. (https://doi.org/10.1016/j.ecmx.2020.100068)
+    Calculate the efficiency of the CHP plants depending on Capacity and
+    DateIn.
+
+    Following Triebs et al. (
+    https://doi.org/10.1016/j.ecmx.2020.100068)
     """
 
     def EXT(cap, year):

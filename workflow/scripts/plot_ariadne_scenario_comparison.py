@@ -1,24 +1,22 @@
+# -*- coding: utf-8 -*-
 
-import pandas as pd
-import matplotlib.pyplot as plt
 import os
+
+import matplotlib.pyplot as plt
+import pandas as pd
+
 
 def scenario_plot(df, var):
     unit = df._get_label_or_level_values("Unit")[0]
     if var.startswith("Investment"):
         unit = "billion EUR2020/yr"
     df = df.droplevel("Unit")
-    ax = df.T.plot(
-        xlabel="years",
-        ylabel=str(unit),
-        title=str(var)
-    )
+    ax = df.T.plot(xlabel="years", ylabel=str(unit), title=str(var))
     plt.close()
-    prefix=snakemake.config["run"]["prefix"]
-    var=var.replace("|","-").replace("\\","-").replace(" ","-").replace("/","-")
-    ax.figure.savefig(
-        f"results/{prefix}/ariadne_comparison/{var}",
-        bbox_inches="tight")
+    prefix = snakemake.config["run"]["prefix"]
+    var = var.replace("|", "-").replace("\\", "-").replace(" ", "-").replace("/", "-")
+    ax.figure.savefig(f"results/{prefix}/ariadne_comparison/{var}", bbox_inches="tight")
+
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -41,15 +39,14 @@ if __name__ == "__main__":
 
     dfs = []
     for file in snakemake.input.exported_variables:
-        _df = pd.read_excel(file,
-            index_col=list(range(5)),
-            sheet_name="data").droplevel(["Model", "Region"])
+        _df = pd.read_excel(
+            file, index_col=list(range(5)), sheet_name="data"
+        ).droplevel(["Model", "Region"])
         dfs.append(_df)
 
     df = pd.concat(dfs, axis=0)
 
-
-    prefix=snakemake.config["run"]["prefix"]
+    prefix = snakemake.config["run"]["prefix"]
     if not os.path.exists(f"results/{prefix}/ariadne_comparison/"):
         os.mkdir(f"results/{prefix}/ariadne_comparison/")
 
