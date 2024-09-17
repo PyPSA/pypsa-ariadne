@@ -363,10 +363,9 @@ def unravel_oilbus(n):
         carrier="renewable oil",
         p_nom=1e6,
         p_min_pu=0,
-        marginal_cost=0.01
-,
-    )    
-    
+        marginal_cost=0.01,
+    )
+
     n.madd(
         "Link",
         [
@@ -427,8 +426,7 @@ def unravel_oilbus(n):
         carrier="methanol",
         p_nom=1e6,
         p_min_pu=0,
-        marginal_cost=0.01
-,
+        marginal_cost=0.01,
     )
 
     # add stores
@@ -535,8 +533,7 @@ def unravel_gasbus(n, costs):
         carrier="renewable gas",
         p_nom=1e6,
         p_min_pu=0,
-        marginal_cost=0.01
-,
+        marginal_cost=0.01,
     )
 
     ### add links between renewable and fossil gas buses
@@ -711,9 +708,8 @@ def remove_downstream_constraint(n):
         None
     """
     logger.info(f"Remove global downstream co2 constraint.")
-    n.meta["_global_co2_limit"] = n.global_constraints.loc["CO2Limit","constant"] 
+    n.meta["_global_co2_limit"] = n.global_constraints.loc["CO2Limit", "constant"]
     n.remove("GlobalConstraint", "CO2Limit")
-
 
 
 def add_hydrogen_turbines(n):

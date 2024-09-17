@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import os
 
 import pandas as pd
-import os
 from prepare_sector_network import determine_emission_sectors
 from xarray import DataArray
 
@@ -261,7 +261,7 @@ def emissions_upstream(n):
     lhs = []
 
     for c in specific_emissions.keys():
-    
+
         i_fossil = n.generators.index[(n.generators.carrier == c)]
         lhs.append((n.model["Generator-p"].loc[:, i_fossil]*specific_emissions[c]*n.snapshot_weightings.generators).sum())
 
@@ -297,7 +297,7 @@ def emissions_upstream(n):
             sense="<=",
             type="",
             carrier_attribute="",
-        ) 
+        )
 
 
 def add_co2limit_country(n, limit_countries, snakemake, debug=False):
@@ -441,7 +441,7 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
                 type="",
                 carrier_attribute="",
             )
-    
+
     # functionality if emissions upstream are enabled
     else:
         logger.info(f"Adding CO2 budget limit for each country as per unit of 1990 levels (upstream)")
@@ -455,7 +455,7 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
 
             lhs = []
 
-            # generation 
+            # generation
             for c in specific_emissions.keys():
                 i_fossil = n.generators.index[(n.generators.carrier == c) & (n.generators.index.str[:2] == ct)]
                 lhs.append((n.model["Generator-p"].loc[:, i_fossil]*specific_emissions[c]*n.snapshot_weightings.generators).sum())
@@ -507,7 +507,7 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
                     sense="<=",
                     type="",
                     carrier_attribute="",
-                ) 
+                )
 
 
 
@@ -694,6 +694,6 @@ def additional_functionality(n, snapshots, snakemake):
         )
     else:
         logger.warning("No national CO2 budget specified!")
-    
+
     if snakemake.config["emissions_upstream"]["enable"]:
         emissions_upstream(n)

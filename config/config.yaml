@@ -614,4 +614,3 @@ must_run_biogas:
 
 emissions_upstream:
   enable: true
-

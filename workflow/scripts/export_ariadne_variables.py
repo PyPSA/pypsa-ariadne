@@ -177,13 +177,8 @@ def _get_gas_fractions(n, region):
     # the difference stays roughly the same after the calculation.
     assert isclose(
         domestic_gas_supply.get("renewable gas", 0) - renewable_gas_balance.sum(),
-        total_gas_supply.get(
-            ["DE renewable gas -> DE gas"],
-            pd.Series(0)).sum() 
-        + total_gas_supply.get(
-            ["DE renewable gas -> EU gas"],
-            pd.Series(0)
-        ).sum()
+        total_gas_supply.get(["DE renewable gas -> DE gas"], pd.Series(0)).sum()
+        + total_gas_supply.get(["DE renewable gas -> EU gas"], pd.Series(0)).sum()
         - renewable_gas_supply.get("DE renewable gas", pd.Series(0)).sum(),
         rtol=1e-3,
     )
@@ -2995,23 +2990,19 @@ def get_prices(n, region):
         "groupby": n.statistics.groupers.get_name_bus_and_carrier,
         "nice_names": False,
     }
-    try: 
+    try:
         co2_limit_de = n.global_constraints.loc["co2_limit-DE", "mu"]
     except KeyError:
         co2_limit_de = 0
 
-
     # co2 additions
-    co2_price = (
-        -n.global_constraints.loc["CO2Limit", "mu"]
-        - co2_limit_de
-    )
+    co2_price = -n.global_constraints.loc["CO2Limit", "mu"] - co2_limit_de
     # specific emissions in tons CO2/MWh according to n.links[n.links.carrier =="your_carrier].efficiency2.unique().item()
     specific_emissions = {
-        "oil" : 0.2571,
-        "gas" : 0.198, # OCGT
-        "hard coal" : 0.3361,
-        "lignite" : 0.4069,
+        "oil": 0.2571,
+        "gas": 0.198,  # OCGT
+        "hard coal": 0.3361,
+        "lignite": 0.4069,
     }
 
     nodal_flows_lv = get_nodal_flows(
@@ -3602,8 +3593,7 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
         - distribution_grid[distribution_grid.build_year <= year_pre].p_nom_opt.sum()
     )
     dg_investment = (
-        dg_expansion
-        * costs.at["electricity distribution grid", "investment"]
+        dg_expansion * costs.at["electricity distribution grid", "investment"]
     )
     var["Investment|Energy Supply|Electricity|Distribution"] = dg_investment / 5
 
@@ -3686,22 +3676,26 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
 
 def get_policy(n, investment_year):
     var = pd.Series()
-    n_glob_co2 = "CO2Limit" if "CO2Limit" in n.global_constraints.index else "CO2LimitUpstream"
-    n_loc_co2 = "co2_limit-DE" if "co2_limit-DE" in n.global_constraints.index else "co2_limit_upstream-DE"
-    
+    n_glob_co2 = (
+        "CO2Limit" if "CO2Limit" in n.global_constraints.index else "CO2LimitUpstream"
+    )
+    n_loc_co2 = (
+        "co2_limit-DE"
+        if "co2_limit-DE" in n.global_constraints.index
+        else "co2_limit_upstream-DE"
+    )
+
     # add carbon component to fossil fuels if specified
     if investment_year in snakemake.params.co2_price_add_on_fossils.keys():
         co2_price_add_on = snakemake.params.co2_price_add_on_fossils[investment_year]
     else:
         co2_price_add_on = 0.0
-    try: 
+    try:
         co2_limit_de = n.global_constraints.loc["co2_limit-DE", "mu"]
     except KeyError:
         co2_limit_de = 0
     var["Price|Carbon"] = (
-        -n.global_constraints.loc["CO2Limit", "mu"]
-        - co2_limit_de
-        + co2_price_add_on
+        -n.global_constraints.loc["CO2Limit", "mu"] - co2_limit_de + co2_price_add_on
     )
 
     var["Price|Carbon|EU-wide Regulation All Sectors"] = (
@@ -3836,20 +3830,24 @@ def get_trade(n, region):
     if DE_renewable_gas.sum() == 0:
         DE_bio_fraction = 0
     else:
-        DE_bio_fraction = DE_renewable_gas.filter(like="biogas to gas").sum() / DE_renewable_gas.sum()
+        DE_bio_fraction = (
+            DE_renewable_gas.filter(like="biogas to gas").sum() / DE_renewable_gas.sum()
+        )
 
     if EU_renewable_gas.sum() == 0:
         EU_bio_fraction = 0
     else:
-        EU_bio_fraction = EU_renewable_gas.filter(like="biogas to gas").sum() / EU_renewable_gas.sum()
+        EU_bio_fraction = (
+            EU_renewable_gas.filter(like="biogas to gas").sum() / EU_renewable_gas.sum()
+        )
 
-    assert region == "DE" # only DE is implemented at the moment
+    assert region == "DE"  # only DE is implemented at the moment
 
     exports_gas_renew, imports_gas_renew = get_export_import_links(
         n, region, ["renewable gas"]
     )
     var["Trade|Secondary Energy|Gases|Hydrogen|Volume"] = (
-        exports_gas_renew * (1 - DE_bio_fraction) 
+        exports_gas_renew * (1 - DE_bio_fraction)
         - imports_gas_renew * (1 - EU_bio_fraction)
     ) * MWh2PJ
     var["Trade|Secondary Energy|Gases|Hydrogen|Gross Import|Volume"] = (
@@ -3857,13 +3855,11 @@ def get_trade(n, region):
     )
 
     var["Trade|Secondary Energy|Gases|Biomass|Volume"] = (
-        exports_gas_renew * DE_bio_fraction
-        - imports_gas_renew * EU_bio_fraction
+        exports_gas_renew * DE_bio_fraction - imports_gas_renew * EU_bio_fraction
     ) * MWh2PJ
     var["Trade|Secondary Energy|Gases|Biomass|Gross Import|Volume"] = (
         imports_gas_renew * EU_bio_fraction * MWh2PJ
     )
-
 
     # TODO add methanol trade, renewable gas trade
 
