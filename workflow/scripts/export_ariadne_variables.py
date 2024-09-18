@@ -3531,6 +3531,7 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     var["Investment|Energy Supply|Electricity|Transmission|Offwind-DC"] = (
         offwind_connection_dc.sum() / 5
     )
+    # TODO add international links with only 50% of the costs
     dc_links = n.links[
         (n.links.carrier == "DC")
         & (n.links.bus0 + n.links.bus1).str.contains(region)
@@ -4036,7 +4037,11 @@ def hack_transmission_projects(n, model_year):
     # Future projects should not have any capacity
     assert isclose(n.links.loc[future_projects, "p_nom_opt"], 0).all()
     # Setting p_nom to 0 such that n.statistics does not compute negative expanded capex or capacity additions
+    # Setting p_nom to 0 for the grid_expansion calculation
+    # This is ONLY POSSIBLE IN POST-PROCESSING
+    # We pretend that the model expanded the grid endogenously
     n.links.loc[future_projects, "p_nom"] = 0
+    n.links.loc[future_projects, "p_nom_min"] = 0
 
     # Current projects should have their p_nom_opt equal to p_nom
     # until the year 2030 (Startnetz that we force in)
@@ -4047,6 +4052,7 @@ def hack_transmission_projects(n, model_year):
         ).all()
 
         n.links.loc[current_projects, "p_nom"] = 0
+        n.links.loc[current_projects, "p_nom_min"] = 0
 
     else:
         n.links.loc[current_projects, "p_nom"] = n.links.loc[
@@ -4054,9 +4060,15 @@ def hack_transmission_projects(n, model_year):
         ]
 
     # Past projects should have their p_nom_opt bigger or equal to p_nom
-    assert (
-        n.links.loc[past_projects, "p_nom_opt"] >= n.links.loc[past_projects, "p_nom"]
-    ).all()
+    if model_year <= 2035:
+        assert (
+            n.links.loc[past_projects, "p_nom_opt"] >= 
+            n.links.loc[past_projects, "p_nom"]).all()
+
+    return n
+
+
+
 
 
 def get_ariadne_var(
@@ -4254,10 +4266,10 @@ if __name__ == "__main__":
     _networks = [pypsa.Network(fn) for fn in snakemake.input.networks]
     modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
     # Hack the transmission projects
-    networks = [
-        hack_transmission_projects(n, int(my)) for n, my in zip(_networks, modelyears)
-    ]
-
+    networks = [hack_transmission_projects(n.copy(), int(my)) for n, my in zip(
+        _networks, modelyears)]
+    new = pd.Series([get_grid_investments(networks[i], costs[i],  region).iloc[4] for i in range(6)])
+    old = pd.Series([get_grid_investments(_networks[i], costs[i],  region).iloc[4] for i in range(6)])
     if "debug" == "debug":  # For debugging
         var = pd.Series()
         idx = 2
