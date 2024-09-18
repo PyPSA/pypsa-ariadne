@@ -4062,13 +4062,11 @@ def hack_transmission_projects(n, model_year):
     # Past projects should have their p_nom_opt bigger or equal to p_nom
     if model_year <= 2035:
         assert (
-            n.links.loc[past_projects, "p_nom_opt"] >= 
-            n.links.loc[past_projects, "p_nom"]).all()
+            n.links.loc[past_projects, "p_nom_opt"]
+            >= n.links.loc[past_projects, "p_nom"]
+        ).all()
 
     return n
-
-
-
 
 
 def get_ariadne_var(
@@ -4266,10 +4264,16 @@ if __name__ == "__main__":
     _networks = [pypsa.Network(fn) for fn in snakemake.input.networks]
     modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
     # Hack the transmission projects
-    networks = [hack_transmission_projects(n.copy(), int(my)) for n, my in zip(
-        _networks, modelyears)]
-    new = pd.Series([get_grid_investments(networks[i], costs[i],  region).iloc[4] for i in range(6)])
-    old = pd.Series([get_grid_investments(_networks[i], costs[i],  region).iloc[4] for i in range(6)])
+    networks = [
+        hack_transmission_projects(n.copy(), int(my))
+        for n, my in zip(_networks, modelyears)
+    ]
+    new = pd.Series(
+        [get_grid_investments(networks[i], costs[i], region).iloc[4] for i in range(6)]
+    )
+    old = pd.Series(
+        [get_grid_investments(_networks[i], costs[i], region).iloc[4] for i in range(6)]
+    )
     if "debug" == "debug":  # For debugging
         var = pd.Series()
         idx = 2
