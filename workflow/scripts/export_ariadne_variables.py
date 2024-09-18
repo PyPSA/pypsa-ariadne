@@ -3534,7 +3534,7 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     # TODO add international links with only 50% of the costs
     dc_links = n.links[
         (n.links.carrier == "DC")
-        & (n.links.bus0.str.contains(region) | n.links.bus1.str.contains(region))
+        & (n.links.bus0 + n.links.bus1).str.contains(region)
         & ~n.links.reversed
     ]
     dc_expansion = dc_links.p_nom_opt.apply(
@@ -3544,21 +3544,23 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     dc_investments = dc_expansion * dc_links.overnight_cost * 1e-9
     # International dc_projects are only accounted with half the costs
     dc_investments[
-        ~(dc_links.bus0.str.contains(region) & dc_links.bus1.str.contains(region))
-    ] *= 0.5
-
-    ac_lines = n.lines[(n.lines.bus0 + n.lines.bus1).str.contains(region)]
+        ~(dc_links.bus0.str.contains(region) 
+        & dc_links.bus1.str.contains(region))] *= 0.5
+   
+    ac_lines = n.lines[
+        (n.lines.bus0 + n.lines.bus1).str.contains(region)]
     ac_expansion = ac_lines.s_nom_opt.apply(
         lambda x: get_discretized_value(x, 1700)
     ) - n.lines.loc[ac_lines.index].s_nom_min.apply(
         lambda x: get_discretized_value(x, 1700)
     )
-    ac_investments = (
-        ac_lines.length
-        * length_factor
-        * ac_expansion
-        * costs.at["HVAC overhead", "investment"]
-    )
+    ac_investments = ac_expansion * ac_lines.overnight_cost * 1e-9
+    # International ac_projects are only accounted with half the costs
+    ac_investments[
+        ~(ac_lines.bus0.str.contains(region)
+        & ac_lines.bus1.str.contains(region))] *= 0.5
+
+
     var["Investment|Energy Supply|Electricity|Transmission|AC"] = (
         ac_investments.sum() + offwind_connection_ac.sum()
     ) / 5
@@ -3596,18 +3598,23 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
         & ~n.links.reversed
         & (n.links.bus0 + n.links.bus1).str.contains(region)
     ]
-    year = n.links.build_year.max()
+    year = h2_links.build_year.max()
     new_h2_links = h2_links[
         ((year - 5) < h2_links.build_year) & (h2_links.build_year <= year)
     ]
-    h2_costs = (
-        new_h2_links.length
-        * new_h2_links.p_nom_opt.apply(lambda x: get_discretized_value(x, 1500))
-        * costs.at["H2 pipeline", "investment"]
+    h2_expansion = new_h2_links.p_nom_opt.apply(
+        lambda x: get_discretized_value(x, 1500)
     )
+    h2_investments = h2_expansion * new_h2_links.overnight_cost * 1e-9
+    # International h2_projects are only accounted with half the costs
+    h2_investments[
+        ~(new_h2_links.bus0.str.contains(region)
+        & new_h2_links.bus1.str.contains(region))] *= 0.5
+
+    var["Investment|Energy Supply|Hydrogen|Transmission"] = h2_investments.sum() / 5
+
     # TODO add retrofitted costs!!
 
-    var["Investment|Energy Supply|Hydrogen|Transmission"] = h2_costs.sum() / 5
 
     if "gas pipeline" in n.links.carrier.unique():
         gas_links = n.links[
