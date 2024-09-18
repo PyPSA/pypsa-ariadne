@@ -3507,11 +3507,11 @@ def get_discretized_value(value, disc_int, build_threshold=0.3):
     if value == 0.0:
         return value
 
-    add = value - value % disc_int
-    value = value % disc_int
-    discrete = disc_int if value > build_threshold * disc_int else 0.0
+    remainder = value % disc_int
+    base = value - remainder
+    discrete = disc_int if remainder > build_threshold * disc_int else 0.0
 
-    return add + discrete
+    return base + discrete
 
 
 def get_grid_investments(n, costs, region, length_factor=1.0):
@@ -3534,30 +3534,22 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     # TODO add international links with only 50% of the costs
     dc_links = n.links[
         (n.links.carrier == "DC")
-        & (n.links.bus0 + n.links.bus1).str.contains(region)
-        & ~n.links.index.str.contains("reversed")
+        & (n.links.bus0.str.contains(region) 
+            | n.links.bus1.str.contains(region))
+        & ~n.links.reversed
     ]
     dc_expansion = dc_links.p_nom_opt.apply(
-        lambda x: get_discretized_value(x, 2000)
-    ) - n.links.loc[dc_links.index].p_nom_min.apply(
-        lambda x: get_discretized_value(x, 2000)
+        lambda x: get_discretized_value(x, 1000)
+    ) - dc_links.p_nom_min.apply(
+        lambda x: get_discretized_value(x, 1000)
     )
 
-    dc_new = (dc_expansion > 0) & (n.links.loc[dc_links.index].p_nom_min > 10)
-
-    dc_investments = (
-        dc_links.length
-        * length_factor
-        * (
-            (1 - dc_links.underwater_fraction)
-            * dc_expansion
-            * costs.at["HVDC overhead", "investment"]
-            + dc_links.underwater_fraction
-            * dc_expansion
-            * costs.at["HVDC submarine", "investment"]
-        )
-        + dc_new * costs.at["HVDC inverter pair", "investment"]
-    )
+    dc_investments = dc_expansion * dc_links.overnight_cost * 1e-9
+    # International dc_projects are only accounted with half the costs
+    dc_investments[
+        ~(dc_links.bus0.str.contains(region) 
+        & dc_links.bus1.str.contains(region))] *= 0.5
+   
 
     ac_lines = n.lines[(n.lines.bus0 + n.lines.bus1).str.contains(region)]
     ac_expansion = ac_lines.s_nom_opt.apply(
@@ -4268,12 +4260,7 @@ if __name__ == "__main__":
         hack_transmission_projects(n.copy(), int(my))
         for n, my in zip(_networks, modelyears)
     ]
-    new = pd.Series(
-        [get_grid_investments(networks[i], costs[i], region).iloc[4] for i in range(6)]
-    )
-    old = pd.Series(
-        [get_grid_investments(_networks[i], costs[i], region).iloc[4] for i in range(6)]
-    )
+
     if "debug" == "debug":  # For debugging
         var = pd.Series()
         idx = 2
@@ -4289,6 +4276,12 @@ if __name__ == "__main__":
             "at_port": True,
             "nice_names": False,
         }
+        new = pd.Series(
+            [get_grid_investments(networks[i], costs[i], region).iloc[4] for i in range(6)]
+        )
+        old = pd.Series(
+            [get_grid_investments(_networks[i], costs[i], region).iloc[4] for i in range(6)]
+        )
 
     yearly_dfs = []
     for i, year in enumerate(planning_horizons):
