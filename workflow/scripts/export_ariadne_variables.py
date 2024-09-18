@@ -3539,39 +3539,43 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     ]
     dc_expansion = dc_links.p_nom_opt.apply(
         lambda x: get_discretized_value(
-            x, 
+            x,
             post_discretization["link_unit_size"]["DC"],
-            post_discretization["link_threshold"]["DC"])
-    ) - dc_links.p_nom_min.apply(lambda x: get_discretized_value(
-        x, 
-        post_discretization["link_unit_size"]["DC"],
-        post_discretization["link_threshold"]["DC"]))
+            post_discretization["link_threshold"]["DC"],
+        )
+    ) - dc_links.p_nom_min.apply(
+        lambda x: get_discretized_value(
+            x,
+            post_discretization["link_unit_size"]["DC"],
+            post_discretization["link_threshold"]["DC"],
+        )
+    )
 
     dc_investments = dc_expansion * dc_links.overnight_cost * 1e-9
     # International dc_projects are only accounted with half the costs
     dc_investments[
-        ~(dc_links.bus0.str.contains(region) 
-        & dc_links.bus1.str.contains(region))] *= 0.5
-   
-    ac_lines = n.lines[
-        (n.lines.bus0 + n.lines.bus1).str.contains(region)]
+        ~(dc_links.bus0.str.contains(region) & dc_links.bus1.str.contains(region))
+    ] *= 0.5
+
+    ac_lines = n.lines[(n.lines.bus0 + n.lines.bus1).str.contains(region)]
     ac_expansion = ac_lines.s_nom_opt.apply(
         lambda x: get_discretized_value(
-            x, 
+            x,
             post_discretization["line_unit_size"],
-            post_discretization["line_threshold"])
+            post_discretization["line_threshold"],
+        )
     ) - n.lines.loc[ac_lines.index].s_nom_min.apply(
         lambda x: get_discretized_value(
-            x, 
+            x,
             post_discretization["line_unit_size"],
-            post_discretization["line_threshold"])
+            post_discretization["line_threshold"],
+        )
     )
     ac_investments = ac_expansion * ac_lines.overnight_cost * 1e-9
     # International ac_projects are only accounted with half the costs
     ac_investments[
-        ~(ac_lines.bus0.str.contains(region)
-        & ac_lines.bus1.str.contains(region))] *= 0.5
-
+        ~(ac_lines.bus0.str.contains(region) & ac_lines.bus1.str.contains(region))
+    ] *= 0.5
 
     var["Investment|Energy Supply|Electricity|Transmission|AC"] = (
         ac_investments.sum() + offwind_connection_ac.sum()
@@ -3616,20 +3620,23 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     ]
     h2_expansion = new_h2_links.p_nom_opt.apply(
         lambda x: get_discretized_value(
-            x, 
+            x,
             post_discretization["link_unit_size"]["H2 pipeline"],
-            post_discretization["link_threshold"]["H2 pipeline"])
+            post_discretization["link_threshold"]["H2 pipeline"],
+        )
     )
     h2_investments = h2_expansion * new_h2_links.overnight_cost * 1e-9
     # International h2_projects are only accounted with half the costs
     h2_investments[
-        ~(new_h2_links.bus0.str.contains(region)
-        & new_h2_links.bus1.str.contains(region))] *= 0.5
+        ~(
+            new_h2_links.bus0.str.contains(region)
+            & new_h2_links.bus1.str.contains(region)
+        )
+    ] *= 0.5
 
     var["Investment|Energy Supply|Hydrogen|Transmission"] = h2_investments.sum() / 5
 
     # TODO add retrofitted costs!!
-
 
     if "gas pipeline" in n.links.carrier.unique():
         gas_links = n.links[
@@ -3646,10 +3653,13 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
         ]
         gas_costs = (
             new_gas_links.length
-            * new_gas_links.p_nom_opt.apply(lambda x: get_discretized_value(
-                x, 
-                post_discretization["link_unit_size"]["gas pipeline"],
-                post_discretization["link_threshold"]["gas pipeline"]))
+            * new_gas_links.p_nom_opt.apply(
+                lambda x: get_discretized_value(
+                    x,
+                    post_discretization["link_unit_size"]["gas pipeline"],
+                    post_discretization["link_threshold"]["gas pipeline"],
+                )
+            )
             * costs.at["CH4 (g) pipeline", "investment"]
         )
 

@@ -36,6 +36,7 @@ resources = path_provider("resources/", RDIR, policy, exclude)
 
 RESULTS = "results/" + RDIR
 
+
 module pypsaeur:
     snakefile:
         "submodules/pypsa-eur/Snakefile"
