@@ -220,7 +220,26 @@ def extend_cops(cops, subnodes):
         # Combine the renamed entry with the extended dataset
         cops_extended = xr.concat([cops_extended, renamed_entry], dim="name")
 
+    # Change dtype of the name dimension to string
+    cops_extended.coords["name"] = cops_extended.coords["name"].astype(str)
+
     return cops_extended
+
+
+def extend_heating_distribution(existing_heating_distribution, subnodes):
+    """
+    Extend heating distribution by subnodes mirroring the distribution of the
+    corresponding mother node.
+    """
+    # Merge the existing heating distribution with subnodes on the cluster name
+    mother_nodes = existing_heating_distribution.loc[subnodes.cluster.unique()]
+    mother_nodes["cities"] = subnodes.groupby("cluster")["Stadt"].apply(list)
+    # Explode the list of cities
+    mother_nodes = mother_nodes.explode(("cities", ""))
+    mother_nodes.index = mother_nodes.index + " " + mother_nodes[("cities", "")]
+    mother_nodes.drop(columns=("cities", ""), inplace=True)
+
+    return mother_nodes
 
 
 if __name__ == "__main__":
@@ -237,7 +256,7 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "add_district_heating_subnodes",
             simpl="",
-            clusters=22,
+            clusters=27,
             opts="",
             ll="vopt",
             sector_opts="none",
@@ -275,7 +294,19 @@ if __name__ == "__main__":
     add_subnodes(n, subnodes)
 
     if snakemake.config["foresight"] == "myopic":
-        cops = xr.open_dataarray(snakemake.input.cop_air_total)
+        cops = xr.open_dataarray(snakemake.input.cop_profiles)
         cops_extended = extend_cops(cops, subnodes)
-        cops_extended.to_netcdf(snakemake.output.cop_air_total_extended)
+        cops_extended.to_netcdf(snakemake.output.cop_profiles_extended)
+
+        existing_heating_distribution = pd.read_csv(
+            snakemake.input.existing_heating_distribution,
+            header=[0, 1],
+            index_col=0,
+        )
+        existing_heating_distribution_extended = extend_heating_distribution(
+            existing_heating_distribution, subnodes
+        )
+        existing_heating_distribution_extended.to_csv(
+            snakemake.output.existing_heating_distribution_extended
+        )
     n.export_to_netcdf(snakemake.output.network)
