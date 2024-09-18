@@ -3534,22 +3534,18 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     # TODO add international links with only 50% of the costs
     dc_links = n.links[
         (n.links.carrier == "DC")
-        & (n.links.bus0.str.contains(region) 
-            | n.links.bus1.str.contains(region))
+        & (n.links.bus0.str.contains(region) | n.links.bus1.str.contains(region))
         & ~n.links.reversed
     ]
     dc_expansion = dc_links.p_nom_opt.apply(
         lambda x: get_discretized_value(x, 1000)
-    ) - dc_links.p_nom_min.apply(
-        lambda x: get_discretized_value(x, 1000)
-    )
+    ) - dc_links.p_nom_min.apply(lambda x: get_discretized_value(x, 1000))
 
     dc_investments = dc_expansion * dc_links.overnight_cost * 1e-9
     # International dc_projects are only accounted with half the costs
     dc_investments[
-        ~(dc_links.bus0.str.contains(region) 
-        & dc_links.bus1.str.contains(region))] *= 0.5
-   
+        ~(dc_links.bus0.str.contains(region) & dc_links.bus1.str.contains(region))
+    ] *= 0.5
 
     ac_lines = n.lines[(n.lines.bus0 + n.lines.bus1).str.contains(region)]
     ac_expansion = ac_lines.s_nom_opt.apply(
@@ -4277,10 +4273,16 @@ if __name__ == "__main__":
             "nice_names": False,
         }
         new = pd.Series(
-            [get_grid_investments(networks[i], costs[i], region).iloc[4] for i in range(6)]
+            [
+                get_grid_investments(networks[i], costs[i], region).iloc[4]
+                for i in range(6)
+            ]
         )
         old = pd.Series(
-            [get_grid_investments(_networks[i], costs[i], region).iloc[4] for i in range(6)]
+            [
+                get_grid_investments(_networks[i], costs[i], region).iloc[4]
+                for i in range(6)
+            ]
         )
 
     yearly_dfs = []
