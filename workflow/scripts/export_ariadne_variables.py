@@ -3538,8 +3538,8 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
         & ~n.links.reversed
     ]
     dc_expansion = dc_links.p_nom_opt.apply(
-        lambda x: get_discretized_value(x, 1000)
-    ) - dc_links.p_nom_min.apply(lambda x: get_discretized_value(x, 1000))
+        lambda x: get_discretized_value(x, post_discretization["link_unit_size"]["DC"])
+    ) - dc_links.p_nom_min.apply(lambda x: get_discretized_value(x, post_discretization["link_unit_size"]["DC"]))
 
     dc_investments = dc_expansion * dc_links.overnight_cost * 1e-9
     # International dc_projects are only accounted with half the costs
@@ -3550,9 +3550,9 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     ac_lines = n.lines[
         (n.lines.bus0 + n.lines.bus1).str.contains(region)]
     ac_expansion = ac_lines.s_nom_opt.apply(
-        lambda x: get_discretized_value(x, 1700)
+        lambda x: get_discretized_value(x, post_discretization["line_unit_size"])
     ) - n.lines.loc[ac_lines.index].s_nom_min.apply(
-        lambda x: get_discretized_value(x, 1700)
+        lambda x: get_discretized_value(x, post_discretization["line_unit_size"])
     )
     ac_investments = ac_expansion * ac_lines.overnight_cost * 1e-9
     # International ac_projects are only accounted with half the costs
@@ -3603,7 +3603,7 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
         ((year - 5) < h2_links.build_year) & (h2_links.build_year <= year)
     ]
     h2_expansion = new_h2_links.p_nom_opt.apply(
-        lambda x: get_discretized_value(x, 1500)
+        lambda x: get_discretized_value(x, post_discretization["link_unit_size"]["H2 pipeline"])
     )
     h2_investments = h2_expansion * new_h2_links.overnight_cost * 1e-9
     # International h2_projects are only accounted with half the costs
@@ -3631,7 +3631,7 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
         ]
         gas_costs = (
             new_gas_links.length
-            * new_gas_links.p_nom_opt.apply(lambda x: get_discretized_value(x, 1200))
+            * new_gas_links.p_nom_opt.apply(lambda x: get_discretized_value(x, post_discretization["link_unit_size"]["gas pipeline"]))
             * costs.at["CH4 (g) pipeline", "investment"]
         )
 
@@ -4201,6 +4201,7 @@ if __name__ == "__main__":
 
     config = snakemake.config
     planning_horizons = snakemake.params.planning_horizons
+    post_discretization = snakemake.params.post_discretization
     ariadne_template = pd.read_excel(snakemake.input.template, sheet_name=None)
     var2unit = ariadne_template["variable_definitions"].set_index("Variable")["Unit"]
     industry_demands = [
