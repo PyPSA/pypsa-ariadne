@@ -300,6 +300,7 @@ if __name__ == "__main__":
         cops_extended = extend_cops(cops, subnodes)
         cops_extended.to_netcdf(snakemake.output.cop_profiles_extended)
 
+    if snakemake.wildcards.planning_horizons == str(snakemake.params["baseyear"]):
         existing_heating_distribution = pd.read_csv(
             snakemake.input.existing_heating_distribution,
             header=[0, 1],
