@@ -2358,6 +2358,175 @@ def get_final_energy(
 
     return var
 
+def get_emissions_new(n, region, _energy_totals):
+
+    energy_totals = _energy_totals.loc[region[0:2]]
+
+    kwargs = {
+        "groupby": n.statistics.groupers.get_name_bus_and_carrier,
+        "nice_names": False,
+    }
+
+    var = pd.Series()
+
+    co2_emissions = (
+        n.statistics.supply(bus_carrier="co2", **kwargs)
+        .filter(like=region)
+        .groupby("carrier")
+        .sum()
+        .multiply(t2Mt)
+    )
+
+    co2_atmosphere_withdrawal = (
+        n.statistics.withdrawal(bus_carrier="co2", **kwargs)
+        .filter(like=region)
+        .groupby("carrier")
+        .sum()
+        .multiply(t2Mt)
+    )
+
+    co2_storage = (
+        n.statistics.supply(bus_carrier="co2 stored", **kwargs)
+        .filter(like=region)
+        .groupby("carrier")
+        .sum()
+        .multiply(t2Mt)
+    )
+
+    # Assert neglible numerical errors / leakage in stored CO2
+    assert co2_storage.get("co2 stored", 0) < 1.0
+    co2_storage.drop("co2 stored", inplace=True, errors="ignore")
+
+    try:
+        total_ccs = (
+            n.statistics.supply(bus_carrier="co2 sequestered", **kwargs)
+            .filter(like=region)
+            .get("Link")
+            .groupby("carrier")
+            .sum()
+            .multiply(t2Mt)
+            .sum()
+        )
+    except AttributeError:  # no sequestration in 2020 -> NoneType
+        total_ccs = 0.0
+
+
+    # CCU is regarded as emissions
+    ccs_fraction = total_ccs / co2_storage.sum()
+    ccu_fraction =  1 - ccs_fraction
+
+    common_index_emitters = co2_emissions.index.intersection(co2_storage.index)
+
+    co2_emissions.loc[common_index_emitters] += co2_storage.loc[common_index_emitters].multiply(ccu_fraction)
+
+    common_index_withdrawals = co2_atmosphere_withdrawal.index.intersection(co2_storage.index)
+
+    co2_atmosphere_withdrawal.loc[common_index_withdrawals] -= co2_storage.loc[common_index_withdrawals].multiply(ccu_fraction)
+
+
+    # Now repeat the same for the CHP emissions
+
+    CHP_emissions = (
+        n.statistics.supply(bus_carrier="co2", **kwargs)
+        .filter(like=region)
+        .filter(like="CHP")
+        .multiply(t2Mt)
+    )  
+
+    CHP_atmosphere_withdrawal = (
+        n.statistics.withdrawal(bus_carrier="co2", **kwargs)
+        .filter(like=region)
+        .filter(like="CHP")
+        .multiply(t2Mt)
+    )
+
+    CHP_storage = (
+        n.statistics.supply(bus_carrier="co2 stored", **kwargs)
+        .filter(like=region)
+        .filter(like="CHP")
+        .multiply(t2Mt)
+    )
+
+    # CCU is regarded as emissions
+
+    common_index_emitters = CHP_emissions.index.intersection(CHP_storage.index)
+
+    CHP_emissions.loc[common_index_emitters] += CHP_storage.loc[common_index_emitters].multiply(ccu_fraction)
+
+    common_index_withdrawals = CHP_atmosphere_withdrawal.index.intersection(CHP_storage.index)
+
+    CHP_atmosphere_withdrawal.loc[common_index_withdrawals] -= CHP_storage.loc[common_index_withdrawals].multiply(ccu_fraction)
+
+    ## E-fuels are assumed to be carbon neutral
+
+    oil_techs = [
+        "HVC to air",
+        "agriculture machinery oil",
+        "kerosene for aviation",
+        "land transport oil",
+        "oil",
+        "shipping oil",
+        "waste CHP",
+        "waste CHP CC",
+        "urban decentral oil boiler",
+        "rural oil boiler",
+        "urban central oil CHP",
+    ]
+
+    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
+    
+    # multiply be fossil fraction and disregard e-fuel emissions
+
+    co2_emissions.loc[co2_emissions.index.isin(oil_techs)] *= oil_fossil_fraction
+
+    CHP_emissions.loc[
+        CHP_emissions.index.get_level_values("carrier").isin(oil_techs)
+    ] *= oil_fossil_fraction
+
+    gas_techs = [
+        "CCGT",
+        "OCGT",
+        "SMR",
+        "SMR CC",
+        "gas for industry",
+        "gas for industry CC",
+        "rural gas boiler",
+        "urban decentral gas boiler",
+        "urban central gas CHP",
+        "urban central gas CHP CC",
+    ]
+
+    gas_fractions = _get_gas_fractions(n, region)
+
+    co2_emissions.loc[co2_emissions.index.isin(gas_techs)] *= gas_fractions[
+        "Natural Gas"
+    ]
+    CHP_emissions.loc[
+        CHP_emissions.index.get_level_values("carrier").isin(gas_techs)
+    ] *= gas_fractions["Natural Gas"]
+
+    # TODO Methanol?
+
+    # Split CHP emissions between electricity and heat sectors
+
+    CHP_E_to_H = (
+        n.links.loc[CHP_emissions.index.get_level_values("name")].efficiency
+        / n.links.loc[CHP_emissions.index.get_level_values("name")].efficiency2
+    )
+
+    CHP_E_fraction = CHP_E_to_H * (1 / (CHP_E_to_H + 1))
+
+    negative_CHP_E_to_H = (
+        n.links.loc[CHP_atmosphere_withdrawal.index.get_level_values("name")].efficiency
+        / n.links.loc[CHP_atmosphere_withdrawal.index.get_level_values("name")].efficiency2
+    )
+
+    negative_CHP_E_fraction = negative_CHP_E_to_H * (1 / (negative_CHP_E_to_H + 1))
+
+
+    # TODO write a few asserts
+    # TODO add and adjust all exported variables to function
+
 
 def get_emissions(n, region, _energy_totals):
 
@@ -2460,6 +2629,7 @@ def get_emissions(n, region, _energy_totals):
     var["Emissions|CO2|Energy|Production|From Gases"] = co2_emissions.loc[
         co2_emissions.index.isin(gas_techs)
     ].sum() * (1 - gas_fractions["Natural Gas"])
+
     co2_emissions.loc[co2_emissions.index.isin(gas_techs)] *= gas_fractions[
         "Natural Gas"
     ]
