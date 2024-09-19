@@ -37,16 +37,6 @@ resources = path_provider("resources/", RDIR, policy, exclude)
 RESULTS = "results/" + RDIR
 
 
-wildcard_constraints:
-    simpl="[a-zA-Z0-9]*",
-    clusters="[0-9]+(m|c)?|all",
-    ll="(v|c)([0-9\.]+|opt)",
-    opts="[-+a-zA-Z0-9\.]*",
-    sector_opts="[-+a-zA-Z0-9\.\s]*",
-    planning_horizons="[0-9]*",
-    year="[0-9]*",
-
-
 module pypsaeur:
     snakefile:
         "submodules/pypsa-eur/Snakefile"
@@ -243,6 +233,7 @@ rule modify_prenetwork:
         land_transport_electric_share=config_provider(
             "sector", "land_transport_electric_share"
         ),
+        onshore_nep_force=config_provider("onshore_nep_force"),
         offshore_nep_force=config_provider("offshore_nep_force"),
     input:
         network=RESULTS
@@ -467,15 +458,13 @@ rule download_ariadne_template:
 rule export_ariadne_variables:
     params:
         length_factor=config_provider("lines", "length_factor"),
-        dg_cost_factor=config_provider(
-            "sector", "electricity_distribution_grid_cost_factor"
-        ),
         planning_horizons=config_provider("scenario", "planning_horizons"),
         hours=config_provider("clustering", "temporal", "resolution_sector"),
         costs=config_provider("costs"),
         energy_totals_year=config_provider("energy", "energy_totals_year"),
         co2_price_add_on_fossils=config_provider("co2_price_add_on_fossils"),
         co2_sequestration_cost=config_provider("sector", "co2_sequestration_cost"),
+        post_discretization=config_provider("solving", "options", "post_discretization"),
     input:
         template=resources("template_ariadne_database.xlsx"),
         industry_demands=expand(

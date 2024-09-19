@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 240912-offshore_regions-27
+  prefix: 240919-offshore_regions-27
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -184,7 +184,7 @@ lines:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
-  retrieve: true # set to false once initial data is retrieved
+  retrieve: false # set to false once initial data is retrieved
   retrieve_cutout: false # set to false once initial data is retrieved
 clustering:
   # simplify_network:
@@ -612,6 +612,13 @@ must_run_biogas:
   enable: false
   p_min_pu: 0.6
   regions: ['DE']
+
+transmission_projects:
+  new_link_capacity: keep #keep or zero
+
+onshore_nep_force:
+  cutin_year: 2020
+  cutout_year: 2030
 
 #beware - may need to increase max offshore
 #to avoid infeasibilities
