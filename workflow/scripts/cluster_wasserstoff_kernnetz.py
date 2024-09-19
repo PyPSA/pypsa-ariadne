@@ -124,21 +124,23 @@ def divide_pipes(df, segment_length=10):
     return result
 
 
-def aggregate_parallel_pipes(df):
+def aggregate_parallel_pipes(df, aggregate_build_years="mean"):
     strategies = {
         "bus0": "first",
         "bus1": "first",
         "p_nom": "sum",
         "p_nom_diameter": "sum",
         "max_pressure_bar": "mean",
-        "build_year": "mean",
+        "build_year": aggregate_build_years,
         "diameter_mm": "mean",
         "length": "mean",
         "name": " ".join,
         "p_min_pu": "min",
         "removed_gas_cap": "sum",
+        "ipcei": " ".join,
     }
     return df.groupby(df.index).agg(strategies)
+
 
 
 if __name__ == "__main__":
@@ -168,6 +170,7 @@ if __name__ == "__main__":
     )
 
     kernnetz_cf = snakemake.params.kernnetz
+
     if kernnetz_cf["divide_pipes"]:
         segment_length = kernnetz_cf["pipes_segment_length"]
         df = divide_pipes(df, segment_length=segment_length)
@@ -185,6 +188,6 @@ if __name__ == "__main__":
 
         wasserstoff_kernnetz["p_min_pu"] = 0
         wasserstoff_kernnetz["p_nom_diameter"] = 0
-        wasserstoff_kernnetz = aggregate_parallel_pipes(wasserstoff_kernnetz)
+        wasserstoff_kernnetz = aggregate_parallel_pipes(wasserstoff_kernnetz, kernnetz_cf["aggregate_build_years"])
 
     wasserstoff_kernnetz.to_csv(snakemake.output.clustered_h2_network)

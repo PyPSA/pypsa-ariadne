@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 202417mergetag013
+  prefix: 20240918wknTest
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -242,10 +242,14 @@ co2_budget:
   2050: 0.000 # climate-neutral by 2050
 
 wasserstoff_kernnetz:
-  enable: false
+  enable: true
   reload_locations: false
   divide_pipes: true
   pipes_segment_length: 10
+  aggregate_build_years: "min"
+  ipcei_only: false
+  cutoff_year: 2027
+  force_all_ipcei: true
 
 new_decentral_fossil_boiler_ban:
   DE: 2029

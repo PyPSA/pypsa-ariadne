@@ -226,6 +226,9 @@ def prepare_dataset(df):
     # drop pipes with length smaller than 5 km
     df = df[df.length > 5]
 
+    # clean ipcei entry
+    df['ipcei'] = df['ipcei'].replace({'nein': 'no', 'indirekter Partner': 'no', 'Nein': 'no'})
+
     # reindex
     df.reset_index(drop=True, inplace=True)
 
@@ -356,6 +359,47 @@ def assign_locations(df, locations):
 
     return df
 
+def filter_kernnetz(wkn, ipcei_only=False, cutoff_year=2050, force_all_ipcei=False):
+    '''
+    Filters the projects in the wkn DataFrame based on IPCEI participation and build years.
+
+    Parameters:
+    wkn : DataFrame
+        The DataFrame containing project data for Wasserstoff Kernnetz.
+        
+    ipcei_only : bool, optional (default: False)
+        If True, only projects that are part of IPCEI are considered for inclusion.
+        
+    cutoff_year : int, optional (default: 2050)
+        The latest year by which projects can be built. Projects with a 'build_year' later than the
+        cutoff year will be excluded unless `force_all_ipcei` is set to True.
+        
+    force_all_ipcei : bool, optional (default: False)
+        If True, IPCEI projects are included, even if their 'build_year' exceeds the cutoff year,
+        but non-IPCEI projects are still excluded beyond the cutoff year.
+    
+    Returns:
+    DataFrame
+        A filtered DataFrame based on the provided conditions.
+    '''
+
+    # Filter for only IPCEI projects if ipcei_only is True
+    if ipcei_only:
+        wkn = wkn.query("ipcei != 'no'")
+    
+    # Apply the logic when force_all_ipcei is True
+    if force_all_ipcei:
+        # Keep all IPCEI projects regardless of cutoff, but restrict non-IPCEI projects to cutoff year
+        wkn = wkn.query(
+            "(build_year <= @cutoff_year) or (ipcei != 'no')"
+        )
+    else:
+        # Default filtering, exclude all projects beyond the cutoff year
+        wkn = wkn.query(
+            "build_year <= @cutoff_year"
+        )
+
+    return wkn
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -384,5 +428,11 @@ if __name__ == "__main__":
         locations["point"] = locations["point"].apply(wkt.loads)
 
     wasserstoff_kernnetz = assign_locations(wasserstoff_kernnetz, locations)
+
+    kernnetz_cf = snakemake.params.kernnetz
+    wasserstoff_kernnetz = filter_kernnetz(wasserstoff_kernnetz, 
+                                           kernnetz_cf["ipcei_only"],
+                                           kernnetz_cf["cutoff_year"],
+                                           kernnetz_cf["force_all_ipcei"])
 
     wasserstoff_kernnetz.to_csv(snakemake.output.cleaned_wasserstoff_kernnetz)
