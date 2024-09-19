@@ -247,9 +247,9 @@ wasserstoff_kernnetz:
   divide_pipes: true
   pipes_segment_length: 10
   aggregate_build_years: "min"
-  ipcei_only: false
-  cutoff_year: 2027
-  force_all_ipcei: true
+  ipcei_pci_only: false
+  cutoff_year: 2028
+  force_all_ipcei_pci: true
 
 new_decentral_fossil_boiler_ban:
   DE: 2029

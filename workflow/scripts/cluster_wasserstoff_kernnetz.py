@@ -138,6 +138,8 @@ def aggregate_parallel_pipes(df, aggregate_build_years="mean"):
         "p_min_pu": "min",
         "removed_gas_cap": "sum",
         "ipcei": " ".join,
+        "pci": " ".join,
+        "retrofitted": lambda x: (x.sum() / len(x)) > 0.6  # consider as retrofit if more than 60% of pipes are retrofitted (relevant for costs)
     }
     return df.groupby(df.index).agg(strategies)
 

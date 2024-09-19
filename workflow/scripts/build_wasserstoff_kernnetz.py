@@ -89,23 +89,23 @@ def diameter_to_capacity_h2(pipe_diameter_mm):
         return a2 + m2 * pipe_diameter_mm
 
 
-def load_and_merge_raw(fn1, fn2):
+def load_and_merge_raw(fn1, fn2, fn3):
     # load, clean and merge
 
-    df_fn1 = pd.read_excel(fn1, skiprows=2, skipfooter=2)
-    df_fn2_retrofit = pd.read_excel(
-        fn2, "Wasserstoff-Kernnetz Umstellung", skiprows=2, skipfooter=4
-    )
-    df_fn2_new = pd.read_excel(
-        fn2, "Wasserstoff-Kernnetz Neubau", skiprows=3, skipfooter=2
-    )
+    # potential further projects
+    df_po = pd.read_excel(fn1, skiprows=2, skipfooter=2)
+    # Neubau
+    df_ne = pd.read_excel(fn2, skiprows=3, skipfooter=4)
+    # Umstellung (retrofit)
+    df_re = pd.read_excel(fn3, skiprows=3, skipfooter=10)
 
-    for df in [df_fn1, df_fn2_retrofit, df_fn2_new]:
-        df.columns = df.columns.str.replace("\n", "")
+    for df in [df_po, df_ne, df_re]:
+        df.columns = [c.replace("\n", "") for c in df.columns.values.astype(str)]
 
     # clean first dataset
     # drop lines not in Kernetz
-    df_fn1 = df_fn1[df_fn1["Bestandteil des Wasserstoff-Kernnetzes"] == "ja"]
+    df_po.drop(index=0, inplace=True)
+    df_po = df_po[df_po["Berücksichtigung im Kernnetz [ja/nein/zurückgezogen]"] == "ja"]
 
     to_keep = [
         "Name (Lfd.Nr.-Von-Nach)",
@@ -116,8 +116,11 @@ def load_and_merge_raw(fn1, fn2):
         "Länge (km)",
         "Druckstufe (DP)[mind. 30 barg]",
         "Bundesland",
-        "Umstellung/ Neubau",
+        "Bestand/Umstellung/Neubau",
         "IPCEI-Projekt(ja/ nein)",
+        "IPCEI-Projekt(Name/ nein)",
+        "Investitionskosten(Mio. Euro),Kostenschätzung",
+        "PCI-Projekt beantragt  Dezember 2022(Name/ nein)",
     ]
 
     to_rename = {
@@ -126,18 +129,21 @@ def load_and_merge_raw(fn1, fn2):
         "Nenndurchmesser (DN)": "diameter_mm",
         "Länge (km)": "length",
         "Druckstufe (DP)[mind. 30 barg]": "max_pressure_bar",
-        "Umstellung/ Neubau": "retrofitted",
+        "Bestand/Umstellung/Neubau": "retrofitted",
         "IPCEI-Projekt(ja/ nein)": "ipcei",
+        "IPCEI-Projekt(Name/ nein)": "ipcei_name",
+        "Investitionskosten(Mio. Euro),Kostenschätzung": "investment_costs (Mio. Euro)",
+        "PCI-Projekt beantragt  Dezember 2022(Name/ nein)": "pci",
     }
 
-    df_fn1 = df_fn1[to_keep].rename(columns=to_rename)
+    df_po = df_po[to_keep].rename(columns=to_rename)
 
     # extract info on retrofitted
-    df_fn1["retrofitted"] = df_fn1.retrofitted != "Neubau"
+    df_po["retrofitted"] = df_po.retrofitted != "Neubau"
 
     # clean second dataset
     # select only pipes
-    df_fn2_new = df_fn2_new[df_fn2_new["Maßnahmenart"] == "Leitung"]
+    df_ne = df_ne[df_ne["Maßnahmenart"] == "Leitung"]
 
     to_keep = [
         "Name",
@@ -150,6 +156,8 @@ def load_and_merge_raw(fn1, fn2):
         "Bundesland",
         "retrofitted",
         "IPCEI-Projekt(Name/ nein)",
+        "Investitionskosten*(Mio. Euro)",
+        "PCI-Projekt bestätigt April 2024(Name/ nein)",
     ]
 
     to_rename = {
@@ -158,13 +166,15 @@ def load_and_merge_raw(fn1, fn2):
         "Nenndurchmesser (DN)": "diameter_mm",
         "Länge (km)": "length",
         "Druckstufe (DP)[mind. 30 barg]": "max_pressure_bar",
-        "IPCEI-Projekt(Name/ nein)": "ipcei",
+        "IPCEI-Projekt(Name/ nein)": "ipcei_name",
+        "Investitionskosten*(Mio. Euro)": "investment_costs (Mio. Euro)",
+        "PCI-Projekt bestätigt April 2024(Name/ nein)": "pci",
     }
 
-    df_fn2_new["retrofitted"] = False
-    df_fn2_retrofit["retrofitted"] = True
-    df_fn2 = pd.concat([df_fn2_retrofit, df_fn2_new])[to_keep].rename(columns=to_rename)
-    df = pd.concat([df_fn1, df_fn2])
+    df_ne["retrofitted"] = False
+    df_re["retrofitted"] = True
+    df_ne_re = pd.concat([df_ne, df_re])[to_keep].rename(columns=to_rename)
+    df = pd.concat([df_po, df_ne_re])
     df.reset_index(drop=True, inplace=True)
 
     return df
@@ -173,7 +183,8 @@ def load_and_merge_raw(fn1, fn2):
 def prepare_dataset(df):
 
     # clean length
-    df.length = df.length.astype(float)
+    df['length'] = pd.to_numeric(df['length'], errors='coerce')
+    df = df.dropna(subset=['length'])
 
     # clean diameter
     df.diameter_mm = (
@@ -226,8 +237,10 @@ def prepare_dataset(df):
     # drop pipes with length smaller than 5 km
     df = df[df.length > 5]
 
-    # clean ipcei entry
+    # clean ipcei and pci entry
+    df['ipcei'] = df['ipcei'].fillna(df['ipcei_name'])
     df['ipcei'] = df['ipcei'].replace({'nein': 'no', 'indirekter Partner': 'no', 'Nein': 'no'})
+    df['pci'] = df['pci'].replace({'nein': 'no'})
 
     # reindex
     df.reset_index(drop=True, inplace=True)
@@ -359,7 +372,7 @@ def assign_locations(df, locations):
 
     return df
 
-def filter_kernnetz(wkn, ipcei_only=False, cutoff_year=2050, force_all_ipcei=False):
+def filter_kernnetz(wkn, ipcei_pci_only=False, cutoff_year=2050, force_all_ipcei_pci=False):
     '''
     Filters the projects in the wkn DataFrame based on IPCEI participation and build years.
 
@@ -384,14 +397,14 @@ def filter_kernnetz(wkn, ipcei_only=False, cutoff_year=2050, force_all_ipcei=Fal
     '''
 
     # Filter for only IPCEI projects if ipcei_only is True
-    if ipcei_only:
-        wkn = wkn.query("ipcei != 'no'")
+    if ipcei_pci_only:
+        wkn = wkn.query("(ipcei != 'no') or (pci != 'no')")
     
     # Apply the logic when force_all_ipcei is True
-    if force_all_ipcei:
+    if force_all_ipcei_pci:
         # Keep all IPCEI projects regardless of cutoff, but restrict non-IPCEI projects to cutoff year
         wkn = wkn.query(
-            "(build_year <= @cutoff_year) or (ipcei != 'no')"
+            "(build_year <= @cutoff_year) or (ipcei != 'no') or (pci != 'no')"
         )
     else:
         # Default filtering, exclude all projects beyond the cutoff year
@@ -417,6 +430,7 @@ if __name__ == "__main__":
     wasserstoff_kernnetz = load_and_merge_raw(
         snakemake.input.wasserstoff_kernnetz_1,
         snakemake.input.wasserstoff_kernnetz_2,
+        snakemake.input.wasserstoff_kernnetz_3
     )
 
     wasserstoff_kernnetz = prepare_dataset(wasserstoff_kernnetz)
@@ -431,8 +445,8 @@ if __name__ == "__main__":
 
     kernnetz_cf = snakemake.params.kernnetz
     wasserstoff_kernnetz = filter_kernnetz(wasserstoff_kernnetz, 
-                                           kernnetz_cf["ipcei_only"],
+                                           kernnetz_cf["ipcei_pci_only"],
                                            kernnetz_cf["cutoff_year"],
-                                           kernnetz_cf["force_all_ipcei"])
+                                           kernnetz_cf["force_all_ipcei_pci"])
 
     wasserstoff_kernnetz.to_csv(snakemake.output.cleaned_wasserstoff_kernnetz)
