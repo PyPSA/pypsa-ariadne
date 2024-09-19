@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 240918_nep_DC
+  prefix: 240919_nep_2021_costs
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -413,10 +413,10 @@ solving:
           DE:
             2020: 54.5
             2025: 69
-            2030: 160
-            2035: 160
-            2040: 160
-            2045: 160
+            2030: 250
+            2035: 250
+            2040: 250
+            2045: 250
         offwind:
           DE:
             2020: 7.8
@@ -430,9 +430,9 @@ solving:
             2020: 53.7
             2025: 110 # EEG2023; assumes for 2026: 128 GW, assuming a fair share reached by end of 2025
             2030: 400
-            2035: 400
-            2040: 400
-            2045: 400
+            2035: 1000
+            2040: 1000
+            2045: 1000
       Store:
         co2 sequestered:
           DE:
