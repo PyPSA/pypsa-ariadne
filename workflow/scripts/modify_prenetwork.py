@@ -888,6 +888,8 @@ def force_connection_nep_offshore(n, current_year):
             existing_cap = n.generators.loc[existing_gens, "p_nom"].sum()
             gap = max(0, power.loc[node] - existing_cap)
             n.generators.at[node_off, "p_nom_min"] = gap
+            # Differing from add_existing_baseyear "p_nom" is not set,
+            # because we want to fully account the capacity expansion in the exporter
 
     # this is a hack to stop solve_network.py > _add_land_use_constraint breaking
     # if there are existing generators, add a new extendable one
