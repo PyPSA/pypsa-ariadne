@@ -28,7 +28,7 @@ CurrentPolicies:
 
   costs:
     horizon: "mean"
-    NEP: 2023
+    NEP: 2021
     transmission: "underground" # either overhead line ("overhead") or underground cable ("underground")
   solving:
     constraints:
@@ -125,7 +125,7 @@ KN2045_Bal_v4:
 
   costs:
     horizon: "mean"
-    NEP: 2023
+    NEP: 2021
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
   solving:
     constraints:
@@ -192,7 +192,7 @@ KN2045_Elec_v4:
 
   costs:
     horizon: "mean"
-    NEP: 2023
+    NEP: 2021
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
   solving:
     constraints:
@@ -258,7 +258,7 @@ KN2045_H2_v4:
 
   costs:
     horizon: "mean"
-    NEP: 2023
+    NEP: 2021
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
   solving:
     constraints:
@@ -327,7 +327,7 @@ KN2045plus_EasyRide:
 
   costs:
     horizon: "optimist"
-    NEP: 2023
+    NEP: 2021
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
   solving:
     constraints:
@@ -392,7 +392,7 @@ KN2045plus_LowDemand:
 
   costs:
     horizon: "optimist"
-    NEP: 2023
+    NEP: 2021
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
   solving:
     constraints:
