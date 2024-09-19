@@ -238,8 +238,10 @@ def extend_heating_distribution(existing_heating_distribution, subnodes):
     mother_nodes = mother_nodes.explode(("cities", ""))
     mother_nodes.index = mother_nodes.index + " " + mother_nodes[("cities", "")]
     mother_nodes.drop(columns=("cities", ""), inplace=True)
-
-    return mother_nodes
+    existing_heating_distribution_extended = pd.concat(
+        [existing_heating_distribution, mother_nodes]
+    )
+    return existing_heating_distribution_extended
 
 
 if __name__ == "__main__":
