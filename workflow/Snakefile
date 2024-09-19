@@ -36,12 +36,14 @@ resources = path_provider("resources/", RDIR, policy, exclude)
 
 RESULTS = "results/" + RDIR
 
+
 wildcard_constraints:
     simpl="[a-zA-Z0-9]*",
     clusters="[0-9]+(m|c)?|all",
     ll=r"(v|c)([0-9\.]+|opt)",
     opts=r"[-+a-zA-Z0-9\.]*",
     sector_opts=r"[-+a-zA-Z0-9\.\s]*",
+
 
 module pypsaeur:
     snakefile:
