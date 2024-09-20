@@ -2565,13 +2565,9 @@ def get_emissions_new(n, region, _energy_totals):
 
     var["Carbon Sequestration"] = total_ccs
 
-    var["Carbon Sequestration|DACCS"] = var["Carbon Sequestration"] * (
-        co2_storage.filter(like="DAC").sum() / co2_storage.sum()
-    )
+    var["Carbon Sequestration|DACCS"] = co2_storage.filter(like="DAC").sum()
 
-    var["Carbon Sequestration|BECCS"] = var["Carbon Sequestration"] * (
-        co2_storage.filter(like="bio").sum() / co2_storage.sum()
-    )
+    var["Carbon Sequestration|BECCS"] = co2_storage.filter(like="bio").sum()
 
     var["Carbon Sequestration|Other"] = (
         var["Carbon Sequestration"]
@@ -2950,9 +2946,13 @@ def get_emissions(n, region, _energy_totals):
 
     var["Carbon Sequestration"] = total_ccs
 
-    var["Carbon Sequestration|DACCS"] = co2_storage.filter(like="DAC").sum()
+    var["Carbon Sequestration|DACCS"] = var["Carbon Sequestration"] * (
+        co2_storage.filter(like="DAC").sum() / co2_storage.sum()
+    )
 
-    var["Carbon Sequestration|BECCS"] = co2_storage.filter(like="bio").sum()
+    var["Carbon Sequestration|BECCS"] = var["Carbon Sequestration"] * (
+        co2_storage.filter(like="bio").sum() / co2_storage.sum()
+    )
 
     var["Carbon Sequestration|Other"] = (
         var["Carbon Sequestration"]
