@@ -312,4 +312,8 @@ if __name__ == "__main__":
         existing_heating_distribution_extended.to_csv(
             snakemake.output.existing_heating_distribution_extended
         )
+    else:
+        # write empty file to output
+        with open(snakemake.output.existing_heating_distribution_extended, "w") as f:
+            pass
     n.export_to_netcdf(snakemake.output.network)
