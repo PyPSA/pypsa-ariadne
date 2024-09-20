@@ -87,10 +87,17 @@ def plot_h2_map(n, regions):
     n.links.drop(
         n.links.index[~n.links.carrier.str.contains("H2 pipeline")], inplace=True
     )
-
+    
     h2_new = n.links[n.links.carrier == "H2 pipeline"]
     h2_retro = n.links[n.links.carrier == "H2 pipeline retrofitted"]
-    h2_kern = n.links[n.links.carrier == "H2 pipeline (Kernnetz)"]
+    h2_kern = n.links[n.links.carrier == 'H2 pipeline (Kernnetz)']
+
+    # safe index of pipes from current period
+    investment_year = snakemake.wildcards.planning_horizons
+    h2_kern_current = n.links[(n.links.carrier == 'H2 pipeline (Kernnetz)') 
+                                & (n.links.index.str.contains(investment_year))
+                                & (~(n.links.index.str.contains("reversed")))]
+    h2_kern_current = h2_kern_current.index.str[:-5] 
 
     if snakemake.params.foresight == "myopic":
         # sum capacitiy for pipelines from different investment periods
@@ -187,8 +194,10 @@ def plot_h2_map(n, regions):
     link_widths_retro[n.links.p_nom_opt < line_lower_threshold] = 0.0
 
     kern = n.links.p_nom_opt.where(
-        n.links.carrier == "H2 pipeline (Kernnetz)", other=0.0
+        n.links.index.isin(h2_kern_current.tolist()), 
+        other=0.0,
     )
+
     link_widths_kern = kern / linewidth_factor
     link_widths_kern[n.links.p_nom_opt < line_lower_threshold] = 0.0
 
@@ -323,8 +332,6 @@ if __name__ == "__main__":
         import os
         import sys
 
-        path = "../submodules/pypsa-eur/scripts"
-        sys.path.insert(0, os.path.abspath(path))
         from _helpers import mock_snakemake
 
         snakemake = mock_snakemake(

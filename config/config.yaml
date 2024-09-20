@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240426plotH2Kernnetz
+  prefix: 20240920plotH2Kernnetz
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -242,7 +242,7 @@ co2_budget:
   2050: 0.000 # climate-neutral by 2050
 
 wasserstoff_kernnetz:
-  enable: false
+  enable: true
   reload_locations: false
   divide_pipes: true
   pipes_segment_length: 10
