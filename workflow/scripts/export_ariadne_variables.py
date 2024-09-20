@@ -2358,6 +2358,7 @@ def get_final_energy(
 
     return var
 
+
 def get_emissions_new(n, region, _energy_totals):
 
     energy_totals = _energy_totals.loc[region[0:2]]
@@ -2412,22 +2413,27 @@ def get_emissions_new(n, region, _energy_totals):
     except AttributeError:  # no sequestration in 2020 -> NoneType
         total_ccs = 0.0
 
-
     # CCU is regarded as emissions
     ccs_fraction = total_ccs / co2_storage.sum()
-    ccu_fraction =  1 - ccs_fraction
+    ccu_fraction = 1 - ccs_fraction
 
     common_index_emitters = co2_emissions.index.intersection(co2_storage.index)
 
-    co2_emissions.loc[common_index_emitters] += co2_storage.loc[common_index_emitters].multiply(ccu_fraction)
+    co2_emissions.loc[common_index_emitters] += co2_storage.loc[
+        common_index_emitters
+    ].multiply(ccu_fraction)
 
-    common_index_withdrawals = co2_atmosphere_withdrawal.index.intersection(co2_storage.index)
+    common_index_withdrawals = co2_atmosphere_withdrawal.index.intersection(
+        co2_storage.index
+    )
 
-    co2_atmosphere_withdrawal.loc[common_index_withdrawals] -= co2_storage.loc[common_index_withdrawals].multiply(ccu_fraction)
+    co2_atmosphere_withdrawal.loc[common_index_withdrawals] -= co2_storage.loc[
+        common_index_withdrawals
+    ].multiply(ccu_fraction)
 
     assert isclose(
         co2_emissions.sum() - co2_atmosphere_withdrawal.sum(),
-        var["Emissions|CO2|Model"] + co2_storage.sum() * ccu_fraction
+        var["Emissions|CO2|Model"] + co2_storage.sum() * ccu_fraction,
     )
 
     # Now repeat the same for the CHP emissions
@@ -2437,7 +2443,7 @@ def get_emissions_new(n, region, _energy_totals):
         .filter(like=region)
         .filter(like="CHP")
         .multiply(t2Mt)
-    )  
+    )
 
     CHP_atmosphere_withdrawal = (
         n.statistics.withdrawal(bus_carrier="co2", **kwargs)
@@ -2457,11 +2463,17 @@ def get_emissions_new(n, region, _energy_totals):
 
     common_index_emitters = CHP_emissions.index.intersection(CHP_storage.index)
 
-    CHP_emissions.loc[common_index_emitters] += CHP_storage.loc[common_index_emitters].multiply(ccu_fraction)
+    CHP_emissions.loc[common_index_emitters] += CHP_storage.loc[
+        common_index_emitters
+    ].multiply(ccu_fraction)
 
-    common_index_withdrawals = CHP_atmosphere_withdrawal.index.intersection(CHP_storage.index)
+    common_index_withdrawals = CHP_atmosphere_withdrawal.index.intersection(
+        CHP_storage.index
+    )
 
-    CHP_atmosphere_withdrawal.loc[common_index_withdrawals] -= CHP_storage.loc[common_index_withdrawals].multiply(ccu_fraction)
+    CHP_atmosphere_withdrawal.loc[common_index_withdrawals] -= CHP_storage.loc[
+        common_index_withdrawals
+    ].multiply(ccu_fraction)
 
     ## E-fuels are assumed to be carbon neutral
 
@@ -2524,7 +2536,7 @@ def get_emissions_new(n, region, _energy_totals):
 
     # Emissions in DE are:
 
-    var["Emissions|CO2"] = co2_emissions.sum() - co2_atmosphere_withdrawal.sum() 
+    var["Emissions|CO2"] = co2_emissions.sum() - co2_atmosphere_withdrawal.sum()
 
     # Split CHP emissions between electricity and heat sectors
 
@@ -2537,11 +2549,12 @@ def get_emissions_new(n, region, _energy_totals):
 
     negative_CHP_E_to_H = (
         n.links.loc[CHP_atmosphere_withdrawal.index.get_level_values("name")].efficiency
-        / n.links.loc[CHP_atmosphere_withdrawal.index.get_level_values("name")].efficiency2
+        / n.links.loc[
+            CHP_atmosphere_withdrawal.index.get_level_values("name")
+        ].efficiency2
     )
 
     negative_CHP_E_fraction = negative_CHP_E_to_H * (1 / (negative_CHP_E_to_H + 1))
-
 
     # Check that var.sum() + co2_storage.sum() * ccu_fraction + (exports_oil_renew - imports_oil_renew) * 0.2571 * t2Mt + (exports_gas_renew - imports_gas_renew) * 0.2571 * t2Mt + (exports_meoh - imports_meoh) / 4.0321 * t2Mt ~~0
     # Where var containts supply and withdrawal at "co2" bus and emissions from burning e fuels
@@ -2671,9 +2684,7 @@ def get_emissions_new(n, region, _energy_totals):
     )
 
     var["Emissions|Gross Fossil CO2|Energy|Supply|Heat"] = (
-        co2_emissions.filter(like="urban central")
-        .filter(like="boiler") 
-        .sum()
+        co2_emissions.filter(like="urban central").filter(like="boiler").sum()
         + CHP_emissions.multiply(1 - CHP_E_fraction).values.sum()
     )
 
@@ -2939,10 +2950,9 @@ def get_emissions(n, region, _energy_totals):
 
     var["Carbon Sequestration"] = total_ccs
 
-    var["Carbon Sequestration|DACCS"] = co2_storage.filter(like="DAC").sum() 
+    var["Carbon Sequestration|DACCS"] = co2_storage.filter(like="DAC").sum()
 
-    var["Carbon Sequestration|BECCS"] = co2_storage.filter(like="bio").sum() 
-
+    var["Carbon Sequestration|BECCS"] = co2_storage.filter(like="bio").sum()
 
     var["Carbon Sequestration|Other"] = (
         var["Carbon Sequestration"]
