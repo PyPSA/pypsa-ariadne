@@ -216,6 +216,12 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
             costs.at["H2 (g) pipeline repurposed", "investment"] * wkn_new.length.values
         )
 
+        lifetime = np.where(
+            wkn_new.retrofitted == False, 
+            costs.at["H2 (g) pipeline", "lifetime"], 
+            costs.at["H2 (g) pipeline repurposed", "lifetime"]
+        )
+
         # add kernnetz to network
         n.madd(
             "Link",
@@ -230,7 +236,7 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
             capital_cost=capital_costs,
             overnight_cost=overnight_costs,
             carrier="H2 pipeline (Kernnetz)",
-            lifetime=costs.at["H2 (g) pipeline", "lifetime"],
+            lifetime=lifetime,
         )
 
         # add reversed pipes and losses

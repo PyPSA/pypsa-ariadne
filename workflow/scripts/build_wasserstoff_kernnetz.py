@@ -380,16 +380,16 @@ def filter_kernnetz(wkn, ipcei_pci_only=False, cutoff_year=2050, force_all_ipcei
     wkn : DataFrame
         The DataFrame containing project data for Wasserstoff Kernnetz.
         
-    ipcei_only : bool, optional (default: False)
-        If True, only projects that are part of IPCEI are considered for inclusion.
+    ipcei_pci_only : bool, optional (default: False)
+        If True, only projects that are part of IPCEI and PCI are considered for inclusion.
         
     cutoff_year : int, optional (default: 2050)
         The latest year by which projects can be built. Projects with a 'build_year' later than the
-        cutoff year will be excluded unless `force_all_ipcei` is set to True.
+        cutoff year will be excluded unless `force_all_ipcei_pci` is set to True.
         
-    force_all_ipcei : bool, optional (default: False)
-        If True, IPCEI projects are included, even if their 'build_year' exceeds the cutoff year,
-        but non-IPCEI projects are still excluded beyond the cutoff year.
+    force_all_ipcei_pci : bool, optional (default: False)
+        If True, IPCEI and PCI projects are included, even if their 'build_year' exceeds the cutoff year,
+        but non-IPCEI and non-PCI projects are still excluded beyond the cutoff year.
     
     Returns:
     DataFrame
