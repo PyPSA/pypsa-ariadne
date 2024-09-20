@@ -73,11 +73,29 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
                             lhs <= limit - existing_capacity,
                             name=f"GlobalConstraint-{cname}",
                         )
+                        if cname not in n.global_constraints.index:
+                            n.add(
+                                "GlobalConstraint",
+                                cname,
+                                constant=limit - existing_capacity,
+                                sense="<=",
+                                type="",
+                                carrier_attribute="",
+                            )
                 elif sense == "minimum":
                     n.model.add_constraints(
                         lhs >= limit - existing_capacity,
                         name=f"GlobalConstraint-{cname}",
                     )
+                    if cname not in n.global_constraints.index:
+                        n.add(
+                            "GlobalConstraint",
+                            cname,
+                            constant=limit - existing_capacity,
+                            sense=">=",
+                            type="",
+                            carrier_attribute="",
+                        )
                 else:
                     logger.error("sense {sense} not recognised")
                     sys.exit()

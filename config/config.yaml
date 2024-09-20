@@ -184,7 +184,7 @@ lines:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#enable
 enable:
-  retrieve: true # set to false once initial data is retrieved
+  retrieve: false # set to false once initial data is retrieved
   retrieve_cutout: false # set to false once initial data is retrieved
 clustering:
   # simplify_network:
@@ -417,10 +417,10 @@ solving:
           DE:
             2020: 54.5
             2025: 69
-            2030: 160
-            2035: 160
-            2040: 160
-            2045: 160
+            2030: 250
+            2035: 250
+            2040: 250
+            2045: 250
         offwind:
           DE:
             2020: 7.8
@@ -434,9 +434,9 @@ solving:
             2020: 53.7
             2025: 110 # EEG2023; assumes for 2026: 128 GW, assuming a fair share reached by end of 2025
             2030: 400
-            2035: 400
-            2040: 400
-            2045: 400
+            2035: 1000
+            2040: 1000
+            2045: 1000
       Store:
         co2 sequestered:
           DE:
@@ -616,3 +616,10 @@ must_run_biogas:
   enable: false
   p_min_pu: 0.6
   regions: ['DE']
+
+transmission_projects:
+  new_link_capacity: keep #keep or zero
+
+onshore_nep_force:
+  cutin_year: 2020
+  cutout_year: 2030

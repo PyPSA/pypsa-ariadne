@@ -39,8 +39,8 @@ def ariadne_subplot(
     df,
     ax,
     title,
-    select_regex="",
-    drop_regex="",
+    select_regex=r"",
+    drop_regex=r"",
     stacked=True,
     unit=None,
 ):
@@ -106,8 +106,8 @@ def within_plot(
     df2,
     title,
     savepath,
-    select_regex="",
-    drop_regex="",
+    select_regex=r"",
+    drop_regex=r"",
     write_sum=False,
     unit="EUR_2020/GJ",
     **kwargs,
@@ -343,8 +343,8 @@ if __name__ == "__main__":
         dfremind,
         "Primary Energy in PJ_yr",
         savepath=snakemake.output.primary_energy,
-        select_regex="Primary Energy\|[^|]*$",
-        drop_regex="^(?!.*(Fossil|Price)).+",
+        select_regex=r"Primary Energy\|[^|]*$",
+        drop_regex=r"^(?!.*(Fossil|Price)).+",
     )
 
     side_by_side_plot(
@@ -352,8 +352,8 @@ if __name__ == "__main__":
         dfremind,
         "Detailed Primary Energy in PJ_yr",
         savepath=snakemake.output.primary_energy_detailed,
-        select_regex="Primary Energy\|[^|]*\|[^|]*$",
-        drop_regex="^(?!.*(CCS|Price|Volume)).+",
+        select_regex=r"Primary Energy\|[^|]*\|[^|]*$",
+        drop_regex=r"^(?!.*(CCS|Price|Volume)).+",
     )
 
     side_by_side_plot(
@@ -361,8 +361,8 @@ if __name__ == "__main__":
         dfremind,
         "Secondary Energy in PJ_yr",
         savepath=snakemake.output.secondary_energy,
-        select_regex="Secondary Energy\|[^|]*$",
-        drop_regex="^(?!.*(Price)).+",
+        select_regex=r"Secondary Energy\|[^|]*$",
+        drop_regex=r"^(?!.*(Price)).+",
     )
 
     side_by_side_plot(
@@ -371,9 +371,9 @@ if __name__ == "__main__":
         "Detailed Secondary Energy in PJ_yr",
         savepath=snakemake.output.secondary_energy_detailed,
         # Secondary Energy|Something|Something (exactly two pipes)
-        select_regex="Secondary Energy\|[^|]*\|[^|]*$",
+        select_regex=r"Secondary Energy\|[^|]*\|[^|]*$",
         # Not ending in Fossil or Renewables (i.e., categories)
-        drop_regex="^(?!.*(Fossil|Renewables|Losses|Price|Volume)).+",
+        drop_regex=r"^(?!.*(Fossil|Renewables|Losses|Price|Volume)).+",
     )
 
     if df.loc["Final Energy|Industry excl Non-Energy Use|Hydrogen", "2020"].item() < 0:
@@ -387,9 +387,9 @@ if __name__ == "__main__":
         dfremind,
         "Final Energy in PJ_yr",
         savepath=snakemake.output.final_energy,
-        select_regex="Final Energy\|[^|]*$",
+        select_regex=r"Final Energy\|[^|]*$",
         rshift=1.45,
-        drop_regex="^(?!.*(Price|Non-Energy Use)).+",
+        drop_regex=r"^(?!.*(Price|Non-Energy Use)).+",
     )
 
     side_by_side_plot(
@@ -397,9 +397,9 @@ if __name__ == "__main__":
         dfremind,
         "Detailed Final Energy in PJ_yr",
         savepath=snakemake.output.final_energy_detailed,
-        select_regex="Final Energy\|[^|]*\|[^|]*$",
+        select_regex=r"Final Energy\|[^|]*\|[^|]*$",
         rshift=1.7,
-        drop_regex="^(?!.*(Price|\|Solids\||Non-Energy Use\|)).+",
+        drop_regex=r"^(?!.*(Price|\|Solids\||Non-Energy Use\|)).+",
     )
 
     side_by_side_plot(
@@ -407,7 +407,7 @@ if __name__ == "__main__":
         dfremind,
         "Capacity in GW",
         savepath=snakemake.output.capacity,
-        select_regex="Capacity\|[^|]*$",
+        select_regex=r"Capacity\|[^|]*$",
     )
 
     side_by_side_plot(
@@ -415,8 +415,8 @@ if __name__ == "__main__":
         dfremind,
         "Detailed Capacity in GW",
         savepath=snakemake.output.capacity_detailed,
-        select_regex="Capacity\|[^|]*\|[^|]*$",
-        drop_regex="^(?!.*(Reservoir|Converter)).+",
+        select_regex=r"Capacity\|[^|]*\|[^|]*$",
+        drop_regex=r"^(?!.*(Reservoir|Converter)).+",
     )
 
     side_by_side_plot(
@@ -424,7 +424,7 @@ if __name__ == "__main__":
         dfremind,
         "Detailed Demand Emissions in Mt",
         savepath=snakemake.output.energy_demand_emissions,
-        select_regex="Emissions\|CO2\|Energy\|Demand\|[^|]*$",
+        select_regex=r"Emissions\|CO2\|Energy\|Demand\|[^|]*$",
         stacked=False,
     )
 
@@ -433,9 +433,9 @@ if __name__ == "__main__":
         dfremind,
         "Detailed Supply Emissions in Mt",
         savepath=snakemake.output.energy_supply_emissions,
-        select_regex="Emissions\|CO2\|Energy\|Supply\|[^|]*$",
+        select_regex=r"Emissions\|CO2\|Energy\|Supply\|[^|]*$",
         stacked=False,
-        drop_regex="^(?!.*(and)).+",
+        drop_regex=r"^(?!.*(and)).+",
     )
 
     side_by_side_plot(
@@ -443,9 +443,9 @@ if __name__ == "__main__":
         dfremind,
         "Detailed Emissions in Mt",
         savepath=snakemake.output.co2_emissions,
-        select_regex="Emissions\|CO2\|[^|]*$",
+        select_regex=r"Emissions\|CO2\|[^|]*$",
         stacked=False,
-        # drop_regex="^(?!.*(and)).+",
+        # drop_regex=r"^(?!.*(and)).+",
         unit="Mt CO2-equiv/yr",
     )
 
@@ -454,7 +454,7 @@ if __name__ == "__main__":
         dfremind,
         title="Price|Primary Energy",
         savepath=snakemake.output.primary_energy_price,
-        select_regex="Price\|Primary Energy\|[^|]*$",
+        select_regex=r"Price\|Primary Energy\|[^|]*$",
     )
 
     within_plot(
@@ -473,7 +473,7 @@ if __name__ == "__main__":
     #     dfremind,
     #     title = "Price|Final Energy|Residential",
     #     savepath=snakemake.output.final_energy_residential_price,
-    #     #select_regex="Price\|Final Energy\|Residential\|[^|]*$"
+    #     #select_regex=r"Price\|Final Energy\|Residential\|[^|]*$"
     # )
 
     within_plot(
@@ -485,7 +485,7 @@ if __name__ == "__main__":
         dfremind,
         title="Price|Final Energy|Industry",
         savepath=snakemake.output.final_energy_industry_price,
-        # select_regex="Price\|Final Energy\|Industry\|[^|]*$"
+        # select_regex=r"Price\|Final Energy\|Industry\|[^|]*$"
     )
 
     within_plot(
@@ -497,7 +497,7 @@ if __name__ == "__main__":
         dfremind,
         title="Price|Final Energy|Transportation",
         savepath=snakemake.output.final_energy_transportation_price,
-        # select_regex="Price\|Final Energy\|Industry\|[^|]*$"
+        # select_regex=r"Price\|Final Energy\|Industry\|[^|]*$"
     )
 
     within_plot(
@@ -509,7 +509,7 @@ if __name__ == "__main__":
         dfremind,
         title="Price|Final Energy|Residential and Commercial",
         savepath=snakemake.output.final_energy_residential_commercial_price,
-        # select_regex="Price\|Final Energy\|Industry\|[^|]*$"
+        # select_regex=r"Price\|Final Energy\|Industry\|[^|]*$"
     )
 
     within_plot(
