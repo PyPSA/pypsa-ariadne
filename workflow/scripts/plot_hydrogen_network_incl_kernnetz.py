@@ -3,19 +3,19 @@
 #
 # SPDX-License-Identifier: MIT
 """
-Creates map of optimised hydrogen network including the Kernnetz, storage and selected other
-infrastructure.
+Creates map of optimised hydrogen network including the Kernnetz, storage and
+selected other infrastructure.
 """
 
 import logging
+import os
+import sys
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import pypsa
-import os
-import sys
-import numpy as np
 
 path = "../submodules/pypsa-eur/scripts"
 sys.path.insert(0, os.path.abspath(path))
@@ -156,13 +156,19 @@ def plot_h2_map(n, regions):
         h2_kern_wo_new.index = h2_kern_wo_new.index_orig
 
         if not h2_retro.empty:
-            to_concat = [h2_new, h2_new, h2_retro_w_new, h2_retro_wo_new, h2_kern_w_new, h2_kern_wo_new]
+            to_concat = [
+                h2_new,
+                h2_new,
+                h2_retro_w_new,
+                h2_retro_wo_new,
+                h2_kern_w_new,
+                h2_kern_wo_new,
+            ]
             h2_total = pd.concat(to_concat).p_nom_opt.groupby(level=0).sum()
 
         else:
             to_concat = [h2_new, h2_new, h2_kern_w_new, h2_kern_wo_new]
             h2_total = pd.concat(to_concat).p_nom_opt.groupby(level=0).sum()
-
 
     else:
         h2_total = h2_new.p_nom_opt
@@ -186,7 +192,6 @@ def plot_h2_map(n, regions):
     link_widths_kern = kern / linewidth_factor
     link_widths_kern[n.links.p_nom_opt < line_lower_threshold] = 0.0
 
-
     n.links.bus0 = n.links.bus0.str.replace(" H2", "")
     n.links.bus1 = n.links.bus1.str.replace(" H2", "")
 
@@ -196,7 +201,7 @@ def plot_h2_map(n, regions):
 
     color_h2_pipe = "#b3f3f4"
     color_retrofit = "#499a9c"
-    color_kern = '#6b3161'
+    color_kern = "#6b3161"
 
     bus_colors = {"H2 Electrolysis": "#ff29d9", "H2 Fuel Cell": "#805394"}
 
@@ -288,8 +293,16 @@ def plot_h2_map(n, regions):
         legend_kw=legend_kw,
     )
 
-    colors = [bus_colors[c] for c in carriers] + [color_h2_pipe, color_retrofit, color_kern]
-    labels = carriers + ["H2 pipeline (total)", "H2 pipeline (repurposed)", "H2 pipeline (Kernnetz)"]
+    colors = [bus_colors[c] for c in carriers] + [
+        color_h2_pipe,
+        color_retrofit,
+        color_kern,
+    ]
+    labels = carriers + [
+        "H2 pipeline (total)",
+        "H2 pipeline (repurposed)",
+        "H2 pipeline (Kernnetz)",
+    ]
 
     legend_kw = dict(
         loc="upper left",
@@ -322,7 +335,7 @@ if __name__ == "__main__":
             ll="vopt",
             sector_opts="None",
             planning_horizons="2045",
-            run="CurrentPolicies"
+            run="CurrentPolicies",
         )
 
     configure_logging(snakemake)
@@ -342,4 +355,3 @@ if __name__ == "__main__":
     proj = load_projection(snakemake.params.plotting)
 
     plot_h2_map(n, regions)
-
