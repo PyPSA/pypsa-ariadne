@@ -2568,11 +2568,10 @@ def get_emissions_new(n, region, _energy_totals):
     waste_CHP_emissions = CHP_emissions.filter(like="waste")
     CHP_emissions = CHP_emissions.drop(waste_CHP_emissions.index)
 
-    # Check that var.sum() + co2_storage.sum() * ccu_fraction + (exports_oil_renew - imports_oil_renew) * 0.2571 * t2Mt + (exports_gas_renew - imports_gas_renew) * 0.2571 * t2Mt + (exports_meoh - imports_meoh) / 4.0321 * t2Mt ~~0
-    # Where var containts supply and withdrawal at "co2" bus and emissions from burning e fuels
-    # in total: emissions - negative emissions + CCU - efuels + efuel imports (+ biomass?)
+    # It would be interesting to relate the Emissions|CO2|Model to Emissions|CO2 reported to the DB by considering imports of carbon, e.g., (exports_oil_renew - imports_oil_renew) * 0.2571 * t2Mt + (exports_gas_renew - imports_gas_renew) * 0.2571 * t2Mt + (exports_meoh - imports_meoh) / 4.0321 * t2Mt    
+    # Then it would be necessary to consider negative carbon from solid biomass imports as well
     # Actually we might have to include solid biomass imports in the co2 constraints as well
-    # TODO write a few asserts
+
     assert isclose(
         co2_emissions.filter(like="CHP").sum(),
         CHP_emissions.sum() + waste_CHP_emissions.sum()
@@ -2605,7 +2604,8 @@ def get_emissions_new(n, region, _energy_totals):
         ]
     ).sum() + co2_emissions.get("industry methanol", 0)
     # process emissions is mainly cement, methanol is used for chemicals
-
+    # TODO where should the methanol go?
+    
     var["Emissions|CO2|Energy|Demand|Industry"] = co2_emissions.reindex(
         ["gas for industry", "gas for industry CC", "coal for industry"]
     ).sum() - co2_atmosphere_withdrawal.get(
