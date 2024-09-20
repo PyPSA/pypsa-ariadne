@@ -2443,21 +2443,21 @@ def get_emissions_new(n, region, _energy_totals):
         .filter(like=region)
         .filter(like="CHP")
         .multiply(t2Mt)
-    )
+    ).groupby(["name", "carrier"]).sum()
 
     CHP_atmosphere_withdrawal = (
         n.statistics.withdrawal(bus_carrier="co2", **kwargs)
         .filter(like=region)
         .filter(like="CHP")
         .multiply(t2Mt)
-    )
+    ).groupby(["name", "carrier"]).sum()
 
     CHP_storage = (
         n.statistics.supply(bus_carrier="co2 stored", **kwargs)
         .filter(like=region)
         .filter(like="CHP")
         .multiply(t2Mt)
-    )
+    ).groupby(["name", "carrier"]).sum()
 
     # CCU is regarded as emissions
 
@@ -2538,6 +2538,14 @@ def get_emissions_new(n, region, _energy_totals):
 
     var["Emissions|CO2"] = co2_emissions.sum() - co2_atmosphere_withdrawal.sum()
 
+    assert isclose(
+        var["Emissions|CO2"],
+        var["Emissions|CO2|Model"] 
+        + co2_storage.sum() * ccu_fraction 
+        - var["Emissions|CO2|Efuels|Liquids"] 
+        - var["Emissions|CO2|Efuels|Gases"],
+    )
+
     # Split CHP emissions between electricity and heat sectors
 
     CHP_E_to_H = (
@@ -2556,12 +2564,23 @@ def get_emissions_new(n, region, _energy_totals):
 
     negative_CHP_E_fraction = negative_CHP_E_to_H * (1 / (negative_CHP_E_to_H + 1))
 
+    # separate waste CHPs, because they are accounted differently
+    waste_CHP_emissions = CHP_emissions.filter(like="waste")
+    CHP_emissions = CHP_emissions.drop(waste_CHP_emissions.index)
+
     # Check that var.sum() + co2_storage.sum() * ccu_fraction + (exports_oil_renew - imports_oil_renew) * 0.2571 * t2Mt + (exports_gas_renew - imports_gas_renew) * 0.2571 * t2Mt + (exports_meoh - imports_meoh) / 4.0321 * t2Mt ~~0
     # Where var containts supply and withdrawal at "co2" bus and emissions from burning e fuels
     # in total: emissions - negative emissions + CCU - efuels + efuel imports (+ biomass?)
     # Actually we might have to include solid biomass imports in the co2 constraints as well
     # TODO write a few asserts
-    # TODO add and adjust all exported variables to function
+    assert isclose(
+        co2_emissions.filter(like="CHP").sum(),
+        CHP_emissions.sum() + waste_CHP_emissions.sum()
+    )
+    assert isclose(
+        co2_atmosphere_withdrawal.filter(like="CHP").sum(),
+        CHP_atmosphere_withdrawal.sum()
+    )
 
     var["Carbon Sequestration"] = total_ccs
 
@@ -2702,13 +2721,9 @@ def get_emissions_new(n, region, _energy_totals):
         like="biogas to gas"
     ).sum()
 
-    var["Emissions|CO2|Supply|Non-Renewable Waste"] = co2_emissions.reindex(
-        [
-            "HVC to air",
-            "waste CHP",
-            "waste CHP CC",
-        ]
-    ).sum()
+    var["Emissions|CO2|Supply|Non-Renewable Waste"] = co2_emissions.get(
+            "HVC to air"
+    ).sum() + waste_CHP_emissions.sum()
 
     var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = var[
         "Emissions|CO2|Energy|Supply|Liquids"
@@ -2743,7 +2758,6 @@ def get_emissions_new(n, region, _energy_totals):
         + var["Emissions|Gross Fossil CO2|Energy|Supply|Hydrogen"]
     )
 
-    # The difference points to a mismatch in the accounting that i do not really understand. We can ignore it as long as it stays small
     emission_difference = var["Emissions|CO2"] - (
         var["Emissions|CO2|Energy and Industrial Processes"]
         + var["Emissions|CO2|Energy|Demand|Bunkers"]
@@ -2751,12 +2765,12 @@ def get_emissions_new(n, region, _energy_totals):
         - co2_atmosphere_withdrawal.get("DAC", 0)
     )
 
-    assert abs(emission_difference) < 1  # Improve numerical stability
-
     print(
         "Differences in accounting for CO2 emissions:",
         emission_difference,
     )
+
+    assert abs(emission_difference) < 1e-5
 
     return var
 
