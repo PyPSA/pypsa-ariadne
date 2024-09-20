@@ -205,21 +205,22 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
         names = wkn_new.index + f"-kernnetz-{investment_year}"
 
         capital_costs = np.where(
-            wkn_new.retrofitted == False, 
-            costs.at["H2 (g) pipeline", "fixed"] * wkn_new.length.values, 
-            costs.at["H2 (g) pipeline repurposed", "fixed"] * wkn_new.length.values
+            wkn_new.retrofitted == False,
+            costs.at["H2 (g) pipeline", "fixed"] * wkn_new.length.values,
+            costs.at["H2 (g) pipeline repurposed", "fixed"] * wkn_new.length.values,
         )
 
         overnight_costs = np.where(
-            wkn_new.retrofitted == False, 
-            costs.at["H2 (g) pipeline", "investment"] * wkn_new.length.values, 
-            costs.at["H2 (g) pipeline repurposed", "investment"] * wkn_new.length.values
+            wkn_new.retrofitted == False,
+            costs.at["H2 (g) pipeline", "investment"] * wkn_new.length.values,
+            costs.at["H2 (g) pipeline repurposed", "investment"]
+            * wkn_new.length.values,
         )
 
         lifetime = np.where(
-            wkn_new.retrofitted == False, 
-            costs.at["H2 (g) pipeline", "lifetime"], 
-            costs.at["H2 (g) pipeline repurposed", "lifetime"]
+            wkn_new.retrofitted == False,
+            costs.at["H2 (g) pipeline", "lifetime"],
+            costs.at["H2 (g) pipeline repurposed", "lifetime"],
         )
 
         # add kernnetz to network

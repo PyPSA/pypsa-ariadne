@@ -139,10 +139,10 @@ def aggregate_parallel_pipes(df, aggregate_build_years="mean"):
         "removed_gas_cap": "sum",
         "ipcei": " ".join,
         "pci": " ".join,
-        "retrofitted": lambda x: (x.sum() / len(x)) > 0.6  # consider as retrofit if more than 60% of pipes are retrofitted (relevant for costs)
+        "retrofitted": lambda x: (x.sum() / len(x))
+        > 0.6,  # consider as retrofit if more than 60% of pipes are retrofitted (relevant for costs)
     }
     return df.groupby(df.index).agg(strategies)
-
 
 
 if __name__ == "__main__":
@@ -190,6 +190,8 @@ if __name__ == "__main__":
 
         wasserstoff_kernnetz["p_min_pu"] = 0
         wasserstoff_kernnetz["p_nom_diameter"] = 0
-        wasserstoff_kernnetz = aggregate_parallel_pipes(wasserstoff_kernnetz, kernnetz_cf["aggregate_build_years"])
+        wasserstoff_kernnetz = aggregate_parallel_pipes(
+            wasserstoff_kernnetz, kernnetz_cf["aggregate_build_years"]
+        )
 
     wasserstoff_kernnetz.to_csv(snakemake.output.clustered_h2_network)
