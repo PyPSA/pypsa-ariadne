@@ -19,10 +19,11 @@ specific_emissions = {
 
 def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
 
-
     for c in n.iterate_components(limits_capacity):
         logger.info(f"Adding {sense} constraints for {c.list_name}")
 
+        attr = "e" if c.name == "Store" else "p"
+        units = "MWh or tCO2" if c.name == "Store" else "MW"
 
         for carrier in limits_capacity[c.name]:
 
@@ -327,119 +328,119 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
     if not snakemake.config["emissions_upstream"]["enable"]:
 
         for ct in limit_countries:
-            limit = co2_total_totals[ct]*limit_countries[ct]
+            limit = co2_total_totals[ct] * limit_countries[ct]
             logger.info(
                 f"Limiting emissions in country {ct} to {limit_countries[ct]:.1%} of "
-                f"1990 levels, i.e. {limit:,.2f} tCO2/a (downstream)",
+                f"1990 levels, i.e. {limit:,.2f} tCO2/a",
             )
 
             lhs = []
 
             for port in [col[3:] for col in n.links if col.startswith("bus")]:
 
-            links = n.links.index[
-                (n.links.index.str[:2] == ct)
-                & (n.links[f"bus{port}"] == "co2 atmosphere")
-            ]
+                links = n.links.index[
+                    (n.links.index.str[:2] == ct)
+                    & (n.links[f"bus{port}"] == "co2 atmosphere")
+                ]
 
-            logger.info(
-                f"For {ct} adding following link carriers to port {port} CO2 constraint: {n.links.loc[links,'carrier'].unique()}"
-            )
+                logger.info(
+                    f"For {ct} adding following link carriers to port {port} CO2 constraint: {n.links.loc[links,'carrier'].unique()}"
+                )
 
-            if port == "0":
-                efficiency = -1.0
-            elif port == "1":
-                efficiency = n.links.loc[links, f"efficiency"]
-            else:
-                efficiency = n.links.loc[links, f"efficiency{port}"]
+                if port == "0":
+                    efficiency = -1.0
+                elif port == "1":
+                    efficiency = n.links.loc[links, f"efficiency"]
+                else:
+                    efficiency = n.links.loc[links, f"efficiency{port}"]
 
-            lhs.append(
-                (
-                    n.model["Link-p"].loc[:, links]
-                    * efficiency
-                    * n.snapshot_weightings.generators
-                ).sum()
-            )
+                lhs.append(
+                    (
+                        n.model["Link-p"].loc[:, links]
+                        * efficiency
+                        * n.snapshot_weightings.generators
+                    ).sum()
+                )
 
-        # Adding Efuel imports and exports to constraint
-        incoming_oil = n.links.index[n.links.index == "EU renewable oil -> DE oil"]
-        outgoing_oil = n.links.index[n.links.index == "DE renewable oil -> EU oil"]
+            # Adding Efuel imports and exports to constraint
+            incoming_oil = n.links.index[n.links.index == "EU renewable oil -> DE oil"]
+            outgoing_oil = n.links.index[n.links.index == "DE renewable oil -> EU oil"]
 
-        if not debug:
+            if not debug:
+                lhs.append(
+                    (
+                        -1
+                        * n.model["Link-p"].loc[:, incoming_oil]
+                        * 0.2571
+                        * n.snapshot_weightings.generators
+                    ).sum()
+                )
+                lhs.append(
+                    (
+                        n.model["Link-p"].loc[:, outgoing_oil]
+                        * 0.2571
+                        * n.snapshot_weightings.generators
+                    ).sum()
+                )
+
+            incoming_methanol = n.links.index[n.links.index == "EU methanol -> DE methanol"]
+            outgoing_methanol = n.links.index[n.links.index == "DE methanol -> EU methanol"]
+
             lhs.append(
                 (
                     -1
-                    * n.model["Link-p"].loc[:, incoming_oil]
-                    * 0.2571
+                    * n.model["Link-p"].loc[:, incoming_methanol]
+                    / snakemake.config["sector"]["MWh_MeOH_per_tCO2"]
                     * n.snapshot_weightings.generators
                 ).sum()
             )
+
             lhs.append(
                 (
-                    n.model["Link-p"].loc[:, outgoing_oil]
-                    * 0.2571
+                    n.model["Link-p"].loc[:, outgoing_methanol]
+                    / snakemake.config["sector"]["MWh_MeOH_per_tCO2"]
                     * n.snapshot_weightings.generators
                 ).sum()
             )
 
-        incoming_methanol = n.links.index[n.links.index == "EU methanol -> DE methanol"]
-        outgoing_methanol = n.links.index[n.links.index == "DE methanol -> EU methanol"]
+            # Methane
+            incoming_CH4 = n.links.index[n.links.index == "EU renewable gas -> DE gas"]
+            outgoing_CH4 = n.links.index[n.links.index == "DE renewable gas -> EU gas"]
 
-        lhs.append(
-            (
-                -1
-                * n.model["Link-p"].loc[:, incoming_methanol]
-                / snakemake.config["sector"]["MWh_MeOH_per_tCO2"]
-                * n.snapshot_weightings.generators
-            ).sum()
-        )
+            lhs.append(
+                (
+                    -1
+                    * n.model["Link-p"].loc[:, incoming_CH4]
+                    * 0.198
+                    * n.snapshot_weightings.generators
+                ).sum()
+            )
 
-        lhs.append(
-            (
-                n.model["Link-p"].loc[:, outgoing_methanol]
-                / snakemake.config["sector"]["MWh_MeOH_per_tCO2"]
-                * n.snapshot_weightings.generators
-            ).sum()
-        )
+            lhs.append(
+                (
+                    n.model["Link-p"].loc[:, outgoing_CH4]
+                    * 0.198
+                    * n.snapshot_weightings.generators
+                ).sum()
+            )
 
-        # Methane
-        incoming_CH4 = n.links.index[n.links.index == "EU renewable gas -> DE gas"]
-        outgoing_CH4 = n.links.index[n.links.index == "DE renewable gas -> EU gas"]
+            lhs = sum(lhs)
 
-        lhs.append(
-            (
-                -1
-                * n.model["Link-p"].loc[:, incoming_CH4]
-                * 0.198
-                * n.snapshot_weightings.generators
-            ).sum()
-        )
+            cname = f"co2_limit-{ct}"
 
-        lhs.append(
-            (
-                n.model["Link-p"].loc[:, outgoing_CH4]
-                * 0.198
-                * n.snapshot_weightings.generators
-            ).sum()
-        )
+            n.model.add_constraints(
+                lhs <= limit,
+                name=f"GlobalConstraint-{cname}",
+            )
 
-        lhs = sum(lhs)
-
-        cname = f"co2_limit-{ct}"
-
-        n.model.add_constraints(
-            lhs <= limit,
-            name=f"GlobalConstraint-{cname}",
-        )
-
-        if cname not in n.global_constraints.index:
-            n.add(
-                "GlobalConstraint",
-                cname,
-                constant=limit,
-                sense="<=",
-                type="",
-                carrier_attribute="",
+            if cname not in n.global_constraints.index:
+                n.add(
+                    "GlobalConstraint",
+                    cname,
+                    constant=limit,
+                    sense="<=",
+                    type="",
+                    carrier_attribute="",
             )
 
     # functionality if emissions upstream are enabled
@@ -508,7 +509,6 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
                     type="",
                     carrier_attribute="",
                 )
-
 
 
 

@@ -912,7 +912,4 @@ if __name__ == "__main__":
     if snakemake.params.emissions_upstream["enable"]:
         remove_downstream_constraint(n)
 
-    if snakemake.params.emissions_upstream["enable"]:
-        remove_downstream_constraint(n)
-
     n.export_to_netcdf(snakemake.output.network)
