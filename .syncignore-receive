@@ -11,4 +11,6 @@ __pycache__
 
 # project specific
 data
+resources
 *.nc
+ariadne-data

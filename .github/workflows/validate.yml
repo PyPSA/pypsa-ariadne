@@ -1,0 +1,51 @@
+name: Validator Bot
+
+on:
+  pull_request:
+    branches:
+    - master
+    - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run-validation:
+    name: Run validation
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: self-hosted
+    steps:
+    - uses: lkstrp/pypsa-validator@v0.2.1
+      with:
+        step: run-self-hosted-validation
+        env_file: environment.yaml
+        snakemake_config: config/config.yaml
+        pre_command: "build_scenarios -f"
+        main_command: "ariadne_all"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  create-report:
+    name: Create report
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    needs: run-validation
+    runs-on: ubuntu-latest
+    steps:
+    - uses: lkstrp/pypsa-validator@v0.2.1
+      with:
+        step: create-comment
+        snakemake_config: config/config.yaml
+        # The path starting from prefix in config
+        # For plot results/<prefix>/<scenario>/<plot_name>.png pass
+        # <scenario>/<plot_name>.png
+        plots: >
+          "
+          KN2045_Bal_v4/ariadne/primary_energy.png
+          KN2045_Bal_v4/ariadne/secondary_energy.png
+          KN2045_Bal_v4/ariadne/final_energy.png
+          ariadne_comparison/Trade-Secondary-Energy-Hydrogen-Volume.png
+          ariadne_comparison/Trade-Secondary-Energy-Liquids-Hydrogen-Volume.png
+          ariadne_comparison/Capacity-Electricity-Solar.png
+          "
+        validator_key: ${{ secrets.VALIDATOR_KEY }}

@@ -8,7 +8,6 @@ dependencies:
 - pip
 
 - atlite>=0.2.9
-- pypsa>=0.27.0
 - linopy
 - dask
 
@@ -17,7 +16,7 @@ dependencies:
 - openpyxl!=3.1.1
 - pycountry
 - seaborn
-- snakemake-minimal>=8.5
+- snakemake-minimal>=8.19.1
 - memory_profiler
 - yaml
 - pytables
@@ -25,7 +24,7 @@ dependencies:
 - powerplantmatching>=0.5.11
 - numpy
 - pandas>=2.1
-- geopandas>=0.11.0
+- geopandas>=1.0
 - xarray>=2023.11.0
 - rioxarray
 - netcdf4
@@ -47,7 +46,7 @@ dependencies:
 - pre-commit
 
   # Ariadne specific
-- pyam
+- pyam>=2.0
 - ruamel.yaml
 - gurobi
 
@@ -60,9 +59,10 @@ dependencies:
 - rasterio!=1.2.10
 
 - pip:
+  - pypsa>=0.30.2
   - tsam>=2.3.1
   - snakemake-storage-plugin-http
   - snakemake-executor-plugin-slurm
   - snakemake-executor-plugin-cluster-generic
   - highspy
-
+  # - git+https://github.com/PyPSA/pypsa@master # Until new release
