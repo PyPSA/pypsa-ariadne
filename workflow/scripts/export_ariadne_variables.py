@@ -2385,6 +2385,8 @@ def get_emissions_new(n, region, _energy_totals):
         .multiply(t2Mt)
     )
 
+    var["Emissions|CO2|Model"] = co2_emissions.sum() - co2_atmosphere_withdrawal.sum()
+
     co2_storage = (
         n.statistics.supply(bus_carrier="co2 stored", **kwargs)
         .filter(like=region)
@@ -2423,6 +2425,10 @@ def get_emissions_new(n, region, _energy_totals):
 
     co2_atmosphere_withdrawal.loc[common_index_withdrawals] -= co2_storage.loc[common_index_withdrawals].multiply(ccu_fraction)
 
+    assert isclose(
+        co2_emissions.sum() - co2_atmosphere_withdrawal.sum(),
+        var["Emissions|CO2|Model"] + co2_storage.sum() * ccu_fraction
+    )
 
     # Now repeat the same for the CHP emissions
 
@@ -2473,9 +2479,14 @@ def get_emissions_new(n, region, _energy_totals):
         "urban central oil CHP",
     ]
 
+    # multiply by fossil fraction to disregard e-fuel emissions
+
     oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
-    
-    # multiply be fossil fraction and disregard e-fuel emissions
+
+    # This variable is not in the database, but it might be useful for double checking the totals
+    var["Emissions|CO2|Efuels|Liquids"] = co2_emissions.loc[
+        co2_emissions.index.isin(oil_techs)
+    ].sum() * (1 - oil_fossil_fraction)
 
     co2_emissions.loc[co2_emissions.index.isin(oil_techs)] *= oil_fossil_fraction
 
@@ -2498,6 +2509,10 @@ def get_emissions_new(n, region, _energy_totals):
 
     gas_fractions = _get_gas_fractions(n, region)
 
+    var["Emissions|CO2|Efuels|Gases"] = co2_emissions.loc[
+        co2_emissions.index.isin(gas_techs)
+    ].sum() * (1 - gas_fractions["Natural Gas"])
+
     co2_emissions.loc[co2_emissions.index.isin(gas_techs)] *= gas_fractions[
         "Natural Gas"
     ]
@@ -2506,6 +2521,10 @@ def get_emissions_new(n, region, _energy_totals):
     ] *= gas_fractions["Natural Gas"]
 
     # TODO Methanol?
+
+    # Emissions in DE are:
+
+    var["Emissions|CO2"] = co2_emissions.sum() - co2_atmosphere_withdrawal.sum() 
 
     # Split CHP emissions between electricity and heat sectors
 
@@ -2524,8 +2543,215 @@ def get_emissions_new(n, region, _energy_totals):
     negative_CHP_E_fraction = negative_CHP_E_to_H * (1 / (negative_CHP_E_to_H + 1))
 
 
+    # Check that var.sum() + co2_storage.sum() * ccu_fraction + (exports_oil_renew - imports_oil_renew) * 0.2571 * t2Mt + (exports_gas_renew - imports_gas_renew) * 0.2571 * t2Mt + (exports_meoh - imports_meoh) / 4.0321 * t2Mt ~~0
+    # Where var containts supply and withdrawal at "co2" bus and emissions from burning e fuels
+    # in total: emissions - negative emissions + CCU - efuels + efuel imports (+ biomass?)
+    # Actually we might have to include solid biomass imports in the co2 constraints as well
     # TODO write a few asserts
     # TODO add and adjust all exported variables to function
+
+    var["Carbon Sequestration"] = total_ccs
+
+    var["Carbon Sequestration|DACCS"] = var["Carbon Sequestration"] * (
+        co2_storage.filter(like="DAC").sum() / co2_storage.sum()
+    )
+
+    var["Carbon Sequestration|BECCS"] = var["Carbon Sequestration"] * (
+        co2_storage.filter(like="bio").sum() / co2_storage.sum()
+    )
+
+    var["Carbon Sequestration|Other"] = (
+        var["Carbon Sequestration"]
+        - var["Carbon Sequestration|DACCS"]
+        - var["Carbon Sequestration|BECCS"]
+    )
+
+    # ! LULUCF should also be subtracted (or added??), we get from REMIND,
+    # TODO how to consider it here?
+
+    # Make sure these values are about right
+    var["Emissions|CO2|Industrial Processes"] = co2_emissions.reindex(
+        [
+            "process emissions",
+            "process emissions CC",
+        ]
+    ).sum() + co2_emissions.get("industry methanol", 0)
+    # process emissions is mainly cement, methanol is used for chemicals
+
+    var["Emissions|CO2|Energy|Demand|Industry"] = co2_emissions.reindex(
+        ["gas for industry", "gas for industry CC", "coal for industry"]
+    ).sum() - co2_atmosphere_withdrawal.get(
+        "solid biomass for industry CC",
+        0,
+    )
+
+    var["Emissions|CO2|Industry"] = (
+        var["Emissions|CO2|Energy|Demand|Industry"]
+        + var["Emissions|CO2|Industrial Processes"]
+    )
+
+    var["Emissions|CO2|Energy|Demand|Residential and Commercial"] = (
+        co2_emissions.filter(like="urban decentral").sum()
+        + co2_emissions.filter(like="rural").sum()
+    )
+
+    international_aviation_fraction = energy_totals["total international aviation"] / (
+        energy_totals["total domestic aviation"]
+        + energy_totals["total international aviation"]
+    )
+    international_navigation_fraction = energy_totals[
+        "total international navigation"
+    ] / (
+        energy_totals["total domestic navigation"]
+        + energy_totals["total international navigation"]
+    )
+
+    var["Emissions|CO2|Energy|Demand|Transportation"] = (
+        co2_emissions.get("land transport oil", 0)
+        + (
+            co2_emissions.get("kerosene for aviation")
+            * (1 - international_aviation_fraction)
+        )
+        + (
+            co2_emissions.filter(like="shipping").sum()
+            * (1 - international_navigation_fraction)
+        )
+    )
+
+    var["Emissions|CO2|Energy|Demand|Transportation|Domestic Aviation"] = (
+        co2_emissions.get("kerosene for aviation")
+        * (1 - international_aviation_fraction)
+    )
+
+    var["Emissions|CO2|Energy|Demand|Bunkers|Aviation"] = (
+        co2_emissions.get("kerosene for aviation") * international_aviation_fraction
+    )
+
+    var["Emissions|CO2|Energy|Demand|Bunkers|Navigation"] = (
+        co2_emissions.filter(like="shipping").sum() * international_navigation_fraction
+    )
+
+    var["Emissions|CO2|Energy|Demand|Bunkers"] = (
+        var["Emissions|CO2|Energy|Demand|Bunkers|Aviation"]
+        + var["Emissions|CO2|Energy|Demand|Bunkers|Navigation"]
+    )
+
+    var["Emissions|CO2|Energy|Demand|Other Sector"] = co2_emissions.get(
+        "agriculture machinery oil"
+    )
+
+    var["Emissions|CO2|Energy|Demand"] = var.get(
+        [
+            "Emissions|CO2|Energy|Demand|Industry",
+            "Emissions|CO2|Energy|Demand|Transportation",
+            "Emissions|CO2|Energy|Demand|Residential and Commercial",
+            "Emissions|CO2|Energy|Demand|Other Sector",
+        ]
+    ).sum()
+    var["Emissions|CO2|Energy incl Bunkers|Demand"] = (
+        var["Emissions|CO2|Energy|Demand"] + var["Emissions|CO2|Energy|Demand|Bunkers"]
+    )
+
+    var["Emissions|Gross Fossil CO2|Energy|Supply|Electricity"] = (
+        co2_emissions.reindex(
+            [
+                "OCGT",
+                "CCGT",
+                "coal",
+                "lignite",
+                "oil",
+            ],
+        ).sum()
+        + CHP_emissions.multiply(CHP_E_fraction).values.sum()
+    )
+
+    var["Emissions|CO2|Energy|Supply|Electricity"] = (
+        var["Emissions|Gross Fossil CO2|Energy|Supply|Electricity"]
+        - CHP_atmosphere_withdrawal.multiply(negative_CHP_E_fraction).values.sum()
+    )
+
+    var["Emissions|Gross Fossil CO2|Energy|Supply|Heat"] = (
+        co2_emissions.filter(like="urban central")
+        .filter(like="boiler") 
+        .sum()
+        + CHP_emissions.multiply(1 - CHP_E_fraction).values.sum()
+    )
+
+    var["Emissions|CO2|Energy|Supply|Heat"] = (
+        var["Emissions|Gross Fossil CO2|Energy|Supply|Heat"]
+        - CHP_atmosphere_withdrawal.multiply(1 - negative_CHP_E_fraction).values.sum()
+    )
+
+    var["Emissions|CO2|Energy|Supply|Electricity and Heat"] = (
+        var["Emissions|CO2|Energy|Supply|Heat"]
+        + var["Emissions|CO2|Energy|Supply|Electricity"]
+    )
+
+    var["Emissions|CO2|Energy|Supply|Hydrogen"] = var[
+        "Emissions|Gross Fossil CO2|Energy|Supply|Hydrogen"
+    ] = co2_emissions.filter(like="SMR").sum()
+
+    var["Emissions|CO2|Energy|Supply|Gases"] = (-1) * co2_atmosphere_withdrawal.filter(
+        like="biogas to gas"
+    ).sum()
+
+    var["Emissions|CO2|Supply|Non-Renewable Waste"] = co2_emissions.reindex(
+        [
+            "HVC to air",
+            "waste CHP",
+            "waste CHP CC",
+        ]
+    ).sum()
+
+    var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = var[
+        "Emissions|CO2|Energy|Supply|Liquids"
+    ] = co2_emissions.get("oil refining", 0)
+
+    var["Emissions|CO2|Energy|Supply"] = (
+        var["Emissions|CO2|Energy|Supply|Gases"]
+        + var["Emissions|CO2|Energy|Supply|Hydrogen"]
+        + var["Emissions|CO2|Energy|Supply|Electricity and Heat"]
+        + var["Emissions|CO2|Energy|Supply|Liquids"]
+    )
+
+    # var["Emissions|CO2|Energy|Supply|Other Sector"] = \
+    # var["Emissions|CO2|Energy|Supply|Solids"] = \
+
+    var["Emissions|CO2|Energy"] = (
+        var["Emissions|CO2|Energy|Demand"] + var["Emissions|CO2|Energy|Supply"]
+    )
+
+    var["Emissions|CO2|Energy incl Bunkers"] = (
+        var["Emissions|CO2|Energy incl Bunkers|Demand"]
+        + var["Emissions|CO2|Energy|Supply"]
+    )
+
+    var["Emissions|CO2|Energy and Industrial Processes"] = (
+        var["Emissions|CO2|Energy"] + var["Emissions|CO2|Industrial Processes"]
+    )
+
+    var["Emissions|Gross Fossil CO2|Energy|Supply"] = (
+        var["Emissions|Gross Fossil CO2|Energy|Supply|Electricity"]
+        + var["Emissions|Gross Fossil CO2|Energy|Supply|Heat"]
+        + var["Emissions|Gross Fossil CO2|Energy|Supply|Hydrogen"]
+    )
+
+    # The difference points to a mismatch in the accounting that i do not really understand. We can ignore it as long as it stays small
+    emission_difference = var["Emissions|CO2"] - (
+        var["Emissions|CO2|Energy and Industrial Processes"]
+        + var["Emissions|CO2|Energy|Demand|Bunkers"]
+        + var["Emissions|CO2|Supply|Non-Renewable Waste"]
+        - co2_atmosphere_withdrawal.get("DAC", 0)
+    )
+
+    assert abs(emission_difference) < 1  # Improve numerical stability
+
+    print(
+        "Differences in accounting for CO2 emissions:",
+        emission_difference,
+    )
+
+    return var
 
 
 def get_emissions(n, region, _energy_totals):
@@ -2713,13 +2939,10 @@ def get_emissions(n, region, _energy_totals):
 
     var["Carbon Sequestration"] = total_ccs
 
-    var["Carbon Sequestration|DACCS"] = var["Carbon Sequestration"] * (
-        co2_storage.filter(like="DAC").sum() / co2_storage.sum()
-    )
+    var["Carbon Sequestration|DACCS"] = co2_storage.filter(like="DAC").sum() 
 
-    var["Carbon Sequestration|BECCS"] = var["Carbon Sequestration"] * (
-        co2_storage.filter(like="bio").sum() / co2_storage.sum()
-    )
+    var["Carbon Sequestration|BECCS"] = co2_storage.filter(like="bio").sum() 
+
 
     var["Carbon Sequestration|Other"] = (
         var["Carbon Sequestration"]
@@ -4049,6 +4272,16 @@ def get_trade(n, region):
 
     # TODO add methanol trade, renewable gas trade
 
+    exports_meoh, imports_meoh = get_export_import_links(n, region, ["methanol"])
+
+    var["Trade|Secondary Energy|Liquids|Methanol|Volume"] = (
+        exports_meoh - imports_meoh
+    ) * MWh2PJ
+
+    var["Trade|Secondary Energy|Liquids|Methanol|Gross Import|Volume"] = (
+        imports_meoh * MWh2PJ
+    )
+
     # Trade|Primary Energy|Coal|Volume
     # Trade|Primary Energy|Gas|Volume
 
@@ -4293,7 +4526,7 @@ def get_ariadne_var(
                 industry_production,
             ),
             get_prices(n, region),
-            get_emissions(n, region, energy_totals),
+            get_emissions_new(n, region, energy_totals),
             get_grid_investments(
                 n,
                 costs,
