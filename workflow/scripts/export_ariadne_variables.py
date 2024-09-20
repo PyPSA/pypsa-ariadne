@@ -2439,25 +2439,37 @@ def get_emissions(n, region, _energy_totals):
     # Now repeat the same for the CHP emissions
 
     CHP_emissions = (
-        n.statistics.supply(bus_carrier="co2", **kwargs)
-        .filter(like=region)
-        .filter(like="CHP")
-        .multiply(t2Mt)
-    ).groupby(["name", "carrier"]).sum()
+        (
+            n.statistics.supply(bus_carrier="co2", **kwargs)
+            .filter(like=region)
+            .filter(like="CHP")
+            .multiply(t2Mt)
+        )
+        .groupby(["name", "carrier"])
+        .sum()
+    )
 
     CHP_atmosphere_withdrawal = (
-        n.statistics.withdrawal(bus_carrier="co2", **kwargs)
-        .filter(like=region)
-        .filter(like="CHP")
-        .multiply(t2Mt)
-    ).groupby(["name", "carrier"]).sum()
+        (
+            n.statistics.withdrawal(bus_carrier="co2", **kwargs)
+            .filter(like=region)
+            .filter(like="CHP")
+            .multiply(t2Mt)
+        )
+        .groupby(["name", "carrier"])
+        .sum()
+    )
 
     CHP_storage = (
-        n.statistics.supply(bus_carrier="co2 stored", **kwargs)
-        .filter(like=region)
-        .filter(like="CHP")
-        .multiply(t2Mt)
-    ).groupby(["name", "carrier"]).sum()
+        (
+            n.statistics.supply(bus_carrier="co2 stored", **kwargs)
+            .filter(like=region)
+            .filter(like="CHP")
+            .multiply(t2Mt)
+        )
+        .groupby(["name", "carrier"])
+        .sum()
+    )
 
     # CCU is regarded as emissions
 
@@ -2540,9 +2552,9 @@ def get_emissions(n, region, _energy_totals):
 
     assert isclose(
         var["Emissions|CO2"],
-        var["Emissions|CO2|Model"] 
-        + co2_storage.sum() * ccu_fraction 
-        - var["Emissions|CO2|Efuels|Liquids"] 
+        var["Emissions|CO2|Model"]
+        + co2_storage.sum() * ccu_fraction
+        - var["Emissions|CO2|Efuels|Liquids"]
         - var["Emissions|CO2|Efuels|Gases"],
     )
 
@@ -2568,17 +2580,17 @@ def get_emissions(n, region, _energy_totals):
     waste_CHP_emissions = CHP_emissions.filter(like="waste")
     CHP_emissions = CHP_emissions.drop(waste_CHP_emissions.index)
 
-    # It would be interesting to relate the Emissions|CO2|Model to Emissions|CO2 reported to the DB by considering imports of carbon, e.g., (exports_oil_renew - imports_oil_renew) * 0.2571 * t2Mt + (exports_gas_renew - imports_gas_renew) * 0.2571 * t2Mt + (exports_meoh - imports_meoh) / 4.0321 * t2Mt    
+    # It would be interesting to relate the Emissions|CO2|Model to Emissions|CO2 reported to the DB by considering imports of carbon, e.g., (exports_oil_renew - imports_oil_renew) * 0.2571 * t2Mt + (exports_gas_renew - imports_gas_renew) * 0.2571 * t2Mt + (exports_meoh - imports_meoh) / 4.0321 * t2Mt
     # Then it would be necessary to consider negative carbon from solid biomass imports as well
     # Actually we might have to include solid biomass imports in the co2 constraints as well
 
     assert isclose(
         co2_emissions.filter(like="CHP").sum(),
-        CHP_emissions.sum() + waste_CHP_emissions.sum()
+        CHP_emissions.sum() + waste_CHP_emissions.sum(),
     )
     assert isclose(
         co2_atmosphere_withdrawal.filter(like="CHP").sum(),
-        CHP_atmosphere_withdrawal.sum()
+        CHP_atmosphere_withdrawal.sum(),
     )
 
     var["Carbon Sequestration"] = total_ccs
@@ -2721,9 +2733,9 @@ def get_emissions(n, region, _energy_totals):
         like="biogas to gas"
     ).sum()
 
-    var["Emissions|CO2|Supply|Non-Renewable Waste"] = co2_emissions.get(
-            "HVC to air"
-    ).sum() + waste_CHP_emissions.sum()
+    var["Emissions|CO2|Supply|Non-Renewable Waste"] = (
+        co2_emissions.get("HVC to air").sum() + waste_CHP_emissions.sum()
+    )
 
     var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = var[
         "Emissions|CO2|Energy|Supply|Liquids"
