@@ -6,14 +6,16 @@
 run:
   prefix: ""
   name:
-  - no_import_he
-  - no_import_le
+  # - no_import_me
+  # - no_import_he
+  # - no_import_le
+  # - eu_import_me_all
   # - eu_import_he_all
   # - eu_import_le_all
   # - eu_import_he_eleh2
   # - eu_import_le_eleh2
   # TODO: range
-  # - all_import
+  - all_import_me_all
   # - all_import_he_all
   # - all_import_le_all
   # - all_import_he_eleh2
@@ -298,6 +300,7 @@ sector:
   shipping: true
   electrolysis_costs: "low" # false, "low" or "high"
   import:
+    capacity_boost: 1.0
     non_eu: false # adds non_EU imports in prepare_sector_network
     carriers: "all" # false "all" or "eleh2"
     cost_factor: 1.0
@@ -428,6 +431,7 @@ solving:
     skip_iterations: true # settings for post-discretization: false
     min_iterations: 1 # settings for post-discretization: 1
     max_iterations: 1 # settings for post-discretization: 1
+    transmission_losses: 0
     post_discretization:
       enable: false
       line_unit_size: 1700
@@ -601,6 +605,8 @@ plotting:
     H2 pipeline (Kernnetz): '#6b3161'
     renewable oil: '#c9c9c9'
     renewable gas: '#e05b09'
+    hbi: '#858d99'
+    DE industry methanol: '#f2b134'
   countries:
   - all
   - DE

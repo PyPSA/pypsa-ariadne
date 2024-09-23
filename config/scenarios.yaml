@@ -1,3 +1,12 @@
+no_import_me:
+  solving:
+    constraints:
+      limit_eu_de: 0
+  sector:
+    electrolysis_costs: false
+    import:
+      non_eu: false
+
 no_import_le:
   solving:
     constraints:
@@ -28,6 +37,13 @@ no_import_he:
         2045: 0
 
 ####################
+eu_import_me_all:
+  sector:
+    electrolysis_costs: false
+    import:
+      non_eu: false
+      carriers: "all"
+
 eu_import_le_all:
   sector:
     electrolysis_costs: "low"
@@ -57,6 +73,13 @@ eu_import_he_eleh2:
       carriers: "eleh2"
 
 ####################
+all_import_me_all:
+  sector:
+    electrolysis_costs: false
+    import:
+      non_eu: true
+      carriers: "all"
+
 all_import_le_all:
   sector:
     electrolysis_costs: "low"

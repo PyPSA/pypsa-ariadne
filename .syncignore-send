@@ -10,3 +10,6 @@ __pycache__
 .vscode
 resources
 results
+cluster_runs
+logs
+benchmarks
