@@ -34,51 +34,6 @@ MWh2PJ = 3.6e-6
 toe_to_MWh = 11.630  # GWh/ktoe OR MWh/toe
 
 
-def _get_oil_fossil_fraction(n, region):
-    kwargs = {
-        "groupby": n.statistics.groupers.get_name_bus_and_carrier,
-        "at_port": True,
-        "nice_names": False,
-    }
-
-    if "DE" in region:
-        total_oil_supply = (
-            n.statistics.supply(bus_carrier="oil", **kwargs)
-            .groupby("name")
-            .sum()
-            .reindex(
-                [
-                    "DE oil refining",
-                    "DE renewable oil -> DE oil",
-                    "EU renewable oil -> DE oil",
-                ]
-            )
-            .dropna()
-        )  # If links are not used they are dropped here
-
-    else:
-        total_oil_supply = (
-            n.statistics.supply(bus_carrier="oil", **kwargs)
-            .groupby("name")
-            .sum()
-            .reindex(
-                [
-                    "EU oil refining",
-                    "DE renewable oil -> EU oil",
-                    "EU renewable oil -> EU oil",
-                ]
-            )
-            .dropna()
-        )
-
-    oil_fossil_fraction = (
-        total_oil_supply[~total_oil_supply.index.str.contains("renewable")].sum()
-        / total_oil_supply.sum()
-    )
-
-    return oil_fossil_fraction
-
-
 def _get_gas_fractions(n, region):
     kwargs = {
         "groupby": n.statistics.groupers.get_name_bus_and_carrier,
@@ -195,6 +150,136 @@ def _get_gas_fractions(n, region):
 
     return gas_fractions
 
+
+
+def _get_fuel_fractions(n, region, fuel):
+    kwargs = {
+        "groupby": n.statistics.groupers.get_name_bus_and_carrier,
+        "at_port": True,
+        "nice_names": False,
+    }
+
+    renewable_fuel_supply = (
+        n.statistics.supply(bus_carrier=f"renewable {fuel}", **kwargs)
+        .groupby(["bus", "carrier"])
+        .sum()
+    )
+
+    total_fuel_supply = (
+        n.statistics.supply(bus_carrier=f"{fuel}", **kwargs)
+        .groupby(["name", "carrier"])
+        .sum()
+    )
+
+    if fuel == "gas":
+        fuel_refining = "gas"
+    elif fuel == "oil":
+        fuel_refining = "oil refining"
+    else:
+        raise ValueError(f"Fuel {fuel} not supported")
+    
+    if "DE" in region:
+        domestic_fuel_supply = (
+            total_fuel_supply.reindex(
+                [
+                    (f"DE {fuel_refining}", f"{fuel_refining}"),
+                    (f"DE renewable {fuel} -> DE {fuel}", f"renewable {fuel}"),
+                    (f"EU renewable {fuel} -> DE {fuel}", f"renewable {fuel}"),
+                ]
+            )
+            .dropna()
+            .groupby("carrier")
+            .sum()
+        )  # If links are not used they are dropped here
+        total_imported_renewable_fuel = total_fuel_supply.get(
+            (f"EU renewable {fuel} -> DE {fuel}", f"renewable {fuel}"), 0
+        )
+        total_exported_renewable_fuel = total_fuel_supply.get(
+            (f"DE renewable {fuel} -> EU {fuel}", f"renewable {fuel}"), 0
+        )
+        domestic_renewable_fuel = renewable_fuel_supply.get(f"DE renewable {fuel}")
+        foreign_renewable_fuel = renewable_fuel_supply.get(f"EU renewable {fuel}")
+    else:
+        domestic_fuel_supply = (
+            total_fuel_supply.reindex(
+                [
+                    (f"EU {fuel_refining}", f"{fuel_refining}"),
+                    (f"DE renewable {fuel} -> EU {fuel}", f"renewable {fuel}"),
+                    (f"EU renewable {fuel} -> EU {fuel}", f"renewable {fuel}"),
+                ]
+            )
+            .dropna()
+            .groupby("carrier")
+            .sum()
+        )
+        total_imported_renewable_fuel = total_fuel_supply.get(
+            (f"DE renewable {fuel} -> EU {fuel}", f"renewable {fuel}"), 0
+        )
+        total_exported_renewable_fuel = total_fuel_supply.get(
+            (f"EU renewable {fuel} -> DE {fuel}", f"renewable {fuel}"), 0
+        )
+        domestic_renewable_fuel = renewable_fuel_supply.get(f"EU renewable {fuel}", 0)
+        foreign_renewable_fuel = renewable_fuel_supply.get(f"DE renewable {fuel}", 0)
+
+    # Legacy code for dropping gas pipelines (now deactivated)
+    drops = ["gas pipeline", "gas pipeline new"]
+    for d in drops:
+        if d in total_fuel_supply.index:
+            total_fuel_supply.drop(d, inplace=True)
+
+    if total_imported_renewable_fuel == 0:
+        imported_renewable_fuel = pd.Series(
+            0, index=renewable_fuel_supply.index.get_level_values("carrier").unique()
+        )
+    else:
+        imported_renewable_fuel = (
+            foreign_renewable_fuel
+            / foreign_renewable_fuel.sum()
+            * total_imported_renewable_fuel
+        )
+
+    if total_exported_renewable_fuel == 0:
+        exported_renewable_fuel = pd.Series(
+            0, index=renewable_fuel_supply.index.get_level_values("carrier").unique()
+        )
+    else:
+        exported_renewable_fuel = (
+            domestic_renewable_fuel
+            / domestic_renewable_fuel.sum()
+            * total_exported_renewable_fuel
+        )
+
+    renewable_fuel_balance = imported_renewable_fuel.add(
+        domestic_renewable_fuel, fill_value=0
+    ).subtract(exported_renewable_fuel, fill_value=0)
+    # These numbers may deviate because the input data from n.statistics
+    # can deviate. I don't know why exactly, but at least we can check that
+    # the difference stays roughly the same after the calculation.
+    assert isclose(
+        domestic_fuel_supply.get(f"renewable {fuel}", 0) - renewable_fuel_balance.sum(),
+        total_fuel_supply.get([f"DE renewable {fuel} -> DE {fuel}"], pd.Series(0)).sum()
+        + total_fuel_supply.get([f"DE renewable {fuel} -> EU {fuel}"], pd.Series(0)).sum()
+        - renewable_fuel_supply.get(f"DE renewable {fuel}", pd.Series(0)).sum(),
+        rtol=1e-3,
+    )
+
+    if fuel == "gas":
+        efuel_carrier = "Sabatier"
+
+    if fuel == "oil":
+        efuel_carrier = "Fischer-Tropsch"
+
+    fuel_fractions = pd.Series(
+        {
+            "Fossil": domestic_fuel_supply.get(fuel_refining, 0),
+            "Biomass": renewable_fuel_balance.filter(like="bio").sum(),
+            "Efuel": renewable_fuel_balance.get(efuel_carrier, 0),
+        }
+    ).divide(domestic_fuel_supply.sum())
+
+    assert isclose(fuel_fractions.sum(), 1)
+
+    return fuel_fractions
 
 def _get_h2_fossil_fraction(n):
     kwargs = {
@@ -1048,7 +1133,7 @@ def get_primary_energy(n, region):
 
     var = pd.Series()
 
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
+    oil_fossil_fraction = _get_fuel_fractions(n, region, "oil")["Fossil"]
     primary_oil_factor = (
         n.links.query("carrier=='oil refining'").efficiency.unique().item()
     )
@@ -1599,7 +1684,7 @@ def get_secondary_energy(n, region, _industry_demand):
         rtol=0.01,
     )
 
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
+    oil_fractions = _get_fuel_fractions(n, region, "oil")
 
     oil_fuel_usage = (
         n.statistics.withdrawal(bus_carrier="oil", **kwargs)
@@ -1623,14 +1708,16 @@ def get_secondary_energy(n, region, _industry_demand):
 
     total_oil_fuel_usage = oil_fuel_usage.sum()
     var["Secondary Energy|Liquids|Fossil"] = var["Secondary Energy|Liquids|Oil"] = (
-        total_oil_fuel_usage * oil_fossil_fraction
+        total_oil_fuel_usage * oil_fractions["Fossil"]
     )
-    var["Secondary Energy|Liquids|Hydrogen"] = total_oil_fuel_usage * (
-        1 - oil_fossil_fraction
-    )
+    var["Secondary Energy|Liquids|Hydrogen"] = total_oil_fuel_usage * oil_fractions["Efuel"]
+    
+    var["Secondary Energy|Liquids|Biomass"] = total_oil_fuel_usage * oil_fractions["Biomass"]
 
     var["Secondary Energy|Liquids"] = (
-        var["Secondary Energy|Liquids|Oil"] + var["Secondary Energy|Liquids|Hydrogen"]
+        var["Secondary Energy|Liquids|Oil"] 
+        + var["Secondary Energy|Liquids|Hydrogen"]
+        + var["Secondary Energy|Liquids|Biomass"]
     )
 
     try:
@@ -1776,7 +1863,7 @@ def get_final_energy(
         "nice_names": False,
     }
     h2_fossil_fraction = _get_h2_fossil_fraction(n)
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
+    oil_fractions = _get_fuel_fractions(n, region, "oil")
 
     if config["industry"]["ammonia"]:
         # MWh/a
@@ -1824,12 +1911,14 @@ def get_final_energy(
     var["Final Energy|Non-Energy Use|Liquids"] = non_energy.naphtha
 
     var["Final Energy|Non-Energy Use|Liquids|Petroleum"] = (
-        non_energy.naphtha * oil_fossil_fraction
+        non_energy.naphtha * oil_fractions["Fossil"]
     )
-    var["Final Energy|Non-Energy Use|Liquids|Efuel"] = non_energy.naphtha * (
-        1 - oil_fossil_fraction
+    var["Final Energy|Non-Energy Use|Liquids|Efuel"] = (
+        non_energy.naphtha * oil_fractions["Efuel"]
     )
-    var["Final Energy|Non-Energy Use|Liquids|Biomass"] = 0
+    var["Final Energy|Non-Energy Use|Liquids|Biomass"] = (
+        non_energy.naphtha * oil_fractions["Biomass"]
+    )
 
     var["Final Energy|Non-Energy Use|Solids"] = 0
     var["Final Energy|Non-Energy Use|Solids|Coal"] = 0
@@ -1906,7 +1995,7 @@ def get_final_energy(
     )
 
     var["Final Energy|Industry|Liquids|Petroleum"] = (
-        sum_load(n, "naphtha for industry", region) * oil_fossil_fraction
+        sum_load(n, "naphtha for industry", region) * oil_fractions["Fossil"]
     )
 
     # subtract non-energy used petroleum from total petroleum demand
@@ -1917,11 +2006,20 @@ def get_final_energy(
 
     var["Final Energy|Industry|Liquids|Efuel"] = sum_load(
         n, "naphtha for industry", region
-    ) * (1 - oil_fossil_fraction)
+    ) * oil_fractions["Efuel"]
     # subtract non-energy used efuels from total efuels demand
     var["Final Energy|Industry excl Non-Energy Use|Liquids|Efuel"] = (
         var["Final Energy|Industry|Liquids|Efuel"]
         - var["Final Energy|Non-Energy Use|Liquids|Efuel"]
+    )
+
+    var["Final Energy|Industry|Liquids|Biomass"] = (
+        sum_load(n, "naphtha for industry", region) * oil_fractions["Biomass"]
+    )
+    # subtract non-energy used biomass from total biomass demand
+    var["Final Energy|Industry excl Non-Energy Use|Liquids|Biomass"] = (
+        var["Final Energy|Industry|Liquids|Biomass"]
+        - var["Final Energy|Non-Energy Use|Liquids|Biomass"]
     )
 
     var["Final Energy|Industry|Liquids"] = sum_load(n, "naphtha for industry", region)
@@ -2103,7 +2201,13 @@ def get_final_energy(
     ) + oil_usage.get("rural oil boiler", 0)
 
     var["Final Energy|Residential and Commercial|Liquids|Petroleum"] = (
-        var["Final Energy|Residential and Commercial|Liquids"] * oil_fossil_fraction
+        var["Final Energy|Residential and Commercial|Liquids"] * oil_fractions["Fossil"]
+    )
+    var["Final Energy|Residential and Commercial|Liquids|Efuel"] = (
+        var["Final Energy|Residential and Commercial|Liquids"] * oil_fractions["Efuel"]
+    )
+    var["Final Energy|Residential and Commercial|Liquids|Biomass"] = (
+        var["Final Energy|Residential and Commercial|Liquids"] * oil_fractions["Biomass"]
     )
 
     # var["Final Energy|Residential and Commercial|Other"] = \
@@ -2177,8 +2281,6 @@ def get_final_energy(
         + energy_totals["total international navigation"]
     )
 
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
-
     var["Final Energy|Transportation|Liquids"] = (
         sum_load(n, "land transport oil", region)
         + (
@@ -2198,12 +2300,17 @@ def get_final_energy(
     # var["Final Energy|Transportation|Liquids|Biomass"] = \
     # var["Final Energy|Transportation|Liquids|Synthetic Fossil"] = \
     var["Final Energy|Transportation|Liquids|Petroleum"] = (
-        var["Final Energy|Transportation|Liquids"] * oil_fossil_fraction
+        var["Final Energy|Transportation|Liquids"] * oil_fractions["Fossil"]
     )
 
     var["Final Energy|Transportation|Liquids|Efuel"] = var[
         "Final Energy|Transportation|Liquids"
-    ] * (1 - oil_fossil_fraction)
+    ] * oil_fractions["Efuel"]
+
+    var["Final Energy|Transportation|Liquids|Biomass"] = var[
+        "Final Energy|Transportation|Liquids"
+    ] * oil_fractions["Biomass"]
+
 
     var["Final Energy|Bunkers|Aviation"] = var[
         "Final Energy|Bunkers|Aviation|Liquids"
@@ -2300,12 +2407,12 @@ def get_final_energy(
     )
 
     var["Final Energy|Liquids|Petroleum"] = (
-        var["Final Energy|Liquids"] * oil_fossil_fraction
+        var["Final Energy|Liquids"] * oil_fractions["Fossil"]
     )
 
-    var["Final Energy|Liquids|Efuel"] = var["Final Energy|Liquids"] * (
-        1 - oil_fossil_fraction
-    )
+    var["Final Energy|Liquids|Efuel"] = var["Final Energy|Liquids"] * oil_fractions["Efuel"]
+
+    var["Final Energy|Liquids|Biomass"] = var["Final Energy|Liquids"] * oil_fractions["Biomass"]
 
     var["Final Energy|Heat"] = (
         var["Final Energy|Agriculture|Heat"]
@@ -2503,9 +2610,9 @@ def get_emissions(n, region, _energy_totals):
         "urban central oil CHP",
     ]
 
-    # multiply by fossil fraction to disregard e-fuel emissions
+    # multiply by fossil fraction to disregard e- and biofuel emissions
 
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
+    oil_fossil_fraction = _get_fuel_fractions(n, region, "oil")["Fossil"]
 
     # This variable is not in the database, but it might be useful for double checking the totals
     var["Emissions|CO2|Efuels|Liquids"] = co2_emissions.loc[
@@ -2747,7 +2854,7 @@ def get_emissions(n, region, _energy_totals):
         co2_emissions.get("oil refining", 0)
 
     var["Emissions|CO2|Energy|Supply|Liquids"] = \
-        var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"]
+        var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"] - co2_atmosphere_withdrawal.get("biomass to liquid CC", 0)
 
     var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = \
         var["Emissions|CO2|Energy|Supply|Liquids"] # no gases at the moment
@@ -3154,7 +3261,7 @@ def get_prices(n, region):
     nodal_prices_oil = n.buses_t.marginal_price[nodal_flows_oil.columns]
 
     # co2 part
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
+    oil_fossil_fraction = _get_fuel_fractions(n, region, "oil")["Fossil"]
     co2_add_oil = oil_fossil_fraction * specific_emisisons["oil"] * co2_price
 
     var["Price|Primary Energy|Oil"] = (
