@@ -334,12 +334,12 @@ def unravel_oilbus(n):
 
     ### renewable oil
     renewable_oil_carrier = [
-        "unsustainable bioliquids", 
-        "biomass to liquid", 
+        "unsustainable bioliquids",
+        "biomass to liquid",
         "biomass to liquid CC",
         "electrobiofuels",
         "Fischer-Tropsch",
-        ]
+    ]
     renewable_oil_DE = n.links[
         (n.links.carrier.isin(renewable_oil_carrier)) & (n.links.index.str[:2] == "DE")
     ]
@@ -356,8 +356,6 @@ def unravel_oilbus(n):
     ].index
 
     n.links.loc[german_oil_consumers, "bus0"] = "DE oil"
-
-
 
     # add links between oil buses
     n.madd(

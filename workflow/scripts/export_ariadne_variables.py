@@ -151,7 +151,6 @@ def _get_gas_fractions(n, region):
     return gas_fractions
 
 
-
 def _get_fuel_fractions(n, region, fuel):
     kwargs = {
         "groupby": n.statistics.groupers.get_name_bus_and_carrier,
@@ -177,7 +176,7 @@ def _get_fuel_fractions(n, region, fuel):
         fuel_refining = "oil refining"
     else:
         raise ValueError(f"Fuel {fuel} not supported")
-    
+
     if "DE" in region:
         domestic_fuel_supply = (
             total_fuel_supply.reindex(
@@ -258,7 +257,9 @@ def _get_fuel_fractions(n, region, fuel):
     assert isclose(
         domestic_fuel_supply.get(f"renewable {fuel}", 0) - renewable_fuel_balance.sum(),
         total_fuel_supply.get([f"DE renewable {fuel} -> DE {fuel}"], pd.Series(0)).sum()
-        + total_fuel_supply.get([f"DE renewable {fuel} -> EU {fuel}"], pd.Series(0)).sum()
+        + total_fuel_supply.get(
+            [f"DE renewable {fuel} -> EU {fuel}"], pd.Series(0)
+        ).sum()
         - renewable_fuel_supply.get(f"DE renewable {fuel}", pd.Series(0)).sum(),
         rtol=1e-3,
     )
@@ -280,6 +281,7 @@ def _get_fuel_fractions(n, region, fuel):
     assert isclose(fuel_fractions.sum(), 1)
 
     return fuel_fractions
+
 
 def _get_h2_fossil_fraction(n):
     kwargs = {
@@ -1710,12 +1712,16 @@ def get_secondary_energy(n, region, _industry_demand):
     var["Secondary Energy|Liquids|Fossil"] = var["Secondary Energy|Liquids|Oil"] = (
         total_oil_fuel_usage * oil_fractions["Fossil"]
     )
-    var["Secondary Energy|Liquids|Hydrogen"] = total_oil_fuel_usage * oil_fractions["Efuel"]
-    
-    var["Secondary Energy|Liquids|Biomass"] = total_oil_fuel_usage * oil_fractions["Biomass"]
+    var["Secondary Energy|Liquids|Hydrogen"] = (
+        total_oil_fuel_usage * oil_fractions["Efuel"]
+    )
+
+    var["Secondary Energy|Liquids|Biomass"] = (
+        total_oil_fuel_usage * oil_fractions["Biomass"]
+    )
 
     var["Secondary Energy|Liquids"] = (
-        var["Secondary Energy|Liquids|Oil"] 
+        var["Secondary Energy|Liquids|Oil"]
         + var["Secondary Energy|Liquids|Hydrogen"]
         + var["Secondary Energy|Liquids|Biomass"]
     )
@@ -2004,9 +2010,9 @@ def get_final_energy(
         - var["Final Energy|Non-Energy Use|Liquids|Petroleum"]
     )
 
-    var["Final Energy|Industry|Liquids|Efuel"] = sum_load(
-        n, "naphtha for industry", region
-    ) * oil_fractions["Efuel"]
+    var["Final Energy|Industry|Liquids|Efuel"] = (
+        sum_load(n, "naphtha for industry", region) * oil_fractions["Efuel"]
+    )
     # subtract non-energy used efuels from total efuels demand
     var["Final Energy|Industry excl Non-Energy Use|Liquids|Efuel"] = (
         var["Final Energy|Industry|Liquids|Efuel"]
@@ -2207,7 +2213,8 @@ def get_final_energy(
         var["Final Energy|Residential and Commercial|Liquids"] * oil_fractions["Efuel"]
     )
     var["Final Energy|Residential and Commercial|Liquids|Biomass"] = (
-        var["Final Energy|Residential and Commercial|Liquids"] * oil_fractions["Biomass"]
+        var["Final Energy|Residential and Commercial|Liquids"]
+        * oil_fractions["Biomass"]
     )
 
     # var["Final Energy|Residential and Commercial|Other"] = \
@@ -2303,14 +2310,13 @@ def get_final_energy(
         var["Final Energy|Transportation|Liquids"] * oil_fractions["Fossil"]
     )
 
-    var["Final Energy|Transportation|Liquids|Efuel"] = var[
-        "Final Energy|Transportation|Liquids"
-    ] * oil_fractions["Efuel"]
+    var["Final Energy|Transportation|Liquids|Efuel"] = (
+        var["Final Energy|Transportation|Liquids"] * oil_fractions["Efuel"]
+    )
 
-    var["Final Energy|Transportation|Liquids|Biomass"] = var[
-        "Final Energy|Transportation|Liquids"
-    ] * oil_fractions["Biomass"]
-
+    var["Final Energy|Transportation|Liquids|Biomass"] = (
+        var["Final Energy|Transportation|Liquids"] * oil_fractions["Biomass"]
+    )
 
     var["Final Energy|Bunkers|Aviation"] = var[
         "Final Energy|Bunkers|Aviation|Liquids"
@@ -2410,9 +2416,13 @@ def get_final_energy(
         var["Final Energy|Liquids"] * oil_fractions["Fossil"]
     )
 
-    var["Final Energy|Liquids|Efuel"] = var["Final Energy|Liquids"] * oil_fractions["Efuel"]
+    var["Final Energy|Liquids|Efuel"] = (
+        var["Final Energy|Liquids"] * oil_fractions["Efuel"]
+    )
 
-    var["Final Energy|Liquids|Biomass"] = var["Final Energy|Liquids"] * oil_fractions["Biomass"]
+    var["Final Energy|Liquids|Biomass"] = (
+        var["Final Energy|Liquids"] * oil_fractions["Biomass"]
+    )
 
     var["Final Energy|Heat"] = (
         var["Final Energy|Agriculture|Heat"]
@@ -2724,19 +2734,16 @@ def get_emissions(n, region, _energy_totals):
     ).sum() + co2_emissions.get("industry methanol", 0)
     # process emissions is mainly cement, methanol is used for chemicals
     # TODO where should the methanol go?
-    var["Emissions|Gross Fossil CO2|Energy|Demand|Industry"] = (
-        co2_emissions.reindex(
-            [
-                "gas for industry",
-                "gas for industry CC",
-                "coal for industry",
-            ]
-        ).sum()
-    )
-    var["Emissions|CO2|Energy|Demand|Industry"] = (
-        var["Emissions|Gross Fossil CO2|Energy|Demand|Industry"]
-        - co2_atmosphere_withdrawal.get("solid biomass for industry CC", 0)
-    )
+    var["Emissions|Gross Fossil CO2|Energy|Demand|Industry"] = co2_emissions.reindex(
+        [
+            "gas for industry",
+            "gas for industry CC",
+            "coal for industry",
+        ]
+    ).sum()
+    var["Emissions|CO2|Energy|Demand|Industry"] = var[
+        "Emissions|Gross Fossil CO2|Energy|Demand|Industry"
+    ] - co2_atmosphere_withdrawal.get("solid biomass for industry CC", 0)
 
     var["Emissions|CO2|Industry"] = (
         var["Emissions|CO2|Energy|Demand|Industry"]
@@ -2850,14 +2857,17 @@ def get_emissions(n, region, _energy_totals):
         co2_emissions.get("HVC to air").sum() + waste_CHP_emissions.sum()
     )
 
-    var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"] = \
-        co2_emissions.get("oil refining", 0)
+    var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"] = co2_emissions.get(
+        "oil refining", 0
+    )
 
-    var["Emissions|CO2|Energy|Supply|Liquids"] = \
-        var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"] - co2_atmosphere_withdrawal.get("biomass to liquid CC", 0)
+    var["Emissions|CO2|Energy|Supply|Liquids"] = var[
+        "Emissions|Gross Fossil CO2|Energy|Supply|Liquids"
+    ] - co2_atmosphere_withdrawal.get("biomass to liquid CC", 0)
 
-    var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = \
-        var["Emissions|CO2|Energy|Supply|Liquids"] # no gases at the moment
+    var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = var[
+        "Emissions|CO2|Energy|Supply|Liquids"
+    ]  # no gases at the moment
 
     var["Emissions|Gross Fossil CO2|Energy|Supply"] = (
         var["Emissions|Gross Fossil CO2|Energy|Supply|Electricity"]
@@ -2916,7 +2926,6 @@ def get_emissions(n, region, _energy_totals):
     assert abs(emission_difference) < 1e-5
 
     return var
-
 
 
 # functions for prices
