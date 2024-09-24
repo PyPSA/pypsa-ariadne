@@ -2361,12 +2361,11 @@ def get_final_energy(
 
 def get_emissions(n, region, _energy_totals, industry_demand, costs):
     energy_totals = _energy_totals.loc[region[0:2]]
-    print(industry_demand.head())
+
     industry_DE = industry_demand.filter(
         like=region,
         axis=0,
     ).sum()
-    print(industry_DE)
 
     kwargs = {
         "groupby": n.statistics.groupers.get_name_bus_and_carrier,
