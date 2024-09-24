@@ -2985,6 +2985,7 @@ def get_weighted_costs_links(carriers, n, region):
     if denominator == 0:
         return np.nan
     result = numerator / denominator
+    result = np.where(result < 1e4, result, np.nan)
     return result
 
 
@@ -3058,7 +3059,7 @@ def get_prices(n, region):
     nodal_flows_bm = get_nodal_flows(n, "solid biomass", region)
     nodal_prices_bm = n.buses_t.marginal_price[nodal_flows_bm.columns]
 
-    # primary energy consumption of purpose-grown bioenergy crops, crop and forestry residue bioenergy, municipal solid waste bioenergy, traditional biomass, including renewable waste
+    # Price|Primary Energy|Biomass
     var["Price|Primary Energy|Biomass"] = (
         nodal_flows_bm.mul(nodal_prices_bm).values.sum()
         / nodal_flows_bm.values.sum()
@@ -3164,14 +3165,6 @@ def get_prices(n, region):
     # what are gaseous Efuels?
 
     # Price|Secondary Energy|Gases
-    gas_price, gas_gen = costs_gen_generators(n, "DE", "gas")
-    re_gas_price, re_gas_gen = costs_gen_links(n, "DE", "renewable gas")
-
-    var["Price|Secondary Energy|Gases"] = (
-    get_weighted_costs([(gas_price + co2_cost_gas), re_gas_price], [gas_gen, re_gas_gen]) / MWh2GJ
-    )
-
-    # equivalent to calc before
     nodal_flows_gas = get_nodal_flows(
         n,
         ["gas", "renewable gas"],
@@ -3184,7 +3177,7 @@ def get_prices(n, region):
     nodal_prices_gas = n.buses_t.marginal_price[nodal_flows_gas.columns]
     nodal_prices_gas.loc[:, "DE gas"] = nodal_prices_gas["DE gas"] + co2_cost_gas
 
-    var["Price|Secondary Energy|Gases (old)"] = (
+    var["Price|Secondary Energy|Gases"] = (
         nodal_flows_gas.mul(nodal_prices_gas).values.sum()
         / nodal_flows_gas.values.sum()
         / MWh2GJ
@@ -3200,14 +3193,6 @@ def get_prices(n, region):
     ) / MWh2GJ
 
     # Price|Secondary Energy|Liquids
-    oil_price, oil_gen = costs_gen_generators(n, "DE", "oil primary")
-    re_oil_price, re_oil_gen = costs_gen_links(n, "DE", "renewable oil")
-
-    var["Price|Secondary Energy|Liquids"] = (
-    get_weighted_costs([(oil_price + co2_cost_oil), re_oil_price], [oil_gen, re_oil_gen]) / MWh2GJ
-    )
-    
-    # equivalent to calc before
     nodal_flows_oil = get_nodal_flows(
         n,
         ["oil primary", "renewable oil"],
@@ -3218,7 +3203,7 @@ def get_prices(n, region):
     nodal_prices_oil = n.buses_t.marginal_price[nodal_flows_oil.columns]
     nodal_prices_oil.loc[:, "DE oil primary"] = nodal_prices_oil["DE oil primary"] + co2_cost_oil
 
-    var["Price|Secondary Energy|Liquids (old)"] = (
+    var["Price|Secondary Energy|Liquids"] = (
         nodal_flows_oil.mul(nodal_prices_oil).values.sum()
         / nodal_flows_oil.values.sum()
         / MWh2GJ
@@ -3226,7 +3211,6 @@ def get_prices(n, region):
 
     # Price|Secondary Energy|Liquids|Biomass
     # Price|Secondary Energy|Liquids|Oil
-
     # Price|Secondary Energy|Liquids|Hydrogen
     var["Price|Secondary Energy|Liquids|Hydrogen"] = (
         costs_gen_links(n, region, "Fischer-Tropsch")[0] / MWh2GJ
@@ -3239,7 +3223,7 @@ def get_prices(n, region):
 
 
     # "Price|Final Energy|
-    # reported: 20/182
+    # reported: 23/182
     # warning: these prices do not incorporate co2 prices yet
 
 
