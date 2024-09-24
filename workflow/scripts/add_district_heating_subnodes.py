@@ -34,6 +34,12 @@ def prepare_subnodes(subnodes, cities, regions_onshore, lau, heat_techs, head=40
         by="Wärmeeinspeisung in GWh/a", ascending=False
     ).head(head)
 
+    subnodes["yearly_heat_demand_MWh"] = subnodes["Wärmeeinspeisung in GWh/a"] * 1e3
+
+    logger.info(
+        f"The selected district heating networks have an overall yearly heat demand of {subnodes['yearly_heat_demand_MWh'].sum()} MWh/a. "
+    )
+
     subnodes["geometry"] = subnodes["Stadt"].apply(
         lambda s: cities.loc[cities["Stadt"] == s, "geometry"].values[0]
     )
@@ -89,50 +95,80 @@ def add_subnodes(n, subnodes):
         )
 
         # Add heat loads
+
+        uch_load_cluster = (
+            n.snapshot_weightings.generators
+            @ n.loads_t.p_set[f"{row['cluster']} urban central heat"]
+        )
+        lti_load_cluster = (
+            n.loads.loc[f"{row['cluster']} low-temperature heat for industry", "p_set"]
+            * 8760
+        )
+        dh_load_cluster = uch_load_cluster + lti_load_cluster
+        lti_share = lti_load_cluster / dh_load_cluster
+
         scalar = min(
             1,
-            (
-                row["Wärmeeinspeisung in GWh/a"]
-                * 1e3
-                / n.loads_t.p_set.filter(regex=f"{row['cluster']} urban central heat")
-                .sum(axis=1)
-                .mul(n.snapshot_weightings.generators)
-                .sum()
-            ),
+            (row["yearly_heat_demand_MWh"] / dh_load_cluster),
         )
-        lost_load = (
-            row["Wärmeeinspeisung in GWh/a"] * 1e3
-            - n.loads_t.p_set.filter(regex=f"{row['cluster']} urban central heat")
-            .sum(axis=1)
-            .mul(n.snapshot_weightings.generators)
-            .sum()
-        )
+
+        lost_load = row["yearly_heat_demand_MWh"] - dh_load_cluster
+
         if scalar == 1:
             logger.info(
                 f"District heating load of {row['Stadt']} exceeds load of its assigned cluster {row['cluster']}. {lost_load} MWh/a are disregarded."
             )
-        heat_load = scalar * n.loads_t.p_set.filter(
-            regex=f"{row['cluster']} urban central heat"
-        ).rename(
-            {
-                f"{row['cluster']} urban central heat": f"{row['cluster']} {row['Stadt']} urban central heat"
-            },
-            axis=1,
+        uch_load = (
+            scalar
+            * (1 - lti_share)
+            * n.loads_t.p_set.filter(
+                regex=f"{row['cluster']} urban central heat"
+            ).rename(
+                {
+                    f"{row['cluster']} urban central heat": f"{row['cluster']} {row['Stadt']} urban central heat"
+                },
+                axis=1,
+            )
         )
         n.madd(
             "Load",
             [name],
             bus=name,
-            p_set=heat_load,
+            p_set=uch_load,
             carrier="urban central heat",
             location=row["cluster"],
         )
 
+        lti_load = (
+            scalar
+            * lti_share
+            * n.loads.filter(
+                regex=f"{row['cluster']} low-temperature heat for industry", axis=0
+            ).p_set.rename(
+                {
+                    f"{row['cluster']} low-temperature heat for industry": f"{row['cluster']} {row['Stadt']} low-temperature heat for industry"
+                },
+                axis=0,
+            )
+        )
+        n.madd(
+            "Load",
+            [f"{name} low-temperature heat for industry"],
+            bus=name,
+            p_set=lti_load,
+            carrier="low-temperature heat for industry",
+            location=row["cluster"],
+        )
+
         # Adjust loads of cluster buses
-        n.loads_t.p_set.loc[:, f'{row["cluster"]} urban central heat'] *= 1 - scalar
+        n.loads_t.p_set.loc[:, f'{row["cluster"]} urban central heat'] *= 1 - scalar * (
+            1 - lti_share
+        )
+        n.loads.loc[f'{row["cluster"]} low-temperature heat for industry', "p_set"] *= (
+            1 - scalar * lti_share
+        )
 
         # Replicate district heating stores and links of mother node for subnodes
-        # TODO: Add heat pump links
 
         n.madd(
             "Bus",
