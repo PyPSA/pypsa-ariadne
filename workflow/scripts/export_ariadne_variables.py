@@ -2633,10 +2633,9 @@ def get_emissions(n, region, _energy_totals, industry_demand, costs):
             ]
         ).sum()
     ) - industry_DE.coke * (mwh_coal_per_mwh_coke - 1) * (0.3361 / MWh2PJ * 1e-6)
-    var["Emissions|CO2|Energy|Demand|Industry"] = (
-        var["Emissions|Gross Fossil CO2|Energy|Demand|Industry"]
-        - co2_atmosphere_withdrawal.get("solid biomass for industry CC", 0)
-    )
+    var["Emissions|CO2|Energy|Demand|Industry"] = var[
+        "Emissions|Gross Fossil CO2|Energy|Demand|Industry"
+    ] - co2_atmosphere_withdrawal.get("solid biomass for industry CC", 0)
 
     var["Emissions|CO2|Industry"] = (
         var["Emissions|CO2|Energy|Demand|Industry"]
@@ -2746,20 +2745,25 @@ def get_emissions(n, region, _energy_totals, industry_demand, costs):
         like="biogas to gas"
     ).sum()
     # 0.3361 t/MWh, industry_DE is in PJ, 1e-6 to convert to Mt
-    var["Emissions|CO2|Energy|Supply|Solids"] = industry_DE.coke * (mwh_coal_per_mwh_coke - 1) * (0.3361 / MWh2PJ * 1e-6)
+    var["Emissions|CO2|Energy|Supply|Solids"] = (
+        industry_DE.coke * (mwh_coal_per_mwh_coke - 1) * (0.3361 / MWh2PJ * 1e-6)
+    )
 
     var["Emissions|CO2|Supply|Non-Renewable Waste"] = (
         co2_emissions.get("HVC to air").sum() + waste_CHP_emissions.sum()
     )
 
-    var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"] = \
-        co2_emissions.get("oil refining", 0)
+    var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"] = co2_emissions.get(
+        "oil refining", 0
+    )
 
-    var["Emissions|CO2|Energy|Supply|Liquids"] = \
-        var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"]
+    var["Emissions|CO2|Energy|Supply|Liquids"] = var[
+        "Emissions|Gross Fossil CO2|Energy|Supply|Liquids"
+    ]
 
-    var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = \
-        var["Emissions|CO2|Energy|Supply|Liquids"] # no gases at the moment
+    var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = var[
+        "Emissions|CO2|Energy|Supply|Liquids"
+    ]  # no gases at the moment
 
     var["Emissions|Gross Fossil CO2|Energy|Supply"] = (
         var["Emissions|Gross Fossil CO2|Energy|Supply|Electricity"]
@@ -2818,7 +2822,6 @@ def get_emissions(n, region, _energy_totals, industry_demand, costs):
     assert abs(emission_difference) < 1e-5
 
     return var
-
 
 
 # functions for prices
