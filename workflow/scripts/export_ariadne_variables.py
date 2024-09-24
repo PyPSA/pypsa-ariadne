@@ -2867,7 +2867,7 @@ def get_emissions(n, region, _energy_totals):
 
     var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = var[
         "Emissions|CO2|Energy|Supply|Liquids"
-    ]  # no gases at the moment
+    ]  + var["Emissions|CO2|Energy|Supply|Gases"]
 
     var["Emissions|Gross Fossil CO2|Energy|Supply"] = (
         var["Emissions|Gross Fossil CO2|Energy|Supply|Electricity"]
