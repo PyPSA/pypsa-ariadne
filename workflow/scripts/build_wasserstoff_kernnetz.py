@@ -182,6 +182,8 @@ def load_and_merge_raw(fn1, fn2, fn3):
 
 def prepare_dataset(df):
 
+    df = df.copy()
+
     # clean length
     df["length"] = pd.to_numeric(df["length"], errors="coerce")
     df = df.dropna(subset=["length"])
@@ -251,6 +253,8 @@ def prepare_dataset(df):
 
 
 def geocode_locations(df):
+
+    df = df.copy()
 
     try:
         from geopy.extra.rate_limiter import RateLimiter
@@ -335,6 +339,8 @@ def geocode_locations(df):
 
 def assign_locations(df, locations):
 
+    df = df.copy()
+
     df["point0"] = pd.merge(
         df,
         locations,
@@ -367,7 +373,7 @@ def assign_locations(df, locations):
     )
 
     # only keep pipes with realistic length ratio
-    df = df.query("retrofitted or length_ratio <= 2")
+    df = df.query("retrofitted or length_ratio <= 2").copy()
 
     # calc LineString
     df["geometry"] = df.apply(lambda x: LineString([x["point0"], x["point1"]]), axis=1)
@@ -431,6 +437,7 @@ if __name__ == "__main__":
         snakemake = mock_snakemake("build_wasserstoff_kernnetz")
 
     logging.basicConfig(level=snakemake.config["logging"]["level"])
+    kernnetz_cf = snakemake.params.kernnetz
 
     wasserstoff_kernnetz = load_and_merge_raw(
         snakemake.input.wasserstoff_kernnetz_1,
@@ -440,7 +447,7 @@ if __name__ == "__main__":
 
     wasserstoff_kernnetz = prepare_dataset(wasserstoff_kernnetz)
 
-    if snakemake.params.reload_locations:
+    if kernnetz_cf["reload_locations"]:
         locations = geocode_locations(wasserstoff_kernnetz)
     else:
         locations = pd.read_csv(snakemake.input.locations, index_col=0)
@@ -448,7 +455,6 @@ if __name__ == "__main__":
 
     wasserstoff_kernnetz = assign_locations(wasserstoff_kernnetz, locations)
 
-    kernnetz_cf = snakemake.params.kernnetz
     wasserstoff_kernnetz = filter_kernnetz(
         wasserstoff_kernnetz,
         kernnetz_cf["ipcei_pci_only"],

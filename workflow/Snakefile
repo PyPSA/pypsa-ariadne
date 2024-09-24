@@ -411,7 +411,6 @@ use rule build_population_weighted_energy_totals from pypsaeur with:
 
 rule build_wasserstoff_kernnetz:
     params:
-        reload_locations=config_provider("wasserstoff_kernnetz", "reload_locations"),
         kernnetz=config_provider("wasserstoff_kernnetz"),
     input:
         wasserstoff_kernnetz_1=storage(
