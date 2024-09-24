@@ -18,7 +18,7 @@ def encode_utf8(city_name):
     return city_name.encode("utf-8")
 
 
-def prepare_subnodes(subnodes, cities, regions_onshore, heat_techs, head=40):
+def prepare_subnodes(subnodes, cities, regions_onshore, lau, heat_techs, head=40):
     # TODO: Embed I&O in snakemake rule, add potentials, match CHP capacities
     # If head is boolean set it to 40 for default behavior
     if isinstance(head, bool):
@@ -45,6 +45,13 @@ def prepare_subnodes(subnodes, cities, regions_onshore, heat_techs, head=40):
     # Assign cluster to subnodes according to onshore regions
     subnodes["cluster"] = subnodes.apply(
         lambda x: regions_onshore.geometry.contains(x.geometry).idxmax(), axis=1
+    )
+    subnodes["lau"] = subnodes.apply(
+        lambda x: lau.loc[lau.geometry.contains(x.geometry).idxmax(), "LAU_ID"], axis=1
+    )
+    subnodes["lau_shape"] = subnodes.apply(
+        lambda x: lau.loc[lau.geometry.contains(x.geometry).idxmax(), "geometry"].wkt,
+        axis=1,
     )
     subnodes["nuts3"] = subnodes.apply(
         lambda x: heat_techs.geometry.contains(x.geometry).idxmax(),
@@ -272,6 +279,10 @@ if __name__ == "__main__":
     heat_techs = gpd.read_file(snakemake.input.heating_technologies_nuts3).set_index(
         "index"
     )
+    lau = gpd.read_file(
+        f"{snakemake.input.lau}!LAU_RG_01M_2021_3035.geojson", crs="EPSG:3035"
+    ).to_crs("EPSG:4326")
+
     fernwaermeatlas = pd.read_excel(
         snakemake.input.fernwaermeatlas,
         sheet_name="Fernwärmeatlas_öffentlich",
@@ -288,6 +299,7 @@ if __name__ == "__main__":
         fernwaermeatlas,
         cities,
         regions_onshore,
+        lau,
         heat_techs,
         head=snakemake.params.district_heating["add_subnodes"],
     )

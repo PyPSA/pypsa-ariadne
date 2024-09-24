@@ -220,6 +220,10 @@ if config["sector"]["district_heating"]["add_subnodes"] and config["sector"][
             existing_heating_distribution=resources(
                 f"existing_heating_distribution_elec_s{{simpl}}_{{clusters}}_{baseyear_value}.csv"
             ),
+            lau=storage(
+                "https://gisco-services.ec.europa.eu/distribution/v2/lau/download/ref-lau-2021-01m.geojson.zip",
+                keep_local=True,
+            ),
         output:
             network=RESULTS
             + "prenetworks/elec-extended_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
