@@ -10,6 +10,10 @@ import pandas as pd
 import pypsa
 from numpy import isclose
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 paths = [
     "workflow/submodules/pypsa-eur/scripts",
     "../submodules/pypsa-eur/scripts",
@@ -45,13 +49,13 @@ def _get_fuel_fractions(n, region, fuel):
         n.statistics.supply(bus_carrier=f"renewable {fuel}", **kwargs)
         .groupby(["bus", "carrier"])
         .sum()
-    )
+    ).round(3) # rounding for numerical stability
 
     total_fuel_supply = (
         n.statistics.supply(bus_carrier=f"{fuel}", **kwargs)
         .groupby(["name", "carrier"])
         .sum()
-    )
+    ).round(3)
 
     if fuel == "gas":
         fuel_refining = "gas"
@@ -3974,6 +3978,40 @@ def get_trade(n, region):
         )
 
     # Trade|Primary Energy|Oil|Volume
+
+    # Biomass Trade
+
+    biomass_potential_DE = n.stores.query(
+        "carrier.str.contains('solid biomass')"
+    ).filter(like=region, axis=0).e_nom.sum()
+    
+    biomass_usage_local = n.stores_t.p[
+        n.stores.query(
+            "carrier.str.contains('solid biomass')"
+        ).filter(like=region, axis=0).index
+    ].sum().multiply(
+        n.snapshot_weightings["stores"].unique().item()
+    ).sum()
+
+    biomass_usage_transported = n.generators_t.p[
+        n.generators.query(
+            "carrier.str.contains('solid biomass')"
+        ).filter(like=region, axis=0).index
+    ].sum().multiply(
+        n.snapshot_weightings["generators"].unique().item()
+    ).sum()
+
+    biomass_net_exports = (
+        biomass_potential_DE
+        - biomass_usage_local
+        - biomass_usage_transported
+    )
+    var["Trade|Primary Energy|Biomass|Volume"] = biomass_net_exports
+
+    logger.info(f"""Share of imported biomass: {round(
+        -biomass_net_exports / (biomass_potential_DE + biomass_net_exports), 3)}""")
+
+
 
     return var
 
