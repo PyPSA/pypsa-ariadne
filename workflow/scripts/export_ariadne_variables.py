@@ -2749,9 +2749,10 @@ def get_emissions(n, region, _energy_totals):
         "Emissions|Gross Fossil CO2|Energy|Supply|Liquids"
     ] - co2_atmosphere_withdrawal.get("biomass to liquid CC", 0)
 
-    var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = var[
-        "Emissions|CO2|Energy|Supply|Liquids"
-    ]  + var["Emissions|CO2|Energy|Supply|Gases"]
+    var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = (
+        var["Emissions|CO2|Energy|Supply|Liquids"]
+        + var["Emissions|CO2|Energy|Supply|Gases"]
+    )
 
     var["Emissions|Gross Fossil CO2|Energy|Supply"] = (
         var["Emissions|Gross Fossil CO2|Energy|Supply|Electricity"]
