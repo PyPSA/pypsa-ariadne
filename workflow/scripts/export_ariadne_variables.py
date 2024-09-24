@@ -2623,12 +2623,13 @@ def get_emissions(n, region, _energy_totals, industry_demand, costs):
     # TODO where should the methanol go?
     mwh_coal_per_mwh_coke = 1.366  # from eurostat energy balance
 
+    # 0.3361 t/MWh, industry_DE is in PJ, 1e-6 to convert to Mt
     var["Emissions|CO2|Energy|Demand|Industry"] = co2_emissions.reindex(
         ["gas for industry", "gas for industry CC", "coal for industry"]
     ).sum() - co2_atmosphere_withdrawal.get(
         "solid biomass for industry CC",
         0,
-    ) - industry_DE.coke * (mwh_coal_per_mwh_coke - 1) * costs.at["coal", "CO2 intensity"]
+    ) - industry_DE.coke * (mwh_coal_per_mwh_coke - 1) * (0.3361 / MWh2PJ * 1e-6)
 
     var["Emissions|CO2|Industry"] = (
         var["Emissions|CO2|Energy|Demand|Industry"]
@@ -2737,8 +2738,8 @@ def get_emissions(n, region, _energy_totals, industry_demand, costs):
     var["Emissions|CO2|Energy|Supply|Gases"] = (-1) * co2_atmosphere_withdrawal.filter(
         like="biogas to gas"
     ).sum()
-
-    var["Emissions|CO2|Energy|Supply|Solids"] = industry_DE.coke * (mwh_coal_per_mwh_coke - 1) * costs.at["coal", "CO2 intensity"]
+    # 0.3361 t/MWh, industry_DE is in PJ, 1e-6 to convert to Mt
+    var["Emissions|CO2|Energy|Supply|Solids"] = industry_DE.coke * (mwh_coal_per_mwh_coke - 1) * (0.3361 / MWh2PJ * 1e-6)
 
     var["Emissions|CO2|Supply|Non-Renewable Waste"] = (
         co2_emissions.get("HVC to air").sum() + waste_CHP_emissions.sum()
