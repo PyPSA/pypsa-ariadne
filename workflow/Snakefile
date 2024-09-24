@@ -242,7 +242,9 @@ rule modify_prenetwork:
             "sector", "land_transport_electric_share"
         ),
         onshore_nep_force=config_provider("onshore_nep_force"),
-        shipping_methanol_efficiency=config_provider("sector", "shipping_methanol_efficiency"),
+        shipping_methanol_efficiency=config_provider(
+            "sector", "shipping_methanol_efficiency"
+        ),
         shipping_oil_efficiency=config_provider("sector", "shipping_oil_efficiency"),
         shipping_methanol_share=config_provider("sector", "shipping_methanol_share"),
     input:

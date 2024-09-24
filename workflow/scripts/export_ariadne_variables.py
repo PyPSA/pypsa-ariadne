@@ -2617,19 +2617,16 @@ def get_emissions(n, region, _energy_totals):
     ).sum() + co2_emissions.get("industry methanol", 0)
     # process emissions is mainly cement, methanol is used for chemicals
     # TODO where should the methanol go?
-    var["Emissions|Gross Fossil CO2|Energy|Demand|Industry"] = (
-        co2_emissions.reindex(
-            [
-                "gas for industry",
-                "gas for industry CC",
-                "coal for industry",
-            ]
-        ).sum()
-    )
-    var["Emissions|CO2|Energy|Demand|Industry"] = (
-        var["Emissions|Gross Fossil CO2|Energy|Demand|Industry"]
-        - co2_atmosphere_withdrawal.get("solid biomass for industry CC", 0)
-    )
+    var["Emissions|Gross Fossil CO2|Energy|Demand|Industry"] = co2_emissions.reindex(
+        [
+            "gas for industry",
+            "gas for industry CC",
+            "coal for industry",
+        ]
+    ).sum()
+    var["Emissions|CO2|Energy|Demand|Industry"] = var[
+        "Emissions|Gross Fossil CO2|Energy|Demand|Industry"
+    ] - co2_atmosphere_withdrawal.get("solid biomass for industry CC", 0)
 
     var["Emissions|CO2|Industry"] = (
         var["Emissions|CO2|Energy|Demand|Industry"]
@@ -2743,14 +2740,17 @@ def get_emissions(n, region, _energy_totals):
         co2_emissions.get("HVC to air").sum() + waste_CHP_emissions.sum()
     )
 
-    var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"] = \
-        co2_emissions.get("oil refining", 0)
+    var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"] = co2_emissions.get(
+        "oil refining", 0
+    )
 
-    var["Emissions|CO2|Energy|Supply|Liquids"] = \
-        var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"]
+    var["Emissions|CO2|Energy|Supply|Liquids"] = var[
+        "Emissions|Gross Fossil CO2|Energy|Supply|Liquids"
+    ]
 
-    var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = \
-        var["Emissions|CO2|Energy|Supply|Liquids"] # no gases at the moment
+    var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = var[
+        "Emissions|CO2|Energy|Supply|Liquids"
+    ]  # no gases at the moment
 
     var["Emissions|Gross Fossil CO2|Energy|Supply"] = (
         var["Emissions|Gross Fossil CO2|Energy|Supply|Electricity"]
@@ -2809,7 +2809,6 @@ def get_emissions(n, region, _energy_totals):
     assert abs(emission_difference) < 1e-5
 
     return var
-
 
 
 # functions for prices

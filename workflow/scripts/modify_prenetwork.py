@@ -277,7 +277,8 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
 
 def unravel_carbonaceous_fuels(n):
     """
-    Unravel European carbonaceous buses and if necessary their loads to enable energy balances for import and export of carbonaceous fuels.
+    Unravel European carbonaceous buses and if necessary their loads to enable
+    energy balances for import and export of carbonaceous fuels.
     """
     ### oil bus
     logger.info("Unraveling oil bus")
@@ -396,9 +397,19 @@ def unravel_carbonaceous_fuels(n):
         lifetime=costs.at["General liquid hydrocarbon storage (product)", "lifetime"],
     )
     # check if there are loads at the EU oil bus
-    if n.loads.index.isin(["EU naphtha for industry", "EU kerosene for aviation", "EU shipping oil", "EU agriculture machinery oil", "EU land transport oil"]).any():
-        logger.error("There are loads at the EU oil bus. Please set config[sector][regional_oil_demand] to True to enable energy balances for oil.")
-    
+    if n.loads.index.isin(
+        [
+            "EU naphtha for industry",
+            "EU kerosene for aviation",
+            "EU shipping oil",
+            "EU agriculture machinery oil",
+            "EU land transport oil",
+        ]
+    ).any():
+        logger.error(
+            "There are loads at the EU oil bus. Please set config[sector][regional_oil_demand] to True to enable energy balances for oil."
+        )
+
     ##########################################
     ### meoh bus
     logger.info("Unraveling methanol bus")
@@ -456,34 +467,69 @@ def unravel_carbonaceous_fuels(n):
             pd.read_csv(snakemake.input.industrial_demand, index_col=0) * 1e6
         ) * nyears
         DE_meoh = industrial_demand["methanol"].filter(like="DE").sum() / nhours
-        n.add("Load", "DE industry methanol", bus="DE methanol", carrier="industry methanol", p_set=DE_meoh)
+        n.add(
+            "Load",
+            "DE industry methanol",
+            bus="DE methanol",
+            carrier="industry methanol",
+            p_set=DE_meoh,
+        )
         n.loads.loc["EU industry methanol", "p_set"] -= DE_meoh
-        n.loads.rename(index={"EU industry methanol": "EUminusDE industry methanol"}, inplace=True)
+        n.loads.rename(
+            index={"EU industry methanol": "EUminusDE industry methanol"}, inplace=True
+        )
 
     # shipping load
     if "EU shipping methanol" in n.loads.index:
         # get German shipping demand for domestic and international navigation
-        pop_weighted_energy_totals =  (
-        pd.read_csv(snakemake.input.pop_weighted_energy_totals, index_col=0) * nyears)
-        domestic_navigation = pop_weighted_energy_totals["total domestic navigation"].filter(like="DE").sum() * nyears
-        international_navigation = (
-            pd.read_csv(snakemake.input.shipping_demand, index_col=0).squeeze(axis=1)
+        pop_weighted_energy_totals = (
+            pd.read_csv(snakemake.input.pop_weighted_energy_totals, index_col=0)
             * nyears
-            ).filter(like="DE").sum()
+        )
+        domestic_navigation = (
+            pop_weighted_energy_totals["total domestic navigation"]
+            .filter(like="DE")
+            .sum()
+            * nyears
+        )
+        international_navigation = (
+            (
+                pd.read_csv(snakemake.input.shipping_demand, index_col=0).squeeze(
+                    axis=1
+                )
+                * nyears
+            )
+            .filter(like="DE")
+            .sum()
+        )
         all_navigation = domestic_navigation + international_navigation
         p_set = all_navigation * 1e6 / nhours
 
         # transfer oil demand to methanol demand
         efficiency = (
-            snakemake.params.shipping_oil_efficiency / snakemake.params.shipping_methanol_efficiency
+            snakemake.params.shipping_oil_efficiency
+            / snakemake.params.shipping_methanol_efficiency
         )
         # get share of shipping done with methanol
-        p_set = snakemake.params.shipping_methanol_share[
-            int(snakemake.wildcards.planning_horizons)] * p_set * efficiency
+        p_set = (
+            snakemake.params.shipping_methanol_share[
+                int(snakemake.wildcards.planning_horizons)
+            ]
+            * p_set
+            * efficiency
+        )
 
-        n.add("Load", "DE shipping methanol", bus="DE methanol", carrier="shipping methanol", p_set=p_set)
+        n.add(
+            "Load",
+            "DE shipping methanol",
+            bus="DE methanol",
+            carrier="shipping methanol",
+            p_set=p_set,
+        )
         n.loads.loc["EU shipping methanol", "p_set"] -= p_set
-        n.loads.rename(index={"EU shipping methanol": "EUminusDE shipping methanol"}, inplace=True)
+        n.loads.rename(
+            index={"EU shipping methanol": "EUminusDE shipping methanol"}, inplace=True
+        )
 
 
 def unravel_gasbus(n, costs):
@@ -593,7 +639,9 @@ def unravel_gasbus(n, costs):
 
     # check if loads are connected to EU gas bus
     if "EU gas for industry" in n.loads.index:
-        logger.error("There are loads at the EU gas bus. Please set config[sector][regional_gas_demand] to True to enable energy balances for gas.")
+        logger.error(
+            "There are loads at the EU gas bus. Please set config[sector][regional_gas_demand] to True to enable energy balances for gas."
+        )
 
 
 def transmission_costs_from_modified_cost_data(
