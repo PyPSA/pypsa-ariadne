@@ -4011,9 +4011,7 @@ def get_trade(n, region):
     )
 
     biomass_net_exports = (
-        biomass_potential_DE
-        - biomass_usage_local
-        - biomass_usage_transported
+        biomass_potential_DE - biomass_usage_local - biomass_usage_transported
     ) * MWh2PJ
     var["Trade|Primary Energy|Biomass|Volume"] = biomass_net_exports
 
