@@ -2638,7 +2638,7 @@ def get_emissions(n, region, _energy_totals, industry_demand):
                 "coal for industry",
             ]
         ).sum()
-    ) - industry_DE.coke / MWh2PJ * (mwh_coal_per_mwh_coke - 1) * 0.3361  * t2Mt
+    ) - industry_DE.coke / MWh2PJ * (mwh_coal_per_mwh_coke - 1) * 0.3361 * t2Mt
     var["Emissions|CO2|Energy|Demand|Industry"] = var[
         "Emissions|Gross Fossil CO2|Energy|Demand|Industry"
     ] - co2_atmosphere_withdrawal.get("solid biomass for industry CC", 0)
@@ -2752,7 +2752,7 @@ def get_emissions(n, region, _energy_totals, industry_demand):
     ).sum()
     # 0.3361 t/MWh, industry_DE is in PJ, 1e-6 to convert to Mt
     var["Emissions|CO2|Energy|Supply|Solids"] = (
-        industry_DE.coke / MWh2PJ * (mwh_coal_per_mwh_coke - 1) * 0.3361  * t2Mt
+        industry_DE.coke / MWh2PJ * (mwh_coal_per_mwh_coke - 1) * 0.3361 * t2Mt
     )
 
     var["Emissions|CO2|Supply|Non-Renewable Waste"] = (
