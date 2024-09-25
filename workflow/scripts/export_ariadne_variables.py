@@ -2365,9 +2365,13 @@ def get_final_energy(
     return var
 
 
-def get_emissions(n, region, _energy_totals):
-
+def get_emissions(n, region, _energy_totals, industry_demand):
     energy_totals = _energy_totals.loc[region[0:2]]
+
+    industry_DE = industry_demand.filter(
+        like=region,
+        axis=0,
+    ).sum()
 
     kwargs = {
         "groupby": n.statistics.groupers.get_name_bus_and_carrier,
@@ -2623,13 +2627,18 @@ def get_emissions(n, region, _energy_totals):
     ).sum() + co2_emissions.get("industry methanol", 0)
     # process emissions is mainly cement, methanol is used for chemicals
     # TODO where should the methanol go?
-    var["Emissions|Gross Fossil CO2|Energy|Demand|Industry"] = co2_emissions.reindex(
-        [
-            "gas for industry",
-            "gas for industry CC",
-            "coal for industry",
-        ]
-    ).sum()
+
+    mwh_coal_per_mwh_coke = 1.366  # from eurostat energy balance
+    # 0.3361 t/MWh, industry_DE is in PJ, 1e-6 to convert to Mt
+    var["Emissions|Gross Fossil CO2|Energy|Demand|Industry"] = (
+        co2_emissions.reindex(
+            [
+                "gas for industry",
+                "gas for industry CC",
+                "coal for industry",
+            ]
+        ).sum()
+    ) - industry_DE.coke / MWh2PJ * (mwh_coal_per_mwh_coke - 1) * 0.3361  * t2Mt
     var["Emissions|CO2|Energy|Demand|Industry"] = var[
         "Emissions|Gross Fossil CO2|Energy|Demand|Industry"
     ] - co2_atmosphere_withdrawal.get("solid biomass for industry CC", 0)
@@ -2741,6 +2750,10 @@ def get_emissions(n, region, _energy_totals):
     var["Emissions|CO2|Energy|Supply|Gases"] = (-1) * co2_atmosphere_withdrawal.filter(
         like="biogas to gas"
     ).sum()
+    # 0.3361 t/MWh, industry_DE is in PJ, 1e-6 to convert to Mt
+    var["Emissions|CO2|Energy|Supply|Solids"] = (
+        industry_DE.coke / MWh2PJ * (mwh_coal_per_mwh_coke - 1) * 0.3361  * t2Mt
+    )
 
     var["Emissions|CO2|Supply|Non-Renewable Waste"] = (
         co2_emissions.get("HVC to air").sum() + waste_CHP_emissions.sum()
@@ -2777,10 +2790,10 @@ def get_emissions(n, region, _energy_totals):
         + var["Emissions|CO2|Energy|Supply|Hydrogen"]
         + var["Emissions|CO2|Energy|Supply|Electricity and Heat"]
         + var["Emissions|CO2|Energy|Supply|Liquids"]
+        + var["Emissions|CO2|Energy|Supply|Solids"]
     )
 
     # var["Emissions|CO2|Energy|Supply|Other Sector"] = \
-    # var["Emissions|CO2|Energy|Supply|Solids"] = \
 
     var["Emissions|CO2|Energy"] = (
         var["Emissions|CO2|Energy|Demand"] + var["Emissions|CO2|Energy|Supply"]
@@ -4243,7 +4256,7 @@ def get_ariadne_var(
                 industry_production,
             ),
             get_prices(n, region),
-            get_emissions(n, region, energy_totals),
+            get_emissions(n, region, energy_totals, industry_demand),
             get_grid_investments(
                 n,
                 costs,
@@ -4322,7 +4335,7 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "export_ariadne_variables",
             simpl="",
-            clusters=22,
+            clusters=27,
             opts="",
             ll="vopt",
             sector_opts="None",

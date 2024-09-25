@@ -341,6 +341,13 @@ industry:
     2040: 0.4
     2045: 0.35
     2050: 0.3
+  DRI_fraction:
+    2020: 0
+    2025: 0
+    2030: 0.05
+    2035: 0.3
+    2040: 0.6
+    2045: 1
 #HVC primary/recycling based on values used in Neumann et al https://doi.org/10.1016/j.joule.2023.06.016, linearly interpolated between 2020 and 2050
 #2020 recycling rates based on Agora https://static.agora-energiewende.de/fileadmin/Projekte/2021/2021_02_EU_CEAP/A-EW_254_Mobilising-circular-economy_study_WEB.pdf
 #fractions refer to the total primary HVC production in 2020
