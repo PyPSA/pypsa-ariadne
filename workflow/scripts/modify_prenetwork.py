@@ -243,8 +243,6 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
     # pipelines which are being build in total (more conservative approach)
     if not wkn.empty and snakemake.params.H2_retrofit:
 
-        conversion_rate = snakemake.params.H2_retrofit_capacity_per_CH4
-
         retrofitted_b = (
             n.links.carrier == "H2 pipeline retrofitted"
         ) & n.links.index.str.contains(str(investment_year))
@@ -256,7 +254,6 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
                 add_reversed_pipes(wkn),
                 carrier="H2",
                 target_attr="p_nom_max",
-                conversion_rate=conversion_rate,
             )
             n.links.loc[retrofitted_b, "p_nom_max"] = res_h2_pipes_retrofitted[
                 "p_nom_max"
