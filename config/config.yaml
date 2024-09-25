@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 240919_emissions_accounting
+  prefix: 240923_BtL
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -292,6 +292,8 @@ sector:
   regional_gas_demand: true
   H2_retrofit: true
   biogas_upgrading_cc: true
+  biomass_to_liquid: true
+  biomass_to_liquid_cc: true
   cluster_heat_buses: true
   # calculated based on ariadne "Stock|Space Heating"
   # and then 2% of buildings renovated per year to reduce their demand by 80%
@@ -574,6 +576,7 @@ plotting:
 # overwrite in config.default.yaml
 #powerplants_filter: (DateOut >= 2019 or DateOut != DateOut)
 electricity:
+  renewable_carriers: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, hydro] # removed offwind-float
   powerplants_filter: (DateOut >= 2019 or DateOut != DateOut) and not (Country == "DE" and Set == "CHP")
   custom_powerplants: true
   custom_file: resources/german_chp.csv
