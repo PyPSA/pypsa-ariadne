@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240924H2KernnetzUpdate
+  prefix: 20240925_H2KernnetzUpdate
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -296,6 +296,8 @@ sector:
   regional_gas_demand: true
   H2_retrofit: true
   biogas_upgrading_cc: true
+  biomass_to_liquid: true
+  biomass_to_liquid_cc: true
   cluster_heat_buses: true
   # calculated based on ariadne "Stock|Space Heating"
   # and then 2% of buildings renovated per year to reduce their demand by 80%
@@ -343,6 +345,13 @@ industry:
     2040: 0.4
     2045: 0.35
     2050: 0.3
+  DRI_fraction:
+    2020: 0
+    2025: 0
+    2030: 0.05
+    2035: 0.3
+    2040: 0.6
+    2045: 1
 #HVC primary/recycling based on values used in Neumann et al https://doi.org/10.1016/j.joule.2023.06.016, linearly interpolated between 2020 and 2050
 #2020 recycling rates based on Agora https://static.agora-energiewende.de/fileadmin/Projekte/2021/2021_02_EU_CEAP/A-EW_254_Mobilising-circular-economy_study_WEB.pdf
 #fractions refer to the total primary HVC production in 2020
@@ -578,6 +587,7 @@ plotting:
 # overwrite in config.default.yaml
 #powerplants_filter: (DateOut >= 2019 or DateOut != DateOut)
 electricity:
+  renewable_carriers: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, hydro] # removed offwind-float
   powerplants_filter: (DateOut >= 2019 or DateOut != DateOut) and not (Country == "DE" and Set == "CHP")
   custom_powerplants: true
   custom_file: resources/german_chp.csv

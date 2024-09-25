@@ -261,8 +261,6 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
     # pipelines which are being build in total (more conservative approach)
     if not wkn.empty and snakemake.params.H2_retrofit:
 
-        conversion_rate = snakemake.params.H2_retrofit_capacity_per_CH4
-
         retrofitted_b = (
             n.links.carrier == "H2 pipeline retrofitted"
         ) & n.links.index.str.contains(str(investment_year))
@@ -274,7 +272,6 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
                 add_reversed_pipes(wkn),
                 carrier="H2",
                 target_attr="p_nom_max",
-                conversion_rate=conversion_rate,
             )
             n.links.loc[retrofitted_b, "p_nom_max"] = res_h2_pipes_retrofitted[
                 "p_nom_max"
@@ -300,6 +297,8 @@ def unravel_oilbus(n):
     """
     logger.info("Unraveling oil bus")
     # add buses
+    n.add("Carrier", "renewable oil")
+
     n.add("Bus", "DE", location="DE", x=10.5, y=51.2, carrier="none")
     n.add("Bus", "DE oil", location="DE", x=10.5, y=51.2, carrier="oil")
     n.add("Bus", "DE oil primary", location="DE", x=10.5, y=51.2, carrier="oil primary")
@@ -348,23 +347,30 @@ def unravel_oilbus(n):
         efficiency2=snakemake.config["industry"]["oil_refining_emissions"],
     )
 
+    ### renewable oil
+    renewable_oil_carrier = [
+        "unsustainable bioliquids",
+        "biomass to liquid",
+        "biomass to liquid CC",
+        "electrobiofuels",
+        "Fischer-Tropsch",
+    ]
+    renewable_oil_DE = n.links[
+        (n.links.carrier.isin(renewable_oil_carrier)) & (n.links.index.str[:2] == "DE")
+    ]
+    n.links.loc[renewable_oil_DE.index, "bus1"] = "DE renewable oil"
+
+    renewable_oil_EU = n.links[
+        (n.links.carrier.isin(renewable_oil_carrier)) & (n.links.index.str[:2] != "DE")
+    ]
+    n.links.loc[renewable_oil_EU.index, "bus1"] = "EU renewable oil"
+
     # change links from EU oil to DE oil
-    german_oil_links = n.links[
+    german_oil_consumers = n.links[
         (n.links.bus0 == "EU oil") & (n.links.index.str.contains("DE"))
     ].index
-    german_FT_links = n.links[
-        (n.links.bus1 == "EU oil")
-        & (n.links.index.str.contains("DE"))
-        & (n.links.index.str.contains("Fischer-Tropsch"))
-    ].index
-    n.links.loc[german_oil_links, "bus0"] = "DE oil"
-    n.links.loc[german_FT_links, "bus1"] = "DE renewable oil"
 
-    # change FT links in rest of Europe
-    europ_FT_links = n.links[
-        (n.links.bus1 == "EU oil") & (n.links.index.str.contains("Fischer-Tropsch"))
-    ].index
-    n.links.loc[europ_FT_links, "bus1"] = "EU renewable oil"
+    n.links.loc[german_oil_consumers, "bus0"] = "DE oil"
 
     # add links between oil buses
     n.madd(
@@ -514,29 +520,17 @@ def unravel_gasbus(n, costs):
         carrier="renewable gas",
     )
 
-    ### biogas is counted as renewable gas
-    biogas_carrier = ["biogas to gas", "biogas to gas CC"]
-    biogas_DE = n.links[
-        (n.links.carrier.isin(biogas_carrier)) & (n.links.index.str[:2] == "DE")
+    ### renewable gas
+    renewable_gas_carrier = ["biogas to gas", "biogas to gas CC", "Sabatier"]
+    renewable_gas_DE = n.links[
+        (n.links.carrier.isin(renewable_gas_carrier)) & (n.links.index.str[:2] == "DE")
     ]
-    n.links.loc[biogas_DE.index, "bus1"] = "DE renewable gas"
+    n.links.loc[renewable_gas_DE.index, "bus1"] = "DE renewable gas"
 
-    biogas_EU = n.links[
-        (n.links.carrier.isin(biogas_carrier)) & (n.links.index.str[:2] != "DE")
+    renewable_gas_EU = n.links[
+        (n.links.carrier.isin(renewable_gas_carrier)) & (n.links.index.str[:2] != "DE")
     ]
-    n.links.loc[biogas_EU.index, "bus1"] = "EU renewable gas"
-
-    ### Sabatier is counted as renewable gas
-    sabatier_carrier = ["Sabatier"]
-    sabatier_DE = n.links[
-        (n.links.carrier.isin(sabatier_carrier)) & (n.links.index.str[:2] == "DE")
-    ]
-    n.links.loc[sabatier_DE.index, "bus1"] = "DE renewable gas"
-
-    sabatier_EU = n.links[
-        (n.links.carrier.isin(sabatier_carrier)) & (n.links.index.str[:2] != "DE")
-    ]
-    n.links.loc[sabatier_EU.index, "bus1"] = "EU renewable gas"
+    n.links.loc[renewable_gas_EU.index, "bus1"] = "EU renewable gas"
 
     ### change buses of German gas links
     fossil_links = n.links[(n.links.bus0 == "EU gas") & (n.links.index.str[:2] == "DE")]
