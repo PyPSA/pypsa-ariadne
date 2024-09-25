@@ -2359,7 +2359,7 @@ def get_final_energy(
     return var
 
 
-def get_emissions(n, region, _energy_totals, industry_demand, costs):
+def get_emissions(n, region, _energy_totals, industry_demand):
     energy_totals = _energy_totals.loc[region[0:2]]
 
     industry_DE = industry_demand.filter(
@@ -2632,7 +2632,7 @@ def get_emissions(n, region, _energy_totals, industry_demand, costs):
                 "coal for industry",
             ]
         ).sum()
-    ) - industry_DE.coke * (mwh_coal_per_mwh_coke - 1) * (0.3361 / MWh2PJ * 1e-6)
+    ) - industry_DE.coke / MWh2PJ * (mwh_coal_per_mwh_coke - 1) * 0.3361  * t2Mt
     var["Emissions|CO2|Energy|Demand|Industry"] = var[
         "Emissions|Gross Fossil CO2|Energy|Demand|Industry"
     ] - co2_atmosphere_withdrawal.get("solid biomass for industry CC", 0)
@@ -2746,7 +2746,7 @@ def get_emissions(n, region, _energy_totals, industry_demand, costs):
     ).sum()
     # 0.3361 t/MWh, industry_DE is in PJ, 1e-6 to convert to Mt
     var["Emissions|CO2|Energy|Supply|Solids"] = (
-        industry_DE.coke * (mwh_coal_per_mwh_coke - 1) * (0.3361 / MWh2PJ * 1e-6)
+        industry_DE.coke / MWh2PJ * (mwh_coal_per_mwh_coke - 1) * 0.3361  * t2Mt
     )
 
     var["Emissions|CO2|Supply|Non-Renewable Waste"] = (
@@ -4209,7 +4209,7 @@ def get_ariadne_var(
                 industry_production,
             ),
             get_prices(n, region),
-            get_emissions(n, region, energy_totals, industry_demand, costs),
+            get_emissions(n, region, energy_totals, industry_demand),
             get_grid_investments(
                 n,
                 costs,
