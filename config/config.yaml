@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 240923_BtL
+  prefix: 20240925_H2KernnetzUpdate
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -211,7 +211,7 @@ clustering:
     'SE': 0.0370
     'ES': 0.0741
     'IT': 0.1111
-  # high spatial resolution: change clusters to 46
+  # high spatial resolution: change clusters to 49
   # 49 nodes: 30 for Germany, 3 for Italy, 2 each for Denmark, UK and Spain, 1 per each of other 10 "Stromnachbarn"
     # 'DE': 0.6124
     # 'AT': 0.0204
@@ -242,10 +242,14 @@ co2_budget:
   2050: 0.000 # climate-neutral by 2050
 
 wasserstoff_kernnetz:
-  enable: false
+  enable: true
   reload_locations: false
   divide_pipes: true
   pipes_segment_length: 10
+  aggregate_build_years: "mean"
+  ipcei_pci_only: false
+  cutoff_year: 2028
+  force_all_ipcei_pci: true
 
 new_decentral_fossil_boiler_ban:
   DE: 2029
