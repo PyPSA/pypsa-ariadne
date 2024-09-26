@@ -204,6 +204,25 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
 
         names = wkn_new.index + f"-kernnetz-{investment_year}"
 
+        capital_costs = np.where(
+            wkn_new.retrofitted == False,
+            costs.at["H2 (g) pipeline", "fixed"] * wkn_new.length.values,
+            costs.at["H2 (g) pipeline repurposed", "fixed"] * wkn_new.length.values,
+        )
+
+        overnight_costs = np.where(
+            wkn_new.retrofitted == False,
+            costs.at["H2 (g) pipeline", "investment"] * wkn_new.length.values,
+            costs.at["H2 (g) pipeline repurposed", "investment"]
+            * wkn_new.length.values,
+        )
+
+        lifetime = np.where(
+            wkn_new.retrofitted == False,
+            costs.at["H2 (g) pipeline", "lifetime"],
+            costs.at["H2 (g) pipeline repurposed", "lifetime"],
+        )
+
         # add kernnetz to network
         n.madd(
             "Link",
@@ -215,11 +234,10 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
             p_nom=wkn_new.p_nom.values,
             build_year=wkn_new.build_year.values,
             length=wkn_new.length.values,
-            capital_cost=costs.at["H2 (g) pipeline", "fixed"] * wkn_new.length.values,
-            overnight_cost=costs.at["H2 (g) pipeline", "investment"]
-            * wkn_new.length.values,
+            capital_cost=capital_costs,
+            overnight_cost=overnight_costs,
             carrier="H2 pipeline (Kernnetz)",
-            lifetime=costs.at["H2 (g) pipeline", "lifetime"],
+            lifetime=lifetime,
         )
 
         # add reversed pipes and losses
@@ -243,8 +261,6 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
     # pipelines which are being build in total (more conservative approach)
     if not wkn.empty and snakemake.params.H2_retrofit:
 
-        conversion_rate = snakemake.params.H2_retrofit_capacity_per_CH4
-
         retrofitted_b = (
             n.links.carrier == "H2 pipeline retrofitted"
         ) & n.links.index.str.contains(str(investment_year))
@@ -256,7 +272,6 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
                 add_reversed_pipes(wkn),
                 carrier="H2",
                 target_attr="p_nom_max",
-                conversion_rate=conversion_rate,
             )
             n.links.loc[retrofitted_b, "p_nom_max"] = res_h2_pipes_retrofitted[
                 "p_nom_max"

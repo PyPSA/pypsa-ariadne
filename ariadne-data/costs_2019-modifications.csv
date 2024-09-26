@@ -6,12 +6,12 @@ electrolysis,investment,1450,EUR2020/kW_e,DEA,"linear interpolation of AEC 100 M
 decentral air-sourced heat pump,investment,1685,EUR2020/kW_th,https://ariadneprojekt.de/media/2024/01/Ariadne-Analyse_HeizkostenEmissionenGebaeude_Januar2024.pdf https://www.enpal.de/waermepumpe/kosten/ https://www.bdew.de/media/documents/BDEW-HKV_Altbau.pdf
 decentral ground-sourced heat pump,investment,2774,EUR2020/kW_th,https://ariadneprojekt.de/media/2024/01/Ariadne-Analyse_HeizkostenEmissionenGebaeude_Januar2024.pdf https://www.enpal.de/waermepumpe/kosten/ https://www.bdew.de/media/documents/BDEW-HKV_Altbau.pdf
 electricity distribution grid,investment,1500,EUR2020/kW,Tom's expert opinion
-HVAC overhead,investment,732,EUR2020/MW/km,NEP2021,
-HVAC overhead,investment,1196,EUR2020/MW/km,NEP2023,
-offwind-ac-connection-submarine,investment,850,EUR2020/MW/km,NEP2021,
-offwind-ac-connection-submarine,investment,558,EUR2020/MW/km,NEP2023,
-offwind-ac-connection-underground,investment,850,EUR2020/MW/km,NEP2021,
-offwind-ac-connection-underground,investment,558,EUR2020/MW/km,NEP2023,
+HVAC overhead,investment,510,EUR2020/MW/km,NEP2021,"Assuming High Temperature Low Sag Cables with higher Amperage"
+HVAC overhead,investment,806,EUR2020/MW/km,NEP2023,"Assuming High Temperature Low Sag Cables with higher Amperage"
+offwind-ac-connection-submarine,investment,3786,EUR2020/MW/km,NEP2021,"220kv, 1A, 2 circuits, 3 phases, inflation"
+offwind-ac-connection-submarine,investment,2488,EUR2020/MW/km,NEP2023,
+offwind-ac-connection-underground,investment,3786,EUR2020/MW/km,NEP2021,
+offwind-ac-connection-underground,investment,2488,EUR2020/MW/km,NEP2023,
 offwind-ac-station,investment,697,EUR2020/kW,NEP2021,"cost of two stations, landseitig and seeseitig"
 offwind-ac-station,investment,722,EUR2020/kW,NEP2023,"cost of two stations, landseitig and seeseitig"
 HVDC inverter pair,investment,597015,EUR2020/MW,NEP2021+NEP2023
