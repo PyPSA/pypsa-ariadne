@@ -2630,6 +2630,7 @@ def get_emissions(n, region, _energy_totals, industry_demand):
 
     mwh_coal_per_mwh_coke = 1.366  # from eurostat energy balance
     # 0.3361 t/MWh, industry_DE is in PJ, 1e-6 to convert to Mt
+    coking_emissions = industry_DE.coke / MWh2PJ * (mwh_coal_per_mwh_coke - 1) * 0.3361  * t2Mt
     var["Emissions|Gross Fossil CO2|Energy|Demand|Industry"] = (
         co2_emissions.reindex(
             [
@@ -2638,7 +2639,10 @@ def get_emissions(n, region, _energy_totals, industry_demand):
                 "coal for industry",
             ]
         ).sum()
-    ) - industry_DE.coke / MWh2PJ * (mwh_coal_per_mwh_coke - 1) * 0.3361  * t2Mt
+    ) - coking_emissions
+    var["Emissions|Gross Fossil CO2|Energy|Supply|Solids"] = \
+    var["Emissions|CO2|Energy|Supply|Solids"] = coking_emissions
+
     var["Emissions|CO2|Energy|Demand|Industry"] = var[
         "Emissions|Gross Fossil CO2|Energy|Demand|Industry"
     ] - co2_atmosphere_withdrawal.get("solid biomass for industry CC", 0)
@@ -2750,10 +2754,7 @@ def get_emissions(n, region, _energy_totals, industry_demand):
     var["Emissions|CO2|Energy|Supply|Gases"] = (-1) * co2_atmosphere_withdrawal.filter(
         like="biogas to gas"
     ).sum()
-    # 0.3361 t/MWh, industry_DE is in PJ, 1e-6 to convert to Mt
-    var["Emissions|CO2|Energy|Supply|Solids"] = (
-        industry_DE.coke / MWh2PJ * (mwh_coal_per_mwh_coke - 1) * 0.3361  * t2Mt
-    )
+
 
     var["Emissions|CO2|Supply|Non-Renewable Waste"] = (
         co2_emissions.get("HVC to air").sum() + waste_CHP_emissions.sum()
@@ -2777,13 +2778,13 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         + var["Emissions|Gross Fossil CO2|Energy|Supply|Heat"]
         + var["Emissions|Gross Fossil CO2|Energy|Supply|Hydrogen"]
         + var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"]
-        # TODO add coke
+        + var["Emissions|Gross Fossil CO2|Energy|Supply|Solids"]
     )
 
-    # var["Emissions|Gross Fossil CO2|Energy"] = (
-    #     var["Emissions|Gross Fossil CO2|Energy|Supply"]
-    #     + var["Emissions|Gross Fossil CO2|Energy|Demand|Industry"]
-    # )
+    var["Emissions|Gross Fossil CO2|Energy"] = (
+        var["Emissions|Gross Fossil CO2|Energy|Supply"]
+        + var["Emissions|Gross Fossil CO2|Energy|Demand|Industry"]
+    )
 
     var["Emissions|CO2|Energy|Supply"] = (
         var["Emissions|CO2|Energy|Supply|Gases"]
