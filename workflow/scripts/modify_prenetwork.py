@@ -499,9 +499,6 @@ def unravel_carbonaceous_fuels(n):
             p_set=DE_meoh,
         )
         n.loads.loc["EU industry methanol", "p_set"] -= DE_meoh
-        n.loads.rename(
-            index={"EU industry methanol": "EUminusDE industry methanol"}, inplace=True
-        )
 
     # shipping load
     if "EU shipping methanol" in n.loads.index:
@@ -551,9 +548,6 @@ def unravel_carbonaceous_fuels(n):
             p_set=p_set,
         )
         n.loads.loc["EU shipping methanol", "p_set"] -= p_set
-        n.loads.rename(
-            index={"EU shipping methanol": "EUminusDE shipping methanol"}, inplace=True
-        )
 
 
 def unravel_gasbus(n, costs):
