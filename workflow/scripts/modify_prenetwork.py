@@ -505,7 +505,6 @@ def unravel_carbonaceous_fuels(n):
         # get German shipping demand for domestic and international navigation
         pop_weighted_energy_totals = (
             pd.read_csv(snakemake.input.pop_weighted_energy_totals, index_col=0)
-            * nyears
         )
         domestic_navigation = (
             pop_weighted_energy_totals["total domestic navigation"]
