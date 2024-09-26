@@ -503,8 +503,8 @@ def unravel_carbonaceous_fuels(n):
     # shipping load
     if "EU shipping methanol" in n.loads.index:
         # get German shipping demand for domestic and international navigation
-        pop_weighted_energy_totals = (
-            pd.read_csv(snakemake.input.pop_weighted_energy_totals, index_col=0)
+        pop_weighted_energy_totals = pd.read_csv(
+            snakemake.input.pop_weighted_energy_totals, index_col=0
         )
         domestic_navigation = (
             pop_weighted_energy_totals["total domestic navigation"]
