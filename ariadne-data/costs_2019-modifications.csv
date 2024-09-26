@@ -8,10 +8,10 @@ decentral ground-sourced heat pump,investment,2774,EUR2020/kW_th,https://ariadne
 electricity distribution grid,investment,1500,EUR2020/kW,Tom's expert opinion
 HVAC overhead,investment,510,EUR2020/MW/km,NEP2021,"Assuming High Temperature Low Sag Cables with higher Amperage"
 HVAC overhead,investment,806,EUR2020/MW/km,NEP2023,"Assuming High Temperature Low Sag Cables with higher Amperage"
-offwind-ac-connection-submarine,investment,850,EUR2020/MW/km,NEP2021,
-offwind-ac-connection-submarine,investment,558,EUR2020/MW/km,NEP2023,
-offwind-ac-connection-underground,investment,850,EUR2020/MW/km,NEP2021,
-offwind-ac-connection-underground,investment,558,EUR2020/MW/km,NEP2023,
+offwind-ac-connection-submarine,investment,3786,EUR2020/MW/km,NEP2021,"220kv, 1A, 2 circuits, 3 phases, inflation"
+offwind-ac-connection-submarine,investment,2488,EUR2020/MW/km,NEP2023,
+offwind-ac-connection-underground,investment,3786,EUR2020/MW/km,NEP2021,
+offwind-ac-connection-underground,investment,2488,EUR2020/MW/km,NEP2023,
 offwind-ac-station,investment,697,EUR2020/kW,NEP2021,"cost of two stations, landseitig and seeseitig"
 offwind-ac-station,investment,722,EUR2020/kW,NEP2023,"cost of two stations, landseitig and seeseitig"
 HVDC inverter pair,investment,597015,EUR2020/MW,NEP2021+NEP2023
