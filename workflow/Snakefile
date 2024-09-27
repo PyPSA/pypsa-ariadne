@@ -570,6 +570,13 @@ rule ariadne_all:
             RESULTS + "ariadne/capacity_detailed.png",
             run=config_provider("run", "name"),
         ),
+        expand(
+            RESULTS
+            + "maps/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}-h2_network_incl_kernnetz_{planning_horizons}.pdf",
+            run=config_provider("run", "name"),
+            **config["scenario"],
+            allow_missing=True,
+        ),
         exported_variables=expand(
             RESULTS + "ariadne/exported_variables_full.xlsx",
             run=config_provider("run", "name"),
@@ -602,3 +609,29 @@ rule check_sector_ratios:
         "logs/check_sector_ratios.log",
     script:
         "scripts/check_sector_ratios.py"
+
+
+rule plot_hydrogen_network_incl_kernnetz:
+    params:
+        plotting=config_provider("plotting"),
+        foresight=config_provider("foresight"),
+    input:
+        network=RESULTS
+        + "postnetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
+        regions=resources("regions_onshore_elec_s{simpl}_{clusters}.geojson"),
+    output:
+        map=RESULTS
+        + "maps/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}-h2_network_incl_kernnetz_{planning_horizons}.pdf",
+    threads: 2
+    resources:
+        mem_mb=10000,
+    log:
+        RESULTS
+        + "logs/plot_hydrogen_network_incl_kernnetz/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.log",
+    benchmark:
+        (
+            RESULTS
+            + "benchmarks/plot_hydrogen_network_incl_kernnetz/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}"
+        )
+    script:
+        "scripts/plot_hydrogen_network_incl_kernnetz.py"
