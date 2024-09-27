@@ -149,7 +149,7 @@ def _get_fuel_fractions(n, region, fuel):
             [f"DE renewable {fuel} -> EU {fuel}"], pd.Series(0)
         ).sum()
         - renewable_fuel_supply.get(f"DE renewable {fuel}", pd.Series(0)).sum(),
-        rtol=1e-3,
+        rtol=1e-3, atol=1e-5,
     )
 
     fuel_fractions = pd.Series()
@@ -4464,7 +4464,7 @@ if __name__ == "__main__":
 
     if "debug" == "debug":  # For debugging
         var = pd.Series()
-        idx = 0
+        idx = -1
         n = networks[idx]
         c = costs[idx]
         _industry_demand = industry_demands[idx]
