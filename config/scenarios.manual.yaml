@@ -17,7 +17,7 @@ CurrentPolicies:
   co2_budget:
     2020: 0.800 # 20% reduction by 2020
     2025: 0.620
-    2030: 0.500 # 55% reduction by 2030 (Ff55)
+    2030: 0.500 # less than 55% reduction by 2030 (Ff55)
     2035: 0.450 # stagnation for the Trend scenario
     2040: 0.450
     2045: 0.450
@@ -469,7 +469,7 @@ KN2045minus_WorstCase:
   co2_budget:
     2020: 0.800 # 20% reduction by 2020
     2025: 0.620
-    2030: 0.500 # 55% reduction by 2030 (Ff55)
+    2030: 0.500 # less than 55% reduction by 2030 (Ff55)
     2035: 0.450 # stagnation of CO2 reduction
     2040: 0.450
     2045: 0.450
@@ -581,7 +581,7 @@ KN2045minus_SupplyFocus:
   co2_budget:
     2020: 0.800 # 20% reduction by 2020
     2025: 0.620
-    2030: 0.500 # 55% reduction by 2030 (Ff55)
+    2030: 0.500 # less than 55% reduction by 2030 (Ff55)
     2035: 0.450 # stagnation of CO2 reduction
     2040: 0.450
     2045: 0.450
