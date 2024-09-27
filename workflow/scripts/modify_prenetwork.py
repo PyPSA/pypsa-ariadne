@@ -485,12 +485,8 @@ def unravel_carbonaceous_fuels(n):
     # check for loads
     # industry load
     if "EU industry methanol" in n.loads.index:
-        nhours = n.snapshot_weightings.generators.sum()
-        nyears = nhours / 8760
-        industrial_demand = (
-            pd.read_csv(snakemake.input.industrial_demand, index_col=0) * 1e6
-        ) * nyears
-        DE_meoh = industrial_demand["methanol"].filter(like="DE").sum() / nhours
+        industrial_demand = pd.read_csv(snakemake.input.industrial_demand, index_col=0) * 1e6 # TWh/a to MWh/a
+        DE_meoh = industrial_demand["methanol"].filter(like="DE").sum() / 8760 # MWh/a to MW hourly resolution
         n.add(
             "Load",
             "DE industry methanol",
@@ -503,28 +499,27 @@ def unravel_carbonaceous_fuels(n):
     # shipping load
     if "EU shipping methanol" in n.loads.index:
         # get German shipping demand for domestic and international navigation
-        pop_weighted_energy_totals = (
-            pd.read_csv(snakemake.input.pop_weighted_energy_totals, index_col=0)
-            * nyears
+        # TWh/a
+        pop_weighted_energy_totals = pd.read_csv(
+            snakemake.input.pop_weighted_energy_totals, index_col=0
         )
+        # TWh/a
         domestic_navigation = (
             pop_weighted_energy_totals["total domestic navigation"]
             .filter(like="DE")
-            .sum()
-            * nyears
-        )
+            .sum())
+        # TWh/a
         international_navigation = (
             (
                 pd.read_csv(snakemake.input.shipping_demand, index_col=0).squeeze(
                     axis=1
                 )
-                * nyears
             )
             .filter(like="DE")
             .sum()
         )
         all_navigation = domestic_navigation + international_navigation
-        p_set = all_navigation * 1e6 / nhours
+        p_set = all_navigation * 1e6 / 8760 # convert TWh/a to MW hourly resolution
 
         # transfer oil demand to methanol demand
         efficiency = (
