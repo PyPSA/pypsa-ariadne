@@ -485,8 +485,12 @@ def unravel_carbonaceous_fuels(n):
     # check for loads
     # industry load
     if "EU industry methanol" in n.loads.index:
-        industrial_demand = pd.read_csv(snakemake.input.industrial_demand, index_col=0) * 1e6 # TWh/a to MWh/a
-        DE_meoh = industrial_demand["methanol"].filter(like="DE").sum() / 8760 # MWh/a to MW hourly resolution
+        industrial_demand = (
+            pd.read_csv(snakemake.input.industrial_demand, index_col=0) * 1e6
+        )  # TWh/a to MWh/a
+        DE_meoh = (
+            industrial_demand["methanol"].filter(like="DE").sum() / 8760
+        )  # MWh/a to MW hourly resolution
         n.add(
             "Load",
             "DE industry methanol",
@@ -507,19 +511,16 @@ def unravel_carbonaceous_fuels(n):
         domestic_navigation = (
             pop_weighted_energy_totals["total domestic navigation"]
             .filter(like="DE")
-            .sum())
+            .sum()
+        )
         # TWh/a
         international_navigation = (
-            (
-                pd.read_csv(snakemake.input.shipping_demand, index_col=0).squeeze(
-                    axis=1
-                )
-            )
+            (pd.read_csv(snakemake.input.shipping_demand, index_col=0).squeeze(axis=1))
             .filter(like="DE")
             .sum()
         )
         all_navigation = domestic_navigation + international_navigation
-        p_set = all_navigation * 1e6 / 8760 # convert TWh/a to MW hourly resolution
+        p_set = all_navigation * 1e6 / 8760  # convert TWh/a to MW hourly resolution
 
         # transfer oil demand to methanol demand
         efficiency = (

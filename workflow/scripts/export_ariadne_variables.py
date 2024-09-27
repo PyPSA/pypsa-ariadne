@@ -2766,9 +2766,10 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         "oil refining", 0
     )
 
-    var["Emissions|CO2|Energy|Supply|Liquids"] = var[
-        "Emissions|Gross Fossil CO2|Energy|Supply|Liquids"
-    ] - co2_atmosphere_withdrawal.filter(like="biomass to liquid").sum()
+    var["Emissions|CO2|Energy|Supply|Liquids"] = (
+        var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"]
+        - co2_atmosphere_withdrawal.filter(like="biomass to liquid").sum()
+    )
 
     var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = (
         var["Emissions|CO2|Energy|Supply|Liquids"]
