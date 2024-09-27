@@ -2768,7 +2768,7 @@ def get_emissions(n, region, _energy_totals, industry_demand):
 
     var["Emissions|CO2|Energy|Supply|Liquids"] = var[
         "Emissions|Gross Fossil CO2|Energy|Supply|Liquids"
-    ] - co2_atmosphere_withdrawal.get("biomass to liquid CC", 0)
+    ] - co2_atmosphere_withdrawal.filter(like="biomass to liquid").sum()
 
     var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = (
         var["Emissions|CO2|Energy|Supply|Liquids"]
@@ -4431,7 +4431,7 @@ if __name__ == "__main__":
 
     if "debug" == "debug":  # For debugging
         var = pd.Series()
-        idx = 2
+        idx = 0
         n = networks[idx]
         c = costs[idx]
         _industry_demand = industry_demands[idx]
