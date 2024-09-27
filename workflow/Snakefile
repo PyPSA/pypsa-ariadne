@@ -242,6 +242,11 @@ rule modify_prenetwork:
             "sector", "land_transport_electric_share"
         ),
         onshore_nep_force=config_provider("onshore_nep_force"),
+        shipping_methanol_efficiency=config_provider(
+            "sector", "shipping_methanol_efficiency"
+        ),
+        shipping_oil_efficiency=config_provider("sector", "shipping_oil_efficiency"),
+        shipping_methanol_share=config_provider("sector", "shipping_methanol_share"),
     input:
         network=RESULTS
         + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
@@ -261,6 +266,10 @@ rule modify_prenetwork:
         industrial_demand=resources(
             "industrial_energy_demand_elec_s{simpl}_{clusters}_{planning_horizons}.csv"
         ),
+        pop_weighted_energy_totals=resources(
+            "pop_weighted_energy_totals_s{simpl}_{clusters}.csv"
+        ),
+        shipping_demand=resources("shipping_demand_s{simpl}_{clusters}.csv"),
     output:
         network=RESULTS
         + "prenetworks-final/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
@@ -411,14 +420,18 @@ use rule build_population_weighted_energy_totals from pypsaeur with:
 
 rule build_wasserstoff_kernnetz:
     params:
-        reload_locations=config_provider("wasserstoff_kernnetz", "reload_locations"),
+        kernnetz=config_provider("wasserstoff_kernnetz"),
     input:
         wasserstoff_kernnetz_1=storage(
-            "https://fnb-gas.de/wp-content/uploads/2023/11/2023_11_15_Anlage2_Leitungsmeldungen_weiterer_potenzieller_Wasserstoffnetzbetreiber_Veroeffentlichung_final.xlsx",
+            "https://fnb-gas.de/wp-content/uploads/2024/07/2024_07_22_Anlage2_Leitungsmeldungen_weiterer_potenzieller_Wasserstoffnetzbetreiber.xlsx",
             keep_local=True,
         ),
         wasserstoff_kernnetz_2=storage(
-            "https://fnb-gas.de/wp-content/uploads/2023/11/2023_11_15_Anlage3_FNB_Massnahmenliste_Veroeffentlichung_final.xlsx",
+            "https://fnb-gas.de/wp-content/uploads/2024/07/2024_07_22_Anlage3_FNB_Massnahmenliste_Neubau.xlsx",
+            keep_local=True,
+        ),
+        wasserstoff_kernnetz_3=storage(
+            "https://fnb-gas.de/wp-content/uploads/2024/07/2024_07_22_Anlage4_FNB_Massnahmenliste_Umstellung.xlsx",
             keep_local=True,
         ),
         gadm=storage(
@@ -450,7 +463,7 @@ rule cluster_wasserstoff_kernnetz:
 rule download_ariadne_template:
     input:
         storage(
-            "https://github.com/iiasa/ariadne-intern-workflow/raw/main/attachments/2024-05-29_template_Ariadne.xlsx",
+            "https://github.com/iiasa/ariadne-intern-workflow/raw/main/attachments/2024-08-13_template_Ariadne.xlsx",
             keep_local=True,
         ),
     output:

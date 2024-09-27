@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240925plotH2Kernnetz
+  prefix: 20240927plotH2Kernnetz
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -211,7 +211,7 @@ clustering:
     'SE': 0.0370
     'ES': 0.0741
     'IT': 0.1111
-  # high spatial resolution: change clusters to 46
+  # high spatial resolution: change clusters to 49
   # 49 nodes: 30 for Germany, 3 for Italy, 2 each for Denmark, UK and Spain, 1 per each of other 10 "Stromnachbarn"
     # 'DE': 0.6124
     # 'AT': 0.0204
@@ -234,7 +234,7 @@ clustering:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:
   2020: 0.800 # 20% reduction by 2020
-  2025: 0.600
+  2025: 0.620
   2030: 0.450 # 55% reduction by 2030 (Ff55)
   2035: 0.250
   2040: 0.100 # goal to be set next year
@@ -246,6 +246,10 @@ wasserstoff_kernnetz:
   reload_locations: false
   divide_pipes: true
   pipes_segment_length: 10
+  aggregate_build_years: "mean"
+  ipcei_pci_only: false
+  cutoff_year: 2028
+  force_all_ipcei_pci: true
 
 new_decentral_fossil_boiler_ban:
   DE: 2029
@@ -292,6 +296,8 @@ sector:
   regional_gas_demand: true
   H2_retrofit: true
   biogas_upgrading_cc: true
+  biomass_to_liquid: true
+  biomass_to_liquid_cc: true
   cluster_heat_buses: true
   # calculated based on ariadne "Stock|Space Heating"
   # and then 2% of buildings renovated per year to reduce their demand by 80%
@@ -339,6 +345,13 @@ industry:
     2040: 0.4
     2045: 0.35
     2050: 0.3
+  DRI_fraction:
+    2020: 0
+    2025: 0
+    2030: 0.05
+    2035: 0.3
+    2040: 0.6
+    2045: 1
 #HVC primary/recycling based on values used in Neumann et al https://doi.org/10.1016/j.joule.2023.06.016, linearly interpolated between 2020 and 2050
 #2020 recycling rates based on Agora https://static.agora-energiewende.de/fileadmin/Projekte/2021/2021_02_EU_CEAP/A-EW_254_Mobilising-circular-economy_study_WEB.pdf
 #fractions refer to the total primary HVC production in 2020
@@ -413,7 +426,7 @@ solving:
           DE:
             2020: 54.5
             2025: 69
-            2030: 250
+            2030: 157 # EEG2023 Ziel für 2035
             2035: 250
             2040: 250
             2045: 250
@@ -429,7 +442,7 @@ solving:
           DE:
             2020: 53.7
             2025: 110 # EEG2023; assumes for 2026: 128 GW, assuming a fair share reached by end of 2025
-            2030: 400
+            2030: 309 # EEG2023 Ziel für 2035
             2035: 1000
             2040: 1000
             2045: 1000
@@ -446,16 +459,16 @@ solving:
       Generator:
         onwind:
           DE:
-            2030: 115   # Wind-an-Land Law
-            2035: 115   # Wind-an-Land Law
+            2030: 99   # Wind-an-Land Law 2028
+            2035: 115   # Wind-an-Land Law 2030
             2040: 115   # Wind-an-Land Law
             2045: 115
         offwind:
           DE:
-            2030: 30   # Wind-auf-See Law
+            2030: 22.5   # 75% Wind-auf-See Law
             2035: 30
-            2040: 30
-            2045: 30
+            2040: 40
+            2045: 50
         solar:
           DE:
               # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW,
@@ -574,6 +587,7 @@ plotting:
 # overwrite in config.default.yaml
 #powerplants_filter: (DateOut >= 2019 or DateOut != DateOut)
 electricity:
+  renewable_carriers: [solar, solar-hsat, onwind, offwind-ac, offwind-dc, hydro] # removed offwind-float
   powerplants_filter: (DateOut >= 2019 or DateOut != DateOut) and not (Country == "DE" and Set == "CHP")
   custom_powerplants: true
   custom_file: resources/german_chp.csv

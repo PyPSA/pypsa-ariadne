@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import logging
 import math
 import os
 import re
@@ -9,6 +10,8 @@ import numpy as np
 import pandas as pd
 import pypsa
 from numpy import isclose
+
+logger = logging.getLogger(__name__)
 
 paths = [
     "workflow/submodules/pypsa-eur/scripts",
@@ -34,166 +37,139 @@ MWh2PJ = 3.6e-6
 toe_to_MWh = 11.630  # GWh/ktoe OR MWh/toe
 
 
-def _get_oil_fossil_fraction(n, region):
+def _get_fuel_fractions(n, region, fuel):
     kwargs = {
         "groupby": n.statistics.groupers.get_name_bus_and_carrier,
         "at_port": True,
         "nice_names": False,
     }
 
-    if "DE" in region:
-        total_oil_supply = (
-            n.statistics.supply(bus_carrier="oil", **kwargs)
-            .groupby("name")
-            .sum()
-            .reindex(
-                [
-                    "DE oil refining",
-                    "DE renewable oil -> DE oil",
-                    "EU renewable oil -> DE oil",
-                ]
-            )
-            .dropna()
-        )  # If links are not used they are dropped here
-
-    else:
-        total_oil_supply = (
-            n.statistics.supply(bus_carrier="oil", **kwargs)
-            .groupby("name")
-            .sum()
-            .reindex(
-                [
-                    "EU oil refining",
-                    "DE renewable oil -> EU oil",
-                    "EU renewable oil -> EU oil",
-                ]
-            )
-            .dropna()
-        )
-
-    oil_fossil_fraction = (
-        total_oil_supply[~total_oil_supply.index.str.contains("renewable")].sum()
-        / total_oil_supply.sum()
-    )
-
-    return oil_fossil_fraction
-
-
-def _get_gas_fractions(n, region):
-    kwargs = {
-        "groupby": n.statistics.groupers.get_name_bus_and_carrier,
-        "at_port": True,
-        "nice_names": False,
-    }
-
-    renewable_gas_supply = (
-        n.statistics.supply(bus_carrier="renewable gas", **kwargs)
+    renewable_fuel_supply = (
+        n.statistics.supply(bus_carrier=f"renewable {fuel}", **kwargs)
         .groupby(["bus", "carrier"])
         .sum()
-    )
+    ).round(
+        3
+    )  # rounding for numerical stability
 
-    total_gas_supply = (
-        n.statistics.supply(bus_carrier="gas", **kwargs)
+    total_fuel_supply = (
+        n.statistics.supply(bus_carrier=f"{fuel}", **kwargs)
         .groupby(["name", "carrier"])
         .sum()
-    )
+    ).round(3)
+
+    if fuel == "gas":
+        fuel_refining = "gas"
+    elif fuel == "oil":
+        fuel_refining = "oil refining"
+    else:
+        raise ValueError(f"Fuel {fuel} not supported")
 
     if "DE" in region:
-        domestic_gas_supply = (
-            total_gas_supply.reindex(
+        domestic_fuel_supply = (
+            total_fuel_supply.reindex(
                 [
-                    ("DE gas", "gas"),
-                    ("DE renewable gas -> DE gas", "renewable gas"),
-                    ("EU renewable gas -> DE gas", "renewable gas"),
+                    (f"DE {fuel_refining}", f"{fuel_refining}"),
+                    (f"DE renewable {fuel} -> DE {fuel}", f"renewable {fuel}"),
+                    (f"EU renewable {fuel} -> DE {fuel}", f"renewable {fuel}"),
                 ]
             )
             .dropna()
             .groupby("carrier")
             .sum()
         )  # If links are not used they are dropped here
-        total_imported_renewable_gas = total_gas_supply.get(
-            ("EU renewable gas -> DE gas", "renewable gas"), 0
+        total_imported_renewable_fuel = total_fuel_supply.get(
+            (f"EU renewable {fuel} -> DE {fuel}", f"renewable {fuel}"), 0
         )
-        total_exported_renewable_gas = total_gas_supply.get(
-            ("DE renewable gas -> EU gas", "renewable gas"), 0
+        total_exported_renewable_fuel = total_fuel_supply.get(
+            (f"DE renewable {fuel} -> EU {fuel}", f"renewable {fuel}"), 0
         )
-        domestic_renewable_gas = renewable_gas_supply.get("DE renewable gas")
-        foreign_renewable_gas = renewable_gas_supply.get("EU renewable gas")
+        domestic_renewable_fuel = renewable_fuel_supply.get(f"DE renewable {fuel}")
+        foreign_renewable_fuel = renewable_fuel_supply.get(f"EU renewable {fuel}")
     else:
-        domestic_gas_supply = (
-            total_gas_supply.reindex(
+        domestic_fuel_supply = (
+            total_fuel_supply.reindex(
                 [
-                    ("EU gas", "gas"),
-                    ("DE renewable gas -> EU gas", "renewable gas"),
-                    ("EU renewable gas -> EU gas", "renewable gas"),
+                    (f"EU {fuel_refining}", f"{fuel_refining}"),
+                    (f"DE renewable {fuel} -> EU {fuel}", f"renewable {fuel}"),
+                    (f"EU renewable {fuel} -> EU {fuel}", f"renewable {fuel}"),
                 ]
             )
             .dropna()
             .groupby("carrier")
             .sum()
         )
-        total_imported_renewable_gas = total_gas_supply.get(
-            ("DE renewable gas -> EU gas", "renewable gas"), 0
+        total_imported_renewable_fuel = total_fuel_supply.get(
+            (f"DE renewable {fuel} -> EU {fuel}", f"renewable {fuel}"), 0
         )
-        total_exported_renewable_gas = total_gas_supply.get(
-            ("EU renewable gas -> DE gas", "renewable gas"), 0
+        total_exported_renewable_fuel = total_fuel_supply.get(
+            (f"EU renewable {fuel} -> DE {fuel}", f"renewable {fuel}"), 0
         )
-        domestic_renewable_gas = renewable_gas_supply.get("EU renewable gas", 0)
-        foreign_renewable_gas = renewable_gas_supply.get("DE renewable gas", 0)
+        domestic_renewable_fuel = renewable_fuel_supply.get(f"EU renewable {fuel}", 0)
+        foreign_renewable_fuel = renewable_fuel_supply.get(f"DE renewable {fuel}", 0)
 
     # Legacy code for dropping gas pipelines (now deactivated)
     drops = ["gas pipeline", "gas pipeline new"]
     for d in drops:
-        if d in total_gas_supply.index:
-            total_gas_supply.drop(d, inplace=True)
+        if d in total_fuel_supply.index:
+            total_fuel_supply.drop(d, inplace=True)
 
-    if total_imported_renewable_gas == 0:
-        imported_renewable_gas = pd.Series(
-            0, index=renewable_gas_supply.index.get_level_values("carrier").unique()
+    if total_imported_renewable_fuel == 0:
+        imported_renewable_fuel = pd.Series(
+            0, index=renewable_fuel_supply.index.get_level_values("carrier").unique()
         )
     else:
-        imported_renewable_gas = (
-            foreign_renewable_gas
-            / foreign_renewable_gas.sum()
-            * total_imported_renewable_gas
+        imported_renewable_fuel = (
+            foreign_renewable_fuel
+            / foreign_renewable_fuel.sum()
+            * total_imported_renewable_fuel
         )
 
-    if total_exported_renewable_gas == 0:
-        exported_renewable_gas = pd.Series(
-            0, index=renewable_gas_supply.index.get_level_values("carrier").unique()
+    if total_exported_renewable_fuel == 0:
+        exported_renewable_fuel = pd.Series(
+            0, index=renewable_fuel_supply.index.get_level_values("carrier").unique()
         )
     else:
-        exported_renewable_gas = (
-            domestic_renewable_gas
-            / domestic_renewable_gas.sum()
-            * total_exported_renewable_gas
+        exported_renewable_fuel = (
+            domestic_renewable_fuel
+            / domestic_renewable_fuel.sum()
+            * total_exported_renewable_fuel
         )
 
-    renewable_gas_balance = imported_renewable_gas.add(
-        domestic_renewable_gas, fill_value=0
-    ).subtract(exported_renewable_gas, fill_value=0)
+    renewable_fuel_balance = imported_renewable_fuel.add(
+        domestic_renewable_fuel, fill_value=0
+    ).subtract(exported_renewable_fuel, fill_value=0)
     # These numbers may deviate because the input data from n.statistics
     # can deviate. I don't know why exactly, but at least we can check that
     # the difference stays roughly the same after the calculation.
     assert isclose(
-        domestic_gas_supply.get("renewable gas", 0) - renewable_gas_balance.sum(),
-        total_gas_supply.get(["DE renewable gas -> DE gas"], pd.Series(0)).sum()
-        + total_gas_supply.get(["DE renewable gas -> EU gas"], pd.Series(0)).sum()
-        - renewable_gas_supply.get("DE renewable gas", pd.Series(0)).sum(),
+        domestic_fuel_supply.get(f"renewable {fuel}", 0) - renewable_fuel_balance.sum(),
+        total_fuel_supply.get([f"DE renewable {fuel} -> DE {fuel}"], pd.Series(0)).sum()
+        + total_fuel_supply.get(
+            [f"DE renewable {fuel} -> EU {fuel}"], pd.Series(0)
+        ).sum()
+        - renewable_fuel_supply.get(f"DE renewable {fuel}", pd.Series(0)).sum(),
         rtol=1e-3,
     )
 
-    gas_fractions = pd.Series(
-        {
-            "Natural Gas": domestic_gas_supply.get("gas", 0),
-            "Biomass": renewable_gas_balance.filter(like="biogas").sum(),
-            "Efuel": renewable_gas_balance.get("Sabatier", 0),
-        }
-    ).divide(domestic_gas_supply.sum())
+    fuel_fractions = pd.Series()
 
-    assert isclose(gas_fractions.sum(), 1)
+    fuel_fractions["Biomass"] = renewable_fuel_balance.filter(like="bio").sum()
 
-    return gas_fractions
+    if fuel == "gas":
+        fuel_fractions["Natural Gas"] = domestic_fuel_supply.get("gas", 0)
+        fuel_fractions["Efuel"] = renewable_fuel_balance.get("Sabatier", 0)
+    elif fuel == "oil":
+        fuel_fractions["Fossil"] = domestic_fuel_supply.get("oil refining", 0)
+        fuel_fractions["Efuel"] = renewable_fuel_balance.get("Fischer-Tropsch", 0)
+    else:
+        raise ValueError(f"Fuel {fuel} not supported")
+
+    fuel_fractions = fuel_fractions.divide(domestic_fuel_supply.sum())
+
+    assert isclose(fuel_fractions.sum(), 1)
+
+    return fuel_fractions
 
 
 def _get_h2_fossil_fraction(n):
@@ -1048,7 +1024,7 @@ def get_primary_energy(n, region):
 
     var = pd.Series()
 
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
+    oil_fossil_fraction = _get_fuel_fractions(n, region, "oil")["Fossil"]
     primary_oil_factor = (
         n.links.query("carrier=='oil refining'").efficiency.unique().item()
     )
@@ -1085,7 +1061,7 @@ def get_primary_energy(n, region):
         - var["Primary Energy|Oil|Heat"]
     )
 
-    gas_fractions = _get_gas_fractions(n, region)
+    gas_fractions = _get_fuel_fractions(n, region, "gas")
 
     # Eventhough biogas gets routed through the EU gas bus,
     # it should be counted separately as Primary Energy|Biomass
@@ -1599,7 +1575,7 @@ def get_secondary_energy(n, region, _industry_demand):
         rtol=0.01,
     )
 
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
+    oil_fractions = _get_fuel_fractions(n, region, "oil")
 
     oil_fuel_usage = (
         n.statistics.withdrawal(bus_carrier="oil", **kwargs)
@@ -1623,14 +1599,20 @@ def get_secondary_energy(n, region, _industry_demand):
 
     total_oil_fuel_usage = oil_fuel_usage.sum()
     var["Secondary Energy|Liquids|Fossil"] = var["Secondary Energy|Liquids|Oil"] = (
-        total_oil_fuel_usage * oil_fossil_fraction
+        total_oil_fuel_usage * oil_fractions["Fossil"]
     )
-    var["Secondary Energy|Liquids|Hydrogen"] = total_oil_fuel_usage * (
-        1 - oil_fossil_fraction
+    var["Secondary Energy|Liquids|Hydrogen"] = (
+        total_oil_fuel_usage * oil_fractions["Efuel"]
+    )
+
+    var["Secondary Energy|Liquids|Biomass"] = (
+        total_oil_fuel_usage * oil_fractions["Biomass"]
     )
 
     var["Secondary Energy|Liquids"] = (
-        var["Secondary Energy|Liquids|Oil"] + var["Secondary Energy|Liquids|Hydrogen"]
+        var["Secondary Energy|Liquids|Oil"]
+        + var["Secondary Energy|Liquids|Hydrogen"]
+        + var["Secondary Energy|Liquids|Biomass"]
     )
 
     try:
@@ -1670,7 +1652,7 @@ def get_secondary_energy(n, region, _industry_demand):
 
     total_gas_fuel_usage = gas_fuel_usage.sum()
 
-    gas_fractions = _get_gas_fractions(n, region)
+    gas_fractions = _get_fuel_fractions(n, region, "gas")
 
     # Fraction supplied by Hydrogen conversion
     var["Secondary Energy|Gases|Hydrogen"] = total_gas_fuel_usage * gas_fractions.get(
@@ -1776,7 +1758,7 @@ def get_final_energy(
         "nice_names": False,
     }
     h2_fossil_fraction = _get_h2_fossil_fraction(n)
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
+    oil_fractions = _get_fuel_fractions(n, region, "oil")
 
     if config["industry"]["ammonia"]:
         # MWh/a
@@ -1815,7 +1797,7 @@ def get_final_energy(
     # write var
     var["Final Energy|Non-Energy Use|Gases"] = non_energy.methane + CH4_for_NH3
 
-    gas_fractions = _get_gas_fractions(n, region)
+    gas_fractions = _get_fuel_fractions(n, region, "gas")
     for gas_type in gas_fractions.index:
         var[f"Final Energy|Non-Energy Use|Gases|{gas_type}"] = (
             var["Final Energy|Non-Energy Use|Gases"] * gas_fractions[gas_type]
@@ -1824,12 +1806,14 @@ def get_final_energy(
     var["Final Energy|Non-Energy Use|Liquids"] = non_energy.naphtha
 
     var["Final Energy|Non-Energy Use|Liquids|Petroleum"] = (
-        non_energy.naphtha * oil_fossil_fraction
+        non_energy.naphtha * oil_fractions["Fossil"]
     )
-    var["Final Energy|Non-Energy Use|Liquids|Efuel"] = non_energy.naphtha * (
-        1 - oil_fossil_fraction
+    var["Final Energy|Non-Energy Use|Liquids|Efuel"] = (
+        non_energy.naphtha * oil_fractions["Efuel"]
     )
-    var["Final Energy|Non-Energy Use|Liquids|Biomass"] = 0
+    var["Final Energy|Non-Energy Use|Liquids|Biomass"] = (
+        non_energy.naphtha * oil_fractions["Biomass"]
+    )
 
     var["Final Energy|Non-Energy Use|Solids"] = 0
     var["Final Energy|Non-Energy Use|Solids|Coal"] = 0
@@ -1906,7 +1890,7 @@ def get_final_energy(
     )
 
     var["Final Energy|Industry|Liquids|Petroleum"] = (
-        sum_load(n, "naphtha for industry", region) * oil_fossil_fraction
+        sum_load(n, "naphtha for industry", region) * oil_fractions["Fossil"]
     )
 
     # subtract non-energy used petroleum from total petroleum demand
@@ -1915,13 +1899,22 @@ def get_final_energy(
         - var["Final Energy|Non-Energy Use|Liquids|Petroleum"]
     )
 
-    var["Final Energy|Industry|Liquids|Efuel"] = sum_load(
-        n, "naphtha for industry", region
-    ) * (1 - oil_fossil_fraction)
+    var["Final Energy|Industry|Liquids|Efuel"] = (
+        sum_load(n, "naphtha for industry", region) * oil_fractions["Efuel"]
+    )
     # subtract non-energy used efuels from total efuels demand
     var["Final Energy|Industry excl Non-Energy Use|Liquids|Efuel"] = (
         var["Final Energy|Industry|Liquids|Efuel"]
         - var["Final Energy|Non-Energy Use|Liquids|Efuel"]
+    )
+
+    var["Final Energy|Industry|Liquids|Biomass"] = (
+        sum_load(n, "naphtha for industry", region) * oil_fractions["Biomass"]
+    )
+    # subtract non-energy used biomass from total biomass demand
+    var["Final Energy|Industry excl Non-Energy Use|Liquids|Biomass"] = (
+        var["Final Energy|Industry|Liquids|Biomass"]
+        - var["Final Energy|Non-Energy Use|Liquids|Biomass"]
     )
 
     var["Final Energy|Industry|Liquids"] = sum_load(n, "naphtha for industry", region)
@@ -2103,7 +2096,14 @@ def get_final_energy(
     ) + oil_usage.get("rural oil boiler", 0)
 
     var["Final Energy|Residential and Commercial|Liquids|Petroleum"] = (
-        var["Final Energy|Residential and Commercial|Liquids"] * oil_fossil_fraction
+        var["Final Energy|Residential and Commercial|Liquids"] * oil_fractions["Fossil"]
+    )
+    var["Final Energy|Residential and Commercial|Liquids|Efuel"] = (
+        var["Final Energy|Residential and Commercial|Liquids"] * oil_fractions["Efuel"]
+    )
+    var["Final Energy|Residential and Commercial|Liquids|Biomass"] = (
+        var["Final Energy|Residential and Commercial|Liquids"]
+        * oil_fractions["Biomass"]
     )
 
     # var["Final Energy|Residential and Commercial|Other"] = \
@@ -2177,8 +2177,6 @@ def get_final_energy(
         + energy_totals["total international navigation"]
     )
 
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
-
     var["Final Energy|Transportation|Liquids"] = (
         sum_load(n, "land transport oil", region)
         + (
@@ -2198,12 +2196,16 @@ def get_final_energy(
     # var["Final Energy|Transportation|Liquids|Biomass"] = \
     # var["Final Energy|Transportation|Liquids|Synthetic Fossil"] = \
     var["Final Energy|Transportation|Liquids|Petroleum"] = (
-        var["Final Energy|Transportation|Liquids"] * oil_fossil_fraction
+        var["Final Energy|Transportation|Liquids"] * oil_fractions["Fossil"]
     )
 
-    var["Final Energy|Transportation|Liquids|Efuel"] = var[
-        "Final Energy|Transportation|Liquids"
-    ] * (1 - oil_fossil_fraction)
+    var["Final Energy|Transportation|Liquids|Efuel"] = (
+        var["Final Energy|Transportation|Liquids"] * oil_fractions["Efuel"]
+    )
+
+    var["Final Energy|Transportation|Liquids|Biomass"] = (
+        var["Final Energy|Transportation|Liquids"] * oil_fractions["Biomass"]
+    )
 
     var["Final Energy|Bunkers|Aviation"] = var[
         "Final Energy|Bunkers|Aviation|Liquids"
@@ -2300,11 +2302,15 @@ def get_final_energy(
     )
 
     var["Final Energy|Liquids|Petroleum"] = (
-        var["Final Energy|Liquids"] * oil_fossil_fraction
+        var["Final Energy|Liquids"] * oil_fractions["Fossil"]
     )
 
-    var["Final Energy|Liquids|Efuel"] = var["Final Energy|Liquids"] * (
-        1 - oil_fossil_fraction
+    var["Final Energy|Liquids|Efuel"] = (
+        var["Final Energy|Liquids"] * oil_fractions["Efuel"]
+    )
+
+    var["Final Energy|Liquids|Biomass"] = (
+        var["Final Energy|Liquids"] * oil_fractions["Biomass"]
     )
 
     var["Final Energy|Heat"] = (
@@ -2359,9 +2365,13 @@ def get_final_energy(
     return var
 
 
-def get_emissions(n, region, _energy_totals):
-
+def get_emissions(n, region, _energy_totals, industry_demand):
     energy_totals = _energy_totals.loc[region[0:2]]
+
+    industry_DE = industry_demand.filter(
+        like=region,
+        axis=0,
+    ).sum()
 
     kwargs = {
         "groupby": n.statistics.groupers.get_name_bus_and_carrier,
@@ -2428,9 +2438,12 @@ def get_emissions(n, region, _energy_totals):
         "urban central oil CHP",
     ]
 
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
-    # Assuming that efuel emissions are generated at the production site
-    var["Emissions|CO2|Energy|Production|From Liquids"] = co2_emissions.loc[
+    # multiply by fossil fraction to disregard e- and biofuel emissions
+
+    oil_fossil_fraction = _get_fuel_fractions(n, region, "oil")["Fossil"]
+
+    # This variable is not in the database, but it might be useful for double checking the totals
+    var["Emissions|CO2|Efuels|Liquids"] = co2_emissions.loc[
         co2_emissions.index.isin(oil_techs)
     ].sum() * (1 - oil_fossil_fraction)
 
@@ -2455,7 +2468,7 @@ def get_emissions(n, region, _energy_totals):
         "urban central gas CHP CC",
     ]
 
-    gas_fractions = _get_gas_fractions(n, region)
+    gas_fractions = _get_fuel_fractions(n, region, "gas")
 
     var["Emissions|CO2|Energy|Production|From Gases"] = co2_emissions.loc[
         co2_emissions.index.isin(gas_techs)
@@ -2569,12 +2582,27 @@ def get_emissions(n, region, _energy_totals):
     ).sum() + co2_emissions.get("industry methanol", 0)
     # process emissions is mainly cement, methanol is used for chemicals
 
-    var["Emissions|CO2|Energy|Demand|Industry"] = co2_emissions.reindex(
-        ["gas for industry", "gas for industry CC", "coal for industry"]
-    ).sum() - co2_negative_emissions.get(
-        "solid biomass for industry CC",
-        0,
+    mwh_coal_per_mwh_coke = 1.366  # from eurostat energy balance
+    # 0.3361 t/MWh, industry_DE is in PJ, 1e-6 to convert to Mt
+    coking_emissions = (
+        industry_DE.coke / MWh2PJ * (mwh_coal_per_mwh_coke - 1) * 0.3361 * t2Mt
     )
+    var["Emissions|Gross Fossil CO2|Energy|Demand|Industry"] = (
+        co2_emissions.reindex(
+            [
+                "gas for industry",
+                "gas for industry CC",
+                "coal for industry",
+            ]
+        ).sum()
+    ) - coking_emissions
+    var["Emissions|Gross Fossil CO2|Energy|Supply|Solids"] = var[
+        "Emissions|CO2|Energy|Supply|Solids"
+    ] = coking_emissions
+
+    var["Emissions|CO2|Energy|Demand|Industry"] = var[
+        "Emissions|Gross Fossil CO2|Energy|Demand|Industry"
+    ] - co2_atmosphere_withdrawal.get("solid biomass for industry CC", 0)
 
     var["Emissions|CO2|Industry"] = (
         var["Emissions|CO2|Energy|Demand|Industry"]
@@ -2694,21 +2722,42 @@ def get_emissions(n, region, _energy_totals):
         ]
     ).sum()
 
-    var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = var[
-        "Emissions|CO2|Energy|Supply|Liquids"
-    ] = co2_emissions.get("oil refining", 0)
+    var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"] = co2_emissions.get(
+        "oil refining", 0
+    )
 
-    # var["Emissions|CO2|Energy|Supply|Gases"] + \
+    var["Emissions|CO2|Energy|Supply|Liquids"] = (
+        var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"]
+        - co2_atmosphere_withdrawal.filter(like="biomass to liquid").sum()
+    )
+
+    var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = (
+        var["Emissions|CO2|Energy|Supply|Liquids"]
+        + var["Emissions|CO2|Energy|Supply|Gases"]
+    )
+
+    var["Emissions|Gross Fossil CO2|Energy|Supply"] = (
+        var["Emissions|Gross Fossil CO2|Energy|Supply|Electricity"]
+        + var["Emissions|Gross Fossil CO2|Energy|Supply|Heat"]
+        + var["Emissions|Gross Fossil CO2|Energy|Supply|Hydrogen"]
+        + var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"]
+        + var["Emissions|Gross Fossil CO2|Energy|Supply|Solids"]
+    )
+
+    var["Emissions|Gross Fossil CO2|Energy"] = (
+        var["Emissions|Gross Fossil CO2|Energy|Supply"]
+        + var["Emissions|Gross Fossil CO2|Energy|Demand|Industry"]
+    )
 
     var["Emissions|CO2|Energy|Supply"] = (
         var["Emissions|CO2|Energy|Supply|Gases"]
         + var["Emissions|CO2|Energy|Supply|Hydrogen"]
         + var["Emissions|CO2|Energy|Supply|Electricity and Heat"]
         + var["Emissions|CO2|Energy|Supply|Liquids"]
+        + var["Emissions|CO2|Energy|Supply|Solids"]
     )
 
     # var["Emissions|CO2|Energy|Supply|Other Sector"] = \
-    # var["Emissions|CO2|Energy|Supply|Solids"] = \
 
     var["Emissions|CO2|Energy"] = (
         var["Emissions|CO2|Energy|Demand"] + var["Emissions|CO2|Energy|Supply"]
@@ -2945,6 +2994,7 @@ def get_weighted_costs_links(carriers, n, region):
     if denominator == 0:
         return np.nan
     result = numerator / denominator
+    result = np.where(result < 1e4, result, np.nan)
     return result
 
 
@@ -2984,6 +3034,10 @@ def get_prices(n, region):
     stored in a pandas Series object and returned.
     """
 
+    # last Update according to template from 2024-08-13
+    # in Ariadne database: 200
+    # currently reported: 32
+
     var = pd.Series()
 
     kwargs = {
@@ -2998,37 +3052,22 @@ def get_prices(n, region):
     # co2 additions
     co2_price = -n.global_constraints.loc["CO2Limit", "mu"] - co2_limit_de
     # specific emissions in tons CO2/MWh according to n.links[n.links.carrier =="your_carrier].efficiency2.unique().item()
-    specific_emisisons = {
+    specific_emissions = {
         "oil": 0.2571,
         "gas": 0.198,  # OCGT
         "hard coal": 0.3361,
         "lignite": 0.4069,
     }
 
-    nodal_flows_lv = get_nodal_flows(
-        n,
-        "low voltage",
-        region,
-        query="not carrier.str.contains('agriculture')"
-        "& not carrier.str.contains('industry')"
-        "& not carrier.str.contains('urban central')",
-    )
-
-    nodal_prices_lv = n.buses_t.marginal_price[nodal_flows_lv.columns]
-
-    # electricity price at the final level in the residential sector. Prices should include the effect of carbon prices.
-    var["Price|Final Energy|Residential and Commercial|Electricity"] = (
-        nodal_flows_lv.mul(nodal_prices_lv).values.sum()
-        / nodal_flows_lv.values.sum()
-        / MWh2GJ
-    )
-
     # vars: Tier 1, Category: energy(price)
+
+    # Price|Primary Energy
+    # reported: 4/4
 
     nodal_flows_bm = get_nodal_flows(n, "solid biomass", region)
     nodal_prices_bm = n.buses_t.marginal_price[nodal_flows_bm.columns]
 
-    # primary energy consumption of purpose-grown bioenergy crops, crop and forestry residue bioenergy, municipal solid waste bioenergy, traditional biomass, including renewable waste
+    # Price|Primary Energy|Biomass
     var["Price|Primary Energy|Biomass"] = (
         nodal_flows_bm.mul(nodal_prices_bm).values.sum()
         / nodal_flows_bm.values.sum()
@@ -3059,8 +3098,8 @@ def get_prices(n, region):
         nf_coal.values.sum() + nf_lignite.values.sum()
     )
     co2_add_coal = (
-        coal_fraction * specific_emisisons["hard coal"] * co2_price
-        + lignite_fraction * specific_emisisons["lignite"] * co2_price
+        coal_fraction * specific_emissions["hard coal"] * co2_price
+        + lignite_fraction * specific_emissions["lignite"] * co2_price
     )
 
     var["Price|Primary Energy|Coal"] = (
@@ -3075,33 +3114,31 @@ def get_prices(n, region):
     nodal_prices_gas = n.buses_t.marginal_price[nodal_flows_gas.columns]
 
     # co2 part
-    gas_fractions = _get_gas_fractions(n, region)
-    co2_add_gas = gas_fractions["Natural Gas"] * specific_emisisons["gas"] * co2_price
+    co2_cost_gas = specific_emissions["gas"] * co2_price
 
     var["Price|Primary Energy|Gas"] = (
         nodal_flows_gas.mul(nodal_prices_gas).values.sum()
         / nodal_flows_gas.values.sum()
-        + co2_add_gas
+        + co2_cost_gas
     ) / MWh2GJ
 
     # Price|Primary Energy|Oil
-    # if oil bus is unravelled change "EU" into region
-    nodal_flows_oil = get_nodal_flows(n, "oil", "EU")
+    nodal_flows_oil = get_nodal_flows(n, "oil primary", region)
     nodal_prices_oil = n.buses_t.marginal_price[nodal_flows_oil.columns]
 
     # co2 part
-    oil_fossil_fraction = _get_oil_fossil_fraction(n, region)
-    co2_add_oil = oil_fossil_fraction * specific_emisisons["oil"] * co2_price
+    co2_cost_oil = specific_emissions["oil"] * co2_price
 
     var["Price|Primary Energy|Oil"] = (
         nodal_flows_oil.mul(nodal_prices_oil).values.sum()
         / nodal_flows_oil.values.sum()
-        + co2_add_oil
+        + co2_cost_oil
     ) / MWh2GJ
 
-    # Price|Secondary Energy|Electricity
-    # electricity price at the secondary level, i.e. for large scale consumers (e.g. aluminum production). Prices should include the effect of carbon prices.
+    # Price|Secondary Energy
+    # reported: 8/14
 
+    # Price|Secondary Energy|Electricity
     nodal_flows_ac = get_nodal_flows(
         n, "AC", region, query="not carrier.str.contains('gas')"
     )
@@ -3113,14 +3150,17 @@ def get_prices(n, region):
         / MWh2GJ
     )
 
+    # Price|Secondary Energy|Gases|Natural Gas
     var["Price|Secondary Energy|Gases|Natural Gas"] = (
-        costs_gen_generators(n, region, "gas")[0] / MWh2GJ
-    )
+        costs_gen_generators(n, region, "gas")[0] + co2_cost_gas
+    ) / MWh2GJ
 
+    # Price|Secondary Energy|Gases|Hydrogen
     var["Price|Secondary Energy|Gases|Hydrogen"] = (
         costs_gen_links(n, region, "Sabatier")[0] / MWh2GJ
     )
 
+    # Price|Secondary Energy|Gases|Biomass
     var["Price|Secondary Energy|Gases|Biomass"] = (
         get_weighted_costs_links(["biogas to gas", "biogas to gas CC"], n, region)
         / MWh2GJ
@@ -3130,7 +3170,27 @@ def get_prices(n, region):
     # Price for gaseous Efuels at the secondary level, i.e. for large scale consumers. Prices should include the effect of carbon prices.
     # what are gaseous Efuels?
 
-    # Price|Secondary Energy|Hydrogen (carbon costs not yet included)
+    # Price|Secondary Energy|Gases
+    nodal_flows_gas = get_nodal_flows(
+        n,
+        ["gas", "renewable gas"],
+        region,
+        query="not carrier.str.contains('pipeline')"
+        "& not carrier == 'gas'"
+        "& not carrier.str.contains('rural')"
+        "& not carrier.str.contains('urban decentral')",
+    )
+    nodal_prices_gas = n.buses_t.marginal_price[nodal_flows_gas.columns]
+    nodal_prices_gas.loc[:, "DE gas"] = nodal_prices_gas["DE gas"] + co2_cost_gas
+
+    var["Price|Secondary Energy|Gases"] = (
+        nodal_flows_gas.mul(nodal_prices_gas).values.sum()
+        / nodal_flows_gas.values.sum()
+        / MWh2GJ
+    )
+
+    # Price|Secondary Energy|Hydrogen
+    # (carbon costs not yet included)
     nodal_flows_h2 = get_nodal_flows(n, "H2", region)
     nodal_prices_h2 = n.buses_t.marginal_price[nodal_flows_h2.columns]
 
@@ -3138,91 +3198,84 @@ def get_prices(n, region):
         nodal_flows_h2.mul(nodal_prices_h2).values.sum() / nodal_flows_h2.values.sum()
     ) / MWh2GJ
 
-    # From PIK plots
-    # "Price|Final Energy|Residential and Commercial|Hydrogen" = final energy consumption by the residential sector of hydrogen
-    # do we have residential applications for hydrogen?
-
-    nf_gas_residential = get_nodal_flows(
+    # Price|Secondary Energy|Liquids
+    nodal_flows_oil = get_nodal_flows(
         n,
-        "gas",
-        region,
-        query="carrier.str.contains('rural')"
-        "or carrier.str.contains('urban decentral')",
+        ["oil primary", "renewable oil"],
+        "DE",
+        query="not carrier.str.contains('rural')"
+        "& not carrier.str.contains('urban decentral')",
     )
-    nodal_prices_gas = n.buses_t.marginal_price[nf_gas_residential.columns]
-
-    # !!! mv much higher: check carbon effect!
-    var["Price|Final Energy|Residential and Commercial|Gases"] = (
-        nf_gas_residential.mul(nodal_prices_gas).values.sum()
-        / nf_gas_residential.values.sum()
-        / MWh2GJ
-        if nf_gas_residential.values.sum() > 0
-        else np.nan
+    nodal_prices_oil = n.buses_t.marginal_price[nodal_flows_oil.columns]
+    nodal_prices_oil.loc[:, "DE oil primary"] = (
+        nodal_prices_oil["DE oil primary"] + co2_cost_oil
     )
 
-    # "Price|Final Energy|Residential and Commercial|Gases|Natural Gas" ?
-    # "Price|Final Energy|Residential and Commercial|Liquids|Biomass" x
-
-    var["Price|Final Energy|Residential and Commercial|Liquids|Oil"] = (
-        get_weighted_costs_links(
-            ["rural oil boiler", "urban decentral oil boiler"], n, region
-        )
+    var["Price|Secondary Energy|Liquids"] = (
+        nodal_flows_oil.mul(nodal_prices_oil).values.sum()
+        / nodal_flows_oil.values.sum()
         / MWh2GJ
     )
 
-    var["Price|Final Energy|Residential and Commercial|Liquids"] = var[
-        "Price|Final Energy|Residential and Commercial|Liquids|Oil"
+    # Price|Secondary Energy|Liquids|Biomass
+    # Price|Secondary Energy|Liquids|Oil
+    # Price|Secondary Energy|Liquids|Hydrogen
+    var["Price|Secondary Energy|Liquids|Hydrogen"] = (
+        costs_gen_links(n, region, "Fischer-Tropsch")[0] / MWh2GJ
+    )
+
+    # Price|Secondary Energy|Liquids|Efuel
+    # Price|Secondary Energy|Solids|Biomass
+    # Price|Secondary Energy|Solids|Coal
+
+    # "Price|Final Energy|
+    # reported: 23/182
+    # warning: these prices do not incorporate co2 prices yet
+
+    ### Price|Final Energy|Transportation|
+
+    # Price|Final Energy|Transportation|Freight|Electricity x
+    # Price|Final Energy|Transportation|Freight|Gases
+    # Price|Final Energy|Transportation|Freight|Hydrogen
+    var["Price|Final Energy|Transportation|Freight|Hydrogen"] = (
+        price_load(n, "land transport fuel cell", region)[0] / MWh2GJ
+    )
+    # Price|Final Energy|Transportation|Freight|Liquids
+    carriers = [
+        "kerosene for aviation",
+        "shipping methanol",
+        "shipping oil",
+        "land transport oil",
     ]
-
-    var["Price|Final Energy|Residential and Commercial|Solids|Biomass"] = (
-        get_weighted_costs_links(
-            ["rural biomass boiler", "urban decentral biomass boiler"], n, region
-        )
-        / MWh2GJ
+    df = pd.DataFrame({c: price_load(n, c, region) for c in carriers})
+    var["Price|Final Energy|Transportation|Freight|Liquids"] = (
+        (df.iloc[0] * df.iloc[1]).sum() / df.iloc[1].sum() / MWh2GJ
     )
+    # Price|Final Energy|Transportation|Freight|Solids x
 
-    var["Price|Final Energy|Residential and Commercial|Solids"] = var[
-        "Price|Final Energy|Residential and Commercial|Solids|Biomass"
-    ]
-
-    # "Price|Final Energy|Industry|Electricity"✓
-
-    var["Price|Final Energy|Industry|Gases"] = (
-        get_weighted_costs_links(["gas for industry", "gas for industry CC"], n, region)
-        / MWh2GJ
+    # Price|Final Energy|Transportation|Passenger|Electricity
+    var["Price|Final Energy|Transportation|Passenger|Electricity"] = (
+        price_load(n, "land transport EV", region)[0] / MWh2GJ
     )
-
-    # "Price|Final Energy|Industry|Heat"✓
-
-    var["Price|Final Energy|Industry|Liquids"] = (
-        price_load(n, "naphtha for industry", region)[0] / MWh2GJ
+    # Price|Final Energy|Transportation|Passenger|Gases
+    # Price|Final Energy|Transportation|Passenger|Hydrogen
+    var["Price|Final Energy|Transportation|Passenger|Hydrogen"] = (
+        price_load(n, "land transport fuel cell", region)[0] / MWh2GJ
     )
-
-    # "Price|Final Energy|Industry|Hydrogen"✓
-
-    var["Price|Final Energy|Industry|Solids"] = (
-        get_weighted_costs_links(
-            [
-                "solid biomass for industry",
-                "solid biomass for industry CC",
-                "coal for industry",
-            ],
-            n,
-            region,
-        )
-        / MWh2GJ
+    # Price|Final Energy|Transportation|Passenger|Liquids
+    carriers = ["kerosene for aviation", "land transport oil"]
+    df = pd.DataFrame({c: price_load(n, c, region) for c in carriers})
+    var["Price|Final Energy|Transportation|Passenger|Liquids"] = (
+        (df.iloc[0] * df.iloc[1]).sum() / df.iloc[1].sum() / MWh2GJ
     )
+    # Price|Final Energy|Transportation|Passenger|Solids x
 
-    # Rest Tier 2
-    # x
     # Price|Final Energy|Transportation|Liquids|Petroleum
     # Price|Final Energy|Transportation|Liquids|Petroleum|Sales Margin
     # Price|Final Energy|Transportation|Liquids|Petroleum|Transport and Distribution
     # Price|Final Energy|Transportation|Liquids|Petroleum|Carbon Price Component
     # Price|Final Energy|Transportation|Liquids|Petroleum|Other Taxes
-    # 'land transport oil' ?
 
-    # x
     # Price|Final Energy|Transportation|Liquids|Diesel
     # Price|Final Energy|Transportation|Liquids|Diesel|Sales Margin
     # Price|Final Energy|Transportation|Liquids|Diesel|Transport and Distribution
@@ -3235,26 +3288,12 @@ def get_prices(n, region):
     # Price|Final Energy|Transportation|Gases|Natural Gas|Carbon Price Component
     # Price|Final Energy|Transportation|Gases|Natural Gas|Other Taxes
 
-    # x
     # Price|Final Energy|Transportation|Liquids|Biomass
     # Price|Final Energy|Transportation|Liquids|Biomass|Sales Margin
     # Price|Final Energy|Transportation|Liquids|Biomass|Transport and Distribution
     # Price|Final Energy|Transportation|Liquids|Biomass|Other Taxes
 
     # Price|Final Energy|Transportation|Liquids|Efuel
-
-    # TODO THIS SEEMS INCORRECT
-    df = pd.DataFrame(
-        {
-            c: price_load(n, c, region)
-            for c in ["kerosene for aviation", "shipping methanol", "shipping oil"]
-        }
-    )
-
-    var["Price|Final Energy|Transportation|Liquids|Efuel"] = (
-        (df.iloc[0] * df.iloc[1]).sum() / df.iloc[1].sum() / MWh2GJ
-    )
-
     # Price|Final Energy|Transportation|Liquids|Efuel|Sales Margin
     # Price|Final Energy|Transportation|Liquids|Efuel|Transport and Distribution
     # Price|Final Energy|Transportation|Liquids|Efuel|Other Taxes
@@ -3264,37 +3303,79 @@ def get_prices(n, region):
     # Price|Final Energy|Transportation|Gases|Efuel|Transport and Distribution
     # Price|Final Energy|Transportation|Gases|Efuel|Other Taxes
 
+    # Price|Final Energy|Transportation|Gases|SNG
+    # Price|Final Energy|Transportation|Gases|SNG|Sales Margin
+    # Price|Final Energy|Transportation|Gases|SNG|Transport and Distribution
+    # Price|Final Energy|Transportation|Gases|SNG|Other Taxes
+    # Price|Final Energy|Transportation|Gases|SNG|Carbon Price Component
+
     # Price|Final Energy|Transportation|Hydrogen
     # Price|Final Energy|Transportation|Hydrogen|Sales Margin
     # Price|Final Energy|Transportation|Hydrogen|Transport and Distribution
     # Price|Final Energy|Transportation|Hydrogen|Other Taxes
 
     # Price|Final Energy|Transportation|Electricity
-
-    var["Price|Final Energy|Transportation|Electricity"] = price_load(
-        n, "land transport EV", region
-    )[0] / (MWh2GJ)
-
+    var["Price|Final Energy|Transportation|Electricity"] = (
+        price_load(n, "land transport EV", region)[0] / MWh2GJ
+    )
     # Price|Final Energy|Transportation|Electricity|Sales Margin
     # Price|Final Energy|Transportation|Electricity|Transport and Distribution
     # Price|Final Energy|Transportation|Electricity|Other Taxes
 
-    # Price|Final Energy|Residential and Commercial|Liquids|Oil
-
-    var["Price|Final Energy|Residential and Commercial|Liquids|Oil"] = (
-        get_weighted_costs_links(
-            ["rural oil boiler", "urban decentral oil boiler"], n, region
-        )
-        / MWh2GJ
+    # Price|Final Energy|Transportation|Liquids|Kerosene
+    var["Price|Final Energy|Transportation|Electricity"] = (
+        price_load(n, "kerosene for aviation", region)[0] / MWh2GJ
     )
+    # Price|Final Energy|Transportation|Liquids|Kerosene|Sales Margin
+    # Price|Final Energy|Transportation|Liquids|Kerosene|Transport and Distribution
+    # Price|Final Energy|Transportation|Liquids|Kerosene|Carbon Price Component
+    # Price|Final Energy|Transportation|Liquids|Kerosene|Other Taxes
 
+    # Price|Final Energy|Transportation|Electricity|Carbon Price Component ?
+    # Price|Final Energy|Transportation|Gases|Carbon Price Component
+    # Price|Final Energy|Transportation|Hydrogen|Carbon Price Component
+    # Price|Final Energy|Transportation|Liquids|Carbon Price Component
+
+    ### Price|Final Energy|Residential|
+
+    # Price|Final Energy|Residential|Electricity
+    # Price|Final Energy|Residential|Hydrogen
+    # Price|Final Energy|Residential|Gases
+    # Price|Final Energy|Residential|Gases|Natural Gas
+    # Price|Final Energy|Residential|Liquids
+    # Price|Final Energy|Residential|Liquids|Biomass
+    # Price|Final Energy|Residential|Liquids|Oil
+    # Price|Final Energy|Residential|Solids
+    # Price|Final Energy|Residential|Solids|Biomass
+    # Price|Final Energy|Residential|Solids|Coal
+
+    ### Price|Final Energy|Residential and Commercial
+
+    # Price|Final Energy|Residential and Commercial|Liquids|Oil
+    carriers = ["rural oil boiler", "urban decentral oil boiler"]
+    var["Price|Final Energy|Residential and Commercial|Liquids|Oil"] = (
+        get_weighted_costs_links(carriers, n, region) / MWh2GJ
+    )
     # Price|Final Energy|Residential and Commercial|Liquids|Oil|Sales Margin
     # Price|Final Energy|Residential and Commercial|Liquids|Oil|Transport and Distribution
     # Price|Final Energy|Residential and Commercial|Liquids|Oil|Carbon Price Component
     # Price|Final Energy|Residential and Commercial|Liquids|Oil|Other Taxes
+    # Price|Final Energy|Residential and Commercial|Liquids
+    var["Price|Final Energy|Residential and Commercial|Liquids"] = var[
+        "Price|Final Energy|Residential and Commercial|Liquids|Oil"
+    ]
 
+    # Price|Final Energy|Residential and Commercial|Gases|
+    carriers = [
+        "urban central gas boiler",
+        "urban central gas CHP",
+        "urban central gas CHP CC",
+        "rural gas boiler",
+    ]
+    var["Price|Final Energy|Residential and Commercial|Gases"] = (
+        get_weighted_costs_links(carriers, n, region) / MWh2GJ
+    )
     # Price|Final Energy|Residential and Commercial|Gases|Natural Gas
-    # cannot really be reasonably divided from non Natural Gas resources (at least no low hanging fruit :))
     # Price|Final Energy|Residential and Commercial|Gases|Natural Gas|Sales Margin
     # Price|Final Energy|Residential and Commercial|Gases|Natural Gas|Transport and Distribution
     # Price|Final Energy|Residential and Commercial|Gases|Natural Gas|Carbon Price Component
@@ -3309,30 +3390,27 @@ def get_prices(n, region):
         "& not carrier.str.contains('industry')"
         "& not carrier.str.contains('DAC')",
     )
-
     np_rc_heat = n.buses_t.marginal_price[nf_rc_heat.columns]
     var["Price|Final Energy|Residential and Commercial|Heat"] = (
         nf_rc_heat.mul(np_rc_heat).values.sum() / nf_rc_heat.values.sum() / MWh2GJ
     )
-
     # Price|Final Energy|Residential and Commercial|Heat|Sales Margin
     # Price|Final Energy|Residential and Commercial|Heat|Transport and Distribution
     # Price|Final Energy|Residential and Commercial|Heat|Other Taxes
 
-    # Price|Final Energy|Residential and Commercial|Liquids|Biomass
+    # Price|Final Energy|Residential and Commercial|Liquids|Biomass x
     # Price|Final Energy|Residential and Commercial|Liquids|Biomass|Sales Margin
     # Price|Final Energy|Residential and Commercial|Liquids|Biomass|Transport and Distribution
     # Price|Final Energy|Residential and Commercial|Liquids|Biomass|Other Taxes
 
-    # Price|Final Energy|Residential and Commercial|Solids|Biomass
-
+    # Price|Final Energy|Residential and Commercial|Solids
+    carriers = "rural biomass boiler", "urban decentral biomass boiler"
     var["Price|Final Energy|Residential and Commercial|Solids|Biomass"] = (
-        get_weighted_costs_links(
-            ["rural biomass boiler", "urban decentral biomass boiler"], n, region
-        )
-        / MWh2GJ
+        get_weighted_costs_links(carriers, n, region) / MWh2GJ
     )
-
+    var["Price|Final Energy|Residential and Commercial|Solids"] = var[
+        "Price|Final Energy|Residential and Commercial|Solids|Biomass"
+    ]
     # Price|Final Energy|Residential and Commercial|Solids|Biomass|Sales Margin
     # Price|Final Energy|Residential and Commercial|Solids|Biomass|Transport and Distribution
     # Price|Final Energy|Residential and Commercial|Solids|Biomass|Other Taxes
@@ -3357,40 +3435,66 @@ def get_prices(n, region):
     # Price|Final Energy|Residential and Commercial|Hydrogen|Transport and Distribution
     # Price|Final Energy|Residential and Commercial|Hydrogen|Other Taxes
 
-    var["Price|Final Energy|Residential and Commercial|Electricity"] = var[
-        "Price|Final Energy|Residential and Commercial|Electricity"
-    ]
-
+    # Price|Final Energy|Residential and Commercial|Electricity
+    nodal_flows_lv = get_nodal_flows(
+        n,
+        "low voltage",
+        region,
+        query="not carrier.str.contains('agriculture')"
+        "& not carrier.str.contains('industry')"
+        "& not carrier.str.contains('urban central')",
+    )
+    nodal_prices_lv = n.buses_t.marginal_price[nodal_flows_lv.columns]
+    var["Price|Final Energy|Residential and Commercial|Electricity"] = (
+        nodal_flows_lv.mul(nodal_prices_lv).values.sum()
+        / nodal_flows_lv.values.sum()
+        / MWh2GJ
+    )
     # Price|Final Energy|Residential and Commercial|Electricity|Sales Margin x
     # Price|Final Energy|Residential and Commercial|Electricity|Transport and Distribution
     # Price|Final Energy|Residential and Commercial|Electricity|Other Taxes
-    var["Price|Final Energy|Industry|Electricity"] = price_load(
-        n, "industry electricity", region
-    )[0] / (MWh2GJ)
 
-    var["Price|Final Energy|Industry|Heat"] = price_load(
-        n, "low-temperature heat for industry", region
-    )[0] / (MWh2GJ)
+    # Price|Final Energy|Residential and Commercial|Electricity Heating
+    # Price|Final Energy|Residential and Commercial|Electricity Heating|Sales Margin
+    # Price|Final Energy|Residential and Commercial|Electricity Heating|Transport and Distribution
+    # Price|Final Energy|Residential and Commercial|Electricity Heating|Other Taxes
 
-    var["Price|Final Energy|Industry|Hydrogen"] = price_load(
-        n, "H2 for industry", region
-    )[0] / (MWh2GJ)
+    # Price|Final Energy|Residential and Commercial|Gases|SNG
+    # Price|Final Energy|Residential and Commercial|Gases|SNG|Sales Margin
+    # Price|Final Energy|Residential and Commercial|Gases|SNG|Transport and Distribution
+    # Price|Final Energy|Residential and Commercial|Gases|SNG|Other Taxes
+    # Price|Final Energy|Residential and Commercial|Gases|SNG|Carbon Price Component
 
-    var["Price|Final Energy|Industry|Solids|Coal"] = price_load(
-        n, "coal for industry", region
-    )[0] / (MWh2GJ)
+    ### Price|Final Energy|Industry|
 
+    # Price|Final Energy|Industry|Liquids|Oil
+    var["Price|Final Energy|Industry|Liquids|Oil"] = (
+        get_weighted_costs_links(["naphtha for industry"], n, region) / MWh2GJ
+    )
+    # Price|Final Energy|Industry|Liquids|Oil|Sales Margin
+    # Price|Final Energy|Industry|Liquids|Oil|Transport and Distribution
+    # Price|Final Energy|Industry|Liquids|Oil|Carbon Price Component
+    # Price|Final Energy|Industry|Liquids|Oil|Other Taxes
+
+    var["Price|Final Energy|Industry|Solids|Coal"] = (
+        price_load(n, "coal for industry", region)[0] / MWh2GJ
+    )
     # Price|Final Energy|Industry|Solids|Coal|Sales Margin x
     # Price|Final Energy|Industry|Solids|Coal|Transport and Distribution
     # Price|Final Energy|Industry|Solids|Coal|Carbon Price Component
     # Price|Final Energy|Industry|Solids|Coal|Other Taxes
 
     # var["Price|Final Energy|Industry|Gases|Natural Gas"] ?
-
     # Price|Final Energy|Industry|Gases|Natural Gas|Sales Margin x
     # Price|Final Energy|Industry|Gases|Natural Gas|Transport and Distribution
     # Price|Final Energy|Industry|Gases|Natural Gas|Carbon Price Component
     # Price|Final Energy|Industry|Gases|Natural Gas|Other Taxes
+
+    # Price|Final Energy|Industry|Gases|SNG
+    # Price|Final Energy|Industry|Gases|SNG|Sales Margin
+    # Price|Final Energy|Industry|Gases|SNG|Transport and Distribution
+    # Price|Final Energy|Industry|Gases|SNG|Carbon Price Component
+    # Price|Final Energy|Industry|Gases|SNG|Other Taxes
 
     # Price|Final Energy|Industry|Heat|Sales Margin x
     # Price|Final Energy|Industry|Heat|Transport and Distribution
@@ -3404,7 +3508,6 @@ def get_prices(n, region):
     var["Price|Final Energy|Industry|Solids|Biomass"] = price_load(
         n, "solid biomass for industry", region
     )[0] / (MWh2GJ)
-
     # Price|Final Energy|Industry|Solids|Biomass|Sales Margin x
     # Price|Final Energy|Industry|Solids|Biomass|Transport and Distribution
     # Price|Final Energy|Industry|Solids|Biomass|Other Taxes
@@ -3414,9 +3517,9 @@ def get_prices(n, region):
     # Price|Final Energy|Industry|Gases|Biomass|Transport and Distribution
     # Price|Final Energy|Industry|Gases|Biomass|Other Taxes
 
-    var["Price|Final Energy|Industry|Liquids|Efuel"] = var[
-        "Price|Final Energy|Industry|Liquids"
-    ]
+    var["Price|Final Energy|Industry|Liquids|Efuel"] = (
+        price_load(n, "naphtha for industry", region)[0] / MWh2GJ
+    )
 
     # Price|Final Energy|Industry|Liquids|Efuel|Sales Margin x
     # Price|Final Energy|Industry|Liquids|Efuel|Transport and Distribution
@@ -3435,69 +3538,47 @@ def get_prices(n, region):
     # Price|Final Energy|Industry|Electricity|Transport and Distribution
     # Price|Final Energy|Industry|Electricity|Other Taxes
 
-    # Rest Tier3
-    nodal_flows_gas = get_nodal_flows(
-        n,
-        "gas",
-        region,
-        query="not carrier.str.contains('pipeline')"
-        "& not carrier == 'gas'"
-        "& not carrier.str.contains('rural')"
-        "& not carrier.str.contains('urban decentral')",
-    )
-    nodal_prices_gas = n.buses_t.marginal_price[nodal_flows_gas.columns]
-    # TODO renewable gas prices
-    var["Price|Secondary Energy|Gases"] = (
-        nodal_flows_gas.mul(nodal_prices_gas).values.sum()
-        / nodal_flows_gas.values.sum()
+    # Price|Final Energy|Industry|Electricity Heating
+    # Price|Final Energy|Industry|Electricity Heating|Sales Margin
+    # Price|Final Energy|Industry|Electricity Heating|Transport and Distribution
+    # Price|Final Energy|Industry|Electricity Heating|Other Taxes
+
+    # Price|Final Energy|Industry|Electricity
+    var["Price|Final Energy|Industry|Electricity"] = price_load(
+        n, "industry electricity", region
+    )[0] / (MWh2GJ)
+    # Price|Final Energy|Industry|Electricity|Sales Margin
+    # Price|Final Energy|Industry|Electricity|Transport and Distribution
+    # Price|Final Energy|Industry|Electricity|Other Taxes
+
+    # Price|Final Energy|Industry|Gases
+    var["Price|Final Energy|Industry|Gases"] = (
+        get_weighted_costs_links(["gas for industry", "gas for industry CC"], n, region)
         / MWh2GJ
     )
-
-    nodal_flows_oil = get_nodal_flows(
-        n,
-        "oil",
-        "EU",
-        query="not carrier.str.contains('rural')"
-        "& not carrier.str.contains('urban decentral')",
+    # Price|Final Energy|Industry|Heat
+    var["Price|Final Energy|Industry|Heat"] = (
+        price_load(n, "low-temperature heat for industry", region)[0] / MWh2GJ
     )
-    nodal_prices_oil = n.buses_t.marginal_price[nodal_flows_oil.columns]
-
-    var["Price|Secondary Energy|Liquids"] = (
-        nodal_flows_oil.mul(nodal_prices_oil).values.sum()
-        / nodal_flows_oil.values.sum()
-        / MWh2GJ
+    # Price|Final Energy|Industry|Liquids
+    carriers = ["naphtha for industry", "industry methanol"]
+    df = pd.DataFrame({c: price_load(n, c, region) for c in carriers})
+    var["Price|Final Energy|Industry|Liquids"] = (
+        (df.iloc[0] * df.iloc[1]).sum() / df.iloc[1].sum() / MWh2GJ
     )
-
-    # Price|Final Energy|Transportation|Freight|Electricity x
-    # Price|Final Energy|Transportation|Freight|Gases
-    # Price|Final Energy|Transportation|Freight|Hydrogen
-
-    var["Price|Final Energy|Transportation|Freight|Liquids"] = var[
-        "Price|Final Energy|Transportation|Liquids|Efuel"
+    # Price|Final Energy|Industry|Hydrogen
+    var["Price|Final Energy|Industry|Hydrogen"] = (
+        price_load(n, "H2 for industry", region)[0] / MWh2GJ
+    )
+    # Price|Final Energy|Industry|Solids
+    carriers = [
+        "solid biomass for industry",
+        "solid biomass for industry CC",
+        "coal for industry",
     ]
-
-    # Price|Final Energy|Transportation|Freight|Solids x
-
-    var["Price|Final Energy|Transportation|Passenger|Electricity"] = var[
-        "Price|Final Energy|Transportation|Electricity"
-    ]
-
-    # Price|Final Energy|Transportation|Passenger|Gases
-    # Price|Final Energy|Transportation|Passenger|Hydrogen
-    var["Price|Final Energy|Transportation|Passenger|Liquids"] = var[
-        "Price|Final Energy|Transportation|Liquids|Efuel"
-    ]
-
-    # Price|Final Energy|Transportation|Passenger|Solids x
-
-    # Price|Final Energy|Residential and Commercial|Hydrogen x
-    # Price|Final Energy|Residential and Commercial|Gases|Natural Gas ?
-    # Price|Final Energy|Residential and Commercial|Solids|Coal x
-
-    # Price|Final Energy|Transportation|Electricity|Carbon Price Component ?
-    # Price|Final Energy|Transportation|Gases|Carbon Price Component
-    # Price|Final Energy|Transportation|Hydrogen|Carbon Price Component
-    # Price|Final Energy|Transportation|Liquids|Carbon Price Component
+    var["Price|Final Energy|Industry|Solids"] = (
+        get_weighted_costs_links(carriers, n, region) / MWh2GJ
+    )
 
     return var
 
@@ -3882,7 +3963,7 @@ def get_trade(n, region):
     # Trade|Primary Energy|Coal|Volume
     # Trade|Primary Energy|Gas|Volume
 
-    gas_fractions = _get_gas_fractions(n, region)
+    gas_fractions = _get_fuel_fractions(n, region, "gas")
 
     if "gas pipeline" in n.links.carrier.unique():
         exports_gas, imports_gas = get_export_import_links(
@@ -3899,6 +3980,46 @@ def get_trade(n, region):
         )
 
     # Trade|Primary Energy|Oil|Volume
+
+    # Biomass Trade
+
+    biomass_potential_DE = (
+        n.stores.query("carrier.str.contains('solid biomass')")
+        .filter(like=region, axis=0)
+        .e_nom.sum()
+    )
+
+    biomass_usage_local = (
+        n.stores_t.p[
+            n.stores.query("carrier.str.contains('solid biomass')")
+            .filter(like=region, axis=0)
+            .index
+        ]
+        .sum()
+        .multiply(n.snapshot_weightings["stores"].unique().item())
+        .sum()
+    )
+
+    biomass_usage_transported = (
+        n.generators_t.p[
+            n.generators.query("carrier.str.contains('solid biomass')")
+            .filter(like=region, axis=0)
+            .index
+        ]
+        .sum()
+        .multiply(n.snapshot_weightings["generators"].unique().item())
+        .sum()
+    )
+
+    biomass_net_exports = (
+        biomass_potential_DE - biomass_usage_local - biomass_usage_transported
+    ) * MWh2PJ
+    var["Trade|Primary Energy|Biomass|Volume"] = biomass_net_exports
+
+    logger.info(
+        f"""Share of imported biomass: {round(
+        -biomass_net_exports / (biomass_potential_DE + biomass_net_exports), 3)}"""
+    )
 
     return var
 
@@ -4123,7 +4244,7 @@ def get_ariadne_var(
                 industry_production,
             ),
             get_prices(n, region),
-            get_emissions(n, region, energy_totals),
+            get_emissions(n, region, energy_totals, industry_demand),
             get_grid_investments(
                 n,
                 costs,
@@ -4202,7 +4323,7 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "export_ariadne_variables",
             simpl="",
-            clusters=22,
+            clusters=27,
             opts="",
             ll="vopt",
             sector_opts="None",
@@ -4295,7 +4416,7 @@ if __name__ == "__main__":
 
     if "debug" == "debug":  # For debugging
         var = pd.Series()
-        idx = 2
+        idx = 0
         n = networks[idx]
         c = costs[idx]
         _industry_demand = industry_demands[idx]
