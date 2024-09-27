@@ -3090,7 +3090,7 @@ def get_prices(n, region):
     # co2 additions
     co2_price = -n.global_constraints.loc["CO2Limit", "mu"] - co2_limit_de
     # specific emissions in tons CO2/MWh according to n.links[n.links.carrier =="your_carrier].efficiency2.unique().item()
-    specific_emisisons = {
+    specific_emissions = {
         "oil": 0.2571,
         "gas": 0.198,  # OCGT
         "hard coal": 0.3361,
@@ -3136,8 +3136,8 @@ def get_prices(n, region):
         nf_coal.values.sum() + nf_lignite.values.sum()
     )
     co2_add_coal = (
-        coal_fraction * specific_emisisons["hard coal"] * co2_price
-        + lignite_fraction * specific_emisisons["lignite"] * co2_price
+        coal_fraction * specific_emissions["hard coal"] * co2_price
+        + lignite_fraction * specific_emissions["lignite"] * co2_price
     )
 
     var["Price|Primary Energy|Coal"] = (
@@ -3152,7 +3152,7 @@ def get_prices(n, region):
     nodal_prices_gas = n.buses_t.marginal_price[nodal_flows_gas.columns]
 
     # co2 part
-    co2_cost_gas = specific_emisisons["gas"] * co2_price
+    co2_cost_gas = specific_emissions["gas"] * co2_price
 
     var["Price|Primary Energy|Gas"] = (
         nodal_flows_gas.mul(nodal_prices_gas).values.sum()
@@ -3165,7 +3165,7 @@ def get_prices(n, region):
     nodal_prices_oil = n.buses_t.marginal_price[nodal_flows_oil.columns]
 
     # co2 part
-    co2_cost_oil = specific_emisisons["oil"] * co2_price
+    co2_cost_oil = specific_emissions["oil"] * co2_price
 
     var["Price|Primary Energy|Oil"] = (
         nodal_flows_oil.mul(nodal_prices_oil).values.sum()
