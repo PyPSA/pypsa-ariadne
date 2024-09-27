@@ -234,7 +234,7 @@ clustering:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:
   2020: 0.800 # 20% reduction by 2020
-  2025: 0.600
+  2025: 0.620
   2030: 0.450 # 55% reduction by 2030 (Ff55)
   2035: 0.250
   2040: 0.100 # goal to be set next year
@@ -426,7 +426,7 @@ solving:
           DE:
             2020: 54.5
             2025: 69
-            2030: 250
+            2030: 157 # EEG2023 Ziel für 2035
             2035: 250
             2040: 250
             2045: 250
@@ -442,7 +442,7 @@ solving:
           DE:
             2020: 53.7
             2025: 110 # EEG2023; assumes for 2026: 128 GW, assuming a fair share reached by end of 2025
-            2030: 400
+            2030: 309 # EEG2023 Ziel für 2035
             2035: 1000
             2040: 1000
             2045: 1000
@@ -459,16 +459,16 @@ solving:
       Generator:
         onwind:
           DE:
-            2030: 115   # Wind-an-Land Law
-            2035: 115   # Wind-an-Land Law
+            2030: 99   # Wind-an-Land Law 2028
+            2035: 115   # Wind-an-Land Law 2030
             2040: 115   # Wind-an-Land Law
             2045: 115
         offwind:
           DE:
-            2030: 30   # Wind-auf-See Law
+            2030: 22.5   # 75% Wind-auf-See Law
             2035: 30
-            2040: 30
-            2045: 30
+            2040: 40
+            2045: 50
         solar:
           DE:
               # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW,
