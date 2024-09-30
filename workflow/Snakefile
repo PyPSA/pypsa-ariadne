@@ -635,3 +635,34 @@ rule plot_hydrogen_network_incl_kernnetz:
         )
     script:
         "scripts/plot_hydrogen_network_incl_kernnetz.py"
+
+rule plot_ariadne_report:
+    params:
+        planning_horizons=config_provider("scenario", "planning_horizons"),
+        hours=config_provider("clustering", "temporal", "resolution_sector"),
+        costs=config_provider("costs"),
+        energy_totals_year=config_provider("energy", "energy_totals_year"),
+        co2_price_add_on_fossils=config_provider("co2_price_add_on_fossils"),
+        co2_sequestration_cost=config_provider("sector", "co2_sequestration_cost"),
+        post_discretization=config_provider("solving", "options", "post_discretization"),
+        plotting=config_provider("plotting"),
+        run=config_provider("run", "name"),
+    input:
+        networks=expand(
+            RESULTS
+            + "postnetworks/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
+            **config["scenario"],
+            allow_missing=True,
+        ),
+    output:
+        elec_supply_demand_total =RESULTS + "ariadne/report/electricity_supply_demand.png",
+        elec_supply_demand_A =RESULTS + "ariadne/report/electricity_supply_demand_A.png",
+        elec_supply_demand_B =RESULTS + "ariadne/report/electricity_supply_demand_B.png",
+        storage =RESULTS + "ariadne/report/storage.png",
+        elec_price_duration_curve =RESULTS + "ariadne/report/elec_price_duration_curve.png",
+        elec_price_duration_hist =RESULTS + "ariadne/report/elec_price_duration_hist.png",
+        elec_transmission = RESULTS + "ariadne/report/elec_transmission.png",
+        h2_transmission = RESULTS + "ariadne/report/h2_transmission.png",
+        co2_transmission = RESULTS + "ariadne/report/co2_transmission.png",
+    script:
+        "scripts/plot_ariadne_report.py"
