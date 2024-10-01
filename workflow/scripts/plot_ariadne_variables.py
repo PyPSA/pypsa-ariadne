@@ -242,7 +242,7 @@ def elec_val_plot(df, savepath):
         df.loc[("Capacity|Electricity|Wind|Offshore", "GW"), "2020"],
         df.loc[("Capacity|Electricity|Solar", "GW"), "2020"],
     ]
-    
+
     elec_generation["real brutto"] = [
         -18.9,
         np.nan,
@@ -257,22 +257,22 @@ def elec_val_plot(df, savepath):
         132,
         50,
     ]  # https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Energie/Erzeugung/Tabellen/bruttostromerzeugung.html & https://www.bdew.de/media/documents/Bruttostromerz_D_Entw_10J_online_o_dw2x_jaehrlich_FS_05042024_nlA6lUa.pdf
-    
+
     elec_generation["real netto"] = [
-        -18.9, # 34 TWH in 2019             "net exports",
-        0 , # "ror" due to reporting 
-        18.54, # "hydro"
-        np.nan, # "battery"
-        44.85, # "biomass"
-        60.91, # "nuclear"
-        82.13, # "lignite"
-        35.46, # "coal"
-        3.71, #  "oil"
-        57.10, # "gas"
-        129.64, # "wind"
-        44.98, # "solar"
+        -18.9,  # 34 TWH in 2019             "net exports",
+        0,  # "ror" due to reporting
+        18.54,  # "hydro"
+        np.nan,  # "battery"
+        44.85,  # "biomass"
+        60.91,  # "nuclear"
+        82.13,  # "lignite"
+        35.46,  # "coal"
+        3.71,  #  "oil"
+        57.10,  # "gas"
+        129.64,  # "wind"
+        44.98,  # "solar"
     ]  # https://energy-charts.info/charts/energy_pie/chart.htm?l=de&c=DE&interval=year&year=2020 & https://www.bundesnetzagentur.de/SharedDocs/Pressemitteilungen/DE/2021/20210102_smard.html
-    
+
     elec_generation["pypsa"] = [
         -df.loc[("Trade|Secondary Energy|Electricity|Volume", "PJ/yr"), "2020"] / 3.6,
         0,
