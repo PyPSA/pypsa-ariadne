@@ -542,6 +542,40 @@ def add_h2_derivate_limit(n, investment_year, limits_volume_max):
             )
 
 
+def adapt_nuclear_output(n):
+
+    logger.info(
+        f"limiting german electricity generation from nuclear to 2020 value of 61 TWh"
+    )
+    limit = 61e6
+
+    nuclear_de_index = n.links.index[
+        (n.links.carrier == "nuclear") & (n.links.index.str[:2] == "DE")
+    ]
+
+    nuclear_gen = (
+        n.model["Link-p"].loc[:, nuclear_de_index]
+        * n.links.loc[nuclear_de_index, "efficiency"]
+        * n.snapshot_weightings.generators
+    ).sum()
+
+    lhs = nuclear_gen
+
+    cname = f"Nuclear_generation_limit-DE"
+
+    n.model.add_constraints(lhs <= limit, name=f"GlobalConstraint-{cname}")
+
+    if cname not in n.global_constraints.index:
+        n.add(
+            "GlobalConstraint",
+            cname,
+            constant=limit,
+            sense="<=",
+            type="",
+            carrier_attribute="",
+        )
+
+
 def additional_functionality(n, snapshots, snakemake):
 
     logger.info("Adding Ariadne-specific functionality")
@@ -586,3 +620,6 @@ def additional_functionality(n, snapshots, snakemake):
         )
     else:
         logger.warning("No national CO2 budget specified!")
+
+    if investment_year == 2020:
+        adapt_nuclear_output(n)

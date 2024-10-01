@@ -210,7 +210,6 @@ def elec_val_plot(df, savepath):
             "gas",
             "wind",
             "solar",
-            "sum_real-sum_pypsa",
         ]
     )
 
@@ -228,21 +227,7 @@ def elec_val_plot(df, savepath):
         7.86,
         54.36,
     ]  # https://energy-charts.info/charts/installed_power/chart.htm?l=en&c=DE&year=2020
-    elec_generation["real"] = [
-        18.9,
-        np.nan,
-        18.7,
-        np.nan,
-        45,
-        64,
-        91,
-        43,
-        4.7,
-        95,
-        132,
-        50,
-        np.nan,
-    ]  # https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Energie/Erzeugung/Tabellen/bruttostromerzeugung.html
+
     elec_capacities["pypsa"] = [
         0,
         df.loc[("Capacity|Electricity|Hydro", "GW"), "2020"],
@@ -258,8 +243,38 @@ def elec_val_plot(df, savepath):
         df.loc[("Capacity|Electricity|Solar", "GW"), "2020"],
     ]
 
+    elec_generation["real brutto"] = [
+        -18.9,
+        np.nan,
+        18.7,
+        np.nan,
+        45,
+        64,
+        91,
+        43,
+        4.7,
+        95,
+        132,
+        50,
+    ]  # https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Energie/Erzeugung/Tabellen/bruttostromerzeugung.html & https://www.bdew.de/media/documents/Bruttostromerz_D_Entw_10J_online_o_dw2x_jaehrlich_FS_05042024_nlA6lUa.pdf
+
+    elec_generation["real netto"] = [
+        -18.9,  # 34 TWH in 2019             "net exports",
+        0,  # "ror" due to reporting
+        18.54,  # "hydro"
+        np.nan,  # "battery"
+        44.85,  # "biomass"
+        60.91,  # "nuclear"
+        82.13,  # "lignite"
+        35.46,  # "coal"
+        3.71,  #  "oil"
+        57.10,  # "gas"
+        129.64,  # "wind"
+        44.98,  # "solar"
+    ]  # https://energy-charts.info/charts/energy_pie/chart.htm?l=de&c=DE&interval=year&year=2020 & https://www.bundesnetzagentur.de/SharedDocs/Pressemitteilungen/DE/2021/20210102_smard.html
+
     elec_generation["pypsa"] = [
-        df.loc[("Trade|Secondary Energy|Electricity|Volume", "PJ/yr"), "2020"] / 3.6,
+        -df.loc[("Trade|Secondary Energy|Electricity|Volume", "PJ/yr"), "2020"] / 3.6,
         0,
         df.loc[("Secondary Energy|Electricity|Hydro", "PJ/yr"), "2020"] / 3.6,
         0,
@@ -271,15 +286,17 @@ def elec_val_plot(df, savepath):
         df.loc[("Secondary Energy|Electricity|Gas", "PJ/yr"), "2020"] / 3.6,
         df.loc[("Secondary Energy|Electricity|Wind", "PJ/yr"), "2020"] / 3.6,
         df.loc[("Secondary Energy|Electricity|Solar", "PJ/yr"), "2020"] / 3.6,
-        np.nan,
     ]
 
     # elec_generation.loc["sum/10"] = elec_generation.sum().div(10)
-    elec_generation.loc["sum_real-sum_pypsa", "sum_real-sum_pypsa"] = (
-        elec_generation.sum()["real"] - elec_generation.sum()["pypsa"]
+    elec_generation.loc["sum_real_brutto-sum_pypsa", "sum_real_brutto-sum_pypsa"] = (
+        elec_generation.sum()["real brutto"] - elec_generation.sum()["pypsa"]
+    )
+    elec_generation.loc["sum_real_netto-sum_pypsa", "sum_real_netto-sum_pypsa"] = (
+        elec_generation.sum()["real netto"] - elec_generation.sum()["pypsa"]
     )
 
-    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6), width_ratios=[1, 1.5])
     elec_capacities.plot(kind="bar", ax=axes[0])
     axes[0].set_ylabel("GW")
     axes[0].set_title("Installed Capacities Germany 2020")
