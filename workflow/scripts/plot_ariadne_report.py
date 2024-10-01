@@ -39,12 +39,37 @@ markers = [
 ]
 date_format = "%Y-%m-%d %H:%M:%S"
 
-resistive_heater = ['urban central resistive heater', 'rural resistive heater','urban decentral resistive heater']
-gas_boiler = ['urban central gas boiler', 'rural gas boiler','urban decentral gas boiler']
-air_heat_pump = ['urban central air heat pump', 'rural air heat pump','rural ground heat pump', 'urban decentral air heat pump']
-water_tanks_charger = ['urban central water tanks charger', 'rural water tanks charger', 'urban decentral water tanks charger']
-water_tanks_discharger = ['urban central water tanks discharger','rural water tanks discharger', 'urban decentral water tanks discharger']
-solar_thermal = [ "urban decentral solar thermal", "urban central solar thermal", "rural solar thermal"]
+resistive_heater = [
+    "urban central resistive heater",
+    "rural resistive heater",
+    "urban decentral resistive heater",
+]
+gas_boiler = [
+    "urban central gas boiler",
+    "rural gas boiler",
+    "urban decentral gas boiler",
+]
+air_heat_pump = [
+    "urban central air heat pump",
+    "rural air heat pump",
+    "rural ground heat pump",
+    "urban decentral air heat pump",
+]
+water_tanks_charger = [
+    "urban central water tanks charger",
+    "rural water tanks charger",
+    "urban decentral water tanks charger",
+]
+water_tanks_discharger = [
+    "urban central water tanks discharger",
+    "rural water tanks discharger",
+    "urban decentral water tanks discharger",
+]
+solar_thermal = [
+    "urban decentral solar thermal",
+    "urban central solar thermal",
+    "rural solar thermal",
+]
 
 carrier_renaming = {
     "urban central solid biomass CHP CC": "biomass CHP CC",
@@ -64,8 +89,22 @@ carrier_renaming_reverse = {
     "resistive heater": "urban central resistive heater",
 }
 
-c1_groups = [resistive_heater, gas_boiler, air_heat_pump, water_tanks_charger, water_tanks_discharger, solar_thermal]
-c1_groups_name = ["resistive heater", "gas boiler", "air heat pump", "water tanks charger", "water tanks discharger", "solar thermal"]
+c1_groups = [
+    resistive_heater,
+    gas_boiler,
+    air_heat_pump,
+    water_tanks_charger,
+    water_tanks_discharger,
+    solar_thermal,
+]
+c1_groups_name = [
+    "resistive heater",
+    "gas boiler",
+    "air heat pump",
+    "water tanks charger",
+    "water tanks discharger",
+    "solar thermal",
+]
 
 
 def nodal_balance(n, carrier, regions, time=slice(None), aggregate=None, energy=True):
@@ -209,8 +248,12 @@ def plot_nodal_balance(
 
     # convert from MW to GW and unstack
     nb_el = nb_el.unstack(level=[1]) / 1000
-    loads_el = network.loads_t.p[i_loads].sum(axis=1) * network.snapshot_weightings.generators / 1000
-    #nb_el.drop(["electricity distribution grid"], axis=1, inplace=True) # also drop AC if you specifiy no regions (whole system)
+    loads_el = (
+        network.loads_t.p[i_loads].sum(axis=1)
+        * network.snapshot_weightings.generators
+        / 1000
+    )
+    # nb_el.drop(["electricity distribution grid"], axis=1, inplace=True) # also drop AC if you specifiy no regions (whole system)
 
     # condense groups
     nb_el = get_condense_sum(nb_el, c1_groups, c1_groups_name)
@@ -341,7 +384,6 @@ def plot_stacked_area_steplike(ax, df, colors={}):
     if isinstance(colors, pd.Series):
         colors = colors.to_dict()
 
-
     df_cum = df.cumsum(axis=1)
 
     previous_series = np.zeros_like(df_cum.iloc[:, 0].values)
@@ -461,13 +503,16 @@ def plot_energy_balance_timeseries(
     plt.savefig(dir + "/" + fn + ".png")
     plt.close()
 
-def plot_storage(network, 
-                 tech_colors, 
-                 savepath, 
-                 model_run = "Model run",
-                 start_date="2019-01-01 00:00:00", 
-                 end_date="2019-12-31 00", 
-                 regions=["DE"]):
+
+def plot_storage(
+    network,
+    tech_colors,
+    savepath,
+    model_run="Model run",
+    start_date="2019-01-01 00:00:00",
+    end_date="2019-12-31 00",
+    regions=["DE"],
+):
 
     # State of charge [per unit of max] (all stores and storage units)
     # Ratio of total generation of max state of charge
@@ -585,20 +630,25 @@ def plot_storage(network,
     return fig
 
 
-def plot_price_duration_curve(networks, 
-                              year_colors, 
-                              savepath, 
-                              years,
-                              carriers=["AC", "low voltage"],
-                              aggregate=True,
-                              model_run = "Model run",
-                              regions=["DE"],
-                              y_lim_values = [-50, 300]):
+def plot_price_duration_curve(
+    networks,
+    year_colors,
+    savepath,
+    years,
+    carriers=["AC", "low voltage"],
+    aggregate=True,
+    model_run="Model run",
+    regions=["DE"],
+    y_lim_values=[-50, 300],
+):
 
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(8, 6))
 
     for i, n in enumerate(networks.values()):
-        buses = n.buses[(n.buses.carrier.isin(carriers)) & n.buses.index.str.startswith(tuple(regions))].index
+        buses = n.buses[
+            (n.buses.carrier.isin(carriers))
+            & n.buses.index.str.startswith(tuple(regions))
+        ].index
         lmps = pd.DataFrame(n.buses_t.marginal_price[buses])
         if aggregate:
             lmps = pd.DataFrame(lmps.mean(axis=1))
@@ -627,21 +677,27 @@ def plot_price_duration_curve(networks,
 
     return fig
 
-def plot_price_duration_hist(networks, 
-                              year_colors, 
-                              savepath, 
-                              years,
-                              carriers=["AC", "low voltage"],
-                              aggregate=True,
-                              model_run = "Model run",
-                              regions=["DE"],
-                              y_lim_values = [-50, 300]):
 
-    fig, axes = plt.subplots(ncols=1, nrows=len(years), figsize=(8, 3*len(years)))
+def plot_price_duration_hist(
+    networks,
+    year_colors,
+    savepath,
+    years,
+    carriers=["AC", "low voltage"],
+    aggregate=True,
+    model_run="Model run",
+    regions=["DE"],
+    y_lim_values=[-50, 300],
+):
+
+    fig, axes = plt.subplots(ncols=1, nrows=len(years), figsize=(8, 3 * len(years)))
     axes = axes.flatten()
 
     for i, n in enumerate(networks.values()):
-        buses = n.buses[(n.buses.carrier.isin(carriers)) & n.buses.index.str.startswith(tuple(regions))].index
+        buses = n.buses[
+            (n.buses.carrier.isin(carriers))
+            & n.buses.index.str.startswith(tuple(regions))
+        ].index
         lmps = pd.DataFrame(n.buses_t.marginal_price[buses])
         if aggregate:
             lmps = pd.DataFrame(lmps.mean(axis=1))
@@ -691,7 +747,7 @@ if __name__ == "__main__":
     for old_name, new_name in carrier_renaming.items():
         if old_name in tech_colors:
             tech_colors[new_name] = tech_colors[old_name]
-    
+
     for name in c1_groups_name:
         tech_colors[name] = tech_colors[f"urban central {name}"]
 
@@ -745,14 +801,14 @@ if __name__ == "__main__":
         end_date="2019-12-31 00:00:00",
         savepath=snakemake.output.storage,
         model_run=snakemake.wildcards.run,
-    )   
+    )
 
     # price duration
 
     networks_dict = {int(my): n for n, my in zip(networks, modelyears)}
 
     plot_price_duration_curve(
-        networks = networks_dict,
+        networks=networks_dict,
         year_colors=year_colors,
         savepath=snakemake.output.elec_price_duration_curve,
         model_run=snakemake.wildcards.run,
@@ -760,18 +816,17 @@ if __name__ == "__main__":
     )
 
     plot_price_duration_hist(
-        networks = networks_dict,
+        networks=networks_dict,
         year_colors=year_colors,
         savepath=snakemake.output.elec_price_duration_hist,
         model_run=snakemake.wildcards.run,
         years=planning_horizons,
     )
 
-
     ### Fabians code
 
     dir = snakemake.output[0]
-    dir = '/home/julian-geis/repos/pypsa-ariadne-2/results/20240925plotH2Kernnetz/KN2045_Bal_v4/ariadne/report/'
+    dir = "/home/julian-geis/repos/pypsa-ariadne-2/results/20240925plotH2Kernnetz/KN2045_Bal_v4/ariadne/report/"
 
     plt.style.use(["bmh", "matplotlibrc"])
 
@@ -823,14 +878,3 @@ if __name__ == "__main__":
     ]
     with Pool(processes=snakemake.threads) as pool:
         pool.starmap(process_group, args)
-        
-    
-
-   
-    
-    
-    
-    
-
-
-    
