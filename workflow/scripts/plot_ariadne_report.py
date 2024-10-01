@@ -39,37 +39,12 @@ markers = [
 ]
 date_format = "%Y-%m-%d %H:%M:%S"
 
-resistive_heater = [
-    "urban central resistive heater",
-    "rural resistive heater",
-    "urban decentral resistive heater",
-]
-gas_boiler = [
-    "urban central gas boiler",
-    "rural gas boiler",
-    "urban decentral gas boiler",
-]
-heat_pump = [
-    "urban central air heat pump",
-    "rural air heat pump",
-    "rural ground heat pump",
-    "urban decentral air heat pump",
-]
-water_tanks_charger = [
-    "urban central water tanks charger",
-    "rural water tanks charger",
-    "urban decentral water tanks charger",
-]
-water_tanks_discharger = [
-    "urban central water tanks discharger",
-    "rural water tanks discharger",
-    "urban decentral water tanks discharger",
-]
-solar_thermal = [
-    "urban decentral solar thermal",
-    "urban central solar thermal",
-    "rural solar thermal",
-]
+resistive_heater = ['urban central resistive heater', 'rural resistive heater','urban decentral resistive heater']
+gas_boiler = ['urban central gas boiler', 'rural gas boiler','urban decentral gas boiler']
+air_heat_pump = ['urban central air heat pump', 'rural air heat pump','rural ground heat pump', 'urban decentral air heat pump']
+water_tanks_charger = ['urban central water tanks charger', 'rural water tanks charger', 'urban decentral water tanks charger']
+water_tanks_discharger = ['urban central water tanks discharger','rural water tanks discharger', 'urban decentral water tanks discharger']
+solar_thermal = [ "urban decentral solar thermal", "urban central solar thermal", "rural solar thermal"]
 
 carrier_renaming = {
     "urban central solid biomass CHP CC": "biomass CHP CC",
@@ -89,22 +64,8 @@ carrier_renaming_reverse = {
     "resistive heater": "urban central resistive heater",
 }
 
-c1_groups = [
-    resistive_heater,
-    gas_boiler,
-    heat_pump,
-    water_tanks_charger,
-    water_tanks_discharger,
-    solar_thermal,
-]
-c1_groups_name = [
-    "resistive heater",
-    "gas boiler",
-    "heat pump",
-    "water tanks charger",
-    "water tanks discharger",
-    "solar thermal",
-]
+c1_groups = [resistive_heater, gas_boiler, air_heat_pump, water_tanks_charger, water_tanks_discharger, solar_thermal]
+c1_groups_name = ["resistive heater", "gas boiler", "air heat pump", "water tanks charger", "water tanks discharger", "solar thermal"]
 
 
 def nodal_balance(n, carrier, regions, time=slice(None), aggregate=None, energy=True):
@@ -248,14 +209,8 @@ def plot_nodal_balance(
 
     # convert from MW to GW and unstack
     nb_el = nb_el.unstack(level=[1]) / 1000
-    loads_el = (
-        network.loads_t.p[i_loads].sum(axis=1)
-        * network.snapshot_weightings.generators
-        / 1000
-    )
-    nb_el.drop(
-        ["electricity distribution grid"], axis=1, inplace=True
-    )  # also drop AC if you specifiy no regions (whole system)
+    loads_el = network.loads_t.p[i_loads].sum(axis=1) * network.snapshot_weightings.generators / 1000
+    #nb_el.drop(["electricity distribution grid"], axis=1, inplace=True) # also drop AC if you specifiy no regions (whole system)
 
     # condense groups
     nb_el = get_condense_sum(nb_el, c1_groups, c1_groups_name)
@@ -346,15 +301,173 @@ def plot_nodal_balance(
     return fig
 
 
-def plot_storage(
-    network,
-    tech_colors,
-    savepath,
-    model_run="Model run",
-    start_date="2019-01-01 00:00:00",
-    end_date="2019-12-31 00",
-    regions=["DE"],
+### Fabians plotting routine
+import logging
+from multiprocessing import Pool
+
+import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import pypsa
+
+logger = logging.getLogger(__name__)
+
+THRESHOLD = 5  # GW
+
+CARRIER_GROUPS = {
+    "electricity": ["AC", "low voltage"],
+    # "heat": [
+    #     "urban central heat",
+    #     "urban decentral heat",
+    #     "rural heat",
+    #     "residential urban decentral heat",
+    #     "residential rural heat",
+    #     "services urban decentral heat",
+    #     "services rural heat",
+    # ],
+    # "hydrogen": "H2",
+    # "oil": "oil",
+    # "methanol": "methanol",
+    # "ammonia": "NH3",
+    # "biomass": ["solid biomass", "biogas"],
+    # "CO2 atmosphere": "co2",
+    # "CO2 stored": "co2 stored",
+    # "methane": "gas",
+}
+
+
+def plot_stacked_area_steplike(ax, df, colors={}):
+    if isinstance(colors, pd.Series):
+        colors = colors.to_dict()
+
+
+    df_cum = df.cumsum(axis=1)
+
+    previous_series = np.zeros_like(df_cum.iloc[:, 0].values)
+
+    for col in df_cum.columns:
+        print(col)
+        ax.fill_between(
+            df_cum.index,
+            previous_series,
+            df_cum[col],
+            step="pre",
+            linewidth=0,
+            color=colors.get(col, "grey"),
+            label=col,
+        )
+        previous_series = df_cum[col].values
+
+
+def plot_energy_balance_timeseries(
+    df,
+    time=None,
+    ylim=None,
+    resample=None,
+    rename={},
+    preferred_order=[],
+    ylabel="",
+    colors={},
+    threshold=0,
+    dir="",
 ):
+    if time is not None:
+        df = df.loc[time]
+
+    timespan = df.index[-1] - df.index[0]
+    long_time_frame = timespan > pd.Timedelta(weeks=5)
+
+    techs_below_threshold = df.columns[df.abs().max() < threshold].tolist()
+
+    if techs_below_threshold:
+        other = {tech: "other" for tech in techs_below_threshold}
+        rename.update(other)
+        colors["other"] = "grey"
+
+    if rename:
+        df = df.groupby(df.columns.map(lambda a: rename.get(a, a)), axis=1).sum()
+
+    if resample is not None:
+        # upsampling to hourly resolution required to handle overlapping block
+        df = df.resample("1H").ffill().resample(resample).mean()
+
+    order = (df / df.max()).var().sort_values().index
+    if preferred_order:
+        order = preferred_order.intersection(order).append(
+            order.difference(preferred_order)
+        )
+    df = df.loc[:, order]
+
+    # fillna since plot_stacked_area_steplike cannot deal with NaNs
+    pos = df.where(df > 0).fillna(0.0)
+    neg = df.where(df < 0).fillna(0.0)
+
+    fig, ax = plt.subplots(figsize=(10, 4), layout="constrained")
+
+    plot_stacked_area_steplike(ax, pos, colors)
+    plot_stacked_area_steplike(ax, neg, colors)
+
+    plt.xlim((df.index[0], df.index[-1]))
+
+    if not long_time_frame:
+        # Set major ticks every Monday
+        ax.xaxis.set_major_locator(mdates.WeekdayLocator(byweekday=mdates.MONDAY))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%e\n%b"))
+        # Set minor ticks every day
+        ax.xaxis.set_minor_locator(mdates.DayLocator())
+        ax.xaxis.set_minor_formatter(mdates.DateFormatter("%e"))
+    else:
+        # Set major ticks every first day of the month
+        ax.xaxis.set_major_locator(mdates.MonthLocator(bymonthday=1))
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%e\n%b"))
+        # Set minor ticks every 15th of the month
+        ax.xaxis.set_minor_locator(mdates.MonthLocator(bymonthday=15))
+        ax.xaxis.set_minor_formatter(mdates.DateFormatter("%e"))
+
+    ax.tick_params(axis="x", which="minor", labelcolor="grey")
+    ax.grid(axis="y")
+
+    # half the labels because pos and neg create duplicate labels
+    handles, labels = ax.get_legend_handles_labels()
+    half = int(len(handles) / 2)
+    fig.legend(handles=handles[:half], labels=labels[:half], loc="outside right upper")
+
+    ax.axhline(0, color="grey", linewidth=0.5)
+
+    if ylim is None:
+        # ensure y-axis extent is symmetric around origin in steps of 100 units
+        ylim = np.ceil(max(-neg.sum(axis=1).min(), pos.sum(axis=1).max()) / 100) * 100
+    plt.ylim([-ylim, ylim])
+
+    is_kt = any(s in ylabel.lower() for s in ["co2", "steel", "hvc"])
+    unit = "kt/h" if is_kt else "GW"
+    plt.ylabel(f"{ylabel} balance [{unit}]")
+
+    if not long_time_frame:
+        # plot frequency of snapshots on top x-axis as ticks
+        ax2 = ax.twiny()
+        ax2.set_xlim(ax.get_xlim())
+        ax2.set_xticks(df.index)
+        ax2.grid(False)
+        ax2.tick_params(axis="x", length=2)
+        ax2.xaxis.set_tick_params(labelbottom=False)
+        ax2.set_xticklabels([])
+
+    if resample is None:
+        resample = f"native-{time}"
+    fn = f"ts-balance-{ylabel.replace(' ', '_')}-{resample}"
+    plt.savefig(dir + "/" + fn + ".pdf")
+    plt.savefig(dir + "/" + fn + ".png")
+    plt.close()
+
+def plot_storage(network, 
+                 tech_colors, 
+                 savepath, 
+                 model_run = "Model run",
+                 start_date="2019-01-01 00:00:00", 
+                 end_date="2019-12-31 00", 
+                 regions=["DE"]):
 
     # State of charge [per unit of max] (all stores and storage units)
     # Ratio of total generation of max state of charge
@@ -472,6 +585,82 @@ def plot_storage(
     return fig
 
 
+def plot_price_duration_curve(networks, 
+                              year_colors, 
+                              savepath, 
+                              years,
+                              carriers=["AC", "low voltage"],
+                              aggregate=True,
+                              model_run = "Model run",
+                              regions=["DE"],
+                              y_lim_values = [-50, 300]):
+
+    fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(8, 6))
+
+    for i, n in enumerate(networks.values()):
+        buses = n.buses[(n.buses.carrier.isin(carriers)) & n.buses.index.str.startswith(tuple(regions))].index
+        lmps = pd.DataFrame(n.buses_t.marginal_price[buses])
+        if aggregate:
+            lmps = pd.DataFrame(lmps.mean(axis=1))
+        else:
+            lmps = pd.DataFrame(lmps.values.flatten())
+
+        lmps.columns = ["lmp"]
+        lmps.sort_values(by="lmp", ascending=False, inplace=True)
+        lmps["percentage"] = np.arange(len(lmps)) / len(lmps) * 100
+        ax.plot(lmps["percentage"], lmps["lmp"], label=years[i], color=year_colors[i])
+
+        ax.set_ylim(y_lim_values)
+        # # add corridor which contains 75 % of the generation around the median
+        # ax.hlines(df["lmp"].loc[df["lmp"][df["gen_cumsum_norm"] > 0.125].index[0]], 0, 1, color=year_colors[i], ls="--", lw=1)
+        # ax.hlines(df["lmp"].loc[df["lmp"][df["gen_cumsum_norm"] > 0.875].index[0]], 0, 1,  color=year_colors[i], ls="--", lw =1)
+
+        ax.set_ylabel("Electricity Price [$€/MWh_{el}$")
+        ax.set_xlabel("Fraction of time [%]")
+        ax.set_title(f"Electricity price duration curves {model_run}", fontsize=16)
+        ax.legend()
+        ax.grid(True)
+
+    fig.tight_layout()
+    fig.savefig(savepath, bbox_inches="tight")
+    plt.close()
+
+    return fig
+
+def plot_price_duration_hist(networks, 
+                              year_colors, 
+                              savepath, 
+                              years,
+                              carriers=["AC", "low voltage"],
+                              aggregate=True,
+                              model_run = "Model run",
+                              regions=["DE"],
+                              y_lim_values = [-50, 300]):
+
+    fig, axes = plt.subplots(ncols=1, nrows=len(years), figsize=(8, 3*len(years)))
+    axes = axes.flatten()
+
+    for i, n in enumerate(networks.values()):
+        buses = n.buses[(n.buses.carrier.isin(carriers)) & n.buses.index.str.startswith(tuple(regions))].index
+        lmps = pd.DataFrame(n.buses_t.marginal_price[buses])
+        if aggregate:
+            lmps = pd.DataFrame(lmps.mean(axis=1))
+        else:
+            lmps = pd.DataFrame(lmps.values.flatten())
+
+        lmps.columns = ["lmp"]
+        axes[i].hist(lmps, bins=100, color=year_colors[i], alpha=0.5, label=years[i])
+        axes[i].legend()
+
+    axes[i].set_xlabel("Electricity Price [$€/MWh_{el}$")
+    plt.suptitle(f"Electricity prices ({model_run})", fontsize=16, y=0.99)
+    fig.tight_layout()
+    fig.savefig(savepath, bbox_inches="tight")
+    plt.close()
+
+    return fig
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
@@ -498,9 +687,13 @@ if __name__ == "__main__":
     nyears = nhours / 8760
     tech_colors = snakemake.params.plotting["tech_colors"]
 
+    # add colors for renaming and condensed groups
     for old_name, new_name in carrier_renaming.items():
         if old_name in tech_colors:
             tech_colors[new_name] = tech_colors[old_name]
+    
+    for name in c1_groups_name:
+        tech_colors[name] = tech_colors[f"urban central {name}"]
 
     # manual carriers
     tech_colors["urban central oil CHP"] = tech_colors["oil"]
@@ -552,4 +745,92 @@ if __name__ == "__main__":
         end_date="2019-12-31 00:00:00",
         savepath=snakemake.output.storage,
         model_run=snakemake.wildcards.run,
+    )   
+
+    # price duration
+
+    networks_dict = {int(my): n for n, my in zip(networks, modelyears)}
+
+    plot_price_duration_curve(
+        networks = networks_dict,
+        year_colors=year_colors,
+        savepath=snakemake.output.elec_price_duration_curve,
+        model_run=snakemake.wildcards.run,
+        years=planning_horizons,
     )
+
+    plot_price_duration_hist(
+        networks = networks_dict,
+        year_colors=year_colors,
+        savepath=snakemake.output.elec_price_duration_hist,
+        model_run=snakemake.wildcards.run,
+        years=planning_horizons,
+    )
+
+
+    ### Fabians code
+
+    dir = snakemake.output[0]
+    dir = '/home/julian-geis/repos/pypsa-ariadne-2/results/20240925plotH2Kernnetz/KN2045_Bal_v4/ariadne/report/'
+
+    plt.style.use(["bmh", "matplotlibrc"])
+
+    n = networks[4]
+
+    months = pd.date_range(freq="M", **snakemake.config["snapshots"]).format(
+        formatter=lambda x: x.strftime("%Y-%m")
+    )
+
+    balance = n.statistics.energy_balance(aggregate_time=False)
+
+    n.carriers.color.update(snakemake.config["plotting"]["tech_colors"])
+    colors = n.carriers.color.rename(n.carriers.nice_name)
+    # replace empty values
+    colors[colors.values == ""] = "lightgrey"
+
+    # wrap in function for multiprocessing
+    def process_group(group, carriers, balance, months, colors):
+        if not isinstance(carriers, list):
+            carriers = [carriers]
+
+        mask = balance.index.get_level_values("bus_carrier").isin(carriers)
+        df = balance[mask].groupby("carrier").sum().div(1e3).T
+
+        # daily resolution for each carrier
+        plot_energy_balance_timeseries(
+            df,
+            resample="D",
+            ylabel=group,
+            colors=colors,
+            threshold=THRESHOLD,
+            dir=dir,
+        )
+
+        # native resolution for each month and carrier
+        for month in months:
+            plot_energy_balance_timeseries(
+                df,
+                time=month,
+                ylabel=group,
+                colors=colors,
+                threshold=THRESHOLD,
+                dir=dir,
+            )
+
+    args = [
+        (group, carriers, balance, months, colors)
+        for group, carriers in CARRIER_GROUPS.items()
+    ]
+    with Pool(processes=snakemake.threads) as pool:
+        pool.starmap(process_group, args)
+        
+    
+
+   
+    
+    
+    
+    
+
+
+    
