@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20240927plotH2Kernnetz
+  prefix: 20241001ElecValidationUpdate
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
