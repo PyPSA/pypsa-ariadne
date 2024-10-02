@@ -574,17 +574,17 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
             "H2 OCGT",
             "H2 retrofit OCGT",
         ]
-    ).sum()    
+    ).sum()
 
     var[cap_string + "Electricity|Hydrogen|FC"] = capacities_electricity.get(
-        "H2 Fuel Cell", 0)
+        "H2 Fuel Cell", 0
+    )
 
     var[cap_string + "Electricity|Hydrogen"] = (
         var[cap_string + "Electricity|Hydrogen|CC"]
         + var[cap_string + "Electricity|Hydrogen|OC"]
         + var[cap_string + "Electricity|Hydrogen|FC"]
     )
-    
 
     var[cap_string + "Electricity|Nuclear"] = capacities_electricity.get("nuclear", 0)
 
