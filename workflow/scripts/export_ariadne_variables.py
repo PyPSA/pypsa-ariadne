@@ -306,9 +306,34 @@ def get_investments(n, costs, region):
     def _f(**kwargs):
         return n.statistics.expanded_capex(**kwargs, cost_attribute="overnight_cost")
 
-    return _get_capacities(
-        n, region, _f, cap_string="Investment|Energy Supply|", costs=costs
+    var = _get_capacities(
+        n,
+        region,
+        _f,
+        cap_string="Investment|Energy Supply|",
     )
+
+    grid_var = get_grid_investments(
+        n,
+        costs,
+        region,
+        length_factor=snakemake.params.length_factor,
+    )
+
+    var["Investment|Energy Supply|Electricity"] += grid_var[
+        "Investment|Energy Supply|Electricity|Transmission and Distribution"
+    ]
+
+    var["Investment|Energy Supply|Hydrogen"] += grid_var[
+        "Investment|Energy Supply|Hydrogen|Transmission"
+    ]
+
+    if "Investment|Energy Supply|Gas|Transmission" in grid_var.keys():
+        var["Investment|Energy Supply|Gas"] += grid_var[
+            "Investment|Energy Supply|Gas|Transmission"
+        ]
+
+    return var
 
 
 def get_capacity_additions_nstat(n, region):
@@ -319,104 +344,7 @@ def get_capacity_additions_nstat(n, region):
     return _get_capacities(n, region, _f, cap_string="Capacity Additions Nstat|")
 
 
-costs_dict = {
-    # capacities electricity
-    "BEV charger": None,
-    "CCGT": "CCGT",
-    "DAC": "direct air capture",
-    "H2 Electrolysis": "electrolysis",
-    "H2 Fuel Cell": "fuel cell",
-    "OCGT": "OCGT",
-    "PHS": "PHS",
-    "V2G": None,
-    "battery charger": "battery inverter",
-    "battery discharger": "battery inverter",
-    "coal": "coal",
-    "gas pipeline": "CH4 (g) pipeline",
-    "home battery charger": "home battery inverter",
-    "home battery discharger": "home battery inverter",
-    "hydro": "hydro",
-    "lignite": "lignite",
-    "methanolisation": "methanolisation",
-    "offwind-ac": "offwind",  # TODO add grid connection cost
-    "offwind-dc": "offwind",  # TODO add grid connection cost
-    "offwind-float": "offwind-float",  # TODO add grid connection cost
-    "oil": "oil",
-    "onwind": "onwind",
-    "ror": "ror",
-    "rural air heat pump": "decentral air-sourced heat pump",
-    "rural ground heat pump": "decentral ground-sourced heat pump",
-    "rural resistive heater": "decentral resistive heater",
-    "rural solar thermal": "decentral solar thermal",
-    "solar": "solar-utility",
-    "solar rooftop": "solar-rooftop",
-    "solar-hsat": "solar-utility single-axis tracking",
-    "solid biomass": "central solid biomass CHP",
-    "urban central air heat pump": "central air-sourced heat pump",
-    "urban central coal CHP": "central coal CHP",
-    "urban central gas CHP": "central gas CHP",
-    "urban central gas CHP CC": "central gas CHP",
-    "urban central lignite CHP": "central coal CHP",
-    "urban central oil CHP": "central gas CHP",
-    "urban central resistive heater": "central resistive heater",
-    "urban central solar thermal": "central solar thermal",
-    "urban central solid biomass CHP": "central solid biomass CHP",
-    "urban central solid biomass CHP CC": "central solid biomass CHP CC",
-    "urban decentral air heat pump": "decentral air-sourced heat pump",
-    "urban decentral resistive heater": "decentral resistive heater",
-    "urban decentral solar thermal": "decentral solar thermal",
-    "waste CHP": "waste CHP",
-    "waste CHP CC": "waste CHP CC",
-    # Heat capacities
-    # TODO Check the units of the investments
-    "DAC": "direct air capture",
-    "Fischer-Tropsch": None,  #'Fischer-Tropsch' * "efficiency" ,
-    "H2 Electrolysis": "electrolysis",
-    "H2 Fuel Cell": "fuel cell",
-    "Sabatier": "methanation",
-    "methanolisation": "methanolisation",
-    # 'urban central air heat pump': 'central air-sourced heat pump',
-    # 'urban central coal CHP': 'central coal CHP',
-    # 'urban central gas CHP': 'central gas CHP',
-    # 'urban central gas CHP CC': 'central gas CHP',
-    # 'urban central lignite CHP': 'central coal CHP',
-    # 'urban central oil CHP': 'central gas CHP',
-    # 'urban central resistive heater': 'central resistive heater',
-    # 'urban central solid biomass CHP': 'central solid biomass CHP',
-    # 'urban central solid biomass CHP CC': 'central solid biomass CHP CC',
-    "urban central water tanks charger": "water tank charger",
-    "urban central water tanks discharger": "water tank discharger",
-    # 'waste CHP': 'waste CHP',
-    # 'waste CHP CC': 'waste CHP CC',
-    #  Decentral Heat capacities
-    # TODO consider overdim_factor
-    #'rural air heat pump': None,
-    "rural biomass boiler": "biomass boiler",
-    "rural gas boiler": "decentral gas boiler",
-    #'rural ground heat pump': None,
-    "rural oil boiler": "decentral oil boiler",
-    "rural resistive heater": "decentral resistive heater",
-    "rural water tanks charger": "water tank charger",
-    "rural water tanks discharger": "water tank discharger",
-    #'urban decentral air heat pump': None,
-    "urban decentral biomass boiler": "biomass boiler",
-    "urban decentral gas boiler": "decentral gas boiler",
-    "urban decentral oil boiler": "decentral oil boiler",
-    "urban decentral resistive heater": "decentral resistive heater",
-    "urban decentral water tanks charger": "water tank charger",
-    "urban decentral water tanks discharger": "water tank discharger",
-    # Other capacities
-    # 'Sabatier': 'methanation',costs.at["methanation", "fixed"]
-    # * costs.at["methanation", "efficiency"]
-    "biogas to gas": None,  # TODO biogas + biogas upgrading
-    "biogas to gas CC": None,  # TODO costs.at["biogas CC", "fixed"]
-    # + costs.at["biogas upgrading", "fixed"]
-    # + costs.at["biomass CHP capture", "fixed"]
-    # * costs.at["biogas CC", "CO2 stored"],
-}
-
-
-def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
+def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
 
     kwargs = {
         "groupby": n.statistics.groupers.get_bus_and_carrier,
@@ -441,30 +369,6 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
         )
         .multiply(MW2GW)
     )
-
-    # if cap_string.startswith("Investment"):
-    #     technology_investments = pd.Series(
-    #         [
-    #             0 if costs_dict.get(key) is None else
-    #             costs.at[costs_dict.get(key), "investment"]
-    #             for key in capacities_electricity.index
-    #         ],
-    #         capacities_electricity.index
-    #     )
-    #     for carrier in technology_investments.index.intersection(
-    #         ["onwind", "solar", "solar-hsat"]):
-    #         technology_investments[carrier] += \
-    #             costs.at["electricity grid connection", "investment"]
-
-    #     for carrier in ["offwind-ac", "offwind-dc", "offwind-float"]:
-    #         technology_investments[carrier] = 0.0 # TODO add grid connection cost
-    #     #     apply update_wind_solar_costs(n, costs)
-
-    #     capacities_electricity = \
-    #         capacities_electricity.div(5).multiply(technology_investments)
-    # else:
-    #     capacities_electricity = \
-    #         capacities_electricity.multiply(MW2GW)
 
     var[cap_string + "Electricity|Biomass|w/ CCS"] = capacities_electricity.get(
         "urban central solid biomass CHP CC ", 0
@@ -971,8 +875,14 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
         .multiply(MW2GW)
     )
     #
-    var[cap_string + "Liquids|Hydrogen"] = var[cap_string + "Liquids"] = (
-        capacities_liquids.get("Fischer-Tropsch", 0)
+    var[cap_string + "Liquids|Hydrogen"] = capacities_liquids.get("Fischer-Tropsch", 0)
+
+    var[cap_string + "Liquids|Biomass"] = capacities_liquids.filter(
+        like="biomass to liquid"
+    ).sum()
+
+    var[cap_string + "Liquids"] = (
+        var[cap_string + "Liquids|Hydrogen"] + var[cap_string + "Liquids|Biomass"]
     )
 
     try:
@@ -1937,8 +1847,6 @@ def get_final_energy(
         - var["Final Energy|Non-Energy Use|Liquids"]
     )
 
-    # TODO This is plastics not liquids for industry! Look in industry demand!
-
     # var["Final Energy|Industry|Other"] = \
 
     var["Final Energy|Industry|Solids|Biomass"] = industry_demand.get("solid biomass")
@@ -2370,11 +2278,6 @@ def get_final_energy(
         + var["Final Energy|Transportation"]
     )
 
-    # The general problem with final energy is that for most of these categories
-    # feedstocks shouls be excluded (i.e., non-energy use)
-    # However this is hard to do in PyPSA.
-    # TODO nevertheless it would be nice to do exactly that
-
     return var
 
 
@@ -2567,7 +2470,18 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         CHP_emissions.index.get_level_values("carrier").isin(gas_techs)
     ] *= gas_fractions["Natural Gas"]
 
-    # TODO Methanol?
+    # All methanol is e-methanol and hence considered carbon neutral
+
+    methanol_techs = [
+        "industry methanol",
+        "shipping methanol",
+    ]
+
+    var["Emissions|CO2|Efuels|Methanol"] = co2_emissions.loc[
+        co2_emissions.index.isin(methanol_techs)
+    ].sum()
+
+    co2_emissions.loc[co2_emissions.index.isin(methanol_techs)] = 0
 
     # Emissions in DE are:
 
@@ -2578,7 +2492,8 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         var["Emissions|CO2|Model"]
         + co2_storage.sum() * ccu_fraction
         - var["Emissions|CO2|Efuels|Liquids"]
-        - var["Emissions|CO2|Efuels|Gases"],
+        - var["Emissions|CO2|Efuels|Gases"]
+        - var["Emissions|CO2|Efuels|Methanol"],
     )
 
     # Split CHP emissions between electricity and heat sectors
@@ -2637,9 +2552,9 @@ def get_emissions(n, region, _energy_totals, industry_demand):
             "process emissions",
             "process emissions CC",
         ]
-    ).sum() + co2_emissions.get("industry methanol", 0)
-    # process emissions is mainly cement, methanol is used for chemicals
-    # TODO where should the methanol go?
+    ).sum() + co2_emissions.get(
+        "industry methanol", 0
+    )  # considered 0 anyways
 
     mwh_coal_per_mwh_coke = 1.366  # from eurostat energy balance
     # 0.3361 t/MWh, industry_DE is in PJ, 1e-6 to convert to Mt
@@ -4134,6 +4049,120 @@ def get_operational_and_capital_costs(year):
         nyears=1,
     )
 
+    costs_dict = {
+        # capacities electricity
+        "BEV charger": None,
+        "CCGT": "CCGT",
+        "DAC": "direct air capture",
+        "H2 Electrolysis": "electrolysis",
+        "H2 Fuel Cell": "fuel cell",
+        "OCGT": "OCGT",
+        "PHS": "PHS",
+        "V2G": None,
+        "battery charger": "battery inverter",
+        "battery discharger": "battery inverter",
+        "coal": "coal",
+        "gas pipeline": "CH4 (g) pipeline",
+        "home battery charger": "home battery inverter",
+        "home battery discharger": "home battery inverter",
+        "hydro": "hydro",
+        "lignite": "lignite",
+        "methanolisation": "methanolisation",
+        "offwind-ac": "offwind",  # TODO add grid connection cost
+        "offwind-dc": "offwind",  # TODO add grid connection cost
+        "offwind-float": "offwind-float",  # TODO add grid connection cost
+        "oil": "oil",
+        "onwind": "onwind",
+        "ror": "ror",
+        "rural air heat pump": "decentral air-sourced heat pump",
+        "rural ground heat pump": "decentral ground-sourced heat pump",
+        "rural resistive heater": "decentral resistive heater",
+        "rural solar thermal": "decentral solar thermal",
+        "solar": "solar-utility",
+        "solar rooftop": "solar-rooftop",
+        "solar-hsat": "solar-utility single-axis tracking",
+        "solid biomass": "central solid biomass CHP",
+        "urban central air heat pump": "central air-sourced heat pump",
+        "urban central coal CHP": "central coal CHP",
+        "urban central gas CHP": "central gas CHP",
+        "urban central gas CHP CC": "central gas CHP",
+        "urban central lignite CHP": "central coal CHP",
+        "urban central oil CHP": "central gas CHP",
+        "urban central resistive heater": "central resistive heater",
+        "urban central solar thermal": "central solar thermal",
+        "urban central solid biomass CHP": "central solid biomass CHP",
+        "urban central solid biomass CHP CC": "central solid biomass CHP CC",
+        "urban decentral air heat pump": "decentral air-sourced heat pump",
+        "urban decentral resistive heater": "decentral resistive heater",
+        "urban decentral solar thermal": "decentral solar thermal",
+        "waste CHP": "waste CHP",
+        "waste CHP CC": "waste CHP CC",
+        # Heat capacities
+        # TODO Check the units of the investments
+        "DAC": "direct air capture",
+        "Fischer-Tropsch": None,  #'Fischer-Tropsch' * "efficiency" ,
+        "H2 Electrolysis": "electrolysis",
+        "H2 Fuel Cell": "fuel cell",
+        "Sabatier": "methanation",
+        "methanolisation": "methanolisation",
+        # 'urban central air heat pump': 'central air-sourced heat pump',
+        # 'urban central coal CHP': 'central coal CHP',
+        # 'urban central gas CHP': 'central gas CHP',
+        # 'urban central gas CHP CC': 'central gas CHP',
+        # 'urban central lignite CHP': 'central coal CHP',
+        # 'urban central oil CHP': 'central gas CHP',
+        # 'urban central resistive heater': 'central resistive heater',
+        # 'urban central solid biomass CHP': 'central solid biomass CHP',
+        # 'urban central solid biomass CHP CC': 'central solid biomass CHP CC',
+        "urban central water tanks charger": "water tank charger",
+        "urban central water tanks discharger": "water tank discharger",
+        # 'waste CHP': 'waste CHP',
+        # 'waste CHP CC': 'waste CHP CC',
+        #  Decentral Heat capacities
+        # TODO consider overdim_factor
+        #'rural air heat pump': None,
+        "rural biomass boiler": "biomass boiler",
+        "rural gas boiler": "decentral gas boiler",
+        #'rural ground heat pump': None,
+        "rural oil boiler": "decentral oil boiler",
+        "rural resistive heater": "decentral resistive heater",
+        "rural water tanks charger": "water tank charger",
+        "rural water tanks discharger": "water tank discharger",
+        #'urban decentral air heat pump': None,
+        "urban decentral biomass boiler": "biomass boiler",
+        "urban decentral gas boiler": "decentral gas boiler",
+        "urban decentral oil boiler": "decentral oil boiler",
+        "urban decentral resistive heater": "decentral resistive heater",
+        "urban decentral water tanks charger": "water tank charger",
+        "urban decentral water tanks discharger": "water tank discharger",
+        # Other capacities
+        # 'Sabatier': 'methanation',costs.at["methanation", "fixed"]
+        # * costs.at["methanation", "efficiency"]
+        "biogas to gas": None,  # TODO biogas + biogas upgrading
+        "biogas to gas CC": None,  # TODO costs.at["biogas CC", "fixed"]
+        # + costs.at["biogas upgrading", "fixed"]
+        # + costs.at["biomass CHP capture", "fixed"]
+        # * costs.at["biogas CC", "CO2 stored"],
+    }
+
+    # storage_costs_dict = {
+    #     "H2": "hydrogen storage underground",
+    #     "EV battery": None,  # 0 i think
+    #     "PHS": None,  #'PHS', accounted already as generator??
+    #     "battery": "battery storage",
+    #     "biogas": None,  # not a typical store, 0 i think
+    #     "co2 sequestered": snakemake.params.co2_sequestration_cost,
+    #     "co2 stored": "CO2 storage tank",
+    #     "gas": "gas storage",
+    #     "home battery": "home battery storage",
+    #     "hydro": None,  # `hydro`, , accounted already as generator??
+    #     "oil": 0.02,
+    #     "rural water tanks": "decentral water tank storage",
+    #     "solid biomass": None,  # not a store, but a potential, 0 i think
+    #     "urban central water tanks": "central water tank storage",
+    #     "urban decentral water tanks": "decentral water tank storage",
+    # }
+
     sector_dict = {
         "BEV charger": "Electricity",
         "CCGT": "Electricity",
@@ -4394,24 +4423,6 @@ if __name__ == "__main__":
             run="KN2045_Bal_v4",
         )
 
-    # storage_costs_dict = {
-    #     "H2": "hydrogen storage underground",
-    #     "EV battery": None,  # 0 i think
-    #     "PHS": None,  #'PHS', accounted already as generator??
-    #     "battery": "battery storage",
-    #     "biogas": None,  # not a typical store, 0 i think
-    #     "co2 sequestered": snakemake.params.co2_sequestration_cost,
-    #     "co2 stored": "CO2 storage tank",
-    #     "gas": "gas storage",
-    #     "home battery": "home battery storage",
-    #     "hydro": None,  # `hydro`, , accounted already as generator??
-    #     "oil": 0.02,
-    #     "rural water tanks": "decentral water tank storage",
-    #     "solid biomass": None,  # not a store, but a potential, 0 i think
-    #     "urban central water tanks": "central water tank storage",
-    #     "urban decentral water tanks": "decentral water tank storage",
-    # }
-
     config = snakemake.config
     planning_horizons = snakemake.params.planning_horizons
     post_discretization = snakemake.params.post_discretization
@@ -4469,6 +4480,14 @@ if __name__ == "__main__":
             snakemake.input.costs,
         )
     )
+    # Load data
+    _networks = [pypsa.Network(fn) for fn in snakemake.input.networks]
+    modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
+    # Hack the transmission projects
+    networks = [
+        hack_transmission_projects(n.copy(), int(my))
+        for n, my in zip(_networks, modelyears)
+    ]
 
     if "debug" == "debug":  # For debugging
         var = pd.Series()
