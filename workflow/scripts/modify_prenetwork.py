@@ -506,7 +506,7 @@ def unravel_carbonaceous_fuels(n):
             carrier="industry methanol",
             location="DE",
             x=n.buses.loc["DE", "x"],
-            y=n.buses.loc["DE", "y"],   
+            y=n.buses.loc["DE", "y"],
             unit="MWh_LHV",
         )
         n.add(
@@ -519,8 +519,6 @@ def unravel_carbonaceous_fuels(n):
             p_nom_extendable=True,
             efficiency2=1 / snakemake.params.mwh_meoh_per_tco2,
         )
-
-
 
     # shipping load
     if "EU shipping methanol" in n.loads.index:
@@ -573,7 +571,7 @@ def unravel_carbonaceous_fuels(n):
             carrier="shipping methanol",
             location="DE",
             x=n.buses.loc["DE", "x"],
-            y=n.buses.loc["DE", "y"],   
+            y=n.buses.loc["DE", "y"],
             unit="MWh_LHV",
         )
         n.add(
