@@ -4226,7 +4226,9 @@ def get_operational_and_capital_costs(year):
 
 
 def hack_transmission_projects(n, model_year):
-    print("Hacking transmission projects for year", model_year)
+    logger.info(f"Hacking transmission projects for year {model_year}")
+    logger.warning(f"Assuming all transmission projects are new links")
+    logger.warning(f"Assuming all indices of transmission projects start with 'DC' or 'TYNDP'")
     tprojs = n.links.loc[
         (n.links.index.str.startswith("DC") | n.links.index.str.startswith("TYNDP"))
         & ~n.links.reversed
@@ -4242,19 +4244,16 @@ def hack_transmission_projects(n, model_year):
     # Future projects should not have any capacity
     assert isclose(n.links.loc[future_projects, "p_nom_opt"], 0).all()
     # Setting p_nom to 0 such that n.statistics does not compute negative expanded capex or capacity additions
-    # Setting p_nom to 0 for the grid_expansion calculation
+    # Setting p_nom_min to 0 for the grid_expansion calculation
     # This is ONLY POSSIBLE IN POST-PROCESSING
     # We pretend that the model expanded the grid endogenously
     n.links.loc[future_projects, "p_nom"] = 0
     n.links.loc[future_projects, "p_nom_min"] = 0
 
-    # Current projects should have their p_nom_opt equal to p_nom
-    # until the year 2030 (Startnetz that we force in)
+    # Current projects should have their p_nom_opt bigger or equal to p_nom until the year 2030 (Startnetz that we force in)
     if model_year <= 2030:
-        assert isclose(
-            n.links.loc[current_projects, "p_nom_opt"],
-            n.links.loc[current_projects, "p_nom"],
-        ).all()
+        assert (n.links.loc[current_projects, "p_nom"] <=
+            n.links.loc[current_projects, "p_nom_opt"]).all()
 
         n.links.loc[current_projects, "p_nom"] = 0
         n.links.loc[current_projects, "p_nom_min"] = 0
@@ -4466,14 +4465,7 @@ if __name__ == "__main__":
             snakemake.input.costs,
         )
     )
-    # Load data
-    _networks = [pypsa.Network(fn) for fn in snakemake.input.networks]
-    modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
-    # Hack the transmission projects
-    networks = [
-        hack_transmission_projects(n.copy(), int(my))
-        for n, my in zip(_networks, modelyears)
-    ]
+
 
     if "debug" == "debug":  # For debugging
         var = pd.Series()
