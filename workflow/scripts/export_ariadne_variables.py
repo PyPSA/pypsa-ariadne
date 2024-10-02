@@ -1843,8 +1843,6 @@ def get_final_energy(
         - var["Final Energy|Non-Energy Use|Liquids"]
     )
 
-    # TODO This is plastics not liquids for industry! Look in industry demand!
-
     # var["Final Energy|Industry|Other"] = \
 
     var["Final Energy|Industry|Solids|Biomass"] = industry_demand.get("solid biomass")
@@ -2276,11 +2274,6 @@ def get_final_energy(
         + var["Final Energy|Transportation"]
     )
 
-    # The general problem with final energy is that for most of these categories
-    # feedstocks shouls be excluded (i.e., non-energy use)
-    # However this is hard to do in PyPSA.
-    # TODO nevertheless it would be nice to do exactly that
-
     return var
 
 
@@ -2473,7 +2466,19 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         CHP_emissions.index.get_level_values("carrier").isin(gas_techs)
     ] *= gas_fractions["Natural Gas"]
 
-    # TODO Methanol?
+    # All methanol is e-methanol and hence considered carbon neutral
+
+    methanol_techs = [
+        "industry methanol",
+        "shipping methanol",
+    ]
+
+    var["Emissions|CO2|Efuels|Methanol"] = co2_emissions.loc[
+        co2_emissions.index.isin(methanol_techs)
+    ].sum()
+
+    co2_emissions.loc[co2_emissions.index.isin(methanol_techs)] = 0
+
 
     # Emissions in DE are:
 
@@ -2484,7 +2489,8 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         var["Emissions|CO2|Model"]
         + co2_storage.sum() * ccu_fraction
         - var["Emissions|CO2|Efuels|Liquids"]
-        - var["Emissions|CO2|Efuels|Gases"],
+        - var["Emissions|CO2|Efuels|Gases"]
+        - var["Emissions|CO2|Efuels|Methanol"],
     )
 
     # Split CHP emissions between electricity and heat sectors
@@ -2543,9 +2549,7 @@ def get_emissions(n, region, _energy_totals, industry_demand):
             "process emissions",
             "process emissions CC",
         ]
-    ).sum() + co2_emissions.get("industry methanol", 0)
-    # process emissions is mainly cement, methanol is used for chemicals
-    # TODO where should the methanol go?
+    ).sum() + co2_emissions.get("industry methanol", 0) # considered 0 anyways
 
     mwh_coal_per_mwh_coke = 1.366  # from eurostat energy balance
     # 0.3361 t/MWh, industry_DE is in PJ, 1e-6 to convert to Mt
