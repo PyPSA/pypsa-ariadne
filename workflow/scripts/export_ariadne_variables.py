@@ -306,9 +306,25 @@ def get_investments(n, costs, region):
     def _f(**kwargs):
         return n.statistics.expanded_capex(**kwargs, cost_attribute="overnight_cost")
 
-    return _get_capacities(
-        n, region, _f, cap_string="Investment|Energy Supply|", costs=costs
+    var = _get_capacities(
+        n, region, _f, cap_string="Investment|Energy Supply|", 
     )
+
+    grid_var = get_grid_investments(
+                n,
+                costs,
+                region,
+                length_factor=snakemake.params.length_factor,
+            )
+    
+    var["Investment|Energy Supply|Electricity"] += grid_var["Investment|Energy Supply|Electricity|Transmission and Distribution"]
+
+    var["Investment|Energy Supply|Hydrogen"] += grid_var["Investment|Energy Supply|Hydrogen|Transmission"]
+
+    if "Investment|Energy Supply|Gas|Transmission" in grid_var.keys():
+        var["Investment|Energy Supply|Gas"] += grid_var["Investment|Energy Supply|Gas|Transmission"]
+
+    return var
 
 
 def get_capacity_additions_nstat(n, region):
@@ -416,7 +432,7 @@ costs_dict = {
 }
 
 
-def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
+def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
 
     kwargs = {
         "groupby": n.statistics.groupers.get_bus_and_carrier,
@@ -441,30 +457,6 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
         )
         .multiply(MW2GW)
     )
-
-    # if cap_string.startswith("Investment"):
-    #     technology_investments = pd.Series(
-    #         [
-    #             0 if costs_dict.get(key) is None else
-    #             costs.at[costs_dict.get(key), "investment"]
-    #             for key in capacities_electricity.index
-    #         ],
-    #         capacities_electricity.index
-    #     )
-    #     for carrier in technology_investments.index.intersection(
-    #         ["onwind", "solar", "solar-hsat"]):
-    #         technology_investments[carrier] += \
-    #             costs.at["electricity grid connection", "investment"]
-
-    #     for carrier in ["offwind-ac", "offwind-dc", "offwind-float"]:
-    #         technology_investments[carrier] = 0.0 # TODO add grid connection cost
-    #     #     apply update_wind_solar_costs(n, costs)
-
-    #     capacities_electricity = \
-    #         capacities_electricity.div(5).multiply(technology_investments)
-    # else:
-    #     capacities_electricity = \
-    #         capacities_electricity.multiply(MW2GW)
 
     var[cap_string + "Electricity|Biomass|w/ CCS"] = capacities_electricity.get(
         "urban central solid biomass CHP CC ", 0
