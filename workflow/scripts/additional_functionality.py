@@ -56,9 +56,9 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
 
                 if cname in n.global_constraints.index:
                     logger.warning(
-                        f"Global constraint {cname} already exists. Skipping."
+                        f"Global constraint {cname} already exists. Dropping and adding it again."
                     )
-                    continue
+                    n.global_constraints.drop(cname, inplace=True)
 
                 if sense == "maximum":
                     if limit - existing_capacity <= 0:
