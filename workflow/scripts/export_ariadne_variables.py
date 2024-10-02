@@ -307,22 +307,31 @@ def get_investments(n, costs, region):
         return n.statistics.expanded_capex(**kwargs, cost_attribute="overnight_cost")
 
     var = _get_capacities(
-        n, region, _f, cap_string="Investment|Energy Supply|", 
+        n,
+        region,
+        _f,
+        cap_string="Investment|Energy Supply|",
     )
 
     grid_var = get_grid_investments(
-                n,
-                costs,
-                region,
-                length_factor=snakemake.params.length_factor,
-            )
-    
-    var["Investment|Energy Supply|Electricity"] += grid_var["Investment|Energy Supply|Electricity|Transmission and Distribution"]
+        n,
+        costs,
+        region,
+        length_factor=snakemake.params.length_factor,
+    )
 
-    var["Investment|Energy Supply|Hydrogen"] += grid_var["Investment|Energy Supply|Hydrogen|Transmission"]
+    var["Investment|Energy Supply|Electricity"] += grid_var[
+        "Investment|Energy Supply|Electricity|Transmission and Distribution"
+    ]
+
+    var["Investment|Energy Supply|Hydrogen"] += grid_var[
+        "Investment|Energy Supply|Hydrogen|Transmission"
+    ]
 
     if "Investment|Energy Supply|Gas|Transmission" in grid_var.keys():
-        var["Investment|Energy Supply|Gas"] += grid_var["Investment|Energy Supply|Gas|Transmission"]
+        var["Investment|Energy Supply|Gas"] += grid_var[
+            "Investment|Energy Supply|Gas|Transmission"
+        ]
 
     return var
 
@@ -333,8 +342,6 @@ def get_capacity_additions_nstat(n, region):
         return n.statistics.expanded_capacity(*args, **kwargs)
 
     return _get_capacities(n, region, _f, cap_string="Capacity Additions Nstat|")
-
-
 
 
 def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
@@ -868,17 +875,14 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         .multiply(MW2GW)
     )
     #
-    var[cap_string + "Liquids|Hydrogen"] =  (
-        capacities_liquids.get("Fischer-Tropsch", 0)
-    )
+    var[cap_string + "Liquids|Hydrogen"] = capacities_liquids.get("Fischer-Tropsch", 0)
 
-    var[cap_string + "Liquids|Biomass"] = (
-        capacities_liquids.filter(like="biomass to liquid").sum()
-    )
+    var[cap_string + "Liquids|Biomass"] = capacities_liquids.filter(
+        like="biomass to liquid"
+    ).sum()
 
     var[cap_string + "Liquids"] = (
-        var[cap_string + "Liquids|Hydrogen"] 
-        + var[cap_string + "Liquids|Biomass"]
+        var[cap_string + "Liquids|Hydrogen"] + var[cap_string + "Liquids|Biomass"]
     )
 
     try:
@@ -1843,8 +1847,6 @@ def get_final_energy(
         - var["Final Energy|Non-Energy Use|Liquids"]
     )
 
-    # TODO This is plastics not liquids for industry! Look in industry demand!
-
     # var["Final Energy|Industry|Other"] = \
 
     var["Final Energy|Industry|Solids|Biomass"] = industry_demand.get("solid biomass")
@@ -2276,11 +2278,6 @@ def get_final_energy(
         + var["Final Energy|Transportation"]
     )
 
-    # The general problem with final energy is that for most of these categories
-    # feedstocks shouls be excluded (i.e., non-energy use)
-    # However this is hard to do in PyPSA.
-    # TODO nevertheless it would be nice to do exactly that
-
     return var
 
 
@@ -2473,7 +2470,18 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         CHP_emissions.index.get_level_values("carrier").isin(gas_techs)
     ] *= gas_fractions["Natural Gas"]
 
-    # TODO Methanol?
+    # All methanol is e-methanol and hence considered carbon neutral
+
+    methanol_techs = [
+        "industry methanol",
+        "shipping methanol",
+    ]
+
+    var["Emissions|CO2|Efuels|Methanol"] = co2_emissions.loc[
+        co2_emissions.index.isin(methanol_techs)
+    ].sum()
+
+    co2_emissions.loc[co2_emissions.index.isin(methanol_techs)] = 0
 
     # Emissions in DE are:
 
@@ -2484,7 +2492,8 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         var["Emissions|CO2|Model"]
         + co2_storage.sum() * ccu_fraction
         - var["Emissions|CO2|Efuels|Liquids"]
-        - var["Emissions|CO2|Efuels|Gases"],
+        - var["Emissions|CO2|Efuels|Gases"]
+        - var["Emissions|CO2|Efuels|Methanol"],
     )
 
     # Split CHP emissions between electricity and heat sectors
@@ -2543,9 +2552,9 @@ def get_emissions(n, region, _energy_totals, industry_demand):
             "process emissions",
             "process emissions CC",
         ]
-    ).sum() + co2_emissions.get("industry methanol", 0)
-    # process emissions is mainly cement, methanol is used for chemicals
-    # TODO where should the methanol go?
+    ).sum() + co2_emissions.get(
+        "industry methanol", 0
+    )  # considered 0 anyways
 
     mwh_coal_per_mwh_coke = 1.366  # from eurostat energy balance
     # 0.3361 t/MWh, industry_DE is in PJ, 1e-6 to convert to Mt
@@ -4154,7 +4163,6 @@ def get_operational_and_capital_costs(year):
     #     "urban decentral water tanks": "decentral water tank storage",
     # }
 
-
     sector_dict = {
         "BEV charger": "Electricity",
         "CCGT": "Electricity",
@@ -4249,7 +4257,9 @@ def get_operational_and_capital_costs(year):
 def hack_transmission_projects(n, model_year):
     logger.info(f"Hacking transmission projects for year {model_year}")
     logger.warning(f"Assuming all transmission projects are new links")
-    logger.warning(f"Assuming all indices of transmission projects start with 'DC' or 'TYNDP'")
+    logger.warning(
+        f"Assuming all indices of transmission projects start with 'DC' or 'TYNDP'"
+    )
     tprojs = n.links.loc[
         (n.links.index.str.startswith("DC") | n.links.index.str.startswith("TYNDP"))
         & ~n.links.reversed
@@ -4273,8 +4283,10 @@ def hack_transmission_projects(n, model_year):
 
     # Current projects should have their p_nom_opt bigger or equal to p_nom until the year 2030 (Startnetz that we force in)
     if model_year <= 2030:
-        assert (n.links.loc[current_projects, "p_nom"] <=
-            n.links.loc[current_projects, "p_nom_opt"]).all()
+        assert (
+            n.links.loc[current_projects, "p_nom"]
+            <= n.links.loc[current_projects, "p_nom_opt"]
+        ).all()
 
         n.links.loc[current_projects, "p_nom"] = 0
         n.links.loc[current_projects, "p_nom_min"] = 0
@@ -4410,7 +4422,6 @@ if __name__ == "__main__":
             sector_opts="None",
             run="KN2045_Bal_v4",
         )
-
 
     config = snakemake.config
     planning_horizons = snakemake.params.planning_horizons

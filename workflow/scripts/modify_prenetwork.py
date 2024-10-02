@@ -500,6 +500,26 @@ def unravel_carbonaceous_fuels(n):
         )
         n.loads.loc["EU industry methanol", "p_set"] -= DE_meoh
 
+        n.add(
+            "Bus",
+            "DE industry methanol",
+            carrier="industry methanol",
+            location="DE",
+            x=n.buses.loc["DE", "x"],
+            y=n.buses.loc["DE", "y"],
+            unit="MWh_LHV",
+        )
+        n.add(
+            "Link",
+            "DE industry methanol",
+            bus0="DE methanol",
+            bus1="DE industry methanol",
+            bus2="co2 atmosphere",
+            carrier="industry methanol",
+            p_nom_extendable=True,
+            efficiency2=1 / snakemake.params.mwh_meoh_per_tco2,
+        )
+
     # shipping load
     if "EU shipping methanol" in n.loads.index:
         # get German shipping demand for domestic and international navigation
@@ -544,6 +564,26 @@ def unravel_carbonaceous_fuels(n):
             p_set=p_set,
         )
         n.loads.loc["EU shipping methanol", "p_set"] -= p_set
+
+        n.add(
+            "Bus",
+            "DE shipping methanol",
+            carrier="shipping methanol",
+            location="DE",
+            x=n.buses.loc["DE", "x"],
+            y=n.buses.loc["DE", "y"],
+            unit="MWh_LHV",
+        )
+        n.add(
+            "Link",
+            "DE shipping methanol",
+            bus0="DE methanol",
+            bus1="DE shipping methanol",
+            bus2="co2 atmosphere",
+            carrier="shipping methanol",
+            p_nom_extendable=True,
+            efficiency2=1 / snakemake.params.mwh_meoh_per_tco2,
+        )
 
 
 def unravel_gasbus(n, costs):
