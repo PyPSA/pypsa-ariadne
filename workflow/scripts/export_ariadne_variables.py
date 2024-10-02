@@ -333,7 +333,7 @@ def get_investments(n, costs, region):
             "Investment|Energy Supply|Gas|Transmission"
         ]
 
-    return var
+    return pd.concat([var,grid_var])
 
 
 def get_capacity_additions_nstat(n, region):
