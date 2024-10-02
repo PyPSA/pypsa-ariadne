@@ -335,101 +335,6 @@ def get_capacity_additions_nstat(n, region):
     return _get_capacities(n, region, _f, cap_string="Capacity Additions Nstat|")
 
 
-costs_dict = {
-    # capacities electricity
-    "BEV charger": None,
-    "CCGT": "CCGT",
-    "DAC": "direct air capture",
-    "H2 Electrolysis": "electrolysis",
-    "H2 Fuel Cell": "fuel cell",
-    "OCGT": "OCGT",
-    "PHS": "PHS",
-    "V2G": None,
-    "battery charger": "battery inverter",
-    "battery discharger": "battery inverter",
-    "coal": "coal",
-    "gas pipeline": "CH4 (g) pipeline",
-    "home battery charger": "home battery inverter",
-    "home battery discharger": "home battery inverter",
-    "hydro": "hydro",
-    "lignite": "lignite",
-    "methanolisation": "methanolisation",
-    "offwind-ac": "offwind",  # TODO add grid connection cost
-    "offwind-dc": "offwind",  # TODO add grid connection cost
-    "offwind-float": "offwind-float",  # TODO add grid connection cost
-    "oil": "oil",
-    "onwind": "onwind",
-    "ror": "ror",
-    "rural air heat pump": "decentral air-sourced heat pump",
-    "rural ground heat pump": "decentral ground-sourced heat pump",
-    "rural resistive heater": "decentral resistive heater",
-    "rural solar thermal": "decentral solar thermal",
-    "solar": "solar-utility",
-    "solar rooftop": "solar-rooftop",
-    "solar-hsat": "solar-utility single-axis tracking",
-    "solid biomass": "central solid biomass CHP",
-    "urban central air heat pump": "central air-sourced heat pump",
-    "urban central coal CHP": "central coal CHP",
-    "urban central gas CHP": "central gas CHP",
-    "urban central gas CHP CC": "central gas CHP",
-    "urban central lignite CHP": "central coal CHP",
-    "urban central oil CHP": "central gas CHP",
-    "urban central resistive heater": "central resistive heater",
-    "urban central solar thermal": "central solar thermal",
-    "urban central solid biomass CHP": "central solid biomass CHP",
-    "urban central solid biomass CHP CC": "central solid biomass CHP CC",
-    "urban decentral air heat pump": "decentral air-sourced heat pump",
-    "urban decentral resistive heater": "decentral resistive heater",
-    "urban decentral solar thermal": "decentral solar thermal",
-    "waste CHP": "waste CHP",
-    "waste CHP CC": "waste CHP CC",
-    # Heat capacities
-    # TODO Check the units of the investments
-    "DAC": "direct air capture",
-    "Fischer-Tropsch": None,  #'Fischer-Tropsch' * "efficiency" ,
-    "H2 Electrolysis": "electrolysis",
-    "H2 Fuel Cell": "fuel cell",
-    "Sabatier": "methanation",
-    "methanolisation": "methanolisation",
-    # 'urban central air heat pump': 'central air-sourced heat pump',
-    # 'urban central coal CHP': 'central coal CHP',
-    # 'urban central gas CHP': 'central gas CHP',
-    # 'urban central gas CHP CC': 'central gas CHP',
-    # 'urban central lignite CHP': 'central coal CHP',
-    # 'urban central oil CHP': 'central gas CHP',
-    # 'urban central resistive heater': 'central resistive heater',
-    # 'urban central solid biomass CHP': 'central solid biomass CHP',
-    # 'urban central solid biomass CHP CC': 'central solid biomass CHP CC',
-    "urban central water tanks charger": "water tank charger",
-    "urban central water tanks discharger": "water tank discharger",
-    # 'waste CHP': 'waste CHP',
-    # 'waste CHP CC': 'waste CHP CC',
-    #  Decentral Heat capacities
-    # TODO consider overdim_factor
-    #'rural air heat pump': None,
-    "rural biomass boiler": "biomass boiler",
-    "rural gas boiler": "decentral gas boiler",
-    #'rural ground heat pump': None,
-    "rural oil boiler": "decentral oil boiler",
-    "rural resistive heater": "decentral resistive heater",
-    "rural water tanks charger": "water tank charger",
-    "rural water tanks discharger": "water tank discharger",
-    #'urban decentral air heat pump': None,
-    "urban decentral biomass boiler": "biomass boiler",
-    "urban decentral gas boiler": "decentral gas boiler",
-    "urban decentral oil boiler": "decentral oil boiler",
-    "urban decentral resistive heater": "decentral resistive heater",
-    "urban decentral water tanks charger": "water tank charger",
-    "urban decentral water tanks discharger": "water tank discharger",
-    # Other capacities
-    # 'Sabatier': 'methanation',costs.at["methanation", "fixed"]
-    # * costs.at["methanation", "efficiency"]
-    "biogas to gas": None,  # TODO biogas + biogas upgrading
-    "biogas to gas CC": None,  # TODO costs.at["biogas CC", "fixed"]
-    # + costs.at["biogas upgrading", "fixed"]
-    # + costs.at["biomass CHP capture", "fixed"]
-    # * costs.at["biogas CC", "CO2 stored"],
-}
 
 
 def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
@@ -4135,6 +4040,121 @@ def get_operational_and_capital_costs(year):
         nyears=1,
     )
 
+    costs_dict = {
+        # capacities electricity
+        "BEV charger": None,
+        "CCGT": "CCGT",
+        "DAC": "direct air capture",
+        "H2 Electrolysis": "electrolysis",
+        "H2 Fuel Cell": "fuel cell",
+        "OCGT": "OCGT",
+        "PHS": "PHS",
+        "V2G": None,
+        "battery charger": "battery inverter",
+        "battery discharger": "battery inverter",
+        "coal": "coal",
+        "gas pipeline": "CH4 (g) pipeline",
+        "home battery charger": "home battery inverter",
+        "home battery discharger": "home battery inverter",
+        "hydro": "hydro",
+        "lignite": "lignite",
+        "methanolisation": "methanolisation",
+        "offwind-ac": "offwind",  # TODO add grid connection cost
+        "offwind-dc": "offwind",  # TODO add grid connection cost
+        "offwind-float": "offwind-float",  # TODO add grid connection cost
+        "oil": "oil",
+        "onwind": "onwind",
+        "ror": "ror",
+        "rural air heat pump": "decentral air-sourced heat pump",
+        "rural ground heat pump": "decentral ground-sourced heat pump",
+        "rural resistive heater": "decentral resistive heater",
+        "rural solar thermal": "decentral solar thermal",
+        "solar": "solar-utility",
+        "solar rooftop": "solar-rooftop",
+        "solar-hsat": "solar-utility single-axis tracking",
+        "solid biomass": "central solid biomass CHP",
+        "urban central air heat pump": "central air-sourced heat pump",
+        "urban central coal CHP": "central coal CHP",
+        "urban central gas CHP": "central gas CHP",
+        "urban central gas CHP CC": "central gas CHP",
+        "urban central lignite CHP": "central coal CHP",
+        "urban central oil CHP": "central gas CHP",
+        "urban central resistive heater": "central resistive heater",
+        "urban central solar thermal": "central solar thermal",
+        "urban central solid biomass CHP": "central solid biomass CHP",
+        "urban central solid biomass CHP CC": "central solid biomass CHP CC",
+        "urban decentral air heat pump": "decentral air-sourced heat pump",
+        "urban decentral resistive heater": "decentral resistive heater",
+        "urban decentral solar thermal": "decentral solar thermal",
+        "waste CHP": "waste CHP",
+        "waste CHP CC": "waste CHP CC",
+        # Heat capacities
+        # TODO Check the units of the investments
+        "DAC": "direct air capture",
+        "Fischer-Tropsch": None,  #'Fischer-Tropsch' * "efficiency" ,
+        "H2 Electrolysis": "electrolysis",
+        "H2 Fuel Cell": "fuel cell",
+        "Sabatier": "methanation",
+        "methanolisation": "methanolisation",
+        # 'urban central air heat pump': 'central air-sourced heat pump',
+        # 'urban central coal CHP': 'central coal CHP',
+        # 'urban central gas CHP': 'central gas CHP',
+        # 'urban central gas CHP CC': 'central gas CHP',
+        # 'urban central lignite CHP': 'central coal CHP',
+        # 'urban central oil CHP': 'central gas CHP',
+        # 'urban central resistive heater': 'central resistive heater',
+        # 'urban central solid biomass CHP': 'central solid biomass CHP',
+        # 'urban central solid biomass CHP CC': 'central solid biomass CHP CC',
+        "urban central water tanks charger": "water tank charger",
+        "urban central water tanks discharger": "water tank discharger",
+        # 'waste CHP': 'waste CHP',
+        # 'waste CHP CC': 'waste CHP CC',
+        #  Decentral Heat capacities
+        # TODO consider overdim_factor
+        #'rural air heat pump': None,
+        "rural biomass boiler": "biomass boiler",
+        "rural gas boiler": "decentral gas boiler",
+        #'rural ground heat pump': None,
+        "rural oil boiler": "decentral oil boiler",
+        "rural resistive heater": "decentral resistive heater",
+        "rural water tanks charger": "water tank charger",
+        "rural water tanks discharger": "water tank discharger",
+        #'urban decentral air heat pump': None,
+        "urban decentral biomass boiler": "biomass boiler",
+        "urban decentral gas boiler": "decentral gas boiler",
+        "urban decentral oil boiler": "decentral oil boiler",
+        "urban decentral resistive heater": "decentral resistive heater",
+        "urban decentral water tanks charger": "water tank charger",
+        "urban decentral water tanks discharger": "water tank discharger",
+        # Other capacities
+        # 'Sabatier': 'methanation',costs.at["methanation", "fixed"]
+        # * costs.at["methanation", "efficiency"]
+        "biogas to gas": None,  # TODO biogas + biogas upgrading
+        "biogas to gas CC": None,  # TODO costs.at["biogas CC", "fixed"]
+        # + costs.at["biogas upgrading", "fixed"]
+        # + costs.at["biomass CHP capture", "fixed"]
+        # * costs.at["biogas CC", "CO2 stored"],
+    }
+
+    # storage_costs_dict = {
+    #     "H2": "hydrogen storage underground",
+    #     "EV battery": None,  # 0 i think
+    #     "PHS": None,  #'PHS', accounted already as generator??
+    #     "battery": "battery storage",
+    #     "biogas": None,  # not a typical store, 0 i think
+    #     "co2 sequestered": snakemake.params.co2_sequestration_cost,
+    #     "co2 stored": "CO2 storage tank",
+    #     "gas": "gas storage",
+    #     "home battery": "home battery storage",
+    #     "hydro": None,  # `hydro`, , accounted already as generator??
+    #     "oil": 0.02,
+    #     "rural water tanks": "decentral water tank storage",
+    #     "solid biomass": None,  # not a store, but a potential, 0 i think
+    #     "urban central water tanks": "central water tank storage",
+    #     "urban decentral water tanks": "decentral water tank storage",
+    # }
+
+
     sector_dict = {
         "BEV charger": "Electricity",
         "CCGT": "Electricity",
@@ -4391,23 +4411,6 @@ if __name__ == "__main__":
             run="KN2045_Bal_v4",
         )
 
-    # storage_costs_dict = {
-    #     "H2": "hydrogen storage underground",
-    #     "EV battery": None,  # 0 i think
-    #     "PHS": None,  #'PHS', accounted already as generator??
-    #     "battery": "battery storage",
-    #     "biogas": None,  # not a typical store, 0 i think
-    #     "co2 sequestered": snakemake.params.co2_sequestration_cost,
-    #     "co2 stored": "CO2 storage tank",
-    #     "gas": "gas storage",
-    #     "home battery": "home battery storage",
-    #     "hydro": None,  # `hydro`, , accounted already as generator??
-    #     "oil": 0.02,
-    #     "rural water tanks": "decentral water tank storage",
-    #     "solid biomass": None,  # not a store, but a potential, 0 i think
-    #     "urban central water tanks": "central water tank storage",
-    #     "urban decentral water tanks": "decentral water tank storage",
-    # }
 
     config = snakemake.config
     planning_horizons = snakemake.params.planning_horizons
