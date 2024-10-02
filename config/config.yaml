@@ -419,6 +419,7 @@ solving:
         H2 pipeline: 0.05
         H2 pipeline (Kernnetz): 0.05
         H2 pipeline retrofitted: 0.05
+      fractional_last_unit_size: true
   constraints:
     limits_capacity_max:
       Generator:
