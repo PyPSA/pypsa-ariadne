@@ -560,19 +560,31 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|", costs=None):
     # var[cap_string + "Electricity|Hydrogen|OC"] =
     # Q: "H2-turbine"
     # Q: What about retrofitted gas power plants? -> Lisa
-    var[cap_string + "Electricity|Hydrogen"] = var[
-        cap_string + "Electricity|Hydrogen|FC"
-    ] = capacities_electricity.reindex(
+    var[cap_string + "Electricity|Hydrogen|CC"] = capacities_electricity.reindex(
         [
-            "H2 Fuel Cell",
-            "H2 OCGT",
             "H2 CCGT",
             "urban central H2 CHP",
-            "H2 retrofit OCGT",
             "H2 retrofit CCGT",
             "urban central H2 retrofit CHP",
         ]
     ).sum()
+
+    var[cap_string + "Electricity|Hydrogen|OC"] = capacities_electricity.reindex(
+        [
+            "H2 OCGT",
+            "H2 retrofit OCGT",
+        ]
+    ).sum()    
+
+    var[cap_string + "Electricity|Hydrogen|FC"] = capacities_electricity.get(
+        "H2 Fuel Cell", 0)
+
+    var[cap_string + "Electricity|Hydrogen"] = (
+        var[cap_string + "Electricity|Hydrogen|CC"]
+        + var[cap_string + "Electricity|Hydrogen|OC"]
+        + var[cap_string + "Electricity|Hydrogen|FC"]
+    )
+    
 
     var[cap_string + "Electricity|Nuclear"] = capacities_electricity.get("nuclear", 0)
 
