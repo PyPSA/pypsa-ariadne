@@ -60,42 +60,41 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
                     )
                     n.global_constraints.drop(cname, inplace=True)
 
+                rhs = limit - existing_capacity
+
                 if sense == "maximum":
-                    if limit - existing_capacity <= 0:
-                        n.model.add_constraints(
-                            lhs <= 0, name=f"GlobalConstraint-{cname}"
-                        )
+                    if rhs <= 0:
                         logger.warning(
                             f"Existing capacity in {ct} for carrier {carrier} already exceeds the limit of {limit} MW. Limiting capacity expansion for this investment period to 0."
                         )
-                    else:
-                        n.model.add_constraints(
-                            lhs <= limit - existing_capacity,
-                            name=f"GlobalConstraint-{cname}",
-                        )
-                        if cname not in n.global_constraints.index:
-                            n.add(
-                                "GlobalConstraint",
-                                cname,
-                                constant=limit - existing_capacity,
-                                sense="<=",
-                                type="",
-                                carrier_attribute="",
-                            )
-                elif sense == "minimum":
+                        rhs = 0
+
                     n.model.add_constraints(
-                        lhs >= limit - existing_capacity,
+                        lhs <= rhs,
                         name=f"GlobalConstraint-{cname}",
                     )
-                    if cname not in n.global_constraints.index:
-                        n.add(
-                            "GlobalConstraint",
-                            cname,
-                            constant=limit - existing_capacity,
-                            sense=">=",
-                            type="",
-                            carrier_attribute="",
-                        )
+                    n.add(
+                        "GlobalConstraint",
+                        cname,
+                        constant=rhs,
+                        sense="<=",
+                        type="",
+                        carrier_attribute="",
+                    )
+
+                elif sense == "minimum":
+                    n.model.add_constraints(
+                        lhs >= rhs,
+                        name=f"GlobalConstraint-{cname}",
+                    )
+                    n.add(
+                        "GlobalConstraint",
+                        cname,
+                        constant=rhs,
+                        sense=">=",
+                        type="",
+                        carrier_attribute="",
+                    )
                 else:
                     logger.error("sense {sense} not recognised")
                     sys.exit()
@@ -136,15 +135,20 @@ def h2_import_limits(n, investment_year, limits_volume_max):
 
         n.model.add_constraints(lhs <= limit, name=f"GlobalConstraint-{cname}")
 
-        if cname not in n.global_constraints.index:
-            n.add(
-                "GlobalConstraint",
-                cname,
-                constant=limit,
-                sense="<=",
-                type="",
-                carrier_attribute="",
+        if cname in n.global_constraints.index:
+            logger.warning(
+                f"Global constraint {cname} already exists. Dropping and adding it again."
             )
+            n.global_constraints.drop(cname, inplace=True)
+
+        n.add(
+            "GlobalConstraint",
+            cname,
+            constant=limit,
+            sense="<=",
+            type="",
+            carrier_attribute="",
+        )
 
 
 def h2_production_limits(n, investment_year, limits_volume_min, limits_volume_max):
@@ -252,15 +256,20 @@ def electricity_import_limits(n, investment_year, limits_volume_max):
 
         n.model.add_constraints(lhs <= limit, name=f"GlobalConstraint-{cname}")
 
-        if cname not in n.global_constraints.index:
-            n.add(
-                "GlobalConstraint",
-                cname,
-                constant=limit,
-                sense="<=",
-                type="",
-                carrier_attribute="",
+        if cname in n.global_constraints.index:
+            logger.warning(
+                f"Global constraint {cname} already exists. Dropping and adding it again."
             )
+            n.global_constraints.drop(cname, inplace=True)
+
+        n.add(
+            "GlobalConstraint",
+            cname,
+            constant=limit,
+            sense="<=",
+            type="",
+            carrier_attribute="",
+        )
 
 
 def add_co2limit_country(n, limit_countries, snakemake, debug=False):
@@ -393,15 +402,20 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
             name=f"GlobalConstraint-{cname}",
         )
 
-        if cname not in n.global_constraints.index:
-            n.add(
-                "GlobalConstraint",
-                cname,
-                constant=limit,
-                sense="<=",
-                type="",
-                carrier_attribute="",
+        if cname in n.global_constraints.index:
+            logger.warning(
+                f"Global constraint {cname} already exists. Dropping and adding it again."
             )
+            n.global_constraints.drop(cname, inplace=True)
+
+        n.add(
+            "GlobalConstraint",
+            cname,
+            constant=limit,
+            sense="<=",
+            type="",
+            carrier_attribute="",
+        )
 
 
 def force_boiler_profiles_existing_per_load(n):
@@ -531,15 +545,20 @@ def add_h2_derivate_limit(n, investment_year, limits_volume_max):
 
         n.model.add_constraints(lhs <= limit, name=f"GlobalConstraint-{cname}")
 
-        if cname not in n.global_constraints.index:
-            n.add(
-                "GlobalConstraint",
-                cname,
-                constant=limit,
-                sense="<=",
-                type="",
-                carrier_attribute="",
+        if cname in n.global_constraints.index:
+            logger.warning(
+                f"Global constraint {cname} already exists. Dropping and adding it again."
             )
+            n.global_constraints.drop(cname, inplace=True)
+
+        n.add(
+            "GlobalConstraint",
+            cname,
+            constant=limit,
+            sense="<=",
+            type="",
+            carrier_attribute="",
+        )
 
 
 def adapt_nuclear_output(n):
@@ -565,15 +584,20 @@ def adapt_nuclear_output(n):
 
     n.model.add_constraints(lhs <= limit, name=f"GlobalConstraint-{cname}")
 
-    if cname not in n.global_constraints.index:
-        n.add(
-            "GlobalConstraint",
-            cname,
-            constant=limit,
-            sense="<=",
-            type="",
-            carrier_attribute="",
+    if cname in n.global_constraints.index:
+        logger.warning(
+            f"Global constraint {cname} already exists. Dropping and adding it again."
         )
+        n.global_constraints.drop(cname, inplace=True)
+
+    n.add(
+        "GlobalConstraint",
+        cname,
+        constant=limit,
+        sense="<=",
+        type="",
+        carrier_attribute="",
+    )
 
 
 def additional_functionality(n, snapshots, snakemake):
