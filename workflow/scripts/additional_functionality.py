@@ -60,10 +60,9 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
                     )
                     n.global_constraints.drop(cname, inplace=True)
 
-
                 rhs = limit - existing_capacity
-                
-                if sense == "maximum": 
+
+                if sense == "maximum":
                     if rhs <= 0:
                         logger.warning(
                             f"Existing capacity in {ct} for carrier {carrier} already exceeds the limit of {limit} MW. Limiting capacity expansion for this investment period to 0."
@@ -408,7 +407,7 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
                 f"Global constraint {cname} already exists. Dropping and adding it again."
             )
             n.global_constraints.drop(cname, inplace=True)
-        
+
         n.add(
             "GlobalConstraint",
             cname,
@@ -590,7 +589,7 @@ def adapt_nuclear_output(n):
             f"Global constraint {cname} already exists. Dropping and adding it again."
         )
         n.global_constraints.drop(cname, inplace=True)
-   
+
     n.add(
         "GlobalConstraint",
         cname,
