@@ -915,11 +915,12 @@ def enforce_transmission_project_build_years(n, current_year):
         & (n.links.build_year >= snakemake.params.onshore_nep_force["cutin_year"])
     ]
 
-    n.links.loc[dc_previously_deactivated, "p_nom_min"] = n.links.loc[
-        dc_previously_deactivated, 
-        ["p_nom_min", "p_nom"]
-    ].max(axis=1).round(3)
-    
+    n.links.loc[dc_previously_deactivated, "p_nom_min"] = (
+        n.links.loc[dc_previously_deactivated, ["p_nom_min", "p_nom"]]
+        .max(axis=1)
+        .round(3)
+    )
+
     # this forces p_nom_opt = 0 for links w/ build_year > current year
     dc_future = n.links.index[
         n.links.carrier.str.fullmatch("DC") & (n.links.build_year > current_year)

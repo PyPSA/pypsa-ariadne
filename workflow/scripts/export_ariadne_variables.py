@@ -4228,7 +4228,9 @@ def get_operational_and_capital_costs(year):
 def hack_transmission_projects(n, model_year):
     logger.info(f"Hacking transmission projects for year {model_year}")
     logger.warning(f"Assuming all transmission projects are new links")
-    logger.warning(f"Assuming all indices of transmission projects start with 'DC' or 'TYNDP'")
+    logger.warning(
+        f"Assuming all indices of transmission projects start with 'DC' or 'TYNDP'"
+    )
     tprojs = n.links.loc[
         (n.links.index.str.startswith("DC") | n.links.index.str.startswith("TYNDP"))
         & ~n.links.reversed
@@ -4252,8 +4254,10 @@ def hack_transmission_projects(n, model_year):
 
     # Current projects should have their p_nom_opt bigger or equal to p_nom until the year 2030 (Startnetz that we force in)
     if model_year <= 2030:
-        assert (n.links.loc[current_projects, "p_nom"] <=
-            n.links.loc[current_projects, "p_nom_opt"]).all()
+        assert (
+            n.links.loc[current_projects, "p_nom"]
+            <= n.links.loc[current_projects, "p_nom_opt"]
+        ).all()
 
         n.links.loc[current_projects, "p_nom"] = 0
         n.links.loc[current_projects, "p_nom_min"] = 0
@@ -4465,7 +4469,6 @@ if __name__ == "__main__":
             snakemake.input.costs,
         )
     )
-
 
     if "debug" == "debug":  # For debugging
         var = pd.Series()
