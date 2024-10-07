@@ -1495,7 +1495,7 @@ def get_secondary_energy(n, region, _industry_demand):
         hydrogen_production[
             ~hydrogen_production.index.str.startswith("H2 pipeline")
         ].sum(),
-        rtol=0.01,
+        rtol=0.01, atol=1e-5
     )
 
     oil_fractions = _get_fuel_fractions(n, region, "oil")

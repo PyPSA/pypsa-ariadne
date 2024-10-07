@@ -124,6 +124,7 @@ renewable:
           P: 3.06
   offwind-ac:
     capacity_per_sqkm: 6
+    landfall_length: 30
     cutout: europe-2019-sarah3-era5
     resource:
       smooth: true
@@ -146,6 +147,7 @@ renewable:
           P: 5.5
   offwind-dc:
     capacity_per_sqkm: 6
+    landfall_length: 30
     cutout: europe-2019-sarah3-era5
     resource:
       smooth: true
@@ -167,6 +169,7 @@ renewable:
           hub_height: 140.
           P: 5.5
   offwind-float: # disabled at the moment
+    landfall_length: 30
     capacity_per_sqkm: 6
     cutout: europe-2019-sarah3-era5
   solar:
