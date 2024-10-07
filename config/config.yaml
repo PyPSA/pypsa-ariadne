@@ -4,9 +4,9 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241002_fix_post_discretization_constraints
+  prefix: 20241007_merge_master
   name:
-  - CurrentPolicies
+  # - CurrentPolicies
   - KN2045_Bal_v4
   # - KN2045_Elec_v4
   # - KN2045_H2_v4
@@ -57,8 +57,6 @@ foresight: myopic
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#scenario
 # Wildcard docs in https://pypsa-eur.readthedocs.io/en/latest/wildcards.html
 scenario:
-  simpl:
-  - ''
   ll:
   - vopt
   clusters:
