@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 import os
 import sys
 
-import pandas as pd
 import geopandas as gpd
+import pandas as pd
 import pypsa
 from powerplantmatching.export import map_country_bus
 
@@ -231,9 +231,9 @@ if __name__ == "__main__":
 
     CHP_de = calculate_efficiency(CHP_de)
 
-    regions = gpd.read_file(snakemake.input.regions).set_index('name')
+    regions = gpd.read_file(snakemake.input.regions).set_index("name")
     geometry = gpd.points_from_xy(CHP_de["lon"], CHP_de["lat"])
     gdf = gpd.GeoDataFrame(geometry=geometry, crs=4326)
-    CHP_de["bus"] = gpd.sjoin_nearest(gdf, regions, how='left')["name"]
+    CHP_de["bus"] = gpd.sjoin_nearest(gdf, regions, how="left")["name"]
 
     CHP_de.to_csv(snakemake.output.german_chp, index=False)

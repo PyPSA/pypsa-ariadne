@@ -453,9 +453,7 @@ rule cluster_wasserstoff_kernnetz:
         regions_onshore=resources("regions_onshore_base_s_{clusters}.geojson"),
         regions_offshore=resources("regions_offshore_base_s_{clusters}.geojson"),
     output:
-        clustered_h2_network=resources(
-            "wasserstoff_kernnetz_base_s_{clusters}.csv"
-        ),
+        clustered_h2_network=resources("wasserstoff_kernnetz_base_s_{clusters}.csv"),
     script:
         "scripts/cluster_wasserstoff_kernnetz.py"
 
