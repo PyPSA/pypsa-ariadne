@@ -4338,12 +4338,6 @@ def get_ariadne_var(
             ),
             get_prices(n, region),
             get_emissions(n, region, energy_totals, industry_demand),
-            get_grid_investments(
-                n,
-                costs,
-                region,
-                length_factor=snakemake.params.length_factor,
-            ),
             get_policy(n, year),
             get_trade(n, region),
             # get_operational_and_capital_costs(year),
@@ -4504,18 +4498,6 @@ if __name__ == "__main__":
             "at_port": True,
             "nice_names": False,
         }
-        new = pd.Series(
-            [
-                get_grid_investments(networks[i], costs[i], region).iloc[4]
-                for i in range(6)
-            ]
-        )
-        old = pd.Series(
-            [
-                get_grid_investments(_networks[i], costs[i], region).iloc[4]
-                for i in range(6)
-            ]
-        )
 
     yearly_dfs = []
     for i, year in enumerate(planning_horizons):
