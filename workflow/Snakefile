@@ -343,9 +343,9 @@ rule build_existing_chp_de:
             "https://raw.githubusercontent.com/WZBSocialScienceCenter/plz_geocoord/master/plz_geocoord.csv",
             keep_local=True,
         ),
-        busmap=resources("networks/base.nc"),
+        regions=resources("regions_onshore_base_s_{clusters}.geojson"),
     output:
-        german_chp=resources("german_chp.csv"),
+        german_chp=resources("german_chp_{clusters}.csv"),
     script:
         "scripts/build_existing_chp_de.py"
 
@@ -353,7 +353,7 @@ rule build_existing_chp_de:
 use rule add_existing_baseyear from pypsaeur with:
     input:
         **rules.add_existing_baseyear.input,
-        custom_powerplants=resources("german_chp.csv"),
+        custom_powerplants=resources("german_chp_{clusters}.csv"),
 
 
 use rule build_existing_heating_distribution from pypsaeur with:
