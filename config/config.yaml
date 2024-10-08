@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241007_merge_master
+  prefix: 20241008_solar_cf
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -174,8 +174,10 @@ renewable:
     cutout: europe-2019-sarah3-era5
   solar:
     cutout: europe-2019-sarah3-era5
+    correction_factor: 0.86
   solar-hsat:
     cutout: europe-2019-sarah3-era5
+    correction_factor: 0.86
   hydro:
     cutout: europe-2019-sarah3-era5
 
