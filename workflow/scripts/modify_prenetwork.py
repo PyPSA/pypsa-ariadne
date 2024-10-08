@@ -1000,9 +1000,7 @@ def force_connection_nep_offshore(n, current_year):
         & goffshore.index.str.startswith("NOR")
     ]
 
-    dc_power = (
-        dc_projects["Übertragungsleistung in MW"].groupby(dc_projects.name).sum()
-    )
+    dc_power = dc_projects["Übertragungsleistung in MW"].groupby(dc_projects.name).sum()
 
     if (current_year >= int(snakemake.params.offshore_nep_force["cutin_year"])) and (
         current_year <= int(snakemake.params.offshore_nep_force["cutout_year"])
@@ -1038,7 +1036,6 @@ def force_connection_nep_offshore(n, current_year):
             # because we want to fully account the capacity expansion in the exporter
             # Eventhough, this is not handled in the exporter atm
 
-
     # this is a hack to stop solve_network.py > _add_land_use_constraint breaking
     # if there are existing generators, add a new extendable one
     # WARNING land_use_constraint might not break but no guarantee that it still functions as expected
@@ -1063,9 +1060,7 @@ def force_connection_nep_offshore(n, current_year):
         & goffshore.index.str.startswith("OST")
     ]
 
-    ac_power = (
-        ac_projects["Übertragungsleistung in MW"].groupby(ac_projects.name).sum()
-    )
+    ac_power = ac_projects["Übertragungsleistung in MW"].groupby(ac_projects.name).sum()
 
     if (current_year >= int(snakemake.params.offshore_nep_force["cutin_year"])) and (
         current_year <= int(snakemake.params.offshore_nep_force["cutout_year"])
@@ -1078,10 +1073,11 @@ def force_connection_nep_offshore(n, current_year):
             node_off = f"{node} offwind-ac-{current_year}"
 
             if not node_off in n.generators.index:
-                logger.error(f"Assuming all AC projects are connected at locations where other generators exists. That is not the case for {node_off}. Terminating")
+                logger.error(
+                    f"Assuming all AC projects are connected at locations where other generators exists. That is not the case for {node_off}. Terminating"
+                )
 
             n.generators.at[node_off, "p_nom_min"] += ac_power.loc[node]
-
 
 
 if __name__ == "__main__":
