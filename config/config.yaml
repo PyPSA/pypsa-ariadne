@@ -435,8 +435,8 @@ solving:
         offwind:
           DE:
             2020: 7.8
-            2025: 8
-            2030: 32
+            2025: 11.3
+            2030: 30.4
             2035: 70
             2040: 70
             2045: 70
@@ -639,5 +639,5 @@ onshore_nep_force:
 #beware - may need to increase max offshore
 #to avoid infeasibilities
 offshore_nep_force:
-  cutin_year: 2030
+  cutin_year: 2025
   cutout_year: 2030
