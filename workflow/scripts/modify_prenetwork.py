@@ -1007,7 +1007,7 @@ def force_connection_nep_offshore(n, current_year):
         current_year <= int(snakemake.params.offshore_nep_force["cutout_year"])
     ):
 
-        logger.info("Forcing in NEP offshore projects")
+        logger.info(f"Forcing in NEP offshore projects with capacity:\n {power}")
 
         for node in power.index:
 
