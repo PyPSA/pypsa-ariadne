@@ -244,19 +244,19 @@ def elec_val_plot(df, savepath):
     ]
 
     elec_generation["real (gross)"] = [
-        -18.9, # net exports",
-        np.nan, # ror
-        18.7, # hydro
-        np.nan, # battery
-        45, # biomass
-        64, # nuclear
-        91, # lignite
-        43, # coal
-        4.7, # oil
-        95, # gas
-        132, # wind
-        50, # solar
-    ]  
+        -18.9,  # net exports",
+        np.nan,  # ror
+        18.7,  # hydro
+        np.nan,  # battery
+        45,  # biomass
+        64,  # nuclear
+        91,  # lignite
+        43,  # coal
+        4.7,  # oil
+        95,  # gas
+        132,  # wind
+        50,  # solar
+    ]
     # https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Energie/Erzeugung/Tabellen/bruttostromerzeugung.html
     # https://www.bdew.de/media/documents/Bruttostromerz_D_Entw_10J_online_o_dw2x_jaehrlich_FS_05042024_nlA6lUa.pdf
 
@@ -274,7 +274,7 @@ def elec_val_plot(df, savepath):
         91.7,  # "gas" 34.6 (industry self consumption) + 57.1 (fossil gas grid feed in)
         129.64,  # "wind"
         48.5,  # "solar"
-    ] 
+    ]
     # https://energy-charts.info/charts/energy_pie/chart.htm?l=de&c=DE&interval=year&year=2020
     # https://www.bundesnetzagentur.de/SharedDocs/Pressemitteilungen/DE/2021/20210102_smard.html
     # https://energy-charts.info/charts/energy/chart.htm?l=en&c=DE&interval=year&year=2020&source=total
@@ -299,7 +299,8 @@ def elec_val_plot(df, savepath):
         elec_generation.sum()["real (gross)"] - elec_generation.sum()["pypsa (net)"]
     )
     elec_generation.loc["sum_real_net-sum_pypsa", "sum_real_net-sum_pypsa"] = (
-        elec_generation.sum()["real (net, pypsa representation)"] - elec_generation.sum()["pypsa (net)"]
+        elec_generation.sum()["real (net, pypsa representation)"]
+        - elec_generation.sum()["pypsa (net)"]
     )
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 6), width_ratios=[1, 1.5])
