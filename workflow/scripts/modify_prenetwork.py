@@ -206,6 +206,25 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
 
         names = wkn_new.index + f"-kernnetz-{investment_year}"
 
+        capital_costs = np.where(
+            wkn_new.retrofitted == False,
+            costs.at["H2 (g) pipeline", "fixed"] * wkn_new.length.values,
+            costs.at["H2 (g) pipeline repurposed", "fixed"] * wkn_new.length.values,
+        )
+
+        overnight_costs = np.where(
+            wkn_new.retrofitted == False,
+            costs.at["H2 (g) pipeline", "investment"] * wkn_new.length.values,
+            costs.at["H2 (g) pipeline repurposed", "investment"]
+            * wkn_new.length.values,
+        )
+
+        lifetime = np.where(
+            wkn_new.retrofitted == False,
+            costs.at["H2 (g) pipeline", "lifetime"],
+            costs.at["H2 (g) pipeline repurposed", "lifetime"],
+        )
+
         # add kernnetz to network
         n.madd(
             "Link",
@@ -217,11 +236,10 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
             p_nom=wkn_new.p_nom.values,
             build_year=wkn_new.build_year.values,
             length=wkn_new.length.values,
-            capital_cost=costs.at["H2 (g) pipeline", "fixed"] * wkn_new.length.values,
-            overnight_cost=costs.at["H2 (g) pipeline", "investment"]
-            * wkn_new.length.values,
+            capital_cost=capital_costs,
+            overnight_cost=overnight_costs,
             carrier="H2 pipeline (Kernnetz)",
-            lifetime=costs.at["H2 (g) pipeline", "lifetime"],
+            lifetime=lifetime,
         )
 
         # add reversed pipes and losses
@@ -245,8 +263,6 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
     # pipelines which are being build in total (more conservative approach)
     if not wkn.empty and snakemake.params.H2_retrofit:
 
-        conversion_rate = snakemake.params.H2_retrofit_capacity_per_CH4
-
         retrofitted_b = (
             n.links.carrier == "H2 pipeline retrofitted"
         ) & n.links.index.str.contains(str(investment_year))
@@ -258,7 +274,6 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
                 add_reversed_pipes(wkn),
                 carrier="H2",
                 target_attr="p_nom_max",
-                conversion_rate=conversion_rate,
             )
             n.links.loc[retrofitted_b, "p_nom_max"] = res_h2_pipes_retrofitted[
                 "p_nom_max"
@@ -277,13 +292,16 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
     # from 2030 onwards all pipes are extendable (except from the ones the model build up before and the kernnetz lines)
 
 
-def unravel_oilbus(n):
+def unravel_carbonaceous_fuels(n):
     """
-    Unravel European oil bus to enable energy balances for import of oil
-    products.
+    Unravel European carbonaceous buses and if necessary their loads to enable
+    energy balances for import and export of carbonaceous fuels.
     """
+    ### oil bus
     logger.info("Unraveling oil bus")
     # add buses
+    n.add("Carrier", "renewable oil")
+
     n.add("Bus", "DE", location="DE", x=10.5, y=51.2, carrier="none")
     n.add("Bus", "DE oil", location="DE", x=10.5, y=51.2, carrier="oil")
     n.add("Bus", "DE oil primary", location="DE", x=10.5, y=51.2, carrier="oil primary")
@@ -332,23 +350,30 @@ def unravel_oilbus(n):
         efficiency2=snakemake.config["industry"]["oil_refining_emissions"],
     )
 
+    ### renewable oil
+    renewable_oil_carrier = [
+        "unsustainable bioliquids",
+        "biomass to liquid",
+        "biomass to liquid CC",
+        "electrobiofuels",
+        "Fischer-Tropsch",
+    ]
+    renewable_oil_DE = n.links[
+        (n.links.carrier.isin(renewable_oil_carrier)) & (n.links.index.str[:2] == "DE")
+    ]
+    n.links.loc[renewable_oil_DE.index, "bus1"] = "DE renewable oil"
+
+    renewable_oil_EU = n.links[
+        (n.links.carrier.isin(renewable_oil_carrier)) & (n.links.index.str[:2] != "DE")
+    ]
+    n.links.loc[renewable_oil_EU.index, "bus1"] = "EU renewable oil"
+
     # change links from EU oil to DE oil
-    german_oil_links = n.links[
+    german_oil_consumers = n.links[
         (n.links.bus0 == "EU oil") & (n.links.index.str.contains("DE"))
     ].index
-    german_FT_links = n.links[
-        (n.links.bus1 == "EU oil")
-        & (n.links.index.str.contains("DE"))
-        & (n.links.index.str.contains("Fischer-Tropsch"))
-    ].index
-    n.links.loc[german_oil_links, "bus0"] = "DE oil"
-    n.links.loc[german_FT_links, "bus1"] = "DE renewable oil"
 
-    # change FT links in rest of Europe
-    europ_FT_links = n.links[
-        (n.links.bus1 == "EU oil") & (n.links.index.str.contains("Fischer-Tropsch"))
-    ].index
-    n.links.loc[europ_FT_links, "bus1"] = "EU renewable oil"
+    n.links.loc[german_oil_consumers, "bus0"] = "DE oil"
 
     # add links between oil buses
     n.madd(
@@ -395,9 +420,24 @@ def unravel_oilbus(n):
         e_cyclic=EU_oil_store.e_cyclic,
         capital_cost=EU_oil_store.capital_cost,
         overnight_cost=EU_oil_store.overnight_cost,
+        lifetime=costs.at["General liquid hydrocarbon storage (product)", "lifetime"],
     )
+    # check if there are loads at the EU oil bus
+    if n.loads.index.isin(
+        [
+            "EU naphtha for industry",
+            "EU kerosene for aviation",
+            "EU shipping oil",
+            "EU agriculture machinery oil",
+            "EU land transport oil",
+        ]
+    ).any():
+        logger.error(
+            "There are loads at the EU oil bus. Please set config[sector][regional_oil_demand] to True to enable energy balances for oil."
+        )
 
-    # unravel meoh
+    ##########################################
+    ### meoh bus
     logger.info("Unraveling methanol bus")
     # add bus
     n.add(
@@ -442,7 +482,110 @@ def unravel_oilbus(n):
         e_cyclic=EU_meoh_store.e_cyclic,
         capital_cost=EU_meoh_store.capital_cost,
         overnight_cost=EU_meoh_store.overnight_cost,
+        lifetime=costs.at["General liquid hydrocarbon storage (product)", "lifetime"],
     )
+    # check for loads
+    # industry load
+    if "EU industry methanol" in n.loads.index:
+        industrial_demand = (
+            pd.read_csv(snakemake.input.industrial_demand, index_col=0) * 1e6
+        )  # TWh/a to MWh/a
+        DE_meoh = (
+            industrial_demand["methanol"].filter(like="DE").sum() / 8760
+        )  # MWh/a to MW hourly resolution
+        n.add(
+            "Load",
+            "DE industry methanol",
+            bus="DE methanol",
+            carrier="industry methanol",
+            p_set=DE_meoh,
+        )
+        n.loads.loc["EU industry methanol", "p_set"] -= DE_meoh
+
+        n.add(
+            "Bus",
+            "DE industry methanol",
+            carrier="industry methanol",
+            location="DE",
+            x=n.buses.loc["DE", "x"],
+            y=n.buses.loc["DE", "y"],
+            unit="MWh_LHV",
+        )
+        n.add(
+            "Link",
+            "DE industry methanol",
+            bus0="DE industry methanol",
+            bus1="DE industry methanol",
+            bus2="co2 atmosphere",
+            carrier="industry methanol",
+            p_nom_extendable=True,
+            efficiency2=1 / snakemake.params.mwh_meoh_per_tco2,
+        )
+
+    # shipping load
+    if "EU shipping methanol" in n.loads.index:
+        # get German shipping demand for domestic and international navigation
+        # TWh/a
+        pop_weighted_energy_totals = pd.read_csv(
+            snakemake.input.pop_weighted_energy_totals, index_col=0
+        )
+        # TWh/a
+        domestic_navigation = (
+            pop_weighted_energy_totals["total domestic navigation"]
+            .filter(like="DE")
+            .sum()
+        )
+        # TWh/a
+        international_navigation = (
+            (pd.read_csv(snakemake.input.shipping_demand, index_col=0).squeeze(axis=1))
+            .filter(like="DE")
+            .sum()
+        )
+        all_navigation = domestic_navigation + international_navigation
+        p_set = all_navigation * 1e6 / 8760  # convert TWh/a to MW hourly resolution
+
+        # transfer oil demand to methanol demand
+        efficiency = (
+            snakemake.params.shipping_oil_efficiency
+            / snakemake.params.shipping_methanol_efficiency
+        )
+        # get share of shipping done with methanol
+        p_set = (
+            snakemake.params.shipping_methanol_share[
+                int(snakemake.wildcards.planning_horizons)
+            ]
+            * p_set
+            * efficiency
+        )
+
+        n.add(
+            "Load",
+            "DE shipping methanol",
+            bus="DE shipping methanol",
+            carrier="shipping methanol",
+            p_set=p_set,
+        )
+        n.loads.loc["EU shipping methanol", "p_set"] -= p_set
+
+        n.add(
+            "Bus",
+            "DE shipping methanol",
+            carrier="shipping methanol",
+            location="DE",
+            x=n.buses.loc["DE", "x"],
+            y=n.buses.loc["DE", "y"],
+            unit="MWh_LHV",
+        )
+        n.add(
+            "Link",
+            "DE shipping methanol",
+            bus0="DE methanol",
+            bus1="DE shipping methanol",
+            bus2="co2 atmosphere",
+            carrier="shipping methanol",
+            p_nom_extendable=True,
+            efficiency2=1 / snakemake.params.mwh_meoh_per_tco2,
+        )
 
 
 def unravel_gasbus(n, costs):
@@ -478,6 +621,7 @@ def unravel_gasbus(n, costs):
         e_cyclic=True,
         capital_cost=costs.at["gas storage", "fixed"],
         overnight_cost=costs.at["gas storage", "investment"],
+        lifetime=costs.at["gas storage", "lifetime"],
     )
 
     ### create renewable gas buses
@@ -498,29 +642,17 @@ def unravel_gasbus(n, costs):
         carrier="renewable gas",
     )
 
-    ### biogas is counted as renewable gas
-    biogas_carrier = ["biogas to gas", "biogas to gas CC"]
-    biogas_DE = n.links[
-        (n.links.carrier.isin(biogas_carrier)) & (n.links.index.str[:2] == "DE")
+    ### renewable gas
+    renewable_gas_carrier = ["biogas to gas", "biogas to gas CC", "Sabatier"]
+    renewable_gas_DE = n.links[
+        (n.links.carrier.isin(renewable_gas_carrier)) & (n.links.index.str[:2] == "DE")
     ]
-    n.links.loc[biogas_DE.index, "bus1"] = "DE renewable gas"
+    n.links.loc[renewable_gas_DE.index, "bus1"] = "DE renewable gas"
 
-    biogas_EU = n.links[
-        (n.links.carrier.isin(biogas_carrier)) & (n.links.index.str[:2] != "DE")
+    renewable_gas_EU = n.links[
+        (n.links.carrier.isin(renewable_gas_carrier)) & (n.links.index.str[:2] != "DE")
     ]
-    n.links.loc[biogas_EU.index, "bus1"] = "EU renewable gas"
-
-    ### Sabatier is counted as renewable gas
-    sabatier_carrier = ["Sabatier"]
-    sabatier_DE = n.links[
-        (n.links.carrier.isin(sabatier_carrier)) & (n.links.index.str[:2] == "DE")
-    ]
-    n.links.loc[sabatier_DE.index, "bus1"] = "DE renewable gas"
-
-    sabatier_EU = n.links[
-        (n.links.carrier.isin(sabatier_carrier)) & (n.links.index.str[:2] != "DE")
-    ]
-    n.links.loc[sabatier_EU.index, "bus1"] = "EU renewable gas"
+    n.links.loc[renewable_gas_EU.index, "bus1"] = "EU renewable gas"
 
     ### change buses of German gas links
     fossil_links = n.links[(n.links.bus0 == "EU gas") & (n.links.index.str[:2] == "DE")]
@@ -548,6 +680,12 @@ def unravel_gasbus(n, costs):
         p_nom=1e6,
         p_min_pu=0,
     )
+
+    # check if loads are connected to EU gas bus
+    if "EU gas for industry" in n.loads.index:
+        logger.error(
+            "There are loads at the EU gas bus. Please set config[sector][regional_gas_demand] to True to enable energy balances for gas."
+        )
 
 
 def transmission_costs_from_modified_cost_data(
@@ -818,9 +956,12 @@ def enforce_transmission_project_build_years(n, current_year):
         & (n.links.build_year <= snakemake.params.onshore_nep_force["cutout_year"])
         & (n.links.build_year >= snakemake.params.onshore_nep_force["cutin_year"])
     ]
-    n.links.loc[dc_previously_deactivated, "p_nom_min"] = n.links.loc[
-        dc_previously_deactivated, "p_nom"
-    ]
+
+    n.links.loc[dc_previously_deactivated, "p_nom_min"] = (
+        n.links.loc[dc_previously_deactivated, ["p_nom_min", "p_nom"]]
+        .max(axis=1)
+        .round(3)
+    )
 
     # this forces p_nom_opt = 0 for links w/ build_year > current year
     dc_future = n.links.index[
@@ -920,11 +1061,11 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "modify_prenetwork",
             simpl="",
-            clusters=22,
+            clusters=27,
             opts="",
             ll="vopt",
             sector_opts="none",
-            planning_horizons="2020",
+            planning_horizons="2025",
             run="KN2045_Bal_v4",
         )
 
@@ -955,7 +1096,7 @@ if __name__ == "__main__":
     first_technology_occurrence(n)
 
     if not snakemake.config["run"]["debug_unravel_oilbus"]:
-        unravel_oilbus(n)
+        unravel_carbonaceous_fuels(n)
 
     if not snakemake.config["run"]["debug_unravel_gasbus"]:
         unravel_gasbus(n, costs)
