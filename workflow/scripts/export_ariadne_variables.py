@@ -4313,25 +4313,68 @@ def get_transmission_grid_capacity(n, region, year):
     ### Total Capacity
     ## Tranmission Grid
     # get domestic capacities
-    ac_dom = n.lines[(n.lines.carrier == "AC") & (n.lines.bus0.str[:2] == region) & (n.lines.bus1.str[:2] == region) & ~(n.lines.index.str.contains("reversed"))]
-    dc_dom = n.links[(n.links.carrier == "DC") & (n.links.bus0.str[:2] == region) & (n.links.bus1.str[:2] == region) & ~(n.links.index.str.contains("reversed"))]
+    ac_dom = n.lines[
+        (n.lines.carrier == "AC")
+        & (n.lines.bus0.str[:2] == region)
+        & (n.lines.bus1.str[:2] == region)
+        & ~(n.lines.index.str.contains("reversed"))
+    ]
+    dc_dom = n.links[
+        (n.links.carrier == "DC")
+        & (n.links.bus0.str[:2] == region)
+        & (n.links.bus1.str[:2] == region)
+        & ~(n.links.index.str.contains("reversed"))
+    ]
 
-    var["Capacity|Transmission Grid|AC|Domestic"] = ac_dom.s_nom_opt.multiply(ac_dom.length).sum() * MW2GW
-    var["Capacity|Transmission Grid|DC|Domestic"] = dc_dom.p_nom_opt.multiply(dc_dom.length).sum() * MW2GW
+    var["Capacity|Transmission Grid|AC|Domestic"] = (
+        ac_dom.s_nom_opt.multiply(ac_dom.length).sum() * MW2GW
+    )
+    var["Capacity|Transmission Grid|DC|Domestic"] = (
+        dc_dom.p_nom_opt.multiply(dc_dom.length).sum() * MW2GW
+    )
 
     # get border crossing capacities and multiply with 0.5
-    ac_int = n.lines[(n.lines.carrier == "AC") & ((n.lines.bus0.str[:2] == region) & (n.lines.bus1.str[:2] != region) | (n.lines.bus0.str[:2] != region) & (n.lines.bus1.str[:2] == region))]
-    dc_int = n.links[(n.links.carrier == "DC") & ((n.links.bus0.str[:2] == region) & (n.links.bus1.str[:2] != region) | (n.links.bus0.str[:2] != region) & (n.links.bus1.str[:2] == region)) & ~(n.links.index.str.contains("reversed"))]
-    var["Capacity|Transmission Grid|AC|International"] = ac_int.s_nom_opt.multiply(ac_int.length).sum() * 0.5 * MW2GW
-    var["Capacity|Transmission Grid|DC|International"] = dc_int.p_nom_opt.multiply(dc_int.length).sum() *0.5 * MW2GW
+    ac_int = n.lines[
+        (n.lines.carrier == "AC")
+        & (
+            (n.lines.bus0.str[:2] == region) & (n.lines.bus1.str[:2] != region)
+            | (n.lines.bus0.str[:2] != region) & (n.lines.bus1.str[:2] == region)
+        )
+    ]
+    dc_int = n.links[
+        (n.links.carrier == "DC")
+        & (
+            (n.links.bus0.str[:2] == region) & (n.links.bus1.str[:2] != region)
+            | (n.links.bus0.str[:2] != region) & (n.links.bus1.str[:2] == region)
+        )
+        & ~(n.links.index.str.contains("reversed"))
+    ]
+    var["Capacity|Transmission Grid|AC|International"] = (
+        ac_int.s_nom_opt.multiply(ac_int.length).sum() * 0.5 * MW2GW
+    )
+    var["Capacity|Transmission Grid|DC|International"] = (
+        dc_int.p_nom_opt.multiply(dc_int.length).sum() * 0.5 * MW2GW
+    )
 
-    var["Capacity|Transmission Grid|AC"] = var["Capacity|Transmission Grid|AC|Domestic"] + var["Capacity|Transmission Grid|AC|International"]
-    var["Capacity|Transmission Grid|DC"] = var["Capacity|Transmission Grid|DC|Domestic"] + var["Capacity|Transmission Grid|DC|International"]
+    var["Capacity|Transmission Grid|AC"] = (
+        var["Capacity|Transmission Grid|AC|Domestic"]
+        + var["Capacity|Transmission Grid|AC|International"]
+    )
+    var["Capacity|Transmission Grid|DC"] = (
+        var["Capacity|Transmission Grid|DC|Domestic"]
+        + var["Capacity|Transmission Grid|DC|International"]
+    )
 
-    var["Capacity|Transmission Grid"] = var["Capacity|Transmission Grid|AC"] + var["Capacity|Transmission Grid|DC"]
+    var["Capacity|Transmission Grid"] = (
+        var["Capacity|Transmission Grid|AC"] + var["Capacity|Transmission Grid|DC"]
+    )
 
     ## Distribution Grid
-    distr_grid = n.links[(n.links.carrier == "electricity distribution grid") & (n.links.bus0.str[:2] == region) & ~(n.links.index.str.contains("reversed"))]
+    distr_grid = n.links[
+        (n.links.carrier == "electricity distribution grid")
+        & (n.links.bus0.str[:2] == region)
+        & ~(n.links.index.str.contains("reversed"))
+    ]
 
     var["Capacity|Distribution Grid"] = distr_grid.p_nom_opt.sum() * MW2GW
 
