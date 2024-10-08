@@ -4307,6 +4307,50 @@ def hack_transmission_projects(n, model_year):
     return n
 
 
+def get_transmission_grid_capacity(n, region, year):
+
+    var = pd.Series()
+    ### Total Capacity
+    ## Tranmission Grid
+    # get domestic capacities
+    ac_dom = n.lines[(n.lines.carrier == "AC") & (n.lines.bus0.str[:2] == region) & (n.lines.bus1.str[:2] == region) & ~(n.lines.index.str.contains("reversed"))]
+    dc_dom = n.links[(n.links.carrier == "DC") & (n.links.bus0.str[:2] == region) & (n.links.bus1.str[:2] == region) & ~(n.links.index.str.contains("reversed"))]
+
+    var["Capacity|Transmission Grid|AC|Domestic"] = ac_dom.s_nom_opt.multiply(ac_dom.length).sum() * MW2GW
+    var["Capacity|Transmission Grid|DC|Domestic"] = dc_dom.p_nom_opt.multiply(dc_dom.length).sum() * MW2GW
+
+    # get border crossing capacities and multiply with 0.5
+    ac_int = n.lines[(n.lines.carrier == "AC") & ((n.lines.bus0.str[:2] == region) & (n.lines.bus1.str[:2] != region) | (n.lines.bus0.str[:2] != region) & (n.lines.bus1.str[:2] == region))]
+    dc_int = n.links[(n.links.carrier == "DC") & ((n.links.bus0.str[:2] == region) & (n.links.bus1.str[:2] != region) | (n.links.bus0.str[:2] != region) & (n.links.bus1.str[:2] == region)) & ~(n.links.index.str.contains("reversed"))]
+    var["Capacity|Transmission Grid|AC|International"] = ac_int.s_nom_opt.multiply(ac_int.length).sum() * 0.5 * MW2GW
+    var["Capacity|Transmission Grid|DC|International"] = dc_int.p_nom_opt.multiply(dc_int.length).sum() *0.5 * MW2GW
+
+    var["Capacity|Transmission Grid|AC"] = var["Capacity|Transmission Grid|AC|Domestic"] + var["Capacity|Transmission Grid|AC|International"]
+    var["Capacity|Transmission Grid|DC"] = var["Capacity|Transmission Grid|DC|Domestic"] + var["Capacity|Transmission Grid|DC|International"]
+
+    var["Capacity|Transmission Grid"] = var["Capacity|Transmission Grid|AC"] + var["Capacity|Transmission Grid|DC"]
+
+    ## Distribution Grid
+    distr_grid = n.links[(n.links.carrier == "electricity distribution grid") & (n.links.bus0.str[:2] == region) & ~(n.links.index.str.contains("reversed"))]
+
+    var["Capacity|Distribution Grid"] = distr_grid.p_nom_opt.sum() * MW2GW
+
+    ### Capacity Addition
+    # var["Capacity Addition|Transmission Grid|AC|Domestic"] = ac_dom[ac_dom.build_year != year].s_nom_opt.multiply(ac_dom.length).sum() * MW2GW
+    # var["Capacity Addition|Transmission Grid|DC|Domestic"] = dc_dom[dc_dom.build_year != year].p_nom_opt.multiply(dc_dom.length).sum() * MW2GW
+
+    # var["Capacity Addition|Transmission Grid|AC|International"] = ac_int[ac_int.build_year != year].s_nom_opt.multiply(ac_int.length).sum() * 0.5 * MW2GW
+    # var["Capacity Addition|Transmission Grid|DC|International"] = dc_int[dc_int.build_year != year].p_nom_opt.multiply(dc_int.length).sum() * 0.5 * MW2GW
+
+    # var["Capacity Addition|Transmission Grid|AC"] = var["Capacity Addition|Transmission Grid|AC|Domestic"] + var["Capacity Addition|Transmission Grid|AC|International"]
+    # var["Capacity Addition|Transmission Grid|DC"] = var["Capacity Addition|Transmission Grid|DC|Domestic"] + var["Capacity Addition|Transmission Grid|DC|International"]
+    # var["Capacity Addition|Transmission Grid"] = var["Capacity Addition|Transmission Grid|AC"] + var["Capacity Addition|Transmission Grid|DC"]
+
+    # var["Capacity Addition|Distribution Grid"] = distr_grid[distr_grid.build_year != year].p_nom_opt.sum() * MW2GW
+
+    return var
+
+
 def get_ariadne_var(
     n,
     industry_demand,
@@ -4321,6 +4365,7 @@ def get_ariadne_var(
     var = pd.concat(
         [
             get_capacities(n, region),
+            get_transmission_grid_capacity(n, region, year),
             # get_capacity_additions_simple(n,region),
             # get_installed_capacities(n,region),
             get_capacity_additions(n, region),
