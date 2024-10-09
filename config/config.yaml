@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241007_merge_master
+  prefix: 20241008_restrict_power_flow
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -553,6 +553,17 @@ solving:
           2035: 0
           2040: 0
           2045: 0
+    limits_power_max: # in GW
+        DE:
+          2020: 15
+          2025: 15
+          2030: 15
+          2035: 20
+          2040: 25
+          2045: 30
+  solver:
+    gurobi-default:
+      BarConvTol: 1.e-4
   # solver:
   #   options: gurobi-numeric-focus
   # solver_options:
