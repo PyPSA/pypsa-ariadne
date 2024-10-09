@@ -3,9 +3,11 @@ import logging
 import os
 import sys
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pypsa
+from shapely.geometry import Point
 
 logger = logging.getLogger(__name__)
 
@@ -969,6 +971,156 @@ def enforce_transmission_project_build_years(n, current_year):
     n.links.loc[dc_future, "p_nom_max"] = 0.0
 
 
+def force_connection_nep_offshore(n, current_year):
+    # Load costs
+    nep23_costs = (
+        pd.read_csv(
+            snakemake.input.costs_modifications,
+            index_col=0,
+        )
+        .query(
+            """
+            source == 'NEP2023' \
+            & technology.str.contains('offwind') \
+            & parameter == 'investment'
+        """
+        )
+        .rename(columns={"value": "investment"})
+    )
+    # kW to MW
+    nep23_costs.at["offwind-ac-station", "investment"] *= 1000
+    nep23_costs.at["offwind-dc-station", "investment"] *= 1000
+
+    # Load shapes and projects
+    offshore = pd.read_csv(snakemake.input.offshore_connection_points, index_col=0)
+
+    goffshore = gpd.GeoDataFrame(
+        offshore,
+        geometry=gpd.points_from_xy(offshore.lon, offshore.lat),
+        crs="EPSG:4326",
+    )
+
+    regions_onshore = gpd.read_file(snakemake.input.regions_onshore).set_index("name")
+    regions_offshore = gpd.read_file(snakemake.input.regions_offshore).set_index("name")
+
+    # find connection point nodes for each project
+    goffshore = gpd.sjoin(goffshore, regions_onshore, how="inner", predicate="within")
+
+    # use for offshore profile of nodes connected in non-offshore nodes
+    # point is chosen far out in EEZ duck
+    nordsee_duck_node = regions_offshore.index[
+        regions_offshore.contains(Point(6.19628, 54.38543))
+    ][0]
+    nordsee_duck_off = f"{nordsee_duck_node} offwind-dc-{current_year}"
+
+    dc_projects = goffshore[
+        (goffshore.Inbetriebnahmejahr > current_year - 5)
+        & (goffshore.Inbetriebnahmejahr <= current_year)
+        & goffshore["Bezeichnung des Projekts"].str.contains("HGÜ-|DC-")
+    ]
+
+    dc_power = dc_projects["Übertragungsleistung in MW"].groupby(dc_projects.name).sum()
+
+    dc_connection_totals = (
+        dc_projects["Trassenlänge in km"]
+        * (
+            2 / 3 * nep23_costs.at["offwind-dc-connection-submarine", "investment"]
+            + 1 / 3 * nep23_costs.at["offwind-dc-connection-underground", "investment"]
+        )
+        + nep23_costs.at["offwind-dc-station", "investment"]
+    ) * dc_projects["Übertragungsleistung in MW"]
+
+    dc_connection_overnight_costs = (
+        dc_connection_totals.groupby(dc_projects.name).sum().div(dc_power)
+    )
+
+    if (current_year >= int(snakemake.params.offshore_nep_force["cutin_year"])) and (
+        current_year <= int(snakemake.params.offshore_nep_force["cutout_year"])
+    ):
+
+        logger.info(f"Forcing in NEP offshore DC projects with capacity:\n {dc_power}")
+
+        for node in dc_power.index:
+
+            node_off = f"{node} offwind-dc-{current_year}"
+
+            if not node_off in n.generators.index:
+                logger.info(f"Adding generator {node_off}")
+                n.generators.loc[node_off] = n.generators.loc[nordsee_duck_off]
+                n.generators.at[node_off, "bus"] = node
+                n.generators_t.p_max_pu[node_off] = n.generators_t.p_max_pu[
+                    nordsee_duck_off
+                ]
+                n.generators.at[node_off, "p_nom_min"] = 0
+                n.generators.at[node_off, "p_nom"] = 0
+
+            n.generators.at[node_off, "p_nom_min"] += dc_power.loc[node]
+            n.generators.at[node_off, "connection_overnight_cost"] = (
+                dc_connection_overnight_costs.loc[node]
+            )
+            # Differing from add_existing_baseyear "p_nom" is not set,
+            # because we want to fully account the capacity expansion in the exporter
+
+    # this is a hack to stop solve_network.py > _add_land_use_constraint breaking
+    # if there are existing generators, add a new extendable one
+    # WARNING land_use_constraint might not break but no guarantee that it still functions as expected
+    # TODO rewrite this part less hacky
+    existings = n.generators.index[
+        (n.generators.carrier == "offwind-dc") & ~n.generators.p_nom_extendable
+    ]
+    for existing in existings:
+        node = n.generators.at[existing, "bus"]
+        node_off = f"{node} offwind-dc-{current_year}"
+        if node_off not in n.generators.index:
+            logger.info(f"adding for dummy land constraint {node_off}")
+            n.generators.loc[node_off] = n.generators.loc[nordsee_duck_off]
+            n.generators.at[node_off, "bus"] = node
+            n.generators_t.p_max_pu[node_off] = n.generators_t.p_max_pu[
+                nordsee_duck_off
+            ]
+    # WARNING: Code duplication ahead
+    ac_projects = goffshore[
+        (goffshore.Inbetriebnahmejahr > current_year - 5)
+        & (goffshore.Inbetriebnahmejahr <= current_year)
+        & goffshore["Bezeichnung des Projekts"].str.contains("AC-")
+    ]
+
+    ac_power = ac_projects["Übertragungsleistung in MW"].groupby(ac_projects.name).sum()
+
+    ac_connection_totals = (
+        ac_projects["Trassenlänge in km"]
+        * (
+            2 / 3 * nep23_costs.at["offwind-ac-connection-submarine", "investment"]
+            + 1 / 3 * nep23_costs.at["offwind-ac-connection-underground", "investment"]
+        )
+        + nep23_costs.at["offwind-ac-station", "investment"]
+    ) * ac_projects["Übertragungsleistung in MW"]
+
+    ac_connection_overnight_costs = (
+        ac_connection_totals.groupby(ac_projects.name).sum().div(ac_power)
+    )
+
+    if (current_year >= int(snakemake.params.offshore_nep_force["cutin_year"])) and (
+        current_year <= int(snakemake.params.offshore_nep_force["cutout_year"])
+    ):
+
+        logger.info(f"Forcing in NEP offshore AC projects with capacity:\n {ac_power}")
+
+        for node in ac_power.index:
+
+            node_off = f"{node} offwind-ac-{current_year}"
+
+            if not node_off in n.generators.index:
+                logger.error(
+                    f"Assuming all AC projects are connected at locations where other generators exists. That is not the case for {node_off}. Terminating"
+                )
+
+            n.generators.at[node_off, "p_nom_min"] += ac_power.loc[node]
+            n.generators.at[node_off, "connection_overnight_cost"] = (
+                ac_connection_overnight_costs.loc[node]
+            )
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
@@ -985,7 +1137,7 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts="none",
-            planning_horizons="2025",
+            planning_horizons="2030",
             run="KN2045_Bal_v4",
         )
 
@@ -1062,5 +1214,7 @@ if __name__ == "__main__":
     current_year = int(snakemake.wildcards.planning_horizons)
 
     enforce_transmission_project_build_years(n, current_year)
+
+    force_connection_nep_offshore(n, current_year)
 
     n.export_to_netcdf(snakemake.output.network)
