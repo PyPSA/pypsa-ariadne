@@ -233,6 +233,7 @@ rule modify_prenetwork:
             "sector", "land_transport_electric_share"
         ),
         onshore_nep_force=config_provider("onshore_nep_force"),
+        offshore_nep_force=config_provider("offshore_nep_force"),
         shipping_methanol_efficiency=config_provider(
             "sector", "shipping_methanol_efficiency"
         ),
@@ -240,6 +241,7 @@ rule modify_prenetwork:
         shipping_methanol_share=config_provider("sector", "shipping_methanol_share"),
         mwh_meoh_per_tco2=config_provider("sector", "MWh_MeOH_per_tCO2"),
     input:
+        costs_modifications="ariadne-data/costs_2019-modifications.csv",
         network=RESULTS
         + "prenetworks-brownfield/base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
         wkn=(
@@ -262,6 +264,9 @@ rule modify_prenetwork:
             "pop_weighted_energy_totals_s_{clusters}.csv"
         ),
         shipping_demand=resources("shipping_demand_s_{clusters}.csv"),
+        regions_onshore=resources("regions_onshore_base_s_{clusters}.geojson"),
+        regions_offshore=resources("regions_offshore_base_s_{clusters}.geojson"),
+        offshore_connection_points="ariadne-data/offshore_connection_points.csv",
     output:
         network=RESULTS
         + "prenetworks-final/base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
