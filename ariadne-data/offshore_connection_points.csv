@@ -1,0 +1,63 @@
+Projekt,Nummer,Bezeichnung des Projekts,Netzverknüpfungspunkt (ÜNB),Trassenlänge in km,Übertragungsleistung in MW,Inbetriebnahmejahr,Kommentar,lat,lon
+NOR-0-1,,AC-ONAS NOR-0-1 (Riffgat),Emden / Borßum (TenneT),,113,2014.0,NEP2023 Istnetz,53.350195,7.224917
+NOR-0-2,,AC-ONAS NOR-0-2 (Nordergründe),Inhausen (TenneT),,111,2017.0,NEP2023 Istnetz,53.620526,8.059785
+NOR-2-1,,AC-ONAS (alpha ventus),Hagermarsch (TenneT),,62,2009.0,NEP2023 Istnetz,53.637944,7.298534
+NOR-2-2,,DC-ONAS NOR-2-2 (DolWin1),Dörpen / West (TenneT),,800,2015.0,NEP2023 Istnetz,52.982333,7.257574
+NOR-2-3,,DC-ONAS NOR-2-3 (DolWin3),Dörpen / West (TenneT),,900,2018.0,NEP2023 Istnetz,52.982333,7.257574
+NOR-3-1,,DC-ONAS NOR-3-1 (DolWin2),Dörpen / West (TenneT),,916,2016.0,NEP2023 Istnetz,52.982333,7.257574
+NOR-4-1,,DC-ONAS NOR-4-1 (HelWin1),Büttel (TenneT),,576,2015.0,NEP2023 Istnetz,53.917758,9.234576
+NOR-4-2,,DC-ONAS NOR-4-2 (HelWin2),Büttel (TenneT),,690,2015.0,NEP2023 Istnetz,53.917758,9.234576
+NOR-5-1,,DC-ONAS NOR-5-1 (SylWin1),Büttel (TenneT),,864,2015.0,NEP2023 Istnetz,53.917758,9.234576
+NOR-6-1,,DC-ONAS NOR-6-1 (BorWin1),Diele (TenneT),,400,2010.0,NEP2023 Istnetz,53.126873,7.315915
+NOR-6-2,,DC-ONAS NOR-6-2 (BorWin2),Diele (TenneT),,800,2015.0,NEP2023 Istnetz,53.126873,7.315915
+NOR-8-1,,DC-ONAS NOR-8-1 (BorWin3),Emden / Ost (TenneT),,900,2019.0,NEP2023 Istnetz,53.357128,7.24358
+NOR-1-1,,DC-ONAS NOR-1-1 (DolWin5),Emden / Ost (TenneT),132.0,900,2025.0,NEP2023 Startnetz,53.357128,7.24358
+NOR-3-2,,DC-ONAS NOR-3-2 (DolWin4),Hanekenfähr (Amprion),196.0,900,2028.0,NEP2023 Startnetz,52.475798,7.307034
+NOR-3-3,,DC-ONAS NOR-3-3 (DolWin6),Emden / Ost (TenneT),90.0,900,2023.0,NEP2023 Startnetz,53.357128,7.24358
+NOR-6-3,,DC-ONAS NOR-6-3 (BorWin4),Hanekenfähr (Amprion),264.0,900,2028.0,NEP2023 Startnetz,52.475798,7.307034
+NOR-7-1,,DC-ONAS NOR-7-1 (BorWin5),Garrel / Ost (TenneT),225.0,900,2025.0,NEP2023 Startnetz,52.945885,8.075682
+NOR-7-2,,DC-ONAS NOR-7-2 (BorWin6),Büttel (TenneT),235.0,980,2027.0,NEP2023 Startnetz,53.917758,9.234576
+NOR-9-1,M243,HGÜ-Verbindung NOR-9-1 (BalWin1),Wehrendorf (Amprion),363.0,2000,2029.0,Szenario B/C 2045,52.347253,8.307983
+NOR-9-2,M236,HGÜ-Verbindung NOR-9-2 (BalWin3),Wilhelmshaven 2 (TenneT),250.0,2000,2029.0,Szenario B/C 2045,53.56214,8.12915
+NOR-9-3,M234,HGÜ-Verbindung NOR-9-3 (BalWin4),Unterweser (TenneT),265.0,2000,2029.0,Szenario B/C 2045,53.428708,8.472726
+NOR-10-1,M39,HGÜ-Verbindung NOR-10-1 (BalWin2),Westerkappeln (Amprion),371.0,2000,2030.0,Szenario B/C 2045,52.275966,7.887789
+NOR-11-1,M233,HGÜ-Verbindung NOR-11-1 (LanWin3),Suchraum Heide (50Hertz),215.0,2000,2030.0,Szenario B/C 2045,54.16277,9.05231
+NOR-12-1,M231,HGÜ-Verbindung NOR-12-1 (LanWin1),Unterweser (TenneT),265.0,2000,2030.0,Szenario B/C 2045,53.428708,8.472726
+NOR-12-2,M249,HGÜ-Verbindung NOR-12-2 (LanWin2),Suchraum Heide (50Hertz),270.0,2000,2030.0,Szenario B/C 2045,54.16277,9.05231
+NOR-11-2,M248,HGÜ-Verbindung NOR-11-2 (LanWin4),Wilhelmshaven 2 (TenneT),225.0,2000,2031.0,Szenario B/C 2045,53.56214,8.12915
+NOR-13-1,M242,HGÜ-Verbindung NOR-13-1 (LanWin5),Suchraum Rastede (TenneT),290.0,2000,2031.0,Szenario B/C 2045,53.26056,8.18557
+NOR-21-1,M254,HGÜ-Verbindung NOR-21-1 (BorWin7),Niederrhein (Amprion),454.0,2000,2032.0,Szenario B/C 2045,51.64892,6.69122
+NOR-14-1,M263,HGÜ-Verbindung NOR-14-1,Blockland / neu (TenneT),390.0,2000,2032.0,Szenario B/C 2045,53.107731,8.818825
+NOR-13-2,M262,HGÜ-Verbindung NOR-13-2 (LanWin6),Suchraum Pöschendorf (50Hertz),310.0,2000,2033.0,Szenario B/C 2045,54.036954,9.486766
+NOR-15-1,M256,HGÜ-Verbindung NOR-15-1,Kusenhorst (Amprion),550.0,2000,2033.0,Szenario B/C 2045,51.69599,7.06535
+NOR-16-2,M264,HGÜ-Verbindung NOR-16-2,Suchraum Pöschendorf (TenneT),365.0,2000,2034.0,Szenario B/C 2045,54.036954,9.486766
+NOR-17-1,M246,HGÜ-Verbindung NOR-17-1,Rommerskirchen (Amprion),653.0,2000,2034.0,Szenario B/C 2045,51.008848,6.704552
+NOR-16-1,M265,HGÜ-Verbindung NOR-16-1,Suchraum BBS (50Hertz),460.0,2000,2035.0,Szenario B/C 2045,53.5247,10.7854
+NOR-18-1,M266,HGÜ-Verbindung NOR-18-1,Wiemersdorf / Hardebek (TenneT),400.0,2000,2035.0,Szenario B/C 2045,53.96076,9.93693
+NOR-19-1,M247,HGÜ-Verbindung NOR-19-1,Oberzier (Amprion),807.0,2000,2036.0,Szenario B/C 2045,50.871206,6.458087
+NOR-19-3,M257,HGÜ-Verbindung NOR-19-3,Kriftel (Amprion),918.0,2000,2036.0,Szenario B/C 2045,50.097589,8.470316
+NOR-19-2,M258,HGÜ-Verbindung NOR-19-2,Suchraum Ried (Amprion),953.0,2000,2037.0,Szenario B/C 2045,49.815643,8.589033
+NOR-17-2,M267,HGÜ-Verbindung NOR-17-2,Suchraum Nüttermoor (TenneT),375.0,2000,2037.0,Szenario B/C 2045,53.2582,7.42933
+NOR-x-6,M268,HGÜ-Verbindung NOR-x-6,Suchraum BBS (50Hertz),450.0,2000,2038.0,Szenario B/C 2045,53.5247,10.7854
+NOR-20-1,M250,HGÜ-Verbindung NOR-20-1,Suchraum Rastede (TenneT),375.0,2000,2039.0,Szenario B/C 2045,53.26056,8.18557
+NOR-x-7,M259,HGÜ-Verbindung NOR-x-7,Lippe (Amprion),558.0,2000,2040.0,Szenario B/C 2045,51.64425,7.403782
+NOR-x-8,M269,HGÜ-Verbindung NOR-x-8,Suchraum Brunsbüttel (50Hertz),315.0,2000,2041.0,Szenario B/C 2045,53.896482,9.203835
+NOR-x-9,M270,HGÜ-Verbindung NOR-x-9,Samtgemeinde Sottrum (TenneT),420.0,2000,2042.0,Szenario B/C 2045,53.114298,9.245839
+NOR-x-10,M260,HGÜ-Verbindung NOR-x-10,Rommerskirchen (Amprion),658.0,2000,2043.0,Szenario B/C 2045,51.008848,6.704552
+NOR-x-11,M271,HGÜ-Verbindung NOR-x-11,Suchraum Nüttermoor (TenneT),325.0,2000,2044.0,Szenario B/C 2045,53.2582,7.42933
+NOR-x-12,M261,HGÜ-Verbindung NOR-x-12,Sechtem (Amprion),684.0,2000,2045.0,Szenario B/C 2045,50.796324,6.972961
+OST-1-1,,AC-ONAS OST-1-1 (Ostwind 1),Lubmin (50Hertz),,250,2018.0,NEP2023 Istnetz,54.139899,13.681212
+OST-1-2,,AC-ONAS OST-1-2 (Ostwind 1),Lubmin (50Hertz),,250,2019.0,NEP2023 Istnetz,54.139899,13.681212
+OST-1-3,,AC-ONAS OST-1-3 (Ostwind 1),Lubmin (50Hertz),,250,2019.0,NEP2023 Istnetz,54.139899,13.681212
+OST-3-1,,AC-ONAS OST-3-1 (Kriegers Flak),Bentwisch (50Hertz),,51,2011.0,NEP2023 Istnetz,54.100443,12.216497
+OST-3-2,,AC-ONAS OST-3-2 (Kriegers Flak),Bentwisch (50Hertz),,339,2015.0,NEP2023 Istnetz,54.100443,12.216497
+OST-1-4,,AC-ONAS OST-1-4 (Ostwind 3),Suchraum Brünzow (50Hertz),102.0,300,2026.0,NEP2023 Startnetz,54.10065,13.60677
+OST-2-1,,AC-ONAS OST-2-1 (Ostwind 2),Lubmin (50Hertz),98.0,250,2023.0,NEP2023 Startnetz,54.139899,13.681212
+OST-2-2,,AC-ONAS OST-2-2 (Ostwind 2),Lubmin (50Hertz),89.0,250,2023.0,NEP2023 Startnetz,54.139899,13.681212
+OST-2-3,,AC-ONAS OST-2-3 (Ostwind 2),Lubmin (50Hertz),89.0,250,2024.0,NEP2023 Startnetz,54.139899,13.681212
+OST-2-4,M74,HGÜ-Verbindung OST-2-4 (Ostwind 4),Suchraum Brünzow (50Hertz),109.0,2000,2030.0,Szenario B/C 2045,54.10065,13.60677
+OST-x-1,M274,AC-Verbindung OST-x-1,Suchraum Gnewitz (50Hertz),45.0,300,2039.0,Szenario B/C 2045,54.078032,12.512037
+OST-x-2,M275,AC-Verbindung OST-x-2,Suchraum Gnewitz (50Hertz),45.0,300,2039.0,Szenario B/C 2045,54.078032,12.512037
+OST-x-3,M276,AC-Verbindung OST-x-3,Suchraum Brünzow (50Hertz),80.0,300,2040.0,Szenario B/C 2045,54.10065,13.60677
+OST-x-4,M277,AC-Verbindung OST-x-4,Suchraum Brünzow (50Hertz),80.0,300,2040.0,Szenario B/C 2045,54.10065,13.60677
+OST-T-1,M85,AC-Verbindung OST-T-1 (Testfeld),Suchraum Broderstorf (50Hertz),50.0,300,2045.0,Szenario B/C 2045,54.08179,12.26445
