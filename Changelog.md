@@ -1,4 +1,5 @@
 # Changelog
+- Rely on DEA investment costs for electrolysis
 - updated the Kernnetz to use latest data and operate it more flexible
 - added Italy with 3 additional nodes
 - adapted spatial distribution of district heating demand in Germany according to data from eGo^N project

@@ -4,7 +4,9 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
+
   prefix: 241008_offshore_nep
+
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
