@@ -973,16 +973,20 @@ def enforce_transmission_project_build_years(n, current_year):
 
 def force_connection_nep_offshore(n, current_year):
     # Load costs
-    nep23_costs = pd.read_csv(
-        snakemake.input.costs_modifications,
-        index_col=0,
-    ).query(
-        """
+    nep23_costs = (
+        pd.read_csv(
+            snakemake.input.costs_modifications,
+            index_col=0,
+        )
+        .query(
+            """
             source == 'NEP2023' \
             & technology.str.contains('offwind') \
             & parameter == 'investment'
         """
-    ).rename(columns={"value": "investment"})
+        )
+        .rename(columns={"value": "investment"})
+    )
     # kW to MW
     nep23_costs.at["offwind-ac-station", "investment"] *= 1000
     nep23_costs.at["offwind-dc-station", "investment"] *= 1000
@@ -1018,14 +1022,17 @@ def force_connection_nep_offshore(n, current_year):
     dc_power = dc_projects["Übertragungsleistung in MW"].groupby(dc_projects.name).sum()
 
     dc_connection_totals = (
-        dc_projects["Trassenlänge in km"] * (
-            2/3 * nep23_costs.at["offwind-dc-connection-submarine", "investment"] 
-            + 1/3 * nep23_costs.at["offwind-dc-connection-underground", "investment"]) 
+        dc_projects["Trassenlänge in km"]
+        * (
+            2 / 3 * nep23_costs.at["offwind-dc-connection-submarine", "investment"]
+            + 1 / 3 * nep23_costs.at["offwind-dc-connection-underground", "investment"]
+        )
         + nep23_costs.at["offwind-dc-station", "investment"]
     ) * dc_projects["Übertragungsleistung in MW"]
 
-    dc_connection_overnight_costs = dc_connection_totals.groupby(dc_projects.name).sum().div(dc_power)
-
+    dc_connection_overnight_costs = (
+        dc_connection_totals.groupby(dc_projects.name).sum().div(dc_power)
+    )
 
     if (current_year >= int(snakemake.params.offshore_nep_force["cutin_year"])) and (
         current_year <= int(snakemake.params.offshore_nep_force["cutout_year"])
@@ -1048,10 +1055,11 @@ def force_connection_nep_offshore(n, current_year):
                 n.generators.at[node_off, "p_nom"] = 0
 
             n.generators.at[node_off, "p_nom_min"] += dc_power.loc[node]
-            n.generators.at[node_off, "connection_overnight_cost"] = dc_connection_overnight_costs.loc[node]
+            n.generators.at[node_off, "connection_overnight_cost"] = (
+                dc_connection_overnight_costs.loc[node]
+            )
             # Differing from add_existing_baseyear "p_nom" is not set,
             # because we want to fully account the capacity expansion in the exporter
-
 
     # this is a hack to stop solve_network.py > _add_land_use_constraint breaking
     # if there are existing generators, add a new extendable one
@@ -1080,13 +1088,17 @@ def force_connection_nep_offshore(n, current_year):
     ac_power = ac_projects["Übertragungsleistung in MW"].groupby(ac_projects.name).sum()
 
     ac_connection_totals = (
-        ac_projects["Trassenlänge in km"] * (
-            2/3 * nep23_costs.at["offwind-ac-connection-submarine", "investment"] 
-            + 1/3 * nep23_costs.at["offwind-ac-connection-underground", "investment"]) 
+        ac_projects["Trassenlänge in km"]
+        * (
+            2 / 3 * nep23_costs.at["offwind-ac-connection-submarine", "investment"]
+            + 1 / 3 * nep23_costs.at["offwind-ac-connection-underground", "investment"]
+        )
         + nep23_costs.at["offwind-ac-station", "investment"]
     ) * ac_projects["Übertragungsleistung in MW"]
 
-    ac_connection_overnight_costs = ac_connection_totals.groupby(ac_projects.name).sum().div(ac_power)
+    ac_connection_overnight_costs = (
+        ac_connection_totals.groupby(ac_projects.name).sum().div(ac_power)
+    )
 
     if (current_year >= int(snakemake.params.offshore_nep_force["cutin_year"])) and (
         current_year <= int(snakemake.params.offshore_nep_force["cutout_year"])
@@ -1104,7 +1116,9 @@ def force_connection_nep_offshore(n, current_year):
                 )
 
             n.generators.at[node_off, "p_nom_min"] += ac_power.loc[node]
-            n.generators.at[node_off, "connection_overnight_cost"] = ac_connection_overnight_costs.loc[node]
+            n.generators.at[node_off, "connection_overnight_cost"] = (
+                ac_connection_overnight_costs.loc[node]
+            )
 
 
 if __name__ == "__main__":
