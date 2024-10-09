@@ -101,8 +101,8 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
 
 
 def add_power_limits(n, investment_year, limits_power_max):
-    """"
-    Restricts the maximum inflow/outflow of electricity from/to a country
+    """
+    " Restricts the maximum inflow/outflow of electricity from/to a country.
     """
     for ct in limits_power_max:
         if investment_year not in limits_power_max[ct].keys():
@@ -143,7 +143,12 @@ def add_power_limits(n, investment_year, limits_power_max):
             incoming_link_p = n.model["Link-p"].loc[t, incoming_link]
             outgoing_link_p = n.model["Link-p"].loc[t, outgoing_link]
 
-            lhs = incoming_link_p.sum() - outgoing_link_p.sum() + incoming_line_p.sum() - outgoing_line_p.sum()
+            lhs = (
+                incoming_link_p.sum()
+                - outgoing_link_p.sum()
+                + incoming_line_p.sum()
+                - outgoing_line_p.sum()
+            )
             # divide by 10 - 100 to avoid numerical issues
 
             cname_upper = f"Power-import-limit-{ct}-{t}"
@@ -670,9 +675,7 @@ def additional_functionality(n, snapshots, snakemake):
         n, investment_year, constraints["limits_capacity_max"], "maximum"
     )
 
-    add_power_limits(
-        n, investment_year, constraints["limits_power_max"]
-    )
+    add_power_limits(n, investment_year, constraints["limits_power_max"])
 
     if int(snakemake.wildcards.clusters) != 1:
         h2_import_limits(n, investment_year, constraints["limits_volume_max"])
