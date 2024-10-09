@@ -55,9 +55,6 @@ CurrentPolicies:
           onwind:
             DE:
               2030: 115 # not better than targets
-          offwind:
-            DE:
-              2030: 30
           solar:
             DE:
               2030: 215
@@ -550,9 +547,7 @@ KN2045minus_WorstCase:
           onwind:
             DE:
               2030: 115 # not better than targets
-          offwind:
-            DE:
-              2030: 30
+
           solar:
             DE:
               2030: 215
@@ -658,9 +653,6 @@ KN2045minus_SupplyFocus:
           onwind:
             DE:
               2030: 115 # not better than targets
-          offwind:
-            DE:
-              2030: 30
           solar:
             DE:
               2030: 215
