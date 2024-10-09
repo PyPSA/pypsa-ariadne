@@ -11,12 +11,12 @@ NOR-5-1,,DC-ONAS NOR-5-1 (SylWin1),Büttel (TenneT),,864,2015.0,NEP2023 Istnetz,
 NOR-6-1,,DC-ONAS NOR-6-1 (BorWin1),Diele (TenneT),,400,2010.0,NEP2023 Istnetz,53.126873,7.315915
 NOR-6-2,,DC-ONAS NOR-6-2 (BorWin2),Diele (TenneT),,800,2015.0,NEP2023 Istnetz,53.126873,7.315915
 NOR-8-1,,DC-ONAS NOR-8-1 (BorWin3),Emden / Ost (TenneT),,900,2019.0,NEP2023 Istnetz,53.357128,7.24358
-NOR-1-1,,DC-ONAS NOR-1-1 (DolWin5),Emden / Ost (TenneT),,900,2025.0,NEP2023 Startnetz,53.357128,7.24358
-NOR-3-2,,DC-ONAS NOR-3-2 (DolWin4),Hanekenfähr (Amprion),,900,2028.0,NEP2023 Startnetz,52.475798,7.307034
-NOR-3-3,,DC-ONAS NOR-3-3 (DolWin6),Emden / Ost (TenneT),,900,2023.0,NEP2023 Startnetz,53.357128,7.24358
-NOR-6-3,,DC-ONAS NOR-6-3 (BorWin4),Hanekenfähr (Amprion),,900,2028.0,NEP2023 Startnetz,52.475798,7.307034
-NOR-7-1,,DC-ONAS NOR-7-1 (BorWin5),Garrel / Ost (TenneT),,900,2025.0,NEP2023 Startnetz,52.945885,8.075682
-NOR-7-2,,DC-ONAS NOR-7-2 (BorWin6),Büttel (TenneT),,980,2027.0,NEP2023 Startnetz,53.917758,9.234576
+NOR-1-1,,DC-ONAS NOR-1-1 (DolWin5),Emden / Ost (TenneT),132.0,900,2025.0,NEP2023 Startnetz,53.357128,7.24358
+NOR-3-2,,DC-ONAS NOR-3-2 (DolWin4),Hanekenfähr (Amprion),196.0,900,2028.0,NEP2023 Startnetz,52.475798,7.307034
+NOR-3-3,,DC-ONAS NOR-3-3 (DolWin6),Emden / Ost (TenneT),90.0,900,2023.0,NEP2023 Startnetz,53.357128,7.24358
+NOR-6-3,,DC-ONAS NOR-6-3 (BorWin4),Hanekenfähr (Amprion),264.0,900,2028.0,NEP2023 Startnetz,52.475798,7.307034
+NOR-7-1,,DC-ONAS NOR-7-1 (BorWin5),Garrel / Ost (TenneT),225.0,900,2025.0,NEP2023 Startnetz,52.945885,8.075682
+NOR-7-2,,DC-ONAS NOR-7-2 (BorWin6),Büttel (TenneT),235.0,980,2027.0,NEP2023 Startnetz,53.917758,9.234576
 NOR-9-1,M243,HGÜ-Verbindung NOR-9-1 (BalWin1),Wehrendorf (Amprion),363.0,2000,2029.0,Szenario B/C 2045,52.347253,8.307983
 NOR-9-2,M236,HGÜ-Verbindung NOR-9-2 (BalWin3),Wilhelmshaven 2 (TenneT),250.0,2000,2029.0,Szenario B/C 2045,53.56214,8.12915
 NOR-9-3,M234,HGÜ-Verbindung NOR-9-3 (BalWin4),Unterweser (TenneT),265.0,2000,2029.0,Szenario B/C 2045,53.428708,8.472726
@@ -51,10 +51,10 @@ OST-1-2,,AC-ONAS OST-1-2 (Ostwind 1),Lubmin (50Hertz),,250,2019.0,NEP2023 Istnet
 OST-1-3,,AC-ONAS OST-1-3 (Ostwind 1),Lubmin (50Hertz),,250,2019.0,NEP2023 Istnetz,54.139899,13.681212
 OST-3-1,,AC-ONAS OST-3-1 (Kriegers Flak),Bentwisch (50Hertz),,51,2011.0,NEP2023 Istnetz,54.100443,12.216497
 OST-3-2,,AC-ONAS OST-3-2 (Kriegers Flak),Bentwisch (50Hertz),,339,2015.0,NEP2023 Istnetz,54.100443,12.216497
-OST-1-4,,AC-ONAS OST-1-4 (Ostwind 3),Suchraum Brünzow (50Hertz),,300,2026.0,NEP2023 Startnetz,54.10065,13.60677
-OST-2-1,,AC-ONAS OST-2-1 (Ostwind 2),Lubmin (50Hertz),,250,2023.0,NEP2023 Startnetz,54.139899,13.681212
-OST-2-2,,AC-ONAS OST-2-2 (Ostwind 2),Lubmin (50Hertz),,250,2023.0,NEP2023 Startnetz,54.139899,13.681212
-OST-2-3,,AC-ONAS OST-2-3 (Ostwind 2),Lubmin (50Hertz),,250,2024.0,NEP2023 Startnetz,54.139899,13.681212
+OST-1-4,,AC-ONAS OST-1-4 (Ostwind 3),Suchraum Brünzow (50Hertz),102.0,300,2026.0,NEP2023 Startnetz,54.10065,13.60677
+OST-2-1,,AC-ONAS OST-2-1 (Ostwind 2),Lubmin (50Hertz),98.0,250,2023.0,NEP2023 Startnetz,54.139899,13.681212
+OST-2-2,,AC-ONAS OST-2-2 (Ostwind 2),Lubmin (50Hertz),89.0,250,2023.0,NEP2023 Startnetz,54.139899,13.681212
+OST-2-3,,AC-ONAS OST-2-3 (Ostwind 2),Lubmin (50Hertz),89.0,250,2024.0,NEP2023 Startnetz,54.139899,13.681212
 OST-2-4,M74,HGÜ-Verbindung OST-2-4 (Ostwind 4),Suchraum Brünzow (50Hertz),109.0,2000,2030.0,Szenario B/C 2045,54.10065,13.60677
 OST-x-1,M274,AC-Verbindung OST-x-1,Suchraum Gnewitz (50Hertz),45.0,300,2039.0,Szenario B/C 2045,54.078032,12.512037
 OST-x-2,M275,AC-Verbindung OST-x-2,Suchraum Gnewitz (50Hertz),45.0,300,2039.0,Szenario B/C 2045,54.078032,12.512037
