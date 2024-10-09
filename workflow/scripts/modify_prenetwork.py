@@ -994,12 +994,12 @@ def force_connection_nep_offshore(n, current_year):
     ][0]
     nordsee_duck_off = f"{nordsee_duck_node} offwind-dc-{current_year}"
 
+
     dc_projects = goffshore[
         (goffshore.Inbetriebnahmejahr > current_year - 5)
         & (goffshore.Inbetriebnahmejahr <= current_year)
-        & goffshore.index.str.startswith("NOR")
+        & goffshore["Bezeichnung des Projekts"].str.contains("HGÜ-|DC-")
     ]
-
     dc_power = dc_projects["Übertragungsleistung in MW"].groupby(dc_projects.name).sum()
 
     if (current_year >= int(snakemake.params.offshore_nep_force["cutin_year"])) and (
@@ -1057,7 +1057,7 @@ def force_connection_nep_offshore(n, current_year):
     ac_projects = goffshore[
         (goffshore.Inbetriebnahmejahr > current_year - 5)
         & (goffshore.Inbetriebnahmejahr <= current_year)
-        & goffshore.index.str.startswith("OST")
+        & goffshore["Bezeichnung des Projekts"].str.contains("AC-")
     ]
 
     ac_power = ac_projects["Übertragungsleistung in MW"].groupby(ac_projects.name).sum()
