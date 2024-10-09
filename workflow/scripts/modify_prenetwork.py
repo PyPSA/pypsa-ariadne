@@ -994,7 +994,6 @@ def force_connection_nep_offshore(n, current_year):
     ][0]
     nordsee_duck_off = f"{nordsee_duck_node} offwind-dc-{current_year}"
 
-
     dc_projects = goffshore[
         (goffshore.Inbetriebnahmejahr > current_year - 5)
         & (goffshore.Inbetriebnahmejahr <= current_year)
