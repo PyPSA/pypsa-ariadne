@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241007_merge_master
+  prefix: 241008_offshore_nep
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -435,8 +435,8 @@ solving:
         offwind:
           DE:
             2020: 7.8
-            2025: 8
-            2030: 30
+            2025: 11.3
+            2030: 30.4
             2035: 70
             2040: 70
             2045: 70
@@ -634,4 +634,10 @@ transmission_projects:
 
 onshore_nep_force:
   cutin_year: 2020
+  cutout_year: 2030
+
+#beware - may need to increase max offshore
+#to avoid infeasibilities
+offshore_nep_force:
+  cutin_year: 2025
   cutout_year: 2030
