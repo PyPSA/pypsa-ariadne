@@ -176,8 +176,10 @@ renewable:
     cutout: europe-2019-sarah3-era5
   solar:
     cutout: europe-2019-sarah3-era5
+    correction_factor: 0.918 # scaling to Abbildung 36 of https://www.ise.fraunhofer.de/de/veroeffentlichungen/studien/aktuelle-fakten-zur-photovoltaik-in-deutschland.html
   solar-hsat:
     cutout: europe-2019-sarah3-era5
+    correction_factor: 0.918 # scaling to Abbildung 36 of https://www.ise.fraunhofer.de/de/veroeffentlichungen/studien/aktuelle-fakten-zur-photovoltaik-in-deutschland.html
   hydro:
     cutout: europe-2019-sarah3-era5
 
