@@ -1102,6 +1102,25 @@ def get_primary_energy(n, region):
         like="biogas to gas"
     ).sum()
 
+    # btl_efficiency = n.links.query(
+    #         "carrier == 'biomass to liquid' and (build_year == 2020)"
+    #     ).efficiency.unique().item()
+    
+    unsus_btl_secondary = n.statistics.supply(
+            bus_carrier=["renewable oil"],
+            **kwargs,
+        ).filter(
+            like=region
+        ).groupby("carrier").sum().multiply(MWh2PJ).get(
+            "unsustainable bioliquids", 0
+        ) 
+    
+    var["Primary Energy|Biomass|Liquids"] = (
+        biomass_usage.filter(
+            like="biomass to liquid"
+        ).sum() + unsus_btl_secondary / 0.35 # BtL efficiency 2020
+    )
+
     var["Primary Energy|Biomass|w/ CCS"] = biomass_usage[
         biomass_usage.index.str.contains("CC")
     ].sum()
@@ -2698,6 +2717,7 @@ def get_emissions(n, region, _energy_totals, industry_demand):
     var["Emissions|CO2|Energy|Supply|Liquids"] = (
         var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"]
         - co2_atmosphere_withdrawal.filter(like="biomass to liquid").sum()
+        - co2_atmosphere_withdrawal.get("unsustainable bioliquids", 0)
     )
 
     var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = (
