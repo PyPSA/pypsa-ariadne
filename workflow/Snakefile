@@ -243,7 +243,7 @@ rule modify_prenetwork:
         shipping_methanol_share=config_provider("sector", "shipping_methanol_share"),
         mwh_meoh_per_tco2=config_provider("sector", "MWh_MeOH_per_tCO2"),
     input:
-        costs_modifications="ariadne-data/costs_2019-modifications.csv",
+        costs_modifications="ariadne-data/costs_{planning_horizons}-modifications.csv",
         network=RESULTS
         + "prenetworks-brownfield/base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
         wkn=(
