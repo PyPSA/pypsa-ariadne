@@ -1105,20 +1105,22 @@ def get_primary_energy(n, region):
     # btl_efficiency = n.links.query(
     #         "carrier == 'biomass to liquid' and (build_year == 2020)"
     #     ).efficiency.unique().item()
-    
-    unsus_btl_secondary = n.statistics.supply(
+
+    unsus_btl_secondary = (
+        n.statistics.supply(
             bus_carrier=["renewable oil"],
             **kwargs,
-        ).filter(
-            like=region
-        ).groupby("carrier").sum().multiply(MWh2PJ).get(
-            "unsustainable bioliquids", 0
-        ) 
-    
+        )
+        .filter(like=region)
+        .groupby("carrier")
+        .sum()
+        .multiply(MWh2PJ)
+        .get("unsustainable bioliquids", 0)
+    )
+
     var["Primary Energy|Biomass|Liquids"] = (
-        biomass_usage.filter(
-            like="biomass to liquid"
-        ).sum() + unsus_btl_secondary / 0.35 # BtL efficiency 2020
+        biomass_usage.filter(like="biomass to liquid").sum()
+        + unsus_btl_secondary / 0.35  # BtL efficiency 2020
     )
 
     var["Primary Energy|Biomass|w/ CCS"] = biomass_usage[
@@ -2117,14 +2119,14 @@ def get_final_energy(
         energy_totals["total domestic navigation"]
         + energy_totals["total international navigation"]
     )
-    var["Final Energy|Transportation|Domestic Aviation"] = \
-    var["Final Energy|Transportation|Domestic Aviation|Liquids"] = (
-        sum_load(n, "kerosene for aviation", region) * (1 - international_aviation_fraction)
+    var["Final Energy|Transportation|Domestic Aviation"] = var[
+        "Final Energy|Transportation|Domestic Aviation|Liquids"
+    ] = sum_load(n, "kerosene for aviation", region) * (
+        1 - international_aviation_fraction
     )
-    var["Final Energy|Transportation|Domestic Navigation"] = \
-    var["Final Energy|Transportation|Domestic Navigation|Liquids"] = (
-        sum_load(n, "shipping oil", region) * (1 - international_navigation_fraction)
-    )
+    var["Final Energy|Transportation|Domestic Navigation"] = var[
+        "Final Energy|Transportation|Domestic Navigation|Liquids"
+    ] = sum_load(n, "shipping oil", region) * (1 - international_navigation_fraction)
 
     var["Final Energy|Transportation|Liquids"] = (
         sum_load(n, "land transport oil", region)
@@ -2154,7 +2156,9 @@ def get_final_energy(
         "Final Energy|Bunkers|Aviation|Liquids"
     ] = (sum_load(n, "kerosene for aviation", region) * international_aviation_fraction)
 
-    for var_key, fraction_key in zip(["Petroleum", "Efuel", "Biomass"], oil_fractions.index):
+    for var_key, fraction_key in zip(
+        ["Petroleum", "Efuel", "Biomass"], oil_fractions.index
+    ):
         var[f"Final Energy|Bunkers|Aviation|Liquids|{var_key}"] = (
             var["Final Energy|Bunkers|Aviation|Liquids"] * oil_fractions[fraction_key]
         )
@@ -2164,7 +2168,9 @@ def get_final_energy(
         sum_load(n, "shipping oil", region) * international_navigation_fraction
     )
 
-    for var_key, fraction_key in zip(["Petroleum", "Efuel", "Biomass"], oil_fractions.index):
+    for var_key, fraction_key in zip(
+        ["Petroleum", "Efuel", "Biomass"], oil_fractions.index
+    ):
         var[f"Final Energy|Bunkers|Navigation|Liquids|{var_key}"] = (
             var["Final Energy|Bunkers|Navigation|Liquids"] * oil_fractions[fraction_key]
         )
@@ -2636,7 +2642,8 @@ def get_emissions(n, region, _energy_totals, industry_demand):
     )
 
     var["Emissions|CO2|Energy|Demand|Transportation|Domestic Navigation"] = (
-        co2_emissions.filter(like="shipping").sum() * (1 - international_navigation_fraction)
+        co2_emissions.filter(like="shipping").sum()
+        * (1 - international_navigation_fraction)
     )
 
     var["Emissions|CO2|Energy|Demand|Transportation"] = (
@@ -2644,8 +2651,6 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         + var["Emissions|CO2|Energy|Demand|Transportation|Domestic Aviation"]
         + var["Emissions|CO2|Energy|Demand|Transportation|Domestic Navigation"]
     )
-
-
 
     var["Emissions|CO2|Energy|Demand|Bunkers|Aviation"] = (
         co2_emissions.get("kerosene for aviation") * international_aviation_fraction
@@ -4337,6 +4342,80 @@ def hack_transmission_projects(n, model_year):
     return n
 
 
+def get_transmission_grid_capacity(n, region, year):
+
+    var = pd.Series()
+    ### Total Capacity
+    ## Tranmission Grid
+    # get domestic capacities
+    ac_dom = n.lines[
+        (n.lines.carrier == "AC")
+        & (n.lines.bus0.str[:2] == region)
+        & (n.lines.bus1.str[:2] == region)
+        & ~(n.lines.index.str.contains("reversed"))
+    ]
+    dc_dom = n.links[
+        (n.links.carrier == "DC")
+        & (n.links.bus0.str[:2] == region)
+        & (n.links.bus1.str[:2] == region)
+        & ~(n.links.index.str.contains("reversed"))
+    ]
+
+    var["Capacity|Transmission Grid|AC|Domestic"] = (
+        ac_dom.s_nom_opt.multiply(ac_dom.length).sum() * MW2GW
+    )
+    var["Capacity|Transmission Grid|DC|Domestic"] = (
+        dc_dom.p_nom_opt.multiply(dc_dom.length).sum() * MW2GW
+    )
+
+    # get border crossing capacities and multiply with 0.5
+    ac_int = n.lines[
+        (n.lines.carrier == "AC")
+        & (
+            (n.lines.bus0.str[:2] == region) & (n.lines.bus1.str[:2] != region)
+            | (n.lines.bus0.str[:2] != region) & (n.lines.bus1.str[:2] == region)
+        )
+    ]
+    dc_int = n.links[
+        (n.links.carrier == "DC")
+        & (
+            (n.links.bus0.str[:2] == region) & (n.links.bus1.str[:2] != region)
+            | (n.links.bus0.str[:2] != region) & (n.links.bus1.str[:2] == region)
+        )
+        & ~(n.links.index.str.contains("reversed"))
+    ]
+    var["Capacity|Transmission Grid|AC|International"] = (
+        ac_int.s_nom_opt.multiply(ac_int.length).sum() * 0.5 * MW2GW
+    )
+    var["Capacity|Transmission Grid|DC|International"] = (
+        dc_int.p_nom_opt.multiply(dc_int.length).sum() * 0.5 * MW2GW
+    )
+
+    var["Capacity|Transmission Grid|AC"] = (
+        var["Capacity|Transmission Grid|AC|Domestic"]
+        + var["Capacity|Transmission Grid|AC|International"]
+    )
+    var["Capacity|Transmission Grid|DC"] = (
+        var["Capacity|Transmission Grid|DC|Domestic"]
+        + var["Capacity|Transmission Grid|DC|International"]
+    )
+
+    var["Capacity|Transmission Grid"] = (
+        var["Capacity|Transmission Grid|AC"] + var["Capacity|Transmission Grid|DC"]
+    )
+
+    ## Distribution Grid
+    distr_grid = n.links[
+        (n.links.carrier == "electricity distribution grid")
+        & (n.links.bus0.str[:2] == region)
+        & ~(n.links.index.str.contains("reversed"))
+    ]
+
+    var["Capacity|Distribution Grid"] = distr_grid.p_nom_opt.sum() * MW2GW
+
+    return var
+
+
 def get_ariadne_var(
     n,
     industry_demand,
@@ -4351,6 +4430,7 @@ def get_ariadne_var(
     var = pd.concat(
         [
             get_capacities(n, region),
+            get_transmission_grid_capacity(n, region, year),
             # get_capacity_additions_simple(n,region),
             # get_installed_capacities(n,region),
             get_capacity_additions(n, region),
