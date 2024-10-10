@@ -4378,19 +4378,6 @@ def get_transmission_grid_capacity(n, region, year):
 
     var["Capacity|Distribution Grid"] = distr_grid.p_nom_opt.sum() * MW2GW
 
-    ### Capacity Addition
-    # var["Capacity Addition|Transmission Grid|AC|Domestic"] = ac_dom[ac_dom.build_year != year].s_nom_opt.multiply(ac_dom.length).sum() * MW2GW
-    # var["Capacity Addition|Transmission Grid|DC|Domestic"] = dc_dom[dc_dom.build_year != year].p_nom_opt.multiply(dc_dom.length).sum() * MW2GW
-
-    # var["Capacity Addition|Transmission Grid|AC|International"] = ac_int[ac_int.build_year != year].s_nom_opt.multiply(ac_int.length).sum() * 0.5 * MW2GW
-    # var["Capacity Addition|Transmission Grid|DC|International"] = dc_int[dc_int.build_year != year].p_nom_opt.multiply(dc_int.length).sum() * 0.5 * MW2GW
-
-    # var["Capacity Addition|Transmission Grid|AC"] = var["Capacity Addition|Transmission Grid|AC|Domestic"] + var["Capacity Addition|Transmission Grid|AC|International"]
-    # var["Capacity Addition|Transmission Grid|DC"] = var["Capacity Addition|Transmission Grid|DC|Domestic"] + var["Capacity Addition|Transmission Grid|DC|International"]
-    # var["Capacity Addition|Transmission Grid"] = var["Capacity Addition|Transmission Grid|AC"] + var["Capacity Addition|Transmission Grid|DC"]
-
-    # var["Capacity Addition|Distribution Grid"] = distr_grid[distr_grid.build_year != year].p_nom_opt.sum() * MW2GW
-
     return var
 
 
