@@ -2117,17 +2117,19 @@ def get_final_energy(
         energy_totals["total domestic navigation"]
         + energy_totals["total international navigation"]
     )
+    var["Final Energy|Transportation|Domestic Aviation"] = \
+    var["Final Energy|Transportation|Domestic Aviation|Liquids"] = (
+        sum_load(n, "kerosene for aviation", region) * (1 - international_aviation_fraction)
+    )
+    var["Final Energy|Transportation|Domestic Navigation"] = \
+    var["Final Energy|Transportation|Domestic Navigation|Liquids"] = (
+        sum_load(n, "shipping oil", region) * (1 - international_navigation_fraction)
+    )
 
     var["Final Energy|Transportation|Liquids"] = (
         sum_load(n, "land transport oil", region)
-        + (
-            sum_load(n, "kerosene for aviation", region)
-            * (1 - international_aviation_fraction)
-        )
-        + (
-            sum_load(n, "shipping oil", region)
-            * (1 - international_navigation_fraction)
-        )
+        + var["Final Energy|Transportation|Domestic Aviation|Liquids"]
+        + var["Final Energy|Transportation|Domestic Navigation|Liquids"]
     )
 
     var["Final Energy|Transportation|Methanol"] = sum_load(
@@ -2152,11 +2154,20 @@ def get_final_energy(
         "Final Energy|Bunkers|Aviation|Liquids"
     ] = (sum_load(n, "kerosene for aviation", region) * international_aviation_fraction)
 
+    for var_key, fraction_key in zip(["Petroleum", "Efuel", "Biomass"], oil_fractions.index):
+        var[f"Final Energy|Bunkers|Aviation|Liquids|{var_key}"] = (
+            var["Final Energy|Bunkers|Aviation|Liquids"] * oil_fractions[fraction_key]
+        )
     # TODO Navigation hydrogen
 
     var["Final Energy|Bunkers|Navigation|Liquids"] = (
         sum_load(n, "shipping oil", region) * international_navigation_fraction
     )
+
+    for var_key, fraction_key in zip(["Petroleum", "Efuel", "Biomass"], oil_fractions.index):
+        var[f"Final Energy|Bunkers|Navigation|Liquids|{var_key}"] = (
+            var["Final Energy|Bunkers|Navigation|Liquids"] * oil_fractions[fraction_key]
+        )
     var["Final Energy|Bunkers|Navigation|Methanol"] = (
         sum_load(n, "shipping methanol", region) * international_navigation_fraction
     )
@@ -2619,22 +2630,22 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         + energy_totals["total international navigation"]
     )
 
-    var["Emissions|CO2|Energy|Demand|Transportation"] = (
-        co2_emissions.get("land transport oil", 0)
-        + (
-            co2_emissions.get("kerosene for aviation")
-            * (1 - international_aviation_fraction)
-        )
-        + (
-            co2_emissions.filter(like="shipping").sum()
-            * (1 - international_navigation_fraction)
-        )
-    )
-
     var["Emissions|CO2|Energy|Demand|Transportation|Domestic Aviation"] = (
         co2_emissions.get("kerosene for aviation")
         * (1 - international_aviation_fraction)
     )
+
+    var["Emissions|CO2|Energy|Demand|Transportation|Domestic Navigation"] = (
+        co2_emissions.filter(like="shipping").sum() * (1 - international_navigation_fraction)
+    )
+
+    var["Emissions|CO2|Energy|Demand|Transportation"] = (
+        co2_emissions.get("land transport oil", 0)
+        + var["Emissions|CO2|Energy|Demand|Transportation|Domestic Aviation"]
+        + var["Emissions|CO2|Energy|Demand|Transportation|Domestic Navigation"]
+    )
+
+
 
     var["Emissions|CO2|Energy|Demand|Bunkers|Aviation"] = (
         co2_emissions.get("kerosene for aviation") * international_aviation_fraction
@@ -3834,7 +3845,6 @@ def get_trade(n, region):
 
         return exporting_p, importing_p
 
-    # Trade|Primary Energy|Biomass|Volume
     # Trade|Secondary Energy|Electricity|Volume
     exporting_ac = n.lines.index[
         (n.lines.carrier == "AC")
