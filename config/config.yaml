@@ -5,7 +5,7 @@
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
 
-  prefix: 241008_offshore_nep
+  prefix: 241010_fix_get_data
 
   name:
   # - CurrentPolicies
