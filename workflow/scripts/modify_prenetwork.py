@@ -410,10 +410,11 @@ def unravel_carbonaceous_fuels(n):
     )
 
     # add stores
-    EU_oil_store = n.stores.loc["EU oil Store"].copy()
+    current_year = int(snakemake.wildcards.planning_horizons)
+    EU_oil_store = n.stores.loc[f"EU oil Store-{current_year}"].copy()
     n.add(
         "Store",
-        "DE oil Store",
+        f"DE oil Store-{current_year}",
         bus="DE oil",
         carrier="oil",
         e_nom_extendable=EU_oil_store.e_nom_extendable,
@@ -472,10 +473,10 @@ def unravel_carbonaceous_fuels(n):
     )
 
     # add stores
-    EU_meoh_store = n.stores.loc["EU methanol Store"].copy()
+    EU_meoh_store = n.stores.loc[f"EU methanol Store-{current_year}"].copy()
     n.add(
         "Store",
-        "DE methanol Store",
+        f"DE methanol Store-{current_year}",
         bus="DE methanol",
         carrier="methanol",
         e_nom_extendable=EU_meoh_store.e_nom_extendable,
@@ -612,9 +613,10 @@ def unravel_gasbus(n, costs):
         carrier="gas",
         marginal_cost=costs.at["gas", "fuel"],
     )
+    current_year = int(snakemake.wildcards.planning_horizons)
     n.add(
         "Store",
-        "DE gas Store",
+        f"DE gas Store-{current_year}",
         bus="DE gas",
         carrier="gas",
         e_nom_extendable=True,
