@@ -39,14 +39,14 @@ CARRIER_GROUPS = {
         "services urban decentral heat",
         "services rural heat",
     ],
-    # "hydrogen": "H2",
-    # "oil": "oil",
-    # "methanol": "methanol",
-    # "ammonia": "NH3",
-    # "biomass": ["solid biomass", "biogas"],
-    # "CO2 atmosphere": "co2",
-    # "CO2 stored": "co2 stored",
-    # "methane": "gas",
+    "hydrogen": "H2",
+    "oil": "oil",
+    "methanol": "methanol",
+    "ammonia": "NH3",
+    "biomass": ["solid biomass", "biogas"],
+    "CO2 atmosphere": "co2",
+    "CO2 stored": "co2 stored",
+    "methane": "gas",
 }
 
 year_colors = [
@@ -419,11 +419,15 @@ def plot_energy_balance_timeseries(
     timespan = df.index[-1] - df.index[0]
     long_time_frame = timespan > pd.Timedelta(weeks=5)
 
-    techs_below_threshold = nb.columns[nb.abs().sum() < threshold].tolist()
-    other = {tech: "other" for tech in techs_below_threshold}
-    rename.update(other)
-    colors["other"] = "grey"
-    nb = nb.groupby(nb.columns.map(lambda a: rename.get(a, a)), axis=1).sum()
+    techs_below_threshold = df.columns[df.abs().max() < threshold].tolist()
+
+    if techs_below_threshold:
+        other = {tech: "other" for tech in techs_below_threshold}
+        rename.update(other)
+        colors["other"] = "grey"
+
+    if rename:
+        df = df.groupby(df.columns.map(lambda a: rename.get(a, a)), axis=1).sum()
 
     if resample is not None:
         # upsampling to hourly resolution required to handle overlapping block
@@ -954,7 +958,7 @@ def plot_h2_map(n,
         color_kern,
     ]
     labels = carriers + [
-        "H2 pipeline (total)",
+        "H2 pipeline (new)",
         "H2 pipeline (repurposed)",
         "H2 pipeline (Kernnetz)",
     ]
@@ -1235,7 +1239,7 @@ def plot_h2_map_de(n,
         color_kern,
     ]
     labels = carriers + [
-        "H2 pipeline (total)",
+        "H2 pipeline (new)",
         "H2 pipeline (repurposed)",
         "H2 pipeline (Kernnetz)",
     ]
@@ -1253,203 +1257,21 @@ def plot_h2_map_de(n,
     fig.savefig(savepath, bbox_inches="tight")
 
 
+### electricity transmission
 
-if __name__ == "__main__":
-    if "snakemake" not in globals():
-        import os
-        import sys
+def plot_elec_map_de(
+    network,
+    base_network,
+    tech_colors,
+    regions_de,
+    savepath,
+    expansion_case = "total-expansion"):
 
-        path = "../submodules/pypsa-eur/scripts"
-        sys.path.insert(0, os.path.abspath(path))
-        from _helpers import mock_snakemake
-
-        snakemake = mock_snakemake(
-            "plot_ariadne_report",
-            simpl="",
-            clusters=27,
-            opts="",
-            ll="vopt",
-            sector_opts="None",
-            run="KN2045_Bal_v4",
-        )
-
-    # configs
-    config = snakemake.config
-    planning_horizons = snakemake.params.planning_horizons
-    post_discretization = snakemake.params.post_discretization
-    nhours = int(snakemake.params.hours[:-1])
-    nyears = nhours / 8760
-    tech_colors = snakemake.params.plotting["tech_colors"]
-
-    # define possible renaming and grouping of carriers
-    c_g = [solar, electricity_load, electricity_imports]
-    c_n = ["Solar", "Electricity load", "Electricity trade"]
-
-    # add colors for renaming and condensed groups
-    for old_name, new_name in carrier_renaming.items():
-        if old_name in tech_colors:
-            tech_colors[new_name] = tech_colors[old_name]
-    for name in c1_groups_name:
-        tech_colors[name] = tech_colors[f"urban central {name}"]
-    for name in c1_groups_name:
-        tech_colors[name] = tech_colors[f"urban central {name}"]
-
-    # manual carriers
-    tech_colors["urban central oil CHP"] = tech_colors["oil"]
-    tech_colors["Solar"] = tech_colors["solar"]
-    tech_colors["Electricity load"] = tech_colors["electricity"]
-    tech_colors["Electricity trade"] = tech_colors["AC"]
-
-    # Load data
-    # _networks = [pypsa.Network(fn) for fn in snakemake.input.networks]
-    path = "/home/julian-geis/Documents/04_Ariadne/run_results/20241002_fix_post_discretization_constraints/KN2045_Bal_v4/postnetworks/"
-    _networks = [pypsa.Network(fn) for fn in [path + f"elec_s_49_lvopt__none_{i}.nc" for i in range(2020, 2050,5)]]
-    modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
-    # Hack the transmission projects
-    networks = [
-        hack_transmission_projects(n.copy(), int(my))
-        for n, my in zip(_networks, modelyears)
-    ]
-
-    for year in planning_horizons:
-        network = networks[planning_horizons.index(year)].copy()
-
-        ct = "DE"
-        buses = network.buses.index[(network.buses.index.str[:2] == ct)].drop("DE")
-        balance = network.statistics.energy_balance(
-            aggregate_time=False,
-            nice_names=False,
-            groupby=network.statistics.groupers.get_bus_and_carrier_and_bus_carrier
-            ).loc[:,buses,:,:].droplevel("bus")
-
-        # electricity supply and demand
-        plot_nodal_balance(
-            network=network,
-            nodal_balance=balance,
-            tech_colors=tech_colors,
-            start_date="2019-01-01 00:00:00",
-            end_date="2019-12-31 00:00:00",
-            savepath=f"{snakemake.output.nodal_balances}/elec-all-year-D_{year}.png",
-            model_run=snakemake.wildcards.run,
-            resample="D",
-            plot_lmps=False,
-            plot_loads=False,
-            nice_names=True,
-            threshold=1e2, # in GWh as sum over period
-            condense_groups=c_g,
-            condense_names=c_n,
-        )
-
-        plot_nodal_balance(
-            network=network,
-            nodal_balance=balance,
-            tech_colors=tech_colors,
-            start_date="2019-01-01 00:00:00",
-            end_date="2019-01-31 00:00:00",
-            savepath=f"{snakemake.output.nodal_balances}/elec-Jan_{year}.png",
-            model_run=snakemake.wildcards.run,
-            nice_names=True,
-            threshold=1e2,
-            condense_groups= [electricity_load, electricity_imports],
-            condense_names= ["Electricity load", "Electricity trade"],
-        )
-
-        plot_nodal_balance(
-            network=network,
-            nodal_balance=balance,
-            tech_colors=tech_colors,
-            start_date="2019-05-01 00:00:00",
-            end_date="2019-05-31 00:00:00",
-            savepath=f"{snakemake.output.nodal_balances}/elec-May_{year}.png",
-            model_run=snakemake.wildcards.run,
-            nice_names=True,
-            threshold=1e2,
-            condense_groups= [electricity_load, electricity_imports],
-            condense_names= ["Electricity load", "Electricity trade"],
-        )
-
-        # storage
-
-        plot_storage(
-            network=network,
-            tech_colors=tech_colors,
-            start_date="2019-01-01 00:00:00",
-            end_date="2019-12-31 00:00:00",
-            savepath=f"{snakemake.output.results}/storage_{year}.png",
-            model_run=snakemake.wildcards.run,
-        )
-
-    ## price duration
-
-    networks_dict = {int(my): n for n, my in zip(networks, modelyears)}
-
-    plot_price_duration_curve(
-        networks=networks_dict,
-        year_colors=year_colors,
-        savepath=snakemake.output.elec_price_duration_curve,
-        model_run=snakemake.wildcards.run,
-        years=planning_horizons,
-    )
-
-    plot_price_duration_hist(
-        networks=networks_dict,
-        year_colors=year_colors,
-        savepath=snakemake.output.elec_price_duration_hist,
-        model_run=snakemake.wildcards.run,
-        years=planning_horizons,
-    )
-
-    # make sure to have right file
-    fn = "/home/julian-geis/repos/pypsa-ariadne-2/resources/20240920H2KernnetzUpdateHighRes/KN2045_Bal_v4/regions_onshore_elec_s_49.geojson"
-    regions = gpd.read_file(fn).set_index("name")
-
-    map_opts = snakemake.params.plotting["map"]
-    proj = load_projection(snakemake.params.plotting)
-
-    if map_opts["boundaries"] is None:
-        map_opts["boundaries"] = regions.total_bounds[[0, 2, 1, 3]] + [-1, 1, -1, 1]
-    
-    year = 2045
-    network = networks[planning_horizons.index(year)].copy()
-    plot_h2_map(network, 
-                regions,
-                savepath=f"{snakemake.output.h2_transmission}_{year}.png")
-
-    regions_de = regions[regions.index.str.startswith("DE")]
-    for sb in ["production", "consumption"]:
-        network = networks[planning_horizons.index(year)].copy()
-        plot_h2_map_de(network, 
-                    regions_de,
-                    tech_colors = tech_colors,
-                    specify_buses=sb,
-                    savepath=f"{snakemake.output.h2_transmission}_DE_{sb}_{year}.png",
-                    )
-
-    
-    # hydrogen transmission
-    # plot whole network: differentiate between Kernnetz and endegenously build links
-
-
-    ## electricity transmission
-    # differentiate between forced in lines / links and endegeneous optiised ones
-    # lines: forced in ones are ones from Startnetz: only ones with linetype:
-    # links TYNPD in index
-    # I'd say: zoom in a bit more on DE, then plot on three separate graphs 
-    # total Ausbau (versus 2020), Startnetz (exogen forciert), endogen von PyPSA 
-
-    # total Ausbau
-    set_scenario_config(snakemake)
-    snakemake.params.plotting["projection"] = {
-        "name": "EqualEarth"
-    }
-    proj = load_projection(snakemake.params.plotting)
-    # proj = ccrs.EqualEarth()
-
-    m = networks[5].copy()
+    m = network.copy()
     m.mremove("Bus",m.buses[m.buses.x == 0].index )
     m.buses.drop(m.buses.index[m.buses.carrier != "AC"], inplace=True)
 
-    m_base = networks[0].copy()
+    m_base = base_network.copy()
 
     # storage as cmap on map
     battery_storage = m.stores[m.stores.carrier.isin(["battery"])]
@@ -1463,21 +1285,59 @@ if __name__ == "__main__":
 
     # buses
     bus_size_factor = 0.5e6
-    carriers = ["onwind", "solar"]
+    carriers = ["onwind", 'offwind-ac', 'offwind-dc',"solar", 'solar-hsat']
     elec = m.generators[(m.generators.carrier.isin(carriers)) & (m.generators.bus.str.contains("DE"))].index
     bus_sizes = (
         m.generators.loc[elec, "p_nom_opt"].groupby([m.generators.bus, m.generators.carrier]).sum()
         / bus_size_factor
     )
+    replacement_dict = {
+        "onwind" : "Onshore Wind",
+        "offwind-ac" : "Offshore Wind",
+        "offwind-dc" : "Offshore Wind",     
+        "solar" : "Solar",
+        "solar-hsat" : "Solar", 
+    }
+    bus_sizes = bus_sizes.rename(index=replacement_dict, level=1)
+    bus_sizes = bus_sizes.groupby(level=[0, 1]).sum()
+    carriers =  bus_sizes.index.get_level_values(1).unique().tolist()
 
     # lines
     linew_factor = 1e3
     linkw_factor = 0.5e3
 
-    # get Netzausbau
-    line_widths = (m.lines.s_nom_opt - m_base.lines.s_nom_min) / linew_factor
-    links = m.links[m.links.carrier == "DC"]
-    link_widths = ((m.links.p_nom_opt - m_base.links.p_nom) / linkw_factor).loc[links.index]
+    # line widths
+    startnetz_i = m.lines[m.lines.build_year != 0].index
+    total_exp_linew = m.lines.s_nom_opt - m_base.lines.s_nom_min
+    total_exp_linew[startnetz_i] = m.lines.s_nom_opt[startnetz_i]
+    total_exp_noStart_linew = total_exp_linew.copy()
+    total_exp_noStart_linew.loc[startnetz_i] = 0
+    startnetz_linew = m.lines.s_nom_opt.loc[startnetz_i]
+
+    # link widths
+    tprojs = m.links.loc[
+        (m.links.index.str.startswith("DC") | m.links.index.str.startswith("TYNDP"))
+        & ~m.links.reversed
+    ].index
+    links_i = m.links.index[m.links.carrier == "DC"]
+    total_exp_linkw = (m.links.p_nom_opt - m_base.links.p_nom).loc[links_i]
+    total_exp_linkw[tprojs] = m.links.p_nom_opt[tprojs]
+    total_exp_noStart_linkw = total_exp_linkw.copy()
+    total_exp_noStart_linkw.loc[tprojs] = 0
+    startnetz_linkw = m.links.p_nom_opt[tprojs]
+
+    if expansion_case == "total-expansion":
+        line_widths = total_exp_linew / linew_factor
+        link_widths = total_exp_linkw / linkw_factor
+    elif expansion_case == "startnetz":
+        line_widths = startnetz_linew / linew_factor
+        link_widths = startnetz_linkw / linkw_factor
+    elif expansion_case == "pypsa":
+        line_widths = total_exp_noStart_linew / linew_factor
+        link_widths = total_exp_noStart_linkw / linkw_factor
+    else:
+        line_widths = None
+        link_widths = None
 
     regions_de = regions_de.to_crs(proj.proj4_init)
     fig, ax = plt.subplots(figsize=(10, 8), subplot_kw={"projection": proj})
@@ -1572,246 +1432,273 @@ if __name__ == "__main__":
     )
 
     add_legend_patches(ax, colors, labels, legend_kw=legend_kw)
-    fig.savefig(f"{snakemake.output.results}/elec_total_ausbau.png", bbox_inches="tight")
+    fig.savefig(savepath, bbox_inches="tight")
 
-    ## Startnetz & TYNDP
-    ###################################
 
-    set_scenario_config(snakemake)
 
-    linew_factor = 2e3
-    linkw_factor = 1e3
+if __name__ == "__main__":
+    if "snakemake" not in globals():
+        import os
+        import sys
 
-    m = networks[5].copy()
-    m.mremove("Bus",m.buses[m.buses.x == 0].index )
-    m.buses.drop(m.buses.index[m.buses.carrier != "AC"], inplace=True)
+        path = "../submodules/pypsa-eur/scripts"
+        sys.path.insert(0, os.path.abspath(path))
+        from _helpers import mock_snakemake
 
-    m_base = networks[0].copy()
+        snakemake = mock_snakemake(
+            "plot_ariadne_report",
+            simpl="",
+            clusters=27,
+            opts="",
+            ll="vopt",
+            sector_opts="None",
+            run="KN2045_Bal_v4",
+        )
 
-    startnetz = m.lines[m.lines.build_year != 0].index
+    for dir in snakemake.output:
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+
+    # configs
+    config = snakemake.config
+    planning_horizons = snakemake.params.planning_horizons
+    post_discretization = snakemake.params.post_discretization
+    nhours = int(snakemake.params.hours[:-1])
+    nyears = nhours / 8760
+    tech_colors = snakemake.params.plotting["tech_colors"]
     
-    tprojs = m.links.loc[
-        (m.links.index.str.startswith("DC") | m.links.index.str.startswith("TYNDP"))
-        & ~m.links.reversed
-    ].index
+    # define possible renaming and grouping of carriers
+    c_g = [solar, electricity_load, electricity_imports]
+    c_n = ["Solar", "Electricity load", "Electricity trade"]
 
+    # add colors for renaming and condensed groups
+    for old_name, new_name in carrier_renaming.items():
+        if old_name in tech_colors:
+            tech_colors[new_name] = tech_colors[old_name]
+    for name in c1_groups_name:
+        tech_colors[name] = tech_colors[f"urban central {name}"]
+    for name in c1_groups_name:
+        tech_colors[name] = tech_colors[f"urban central {name}"]
 
-    regions = gpd.read_file(snakemake.input.regions_onshore).set_index("name")
-    
+    # manual carriers
+    tech_colors["urban central oil CHP"] = tech_colors["oil"]
+    tech_colors["Solar"] = tech_colors["solar"]
+    tech_colors["Electricity load"] = tech_colors["electricity"]
+    tech_colors["Electricity trade"] = tech_colors["AC"]
+    tech_colors["Offshore Wind"] = tech_colors["offwind-ac"]
+
+    # Load data
+    _networks = [pypsa.Network(fn) for fn in snakemake.input.networks]
+    modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
+    # Hack the transmission projects
+    networks = [
+        hack_transmission_projects(n.copy(), int(my))
+        for n, my in zip(_networks, modelyears)
+    ]
+    # update the tech_colors
+    tech_colors.update(networks[0].carriers.color.rename(networks[0].carriers.nice_name).to_dict())
+
+    ### plotting
+
+    for year in planning_horizons:
+        network = networks[planning_horizons.index(year)].copy()
+
+        ct = "DE"
+        buses = network.buses.index[(network.buses.index.str[:2] == ct)].drop("DE")
+        balance = network.statistics.energy_balance(
+            aggregate_time=False,
+            nice_names=False,
+            groupby=network.statistics.groupers.get_bus_and_carrier_and_bus_carrier
+            ).loc[:,buses,:,:].droplevel("bus")
+
+        # electricity supply and demand
+        plot_nodal_balance(
+            network=network,
+            nodal_balance=balance,
+            tech_colors=tech_colors,
+            start_date="2019-01-01 00:00:00",
+            end_date="2019-12-31 00:00:00",
+            savepath=f"{snakemake.output.elec_balances}/elec-all-year-D_{year}.png",
+            model_run=snakemake.wildcards.run,
+            resample="D",
+            plot_lmps=False,
+            plot_loads=False,
+            nice_names=True,
+            threshold=1e2, # in GWh as sum over period
+            condense_groups=c_g,
+            condense_names=c_n,
+        )
+
+        plot_nodal_balance(
+            network=network,
+            nodal_balance=balance,
+            tech_colors=tech_colors,
+            start_date="2019-01-01 00:00:00",
+            end_date="2019-01-31 00:00:00",
+            savepath=f"{snakemake.output.elec_balances}/elec-Jan_{year}.png",
+            model_run=snakemake.wildcards.run,
+            nice_names=True,
+            threshold=1e2,
+            condense_groups= [electricity_load, electricity_imports],
+            condense_names= ["Electricity load", "Electricity trade"],
+        )
+
+        plot_nodal_balance(
+            network=network,
+            nodal_balance=balance,
+            tech_colors=tech_colors,
+            start_date="2019-05-01 00:00:00",
+            end_date="2019-05-31 00:00:00",
+            savepath=f"{snakemake.output.elec_balances}/elec-May_{year}.png",
+            model_run=snakemake.wildcards.run,
+            nice_names=True,
+            threshold=1e2,
+            condense_groups= [electricity_load, electricity_imports],
+            condense_names= ["Electricity load", "Electricity trade"],
+        )
+
+        # storage
+        plot_storage(
+            network=network,
+            tech_colors=tech_colors,
+            start_date="2019-01-01 00:00:00",
+            end_date="2019-12-31 00:00:00",
+            savepath=f"{snakemake.output.results}/storage_{year}.png",
+            model_run=snakemake.wildcards.run,
+        )
+
+    ## price duration
+    networks_dict = {int(my): n for n, my in zip(networks, modelyears)}
+    plot_price_duration_curve(
+        networks=networks_dict,
+        year_colors=year_colors,
+        savepath=snakemake.output.elec_price_duration_curve,
+        model_run=snakemake.wildcards.run,
+        years=planning_horizons,
+    )
+
+    plot_price_duration_hist(
+        networks=networks_dict,
+        year_colors=year_colors,
+        savepath=snakemake.output.elec_price_duration_hist,
+        model_run=snakemake.wildcards.run,
+        years=planning_horizons,
+    )
+
+    ## hydrogen transmission
+    map_opts = snakemake.params.plotting["map"]
     snakemake.params.plotting["projection"] = {
         "name": "EqualEarth"
     }
     proj = load_projection(snakemake.params.plotting)
-    # proj = ccrs.EqualEarth()
-
-    # get exogeneous lines and links
-    startnetz_widths = m.lines.s_nom_opt.where(
-        m.lines.index.isin(startnetz), other=0.0)  / linew_factor
-    tynps_widths = m.links.p_nom_opt.where(
-        m.links.index.isin(tprojs), other=0.0) / linkw_factor
+    regions = gpd.read_file(snakemake.input.regions_onshore_clustered).set_index("name")
+    # if map_opts["boundaries"] is None:
+    #     map_opts["boundaries"] = regions.total_bounds[[0, 2, 1, 3]] + [-1, 1, -1, 1]
     
-    fig, ax = plt.subplots(figsize=(8, 8), subplot_kw={"projection": proj})
+    for year in planning_horizons:
+        network = networks[planning_horizons.index(year)].copy()
+        plot_h2_map(network, 
+                    regions,
+                    savepath=f"{snakemake.output.h2_transmission}/h2_transmission_all-regions_{year}.png")
 
-    m.plot(
-        ax=ax,
-        margin=0.06,
-        line_widths=startnetz_widths,
-        line_colors=tech_colors["AC"],
-        link_widths=tynps_widths,
-        link_colors=tech_colors["DC"],
-    )
+        regions_de = regions[regions.index.str.startswith("DE")]
+        for sb in ["production", "consumption"]:
+            network = networks[planning_horizons.index(year)].copy()
+            plot_h2_map_de(network, 
+                        regions_de,
+                        tech_colors = tech_colors,
+                        specify_buses=sb,
+                        savepath=f"{snakemake.output.h2_transmission}/h2_transmission_DE_{sb}_{year}.png",
+                        )
+
+
+    ## electricity transmission
+    for year in planning_horizons:
+        network = networks[planning_horizons.index(year)].copy()
+        scenarios = ["total-expansion", "startnetz", "pypsa"]
+        for s in scenarios:
+            plot_elec_map_de(
+                network,
+                networks[planning_horizons.index(2020)].copy(),
+                tech_colors,
+                regions_de,
+                savepath=f"{snakemake.output.elec_transmission}/elec_transmission_DE_{s}_{year}.png",
+                expansion_case=s,
+                )
+
     
-    # Set geographic extent for Germany
-    ax.set_extent([5.5, 15.5, 47, 56], crs=ccrs.PlateCarree())  # Germany bounds
+    ## nodal balances general (might not be very robust)    
+    plt.style.use(["bmh", snakemake.input.rc])
     
-    # AC
-    sizes_ac = [10, 5]
-    labels_ac = [f"HVAC ({s} GW)" for s in sizes_ac]
-    scale = 1e3 / linew_factor
-    sizes_ac = [s * scale for s in sizes_ac]
+    year = 2045
+    network = networks[planning_horizons.index(year)].copy()
+    n = network
 
-    # DC
-    sizes_dc = [5, 2]
-    labels_dc = [f"HVDC ({s} GW)" for s in sizes_dc]
-    scale = 1e3 / linkw_factor
-    sizes_dc = [s * scale for s in sizes_dc]
-
-    sizes = sizes_ac + sizes_dc
-    labels = labels_ac + labels_dc
-    colors = [tech_colors["AC"]] * len(sizes_ac) + [tech_colors["DC"]] * len(sizes_dc)
-
-    legend_kw = dict(
-        loc=[0.2, 0.9],
-        frameon=True,
-        labelspacing=0.5,
-        handletextpad=1,
-        fontsize=13,
-        ncol=2,
-        facecolor="white",
-    )
-
-    add_legend_lines(
-        ax, sizes, labels, colors = colors, legend_kw=legend_kw
-    )
-    fig.savefig(f"{snakemake.output.results}/elec_exogen.png", bbox_inches="tight")
-
-    ### PyPSA endogeneous
-    ###################################
-    set_scenario_config(snakemake)
-
-    linew_factor = 2e3
-    linkw_factor = 1e3
-
-    m = networks[5].copy()
-    m.mremove("Bus",m.buses[m.buses.x == 0].index )
-    m.buses.drop(m.buses.index[m.buses.carrier != "AC"], inplace=True)
-
-    m_base = networks[0].copy()
-
-    not_startnetz = m.lines[m.lines.build_year == 0].index
-    
-    tprojs = m.links.loc[
-        (m.links.index.str.startswith("DC") | m.links.index.str.startswith("TYNDP"))
-        & ~m.links.reversed
-    ].index
-    not_tprojs = m.links.loc[
-        (m.links.carrier == "DC") & ~(m.links.index.isin(tprojs))
-        & ~m.links.reversed
-    ].index
-
-    regions = gpd.read_file(snakemake.input.regions_onshore).set_index("name")
-    
-    snakemake.params.plotting["projection"] = {
-        "name": "EqualEarth"
-    }
-    proj = load_projection(snakemake.params.plotting)
-    # proj = ccrs.EqualEarth()
-
-    # get endogeneous Ausbau
-    line_widths = ((m.lines.s_nom_opt - m_base.lines.s_nom_min) / linew_factor).loc[not_startnetz]
-    link_widths = ((m.links.p_nom_opt - m_base.links.p_nom) / linkw_factor).loc[not_tprojs]
-    
-    fig, ax = plt.subplots(figsize=(8, 8), subplot_kw={"projection": proj})
-
-    m.plot(
-        ax=ax,
-        margin=0.06,
-        line_widths=line_widths,
-        line_colors=tech_colors["AC"],
-        link_widths=link_widths,
-        link_colors=tech_colors["DC"],
-    )
-    
-    # Set geographic extent for Germany
-    ax.set_extent([5.5, 15.5, 47, 56], crs=ccrs.PlateCarree())  # Germany bounds
-    
-    # AC
-    sizes_ac = [10, 5]
-    labels_ac = [f"HVAC ({s} GW)" for s in sizes_ac]
-    scale = 1e3 / linew_factor
-    sizes_ac = [s * scale for s in sizes_ac]
-
-    # DC
-    sizes_dc = [5, 2]
-    labels_dc = [f"HVDC ({s} GW)" for s in sizes_dc]
-    scale = 1e3 / linkw_factor
-    sizes_dc = [s * scale for s in sizes_dc]
-
-    sizes = sizes_ac + sizes_dc
-    labels = labels_ac + labels_dc
-    colors = [tech_colors["AC"]] * len(sizes_ac) + [tech_colors["DC"]] * len(sizes_dc)
-
-    legend_kw = dict(
-        loc=[0.2, 0.9],
-        frameon=True,
-        labelspacing=0.5,
-        handletextpad=1,
-        fontsize=13,
-        ncol=2,
-        facecolor="white",
+    months = pd.date_range(freq="M", **snakemake.config["snapshots"]).format(
+        formatter=lambda x: x.strftime("%Y-%m")
     )
 
-    add_legend_lines(
-        ax, sizes, labels, colors = colors, legend_kw=legend_kw
-    )
-    fig.savefig(f"{snakemake.output.results}/elec_endogen.png", bbox_inches="tight")
+    balance = n.statistics.energy_balance(aggregate_time=False)
 
-    
-    
-    # ## nodal balances general (Fabians code)
-    # dir = snakemake.output.nodal_balances
-    # if not os.path.exists(dir):
-    #     os.makedirs(dir)
-    
-    # plt.style.use(["bmh", snakemake.input.rc])
-    # n = networks[5].copy()
-
-    # months = pd.date_range(freq="M", **snakemake.config["snapshots"]).format(
-    #     formatter=lambda x: x.strftime("%Y-%m")
-    # )
-
-    # balance = n.statistics.energy_balance(aggregate_time=False)
-
-    # # only DE 
-    # ct = "DE"
-    # buses = n.buses.index[(n.buses.index.str[:2] == ct)].drop("DE")
-    # balance = n.statistics.energy_balance(
-    #     aggregate_time=False,
-    #     groupby=n.statistics.groupers.get_bus_and_carrier_and_bus_carrier
-    #     ).loc[:,buses,:,:].droplevel("bus")
+    # only DE 
+    ct = "DE"
+    buses = n.buses.index[(n.buses.index.str[:2] == ct)].drop("DE")
+    balance = n.statistics.energy_balance(
+        aggregate_time=False,
+        groupby=n.statistics.groupers.get_bus_and_carrier_and_bus_carrier
+        ).loc[:,buses,:,:].droplevel("bus")
 
 
-    # n.carriers.color.update(snakemake.config["plotting"]["tech_colors"])
-    # colors = n.carriers.color.rename(n.carriers.nice_name)
-    # # replace empty values TODO add empty values with colors to plotting config
-    # colors[colors.values == ""] = "lightgrey"
+    n.carriers.color.update(snakemake.config["plotting"]["tech_colors"])
+    colors = n.carriers.color.rename(n.carriers.nice_name)
+    # replace empty values TODO add empty values with colors to plotting config
+    colors[colors.values == ""] = "lightgrey"
 
-    # # wrap in function for multiprocessing
-    # def process_group(group, carriers, balance, months, colors):
-    #     if not isinstance(carriers, list):
-    #         carriers = [carriers]
+    # wrap in function for multiprocessing
+    def process_group(group, carriers, balance, months, colors):
+        if not isinstance(carriers, list):
+            carriers = [carriers]
 
-    #     mask = balance.index.get_level_values("bus_carrier").isin(carriers)
-    #     df = balance[mask].groupby("carrier").sum().div(1e3).T
+        mask = balance.index.get_level_values("bus_carrier").isin(carriers)
+        df = balance[mask].groupby("carrier").sum().div(1e3).T
 
-    #     # daily resolution for each carrier
-    #     plot_energy_balance_timeseries(
-    #         df,
-    #         resample="D",
-    #         ylabel=group,
-    #         colors=colors,
-    #         threshold=THRESHOLD,
-    #         dir=dir,
-    #     )
+        # daily resolution for each carrier
+        plot_energy_balance_timeseries(
+            df,
+            resample="D",
+            ylabel=group,
+            colors=colors,
+            threshold=THRESHOLD,
+            dir=dir,
+        )
 
-    #     # monthly resolution for each carrier
-    #     plot_energy_balance_timeseries(
-    #         df,
-    #         resample="M",
-    #         ylabel=group,
-    #         colors=colors,
-    #         threshold=THRESHOLD,
-    #         dir=dir,
-    #     )
+        # monthly resolution for each carrier
+        plot_energy_balance_timeseries(
+            df,
+            resample="M",
+            ylabel=group,
+            colors=colors,
+            threshold=THRESHOLD,
+            dir=dir,
+        )
 
-    #     # native resolution for each month and carrier
-    #     for month in months:
-    #         plot_energy_balance_timeseries(
-    #             df,
-    #             time=month,
-    #             ylabel=group,
-    #             colors=colors,
-    #             threshold=THRESHOLD,
-    #             dir=dir,
-    #         )
+        # native resolution for each month and carrier
+        for month in months:
+            plot_energy_balance_timeseries(
+                df,
+                time=month,
+                ylabel=group,
+                colors=colors,
+                threshold=THRESHOLD,
+                dir=dir,
+            )
 
-    # args = [
-    #     (group, carriers, balance, months, colors)
-    #     for group, carriers in CARRIER_GROUPS.items()
-    # ]
-    # with Pool(processes=snakemake.threads) as pool:
-    #     pool.starmap(process_group, args)
+    args = [
+        (group, carriers, balance, months, colors)
+        for group, carriers in CARRIER_GROUPS.items()
+    ]
+    with Pool(processes=snakemake.threads) as pool:
+        pool.starmap(process_group, args)
 
-    # # specific cases
 
 
