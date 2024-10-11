@@ -395,8 +395,6 @@ use rule build_industrial_production_per_node from pypsaeur with:
         ),
 
 
-
-
 rule build_wasserstoff_kernnetz:
     params:
         kernnetz=config_provider("wasserstoff_kernnetz"),
