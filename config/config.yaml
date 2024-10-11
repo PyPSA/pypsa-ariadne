@@ -57,8 +57,6 @@ foresight: myopic
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#scenario
 # Wildcard docs in https://pypsa-eur.readthedocs.io/en/latest/wildcards.html
 scenario:
-  simpl:
-  - ''
   ll:
   - vopt
   clusters:
@@ -126,6 +124,7 @@ renewable:
           P: 3.06
   offwind-ac:
     capacity_per_sqkm: 6
+    landfall_length: 30
     cutout: europe-2019-sarah3-era5
     resource:
       smooth: true
@@ -148,6 +147,7 @@ renewable:
           P: 5.5
   offwind-dc:
     capacity_per_sqkm: 6
+    landfall_length: 30
     cutout: europe-2019-sarah3-era5
     resource:
       smooth: true
@@ -169,12 +169,15 @@ renewable:
           hub_height: 140.
           P: 5.5
   offwind-float: # disabled at the moment
+    landfall_length: 30
     capacity_per_sqkm: 6
     cutout: europe-2019-sarah3-era5
   solar:
     cutout: europe-2019-sarah3-era5
+    correction_factor: 0.918 # scaling to Abbildung 36 of https://www.ise.fraunhofer.de/de/veroeffentlichungen/studien/aktuelle-fakten-zur-photovoltaik-in-deutschland.html
   solar-hsat:
     cutout: europe-2019-sarah3-era5
+    correction_factor: 0.918 # scaling to Abbildung 36 of https://www.ise.fraunhofer.de/de/veroeffentlichungen/studien/aktuelle-fakten-zur-photovoltaik-in-deutschland.html
   hydro:
     cutout: europe-2019-sarah3-era5
 
@@ -419,6 +422,7 @@ solving:
         H2 pipeline: 0.05
         H2 pipeline (Kernnetz): 0.05
         H2 pipeline retrofitted: 0.05
+      fractional_last_unit_size: true
   constraints:
     limits_capacity_max:
       Generator:
@@ -433,8 +437,8 @@ solving:
         offwind:
           DE:
             2020: 7.8
-            2025: 8
-            2030: 30
+            2025: 11.3
+            2030: 30.4
             2035: 70
             2040: 70
             2045: 70
@@ -632,4 +636,10 @@ transmission_projects:
 
 onshore_nep_force:
   cutin_year: 2020
+  cutout_year: 2030
+
+#beware - may need to increase max offshore
+#to avoid infeasibilities
+offshore_nep_force:
+  cutin_year: 2025
   cutout_year: 2030

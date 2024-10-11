@@ -21,7 +21,7 @@ dependencies:
 - yaml
 - pytables
 - lxml
-- powerplantmatching>=0.5.11
+- powerplantmatching<0.6.0
 - numpy
 - pandas>=2.1
 - geopandas>=1.0
@@ -56,10 +56,10 @@ dependencies:
   # GIS dependencies:
 - cartopy
 - descartes
-- rasterio!=1.2.10
+- rasterio<1.4
 
 - pip:
-  - pypsa>=0.30.2
+  - pypsa=0.30.3
   - tsam>=2.3.1
   - snakemake-storage-plugin-http
   - snakemake-executor-plugin-slurm
