@@ -1120,15 +1120,19 @@ def force_connection_nep_offshore(n, current_year):
                 ac_connection_overnight_costs.loc[node]
             )
 
+
 def drop_early_transmission_projects(n):
 
     year = 2023
 
-    logger.info(f"Dropping transmission projects with build year <= {year}. They are likely already in the OSM base network.")
+    logger.info(
+        f"Dropping transmission projects with build year <= {year}. They are likely already in the OSM base network."
+    )
 
     to_drop = n.lines.index[0 < n.lines.build_year <= year]
 
     n.lines.mremove("Line", to_drop)
+
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
