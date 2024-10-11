@@ -17,7 +17,7 @@ from multiprocessing import Pool
 
 path = "../submodules/pypsa-eur/scripts"
 sys.path.insert(1, os.path.abspath(path))
-# from export_ariadne_variables import hack_transmission_projects
+from export_ariadne_variables import hack_transmission_projects
 from _helpers import configure_logging, set_scenario_config
 from plot_summary import preferred_order, rename_techs
 from plot_power_network import load_projection
@@ -39,14 +39,14 @@ CARRIER_GROUPS = {
         "services urban decentral heat",
         "services rural heat",
     ],
-    "hydrogen": "H2",
-    "oil": "oil",
-    "methanol": "methanol",
-    "ammonia": "NH3",
-    "biomass": ["solid biomass", "biogas"],
-    "CO2 atmosphere": "co2",
-    "CO2 stored": "co2 stored",
-    "methane": "gas",
+    # "hydrogen": "H2",
+    # "oil": "oil",
+    # "methanol": "methanol",
+    # "ammonia": "NH3",
+    # "biomass": ["solid biomass", "biogas"],
+    # "CO2 atmosphere": "co2",
+    # "CO2 stored": "co2 stored",
+    # "methane": "gas",
 }
 
 year_colors = [
@@ -158,56 +158,6 @@ electricity_imports = [
 ]
 
 ####### functions #######
-
-def hack_transmission_projects(n, model_year):
-    print("Hacking transmission projects for year", model_year)
-    tprojs = n.links.loc[
-        (n.links.index.str.startswith("DC") | n.links.index.str.startswith("TYNDP"))
-        & ~n.links.reversed
-    ].index
-
-    future_projects = tprojs[n.links.loc[tprojs, "build_year"] > model_year]
-    current_projects = tprojs[
-        (n.links.loc[tprojs, "build_year"] > (model_year - 5))
-        & (n.links.loc[tprojs, "build_year"] <= model_year)
-    ]
-    past_projects = tprojs[n.links.loc[tprojs, "build_year"] <= (model_year - 5)]
-
-    # Future projects should not have any capacity
-    # assert isclose(n.links.loc[future_projects, "p_nom_opt"], 0).all()
-    # Setting p_nom to 0 such that n.statistics does not compute negative expanded capex or capacity additions
-    # Setting p_nom to 0 for the grid_expansion calculation
-    # This is ONLY POSSIBLE IN POST-PROCESSING
-    # We pretend that the model expanded the grid endogenously
-    n.links.loc[future_projects, "p_nom"] = 0
-    n.links.loc[future_projects, "p_nom_min"] = 0
-
-    # Current projects should have their p_nom_opt equal to p_nom
-    # until the year 2030 (Startnetz that we force in)
-    if model_year <= 2030:
-        # assert isclose(
-        #     n.links.loc[current_projects, "p_nom_opt"],
-        #     n.links.loc[current_projects, "p_nom"],
-        # ).all()
-
-        n.links.loc[current_projects, "p_nom"] = 0
-        n.links.loc[current_projects, "p_nom_min"] = 0
-
-    else:
-        n.links.loc[current_projects, "p_nom"] = n.links.loc[
-            current_projects, "p_nom_min"
-        ]
-
-    # Past projects should have their p_nom_opt bigger or equal to p_nom
-    # if model_year <= 2035:
-    #     # assert (
-    #     #     n.links.loc[past_projects, "p_nom_opt"]
-    #     #     >= n.links.loc[past_projects, "p_nom"]
-    #     # ).all()
-
-    return n
-
-
 def get_condense_sum(df, groups, groups_name, return_original=False):
     """
     return condensed df, that has been groupeb by condense groups
@@ -427,7 +377,7 @@ def plot_energy_balance_timeseries(
         colors["other"] = "grey"
 
     if rename:
-        df = df.groupby(df.columns.map(lambda a: rename.get(a, a)), axis=1).sum()
+        df = df.T.groupby(df.columns.map(lambda a: rename.get(a, a))).sum().T
 
     if resample is not None:
         # upsampling to hourly resolution required to handle overlapping block
@@ -1455,7 +1405,7 @@ if __name__ == "__main__":
             run="KN2045_Bal_v4",
         )
 
-    for dir in snakemake.output:
+    for dir in snakemake.output[2:]:
         if not os.path.exists(dir):
             os.makedirs(dir)
 

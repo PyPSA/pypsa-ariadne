@@ -575,6 +575,10 @@ rule ariadne_all:
             **config["scenario"],
             allow_missing=True,
         ),
+        expand(
+            RESULTS + "ariadne/report/elec_price_duration_curve.png",
+            run=config_provider("run", "name"),
+        ),
         exported_variables=expand(
             RESULTS + "ariadne/exported_variables_full.xlsx",
             run=config_provider("run", "name"),
@@ -650,13 +654,17 @@ rule plot_ariadne_report:
     input:
         networks=expand(
             RESULTS
-            + "postnetworks/base_s{simpl}_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
+            + "postnetworks/base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
             **config["scenario"],
             allow_missing=True,
         ),
         regions_onshore=resources("regions_onshore.geojson"),
         regions_offshore=resources("regions_offshore.geojson"),
-        regions_onshore_clustered=resources("regions_onshore_base_s_{clusters}.geojson"),
+        regions_onshore_clustered=expand(
+            resources("regions_onshore_base_s_{clusters}.geojson"),
+            **config["scenario"],
+            allow_missing=True,
+        ),
         rc="matplotlibrc",
     output:
         elec_price_duration_curve=RESULTS + "ariadne/report/elec_price_duration_curve.png",
