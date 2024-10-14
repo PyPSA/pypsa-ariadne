@@ -395,28 +395,6 @@ use rule build_industrial_production_per_node from pypsaeur with:
         ),
 
 
-rule modify_energy_totals:
-    input:
-        ariadne=resources("ariadne_database.csv"),
-        energy_totals=resources("energy_totals.csv"),
-    output:
-        energy_totals=resources("energy_totals-modified.csv"),
-    resources:
-        mem_mb=1000,
-    script:
-        "scripts/modify_energy_totals.py"
-
-
-use rule build_population_weighted_energy_totals from pypsaeur with:
-    input:
-        **{
-            k: v
-            for k, v in rules.build_population_weighted_energy_totals.input.items()
-            if k != "energy_totals"
-        },
-        energy_totals=resources("energy_totals-modified.csv"),
-
-
 rule build_wasserstoff_kernnetz:
     params:
         kernnetz=config_provider("wasserstoff_kernnetz"),

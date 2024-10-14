@@ -4,7 +4,10 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241008_restrict_power_flow
+
+  prefix: 20241014_restrict_power_flow
+
+
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
