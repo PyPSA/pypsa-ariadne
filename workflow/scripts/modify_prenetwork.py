@@ -1121,21 +1121,6 @@ def force_connection_nep_offshore(n, current_year):
             )
 
 
-def restrict_cross_border_transmission(n):
-    """"
-    To avoid high import of electricity during times of Dunkelflaute,
-    the s_nom_pu for cross-border lines is restricted to 0.5.
-    """
-    cross_border_lines = n.lines[(n.lines.carrier == "AC") &
-                                 ((n.lines.bus0.str[:2] == "DE") &
-                                 (n.lines.bus1.str[:2] != "DE")) |
-                                 ((n.lines.bus0.str[:2] != "DE") &
-                                 (n.lines.bus1.str[:2] == "DE"))].index
-
-    n.lines.loc[cross_border_lines, "s_max_pu"] = 0.5
-
-
-
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
@@ -1208,8 +1193,6 @@ if __name__ == "__main__":
         snakemake.params.transmission_costs,
         snakemake.params.length_factor,
     )
-
-    restrict_cross_border_transmission(n)
 
     if snakemake.params.biogas_must_run["enable"]:
         must_run_biogas(
