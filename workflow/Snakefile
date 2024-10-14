@@ -635,3 +635,47 @@ rule plot_hydrogen_network_incl_kernnetz:
         )
     script:
         "scripts/plot_hydrogen_network_incl_kernnetz.py"
+
+
+rule plot_ariadne_report:
+    params:
+        planning_horizons=config_provider("scenario", "planning_horizons"),
+        plotting=config_provider("plotting"),
+        run=config_provider("run", "name"),
+        foresight=config_provider("foresight"),
+    input:
+        networks=expand(
+            RESULTS
+            + "postnetworks/base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
+            **config["scenario"],
+            allow_missing=True,
+        ),
+        regions_onshore_clustered=expand(
+            resources("regions_onshore_base_s_{clusters}.geojson"),
+            clusters=config["scenario"]["clusters"],
+            allow_missing=True
+        ),
+        rc="matplotlibrc",
+    output:
+        elec_price_duration_curve=RESULTS + "ariadne/report/elec_price_duration_curve.png",
+        elec_price_duration_hist=RESULTS + "ariadne/report/elec_price_duration_hist.png",
+        results=directory(RESULTS + "ariadne/report"),
+        elec_transmission=directory(RESULTS + "ariadne/report/elec_transmission"),
+        h2_transmission=directory(RESULTS + "ariadne/report/h2_transmission"),
+        co2_transmission=directory(RESULTS + "ariadne/report/co2_transmission"),
+        elec_balances=directory(RESULTS + "ariadne/report/elec_balance_timeseries"),
+        nodal_balances=directory(RESULTS + "ariadne/report/balance_timeseries_2045"),
+    resources:
+        mem_mb=10000,
+    log:
+        RESULTS
+        + "logs/plot_ariadne_report.log",
+    script:
+        "scripts/plot_ariadne_report.py"
+
+rule ariadne_report_only:
+    input:
+        expand(
+            RESULTS + "ariadne/report/elec_price_duration_curve.png",
+            run=config_provider("run", "name"),
+        ),

@@ -4,8 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-
-  prefix: 241010_force_electrolysis_capacity
+  prefix: 20241011PlotReport
 
   name:
   # - CurrentPolicies
