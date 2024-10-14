@@ -3902,17 +3902,61 @@ def get_trade(n, region):
     #     exports_h2 * MWh2PJ
 
     # Trade|Secondary Energy|Liquids|Hydrogen|Volume
+
+    renewable_oil_supply = (
+        n.statistics.supply(bus_carrier="renewable oil", **kwargs)
+        .groupby(["bus", "carrier"])
+        .sum()
+    )
+
+    assert region == "DE"  # only DE is implemented at the moment
+
+    DE_renewable_oil = renewable_oil_supply.get("DE renewable oil", pd.Series(0))
+    EU_renewable_oil = renewable_oil_supply.get("EU renewable oil", pd.Series(0))
+
+    if DE_renewable_oil.sum() == 0:
+        DE_bio_fraction = 0
+    else:
+        DE_bio_fraction = (
+            DE_renewable_oil.filter(like="biomass to liquid").sum()
+            / DE_renewable_oil.sum()
+        )
+
+    if EU_renewable_oil.sum() == 0:
+        EU_bio_fraction = 0
+    else:
+        EU_bio_fraction = (
+            EU_renewable_oil.filter(like="biomass to liquid").sum()
+            / EU_renewable_oil.sum()
+        )
+
     exports_oil_renew, imports_oil_renew = get_export_import_links(
         n, region, ["renewable oil", "methanol"]
     )
-    var["Trade|Secondary Energy|Liquids|Hydrogen|Volume"] = (
-        exports_oil_renew - imports_oil_renew
+
+    var["Trade|Secondary Energy|Liquids|Biomass|Volume"] = (
+        exports_oil_renew * DE_bio_fraction 
+        - imports_oil_renew * EU_bio_fraction
     ) * MWh2PJ
-    var["Trade|Secondary Energy|Liquids|Hydrogen|Gross Import|Volume"] = (
-        imports_oil_renew * MWh2PJ
+    
+    var["Trade|Secondary Energy|Liquids|Biomass|Gross Import|Volume"] = (
+        imports_oil_renew * EU_bio_fraction * MWh2PJ
     )
-    # var["Trade|Secondary Energy|Liquids|Hydrogen|Volume|Exports"] = \
-    #     exports_oil_renew * MWh2PJ
+
+    exports_meoh, imports_meoh = get_export_import_links(
+        n, region, ["methanol"]
+    )
+
+    var["Trade|Secondary Energy|Liquids|Hydrogen|Volume"] = (
+        exports_oil_renew * (1 - DE_bio_fraction)
+        - imports_oil_renew * (1 - EU_bio_fraction)
+        + exports_meoh - imports_meoh
+    ) * MWh2PJ
+
+    var["Trade|Secondary Energy|Liquids|Hydrogen|Gross Import|Volume"] = (
+        imports_oil_renew * (1 - EU_bio_fraction) 
+        + imports_meoh
+    ) * MWh2PJ
 
     # Trade|Secondary Energy|Gases|Hydrogen|Volume
 
