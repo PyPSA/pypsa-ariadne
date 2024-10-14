@@ -496,7 +496,7 @@ def unravel_carbonaceous_fuels(n):
         n.add(
             "Load",
             "DE industry methanol",
-            bus="DE methanol",
+            bus="DE industry methanol",
             carrier="industry methanol",
             p_set=DE_meoh,
         )
