@@ -178,6 +178,11 @@ KN2045_Bal_v4:
             2035: 0
             2040: 0
             2045: 0
+      limits_capacity_min:
+        Link:
+          H2 Electrolysis:
+            DE:
+              2030: 5
 
   industry:
     steam_biomass_fraction: 0.4
@@ -244,6 +249,11 @@ KN2045_Elec_v4:
             2035: 0
             2040: 0
             2045: 0
+      limits_capacity_min:
+        Link:
+          H2 Electrolysis:
+            DE:
+              2030: 5
 
   industry:
     steam_biomass_fraction: 0.4
@@ -313,6 +323,11 @@ KN2045_H2_v4:
             2035: 0
             2040: 0
             2045: 200
+      limits_capacity_min:
+        Link:
+          H2 Electrolysis:
+            DE:
+              2030: 5
 
   industry:
     steam_biomass_fraction: 0.4
@@ -380,6 +395,11 @@ KN2045plus_EasyRide:
             2035: 0
             2040: 0
             2045: 0
+      limits_capacity_min:
+        Link:
+          H2 Electrolysis:
+            DE:
+              2030: 5
 
   industry:
     steam_biomass_fraction: 0.4
@@ -445,6 +465,11 @@ KN2045plus_LowDemand:
             2035: 0
             2040: 0
             2045: 0
+      limits_capacity_min:
+        Link:
+          H2 Electrolysis:
+            DE:
+              2030: 5
 
   industry:
     steam_biomass_fraction: 0.4
@@ -542,6 +567,10 @@ KN2045minus_WorstCase:
               2035: 161.25
               2040: 161.25
               2045: 161.25
+        Link:
+          H2 Electrolysis:
+            DE:
+              2030: 5
       limits_capacity_max:
         Generator:
           onwind:
@@ -648,6 +677,10 @@ KN2045minus_SupplyFocus:
               2035: 215 # not forcing more EE
               2040: 215
               2045: 215
+        Link:
+          H2 Electrolysis:
+            DE:
+              2030: 5
       limits_capacity_max:
         Generator:
           onwind:
