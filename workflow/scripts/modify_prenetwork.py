@@ -1129,9 +1129,9 @@ def drop_duplicate_transmission_projects(n):
         f"Dropping transmission projects with build year <= {year}. They are likely already in the OSM base network."
     )  # Maybe one 2024 line is missing in the OSM base network
 
-    to_drop = n.lines.index[0 < n.lines.build_year <= year]
+    to_drop = n.lines.query("0 < build_year <= @year").index
 
-    n.lines.mremove("Line", to_drop)
+    n.mremove("Line", to_drop)
 
 
 if __name__ == "__main__":
