@@ -1134,6 +1134,13 @@ def drop_duplicate_transmission_projects(n):
     n.mremove("Line", to_drop)
 
 
+    # This is a hot fix until the lines get properly removed in pypsa-eur
+    manual = ["TYNDP2020_1_NEP_DC3", "TYNDP2020_2_NEP_DC4", "TYNDP2020_23_NEP_DC1"]
+    for line in manual:
+        if line in n.lines.index:
+            n.remove("Line", line)
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
