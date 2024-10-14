@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241011PlotReport
+  prefix: 20241014TestUpstreamEmission
 
   name:
   # - CurrentPolicies
