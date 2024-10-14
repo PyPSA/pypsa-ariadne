@@ -3918,7 +3918,7 @@ def get_trade(n, region):
         DE_bio_fraction = 0
     else:
         DE_bio_fraction = (
-            DE_renewable_oil.filter(like="biomass to liquid").sum()
+            DE_renewable_oil.filter(like="bio").sum()
             / DE_renewable_oil.sum()
         )
 
@@ -3926,7 +3926,7 @@ def get_trade(n, region):
         EU_bio_fraction = 0
     else:
         EU_bio_fraction = (
-            EU_renewable_oil.filter(like="biomass to liquid").sum()
+            EU_renewable_oil.filter(like="bio").sum()
             / EU_renewable_oil.sum()
         )
 
