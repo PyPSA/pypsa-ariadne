@@ -8,9 +8,6 @@ CurrentPolicies:
 # Kernnetz is not assumed to be built
 # Not forcing renewables after 2030
 
-  wasserstoff_kernnetz:
-    enable: false
-
   iiasa_database:
     reference_scenario: CurrentPolicies
     fallback_reference_scenario: CurrentPolicies # if the reference scenario is not available (due to late uploads)
@@ -19,8 +16,8 @@ CurrentPolicies:
 
   co2_budget:
     2020: 0.800 # 20% reduction by 2020
-    2025: 0.600
-    2030: 0.450 # 55% reduction by 2030 (Ff55)
+    2025: 0.620
+    2030: 0.500 # less than 55% reduction by 2030 (Ff55)
     2035: 0.450 # stagnation for the Trend scenario
     2040: 0.450
     2045: 0.450
@@ -28,7 +25,7 @@ CurrentPolicies:
 
   costs:
     horizon: "mean"
-    NEP: 2023
+    NEP: 2021
     transmission: "underground" # either overhead line ("overhead") or underground cable ("underground")
   solving:
     constraints:
@@ -53,6 +50,14 @@ CurrentPolicies:
               2040: 161.25
               2045: 161.25
       # boundary condition of maximum volumes
+      limits_capacity_max:
+        Generator:
+          onwind:
+            DE:
+              2030: 115 # not better than targets
+          solar:
+            DE:
+              2030: 215
       limits_volume_max:
         # constrain electricity import in TWh
         electricity_import:
@@ -125,7 +130,7 @@ KN2045_Bal_v4:
 
   costs:
     horizon: "mean"
-    NEP: 2023
+    NEP: 2021
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
   solving:
     constraints:
@@ -173,6 +178,11 @@ KN2045_Bal_v4:
             2035: 0
             2040: 0
             2045: 0
+      limits_capacity_min:
+        Link:
+          H2 Electrolysis:
+            DE:
+              2030: 5
 
   industry:
     steam_biomass_fraction: 0.4
@@ -192,7 +202,7 @@ KN2045_Elec_v4:
 
   costs:
     horizon: "mean"
-    NEP: 2023
+    NEP: 2021
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
   solving:
     constraints:
@@ -239,6 +249,11 @@ KN2045_Elec_v4:
             2035: 0
             2040: 0
             2045: 0
+      limits_capacity_min:
+        Link:
+          H2 Electrolysis:
+            DE:
+              2030: 5
 
   industry:
     steam_biomass_fraction: 0.4
@@ -258,7 +273,7 @@ KN2045_H2_v4:
 
   costs:
     horizon: "mean"
-    NEP: 2023
+    NEP: 2021
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
   solving:
     constraints:
@@ -308,6 +323,11 @@ KN2045_H2_v4:
             2035: 0
             2040: 0
             2045: 200
+      limits_capacity_min:
+        Link:
+          H2 Electrolysis:
+            DE:
+              2030: 5
 
   industry:
     steam_biomass_fraction: 0.4
@@ -327,7 +347,7 @@ KN2045plus_EasyRide:
 
   costs:
     horizon: "optimist"
-    NEP: 2023
+    NEP: 2021
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
   solving:
     constraints:
@@ -375,6 +395,11 @@ KN2045plus_EasyRide:
             2035: 0
             2040: 0
             2045: 0
+      limits_capacity_min:
+        Link:
+          H2 Electrolysis:
+            DE:
+              2030: 5
 
   industry:
     steam_biomass_fraction: 0.4
@@ -392,7 +417,7 @@ KN2045plus_LowDemand:
 
   costs:
     horizon: "optimist"
-    NEP: 2023
+    NEP: 2021
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
   solving:
     constraints:
@@ -440,6 +465,11 @@ KN2045plus_LowDemand:
             2035: 0
             2040: 0
             2045: 0
+      limits_capacity_min:
+        Link:
+          H2 Electrolysis:
+            DE:
+              2030: 5
 
   industry:
     steam_biomass_fraction: 0.4
@@ -460,8 +490,8 @@ KN2045minus_WorstCase:
 
   co2_budget:
     2020: 0.800 # 20% reduction by 2020
-    2025: 0.600
-    2030: 0.450 # 55% reduction by 2030 (Ff55)
+    2025: 0.620
+    2030: 0.500 # less than 55% reduction by 2030 (Ff55)
     2035: 0.450 # stagnation of CO2 reduction
     2040: 0.450
     2045: 0.450
@@ -537,7 +567,19 @@ KN2045minus_WorstCase:
               2035: 161.25
               2040: 161.25
               2045: 161.25
+        Link:
+          H2 Electrolysis:
+            DE:
+              2030: 5
+      limits_capacity_max:
+        Generator:
+          onwind:
+            DE:
+              2030: 115 # not better than targets
 
+          solar:
+            DE:
+              2030: 215
   industry:
     steam_biomass_fraction: 0.4
     steam_hydrogen_fraction: 0.3
@@ -562,8 +604,8 @@ KN2045minus_SupplyFocus:
 
   co2_budget:
     2020: 0.800 # 20% reduction by 2020
-    2025: 0.600
-    2030: 0.450 # 55% reduction by 2030 (Ff55)
+    2025: 0.620
+    2030: 0.500 # less than 55% reduction by 2030 (Ff55)
     2035: 0.450 # stagnation of CO2 reduction
     2040: 0.450
     2045: 0.450
@@ -635,6 +677,18 @@ KN2045minus_SupplyFocus:
               2035: 215 # not forcing more EE
               2040: 215
               2045: 215
+        Link:
+          H2 Electrolysis:
+            DE:
+              2030: 5
+      limits_capacity_max:
+        Generator:
+          onwind:
+            DE:
+              2030: 115 # not better than targets
+          solar:
+            DE:
+              2030: 215
   industry:
     steam_biomass_fraction: 0.4
     steam_hydrogen_fraction: 0.3

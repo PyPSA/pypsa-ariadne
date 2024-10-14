@@ -39,8 +39,8 @@ def ariadne_subplot(
     df,
     ax,
     title,
-    select_regex="",
-    drop_regex="",
+    select_regex=r"",
+    drop_regex=r"",
     stacked=True,
     unit=None,
 ):
@@ -106,8 +106,8 @@ def within_plot(
     df2,
     title,
     savepath,
-    select_regex="",
-    drop_regex="",
+    select_regex=r"",
+    drop_regex=r"",
     write_sum=False,
     unit="EUR_2020/GJ",
     **kwargs,
@@ -210,7 +210,6 @@ def elec_val_plot(df, savepath):
             "gas",
             "wind",
             "solar",
-            "sum_real-sum_pypsa",
         ]
     )
 
@@ -228,21 +227,7 @@ def elec_val_plot(df, savepath):
         7.86,
         54.36,
     ]  # https://energy-charts.info/charts/installed_power/chart.htm?l=en&c=DE&year=2020
-    elec_generation["real"] = [
-        18.9,
-        np.nan,
-        18.7,
-        np.nan,
-        45,
-        64,
-        91,
-        43,
-        4.7,
-        95,
-        132,
-        50,
-        np.nan,
-    ]  # https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Energie/Erzeugung/Tabellen/bruttostromerzeugung.html
+
     elec_capacities["pypsa"] = [
         0,
         df.loc[("Capacity|Electricity|Hydro", "GW"), "2020"],
@@ -258,8 +243,44 @@ def elec_val_plot(df, savepath):
         df.loc[("Capacity|Electricity|Solar", "GW"), "2020"],
     ]
 
-    elec_generation["pypsa"] = [
-        df.loc[("Trade|Secondary Energy|Electricity|Volume", "PJ/yr"), "2020"] / 3.6,
+    elec_generation["real (gross)"] = [
+        -18.9,  # net exports",
+        np.nan,  # ror
+        18.7,  # hydro
+        np.nan,  # battery
+        45,  # biomass
+        64,  # nuclear
+        91,  # lignite
+        43,  # coal
+        4.7,  # oil
+        95,  # gas
+        132,  # wind
+        50,  # solar
+    ]
+    # https://www.destatis.de/DE/Themen/Branchen-Unternehmen/Energie/Erzeugung/Tabellen/bruttostromerzeugung.html
+    # https://www.bdew.de/media/documents/Bruttostromerz_D_Entw_10J_online_o_dw2x_jaehrlich_FS_05042024_nlA6lUa.pdf
+
+    # obtained so that it fits how pypsa models the energy sector
+    elec_generation["real (net, pypsa representation)"] = [
+        -18.9,  # 34 TWH in 2019             "net exports",
+        0,  # "ror" due to reporting
+        18.54,  # "hydro"
+        np.nan,  # "battery"
+        44.85,  # "biomass"
+        60.91,  # "nuclear"
+        84.5,  # "lignite"  (82.13 + 2.37 (industrial own production)
+        38.7,  # "coal"
+        3.71,  #  "oil"
+        91.7,  # "gas" 34.6 (industry self consumption) + 57.1 (fossil gas grid feed in)
+        129.64,  # "wind"
+        48.5,  # "solar"
+    ]
+    # https://energy-charts.info/charts/energy_pie/chart.htm?l=de&c=DE&interval=year&year=2020
+    # https://www.bundesnetzagentur.de/SharedDocs/Pressemitteilungen/DE/2021/20210102_smard.html
+    # https://energy-charts.info/charts/energy/chart.htm?l=en&c=DE&interval=year&year=2020&source=total
+
+    elec_generation["pypsa (net)"] = [
+        -df.loc[("Trade|Secondary Energy|Electricity|Volume", "PJ/yr"), "2020"] / 3.6,
         0,
         df.loc[("Secondary Energy|Electricity|Hydro", "PJ/yr"), "2020"] / 3.6,
         0,
@@ -271,15 +292,18 @@ def elec_val_plot(df, savepath):
         df.loc[("Secondary Energy|Electricity|Gas", "PJ/yr"), "2020"] / 3.6,
         df.loc[("Secondary Energy|Electricity|Wind", "PJ/yr"), "2020"] / 3.6,
         df.loc[("Secondary Energy|Electricity|Solar", "PJ/yr"), "2020"] / 3.6,
-        np.nan,
     ]
 
     # elec_generation.loc["sum/10"] = elec_generation.sum().div(10)
-    elec_generation.loc["sum_real-sum_pypsa", "sum_real-sum_pypsa"] = (
-        elec_generation.sum()["real"] - elec_generation.sum()["pypsa"]
+    elec_generation.loc["sum_real_gross-sum_pypsa", "sum_real_gross-sum_pypsa"] = (
+        elec_generation.sum()["real (gross)"] - elec_generation.sum()["pypsa (net)"]
+    )
+    elec_generation.loc["sum_real_net-sum_pypsa", "sum_real_net-sum_pypsa"] = (
+        elec_generation.sum()["real (net, pypsa representation)"]
+        - elec_generation.sum()["pypsa (net)"]
     )
 
-    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6), width_ratios=[1, 1.5])
     elec_capacities.plot(kind="bar", ax=axes[0])
     axes[0].set_ylabel("GW")
     axes[0].set_title("Installed Capacities Germany 2020")
@@ -343,8 +367,8 @@ if __name__ == "__main__":
         dfremind,
         "Primary Energy in PJ_yr",
         savepath=snakemake.output.primary_energy,
-        select_regex="Primary Energy\|[^|]*$",
-        drop_regex="^(?!.*(Fossil|Price)).+",
+        select_regex=r"Primary Energy\|[^|]*$",
+        drop_regex=r"^(?!.*(Fossil|Price)).+",
     )
 
     side_by_side_plot(
@@ -352,8 +376,8 @@ if __name__ == "__main__":
         dfremind,
         "Detailed Primary Energy in PJ_yr",
         savepath=snakemake.output.primary_energy_detailed,
-        select_regex="Primary Energy\|[^|]*\|[^|]*$",
-        drop_regex="^(?!.*(CCS|Price|Volume)).+",
+        select_regex=r"Primary Energy\|[^|]*\|[^|]*$",
+        drop_regex=r"^(?!.*(CCS|Price|Volume)).+",
     )
 
     side_by_side_plot(
@@ -361,8 +385,8 @@ if __name__ == "__main__":
         dfremind,
         "Secondary Energy in PJ_yr",
         savepath=snakemake.output.secondary_energy,
-        select_regex="Secondary Energy\|[^|]*$",
-        drop_regex="^(?!.*(Price)).+",
+        select_regex=r"Secondary Energy\|[^|]*$",
+        drop_regex=r"^(?!.*(Price)).+",
     )
 
     side_by_side_plot(
@@ -371,9 +395,9 @@ if __name__ == "__main__":
         "Detailed Secondary Energy in PJ_yr",
         savepath=snakemake.output.secondary_energy_detailed,
         # Secondary Energy|Something|Something (exactly two pipes)
-        select_regex="Secondary Energy\|[^|]*\|[^|]*$",
+        select_regex=r"Secondary Energy\|[^|]*\|[^|]*$",
         # Not ending in Fossil or Renewables (i.e., categories)
-        drop_regex="^(?!.*(Fossil|Renewables|Losses|Price|Volume)).+",
+        drop_regex=r"^(?!.*(Fossil|Renewables|Losses|Price|Volume)).+",
     )
 
     if df.loc["Final Energy|Industry excl Non-Energy Use|Hydrogen", "2020"].item() < 0:
@@ -387,9 +411,9 @@ if __name__ == "__main__":
         dfremind,
         "Final Energy in PJ_yr",
         savepath=snakemake.output.final_energy,
-        select_regex="Final Energy\|[^|]*$",
+        select_regex=r"Final Energy\|[^|]*$",
         rshift=1.45,
-        drop_regex="^(?!.*(Price|Non-Energy Use)).+",
+        drop_regex=r"^(?!.*(Price|Non-Energy Use)).+",
     )
 
     side_by_side_plot(
@@ -397,9 +421,9 @@ if __name__ == "__main__":
         dfremind,
         "Detailed Final Energy in PJ_yr",
         savepath=snakemake.output.final_energy_detailed,
-        select_regex="Final Energy\|[^|]*\|[^|]*$",
+        select_regex=r"Final Energy\|[^|]*\|[^|]*$",
         rshift=1.7,
-        drop_regex="^(?!.*(Price|\|Solids\||Non-Energy Use\|)).+",
+        drop_regex=r"^(?!.*(Price|\|Solids\||Non-Energy Use\|)).+",
     )
 
     side_by_side_plot(
@@ -407,7 +431,7 @@ if __name__ == "__main__":
         dfremind,
         "Capacity in GW",
         savepath=snakemake.output.capacity,
-        select_regex="Capacity\|[^|]*$",
+        select_regex=r"Capacity\|[^|]*$",
     )
 
     side_by_side_plot(
@@ -415,8 +439,8 @@ if __name__ == "__main__":
         dfremind,
         "Detailed Capacity in GW",
         savepath=snakemake.output.capacity_detailed,
-        select_regex="Capacity\|[^|]*\|[^|]*$",
-        drop_regex="^(?!.*(Reservoir|Converter)).+",
+        select_regex=r"Capacity\|[^|]*\|[^|]*$",
+        drop_regex=r"^(?!.*(Reservoir|Converter)).+",
     )
 
     side_by_side_plot(
@@ -424,7 +448,7 @@ if __name__ == "__main__":
         dfremind,
         "Detailed Demand Emissions in Mt",
         savepath=snakemake.output.energy_demand_emissions,
-        select_regex="Emissions\|CO2\|Energy\|Demand\|[^|]*$",
+        select_regex=r"Emissions\|CO2\|Energy\|Demand\|[^|]*$",
         stacked=False,
     )
 
@@ -433,9 +457,9 @@ if __name__ == "__main__":
         dfremind,
         "Detailed Supply Emissions in Mt",
         savepath=snakemake.output.energy_supply_emissions,
-        select_regex="Emissions\|CO2\|Energy\|Supply\|[^|]*$",
+        select_regex=r"Emissions\|CO2\|Energy\|Supply\|[^|]*$",
         stacked=False,
-        drop_regex="^(?!.*(and)).+",
+        drop_regex=r"^(?!.*(and)).+",
     )
 
     side_by_side_plot(
@@ -443,9 +467,9 @@ if __name__ == "__main__":
         dfremind,
         "Detailed Emissions in Mt",
         savepath=snakemake.output.co2_emissions,
-        select_regex="Emissions\|CO2\|[^|]*$",
+        select_regex=r"Emissions\|CO2\|[^|]*$",
         stacked=False,
-        # drop_regex="^(?!.*(and)).+",
+        # drop_regex=r"^(?!.*(and)).+",
         unit="Mt CO2-equiv/yr",
     )
 
@@ -454,7 +478,7 @@ if __name__ == "__main__":
         dfremind,
         title="Price|Primary Energy",
         savepath=snakemake.output.primary_energy_price,
-        select_regex="Price\|Primary Energy\|[^|]*$",
+        select_regex=r"Price\|Primary Energy\|[^|]*$",
     )
 
     within_plot(
@@ -473,7 +497,7 @@ if __name__ == "__main__":
     #     dfremind,
     #     title = "Price|Final Energy|Residential",
     #     savepath=snakemake.output.final_energy_residential_price,
-    #     #select_regex="Price\|Final Energy\|Residential\|[^|]*$"
+    #     #select_regex=r"Price\|Final Energy\|Residential\|[^|]*$"
     # )
 
     within_plot(
@@ -485,7 +509,7 @@ if __name__ == "__main__":
         dfremind,
         title="Price|Final Energy|Industry",
         savepath=snakemake.output.final_energy_industry_price,
-        # select_regex="Price\|Final Energy\|Industry\|[^|]*$"
+        # select_regex=r"Price\|Final Energy\|Industry\|[^|]*$"
     )
 
     within_plot(
@@ -497,7 +521,7 @@ if __name__ == "__main__":
         dfremind,
         title="Price|Final Energy|Transportation",
         savepath=snakemake.output.final_energy_transportation_price,
-        # select_regex="Price\|Final Energy\|Industry\|[^|]*$"
+        # select_regex=r"Price\|Final Energy\|Industry\|[^|]*$"
     )
 
     within_plot(
@@ -509,7 +533,7 @@ if __name__ == "__main__":
         dfremind,
         title="Price|Final Energy|Residential and Commercial",
         savepath=snakemake.output.final_energy_residential_commercial_price,
-        # select_regex="Price\|Final Energy\|Industry\|[^|]*$"
+        # select_regex=r"Price\|Final Energy\|Industry\|[^|]*$"
     )
 
     within_plot(
