@@ -881,10 +881,6 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         like="biomass to liquid"
     ).sum()
 
-    var[cap_string + "Liquids"] = (
-        var[cap_string + "Liquids|Hydrogen"] + var[cap_string + "Liquids|Biomass"]
-    )
-
     try:
         capacities_methanol = (
             cap_func(
@@ -903,6 +899,12 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
             "Warning: carrier `methanol` not found in network.links.carrier! Assuming 0 capacities."
         )
         var[cap_string + "Methanol"] = 0
+
+    var[cap_string + "Liquids|Hydrogen"] += var[cap_string + "Methanol"]
+
+    var[cap_string + "Liquids"] = (
+        var[cap_string + "Liquids|Hydrogen"] + var[cap_string + "Liquids|Biomass"]
+    )
 
     if cap_string.startswith("Investment"):
         var = var.div(MW2GW).mul(1e-9).div(5).round(3)  # in bn € / year
@@ -1548,15 +1550,6 @@ def get_secondary_energy(n, region, _industry_demand):
         total_oil_fuel_usage * oil_fractions["Efuel"]
     )
 
-    var["Secondary Energy|Liquids|Biomass"] = (
-        total_oil_fuel_usage * oil_fractions["Biomass"]
-    )
-
-    var["Secondary Energy|Liquids"] = (
-        var["Secondary Energy|Liquids|Oil"]
-        + var["Secondary Energy|Liquids|Hydrogen"]
-        + var["Secondary Energy|Liquids|Biomass"]
-    )
 
     try:
         methanol_production = (
@@ -1577,6 +1570,18 @@ def get_secondary_energy(n, region, _industry_demand):
     except KeyError:
         var["Secondary Energy|Methanol"] = 0
 
+
+    var["Secondary Energy|Liquids|Hydrogen"] += var["Secondary Energy|Methanol"]
+
+    var["Secondary Energy|Liquids|Biomass"] = (
+        total_oil_fuel_usage * oil_fractions["Biomass"]
+    )
+
+    var["Secondary Energy|Liquids"] = (
+        var["Secondary Energy|Liquids|Oil"]
+        + var["Secondary Energy|Liquids|Hydrogen"]
+        + var["Secondary Energy|Liquids|Biomass"]
+    )
     gas_fuel_usage = (
         n.statistics.withdrawal(bus_carrier="gas", **kwargs)
         .filter(like=region)
@@ -1684,7 +1689,6 @@ def get_secondary_energy(n, region, _industry_demand):
         + var["Secondary Energy|Gases"]
         + var["Secondary Energy|Liquids"]
         + var["Secondary Energy|Solids"]
-        + var["Secondary Energy|Methanol"]
     )
 
     return var
@@ -2126,15 +2130,17 @@ def get_final_energy(
         sum_load(n, "shipping oil", region) * (1 - international_navigation_fraction)
     )
 
+    var["Final Energy|Transportation|Methanol"] = sum_load(
+        n, "shipping methanol", region
+    ) * (1 - international_navigation_fraction)
+
     var["Final Energy|Transportation|Liquids"] = (
         sum_load(n, "land transport oil", region)
         + var["Final Energy|Transportation|Domestic Aviation|Liquids"]
         + var["Final Energy|Transportation|Domestic Navigation|Liquids"]
+        + var["Final Energy|Transportation|Methanol"]
     )
 
-    var["Final Energy|Transportation|Methanol"] = sum_load(
-        n, "shipping methanol", region
-    ) * (1 - international_navigation_fraction)
 
     # var["Final Energy|Transportation|Liquids|Biomass"] = \
     # var["Final Energy|Transportation|Liquids|Synthetic Fossil"] = \
@@ -2144,6 +2150,7 @@ def get_final_energy(
 
     var["Final Energy|Transportation|Liquids|Efuel"] = (
         var["Final Energy|Transportation|Liquids"] * oil_fractions["Efuel"]
+        + var["Final Energy|Transportation|Methanol"]
     )
 
     var["Final Energy|Transportation|Liquids|Biomass"] = (
@@ -2159,22 +2166,20 @@ def get_final_energy(
             var["Final Energy|Bunkers|Aviation|Liquids"] * oil_fractions[fraction_key]
         )
     # TODO Navigation hydrogen
-
+    var["Final Energy|Bunkers|Navigation|Methanol"] = (
+        sum_load(n, "shipping methanol", region) * international_navigation_fraction
+    )
     var["Final Energy|Bunkers|Navigation|Liquids"] = (
         sum_load(n, "shipping oil", region) * international_navigation_fraction
-    )
+    ) + var["Final Energy|Bunkers|Navigation|Methanol"]
 
     for var_key, fraction_key in zip(["Petroleum", "Efuel", "Biomass"], oil_fractions.index):
         var[f"Final Energy|Bunkers|Navigation|Liquids|{var_key}"] = (
             var["Final Energy|Bunkers|Navigation|Liquids"] * oil_fractions[fraction_key]
         )
-    var["Final Energy|Bunkers|Navigation|Methanol"] = (
-        sum_load(n, "shipping methanol", region) * international_navigation_fraction
-    )
 
     var["Final Energy|Bunkers|Navigation"] = (
         var["Final Energy|Bunkers|Navigation|Liquids"]
-        + var["Final Energy|Bunkers|Navigation|Methanol"]
     )
 
     # var["Final Energy|Bunkers|Navigation|Gases"] = \
@@ -2190,7 +2195,6 @@ def get_final_energy(
         var["Final Energy|Transportation|Electricity"]
         + var["Final Energy|Transportation|Liquids"]
         + var["Final Energy|Transportation|Hydrogen"]
-        + var["Final Energy|Transportation|Methanol"]
     )
 
     var["Final Energy|Agriculture|Electricity"] = sum_load(
@@ -3899,7 +3903,7 @@ def get_trade(n, region):
 
     # Trade|Secondary Energy|Liquids|Hydrogen|Volume
     exports_oil_renew, imports_oil_renew = get_export_import_links(
-        n, region, ["renewable oil"]
+        n, region, ["renewable oil", "methanol"]
     )
     var["Trade|Secondary Energy|Liquids|Hydrogen|Volume"] = (
         exports_oil_renew - imports_oil_renew
