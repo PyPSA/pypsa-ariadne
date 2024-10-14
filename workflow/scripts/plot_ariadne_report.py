@@ -381,7 +381,7 @@ def plot_energy_balance_timeseries(
 
     if resample is not None:
         # upsampling to hourly resolution required to handle overlapping block
-        df = df.resample("1H").ffill().resample(resample).mean()
+        df = df.resample("1h").ffill().resample(resample).mean()
 
     order = (df / df.max()).var().sort_values().index
     if preferred_order:
@@ -1412,9 +1412,6 @@ if __name__ == "__main__":
     # configs
     config = snakemake.config
     planning_horizons = snakemake.params.planning_horizons
-    post_discretization = snakemake.params.post_discretization
-    nhours = int(snakemake.params.hours[:-1])
-    nyears = nhours / 8760
     tech_colors = snakemake.params.plotting["tech_colors"]
     
     # define possible renaming and grouping of carriers
@@ -1430,7 +1427,7 @@ if __name__ == "__main__":
     for name in c1_groups_name:
         tech_colors[name] = tech_colors[f"urban central {name}"]
 
-    # manual carriers
+    # carrier names manual
     tech_colors["urban central oil CHP"] = tech_colors["oil"]
     tech_colors["Solar"] = tech_colors["solar"]
     tech_colors["Electricity load"] = tech_colors["electricity"]
@@ -1449,10 +1446,8 @@ if __name__ == "__main__":
     tech_colors.update(networks[0].carriers.color.rename(networks[0].carriers.nice_name).to_dict())
 
     ### plotting
-
     for year in planning_horizons:
         network = networks[planning_horizons.index(year)].copy()
-
         ct = "DE"
         buses = network.buses.index[(network.buses.index.str[:2] == ct)].drop("DE")
         balance = network.statistics.energy_balance(
@@ -1468,7 +1463,7 @@ if __name__ == "__main__":
             tech_colors=tech_colors,
             start_date="2019-01-01 00:00:00",
             end_date="2019-12-31 00:00:00",
-            savepath=f"{snakemake.output.elec_balances}/elec-all-year-D_{year}.png",
+            savepath=f"{snakemake.output.elec_balances}/elec-all-year-DE-{year}.png",
             model_run=snakemake.wildcards.run,
             resample="D",
             plot_lmps=False,
@@ -1485,7 +1480,7 @@ if __name__ == "__main__":
             tech_colors=tech_colors,
             start_date="2019-01-01 00:00:00",
             end_date="2019-01-31 00:00:00",
-            savepath=f"{snakemake.output.elec_balances}/elec-Jan_{year}.png",
+            savepath=f"{snakemake.output.elec_balances}/elec-Jan-DE-{year}.png",
             model_run=snakemake.wildcards.run,
             nice_names=True,
             threshold=1e2,
@@ -1499,7 +1494,7 @@ if __name__ == "__main__":
             tech_colors=tech_colors,
             start_date="2019-05-01 00:00:00",
             end_date="2019-05-31 00:00:00",
-            savepath=f"{snakemake.output.elec_balances}/elec-May_{year}.png",
+            savepath=f"{snakemake.output.elec_balances}/elec-May-DE-{year}.png",
             model_run=snakemake.wildcards.run,
             nice_names=True,
             threshold=1e2,
@@ -1513,7 +1508,7 @@ if __name__ == "__main__":
             tech_colors=tech_colors,
             start_date="2019-01-01 00:00:00",
             end_date="2019-12-31 00:00:00",
-            savepath=f"{snakemake.output.results}/storage_{year}.png",
+            savepath=f"{snakemake.output.results}/storage-DE-{year}.png",
             model_run=snakemake.wildcards.run,
         )
 
@@ -1542,8 +1537,6 @@ if __name__ == "__main__":
     }
     proj = load_projection(snakemake.params.plotting)
     regions = gpd.read_file(snakemake.input.regions_onshore_clustered).set_index("name")
-    # if map_opts["boundaries"] is None:
-    #     map_opts["boundaries"] = regions.total_bounds[[0, 2, 1, 3]] + [-1, 1, -1, 1]
     
     for year in planning_horizons:
         network = networks[planning_horizons.index(year)].copy()
@@ -1572,7 +1565,7 @@ if __name__ == "__main__":
                 networks[planning_horizons.index(2020)].copy(),
                 tech_colors,
                 regions_de,
-                savepath=f"{snakemake.output.elec_transmission}/elec_transmission_DE_{s}_{year}.png",
+                savepath=f"{snakemake.output.elec_transmission}/elec-transmission-DE-{s}-{year}.png",
                 expansion_case=s,
                 )
 
@@ -1584,8 +1577,8 @@ if __name__ == "__main__":
     network = networks[planning_horizons.index(year)].copy()
     n = network
 
-    months = pd.date_range(freq="M", **snakemake.config["snapshots"]).format(
-        formatter=lambda x: x.strftime("%Y-%m")
+    months = pd.date_range(freq="ME", **snakemake.config["snapshots"]).map(
+        lambda x: x.strftime("%Y-%m")
     )
 
     balance = n.statistics.energy_balance(aggregate_time=False)
