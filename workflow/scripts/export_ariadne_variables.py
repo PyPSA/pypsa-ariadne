@@ -3958,6 +3958,14 @@ def get_trade(n, region):
         + imports_meoh
     ) * MWh2PJ
 
+    var["Trade|Secondary Energy|Methanol|Volume"] = (
+        exports_meoh - imports_meoh
+    ) * MWh2PJ
+
+    var["Trade|Secondary Energy|Methanol|Gross Import|Volume"] = (
+        imports_meoh * MWh2PJ
+    )
+
     # Trade|Secondary Energy|Gases|Hydrogen|Volume
 
     renewable_gas_supply = (
@@ -4001,18 +4009,6 @@ def get_trade(n, region):
     ) * MWh2PJ
     var["Trade|Secondary Energy|Gases|Biomass|Gross Import|Volume"] = (
         imports_gas_renew * EU_bio_fraction * MWh2PJ
-    )
-
-    # TODO add methanol trade, renewable gas trade
-
-    exports_meoh, imports_meoh = get_export_import_links(n, region, ["methanol"])
-
-    var["Trade|Secondary Energy|Methanol|Hydrogen|Volume"] = (
-        exports_meoh - imports_meoh
-    ) * MWh2PJ
-
-    var["Trade|Secondary Energy|Methanol|Hydrogen|Gross Import|Volume"] = (
-        imports_meoh * MWh2PJ
     )
 
     # Trade|Primary Energy|Coal|Volume
