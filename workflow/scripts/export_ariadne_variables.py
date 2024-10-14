@@ -3981,14 +3981,14 @@ def get_trade(n, region):
         DE_bio_fraction = 0
     else:
         DE_bio_fraction = (
-            DE_renewable_gas.filter(like="biogas to gas").sum() / DE_renewable_gas.sum()
+            DE_renewable_gas.filter(like="bio").sum() / DE_renewable_gas.sum()
         )
 
     if EU_renewable_gas.sum() == 0:
         EU_bio_fraction = 0
     else:
         EU_bio_fraction = (
-            EU_renewable_gas.filter(like="biogas to gas").sum() / EU_renewable_gas.sum()
+            EU_renewable_gas.filter(like="bio").sum() / EU_renewable_gas.sum()
         )
 
     assert region == "DE"  # only DE is implemented at the moment
