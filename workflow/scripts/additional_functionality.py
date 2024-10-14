@@ -108,7 +108,7 @@ def add_power_limits(n, investment_year, limits_power_max):
         if investment_year not in limits_power_max[ct].keys():
             continue
 
-        limit = 1e3 * limits_power_max[ct][investment_year]
+        limit = 1e3 * limits_power_max[ct][investment_year] / 10
 
         logger.info(
             f"Adding constraint on electricity import/export from/to {ct} to be < {limit} MW"
@@ -148,8 +148,8 @@ def add_power_limits(n, investment_year, limits_power_max):
                 - outgoing_link_p.sum()
                 + incoming_line_p.sum()
                 - outgoing_line_p.sum()
-            )
-            # divide by 10 - 100 to avoid numerical issues
+            ) / 10
+            # divide by 10 to avoid numerical issues
 
             cname_upper = f"Power-import-limit-{ct}-{t}"
             cname_lower = f"Power-export-limit-{ct}-{t}"

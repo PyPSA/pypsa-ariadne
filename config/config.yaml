@@ -566,9 +566,6 @@ solving:
         2035: 25
         2040: 30
         2045: 35
-  solver:
-    gurobi-default:
-      BarConvTol: 1.e-4
   # solver:
   #   options: gurobi-numeric-focus
   # solver_options:
