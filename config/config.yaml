@@ -4,7 +4,8 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241011PlotReport
+
+  prefix: 241011_fix_trans_projects
 
   name:
   # - CurrentPolicies

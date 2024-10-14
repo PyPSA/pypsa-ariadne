@@ -1121,6 +1121,25 @@ def force_connection_nep_offshore(n, current_year):
             )
 
 
+def drop_duplicate_transmission_projects(n):
+
+    year = 2024
+
+    logger.info(
+        f"Dropping transmission projects with build year <= {year}. They are likely already in the OSM base network."
+    )  # Maybe one 2024 line is missing in the OSM base network
+
+    to_drop = n.lines.query("0 < build_year <= @year").index
+
+    n.mremove("Line", to_drop)
+
+    # This is a hot fix until the lines get properly removed in pypsa-eur
+    manual = ["TYNDP2020_1", "TYNDP2020_2", "TYNDP2020_23"] # DC3, DC4, DC1
+    for line in manual:
+        if line in n.lines.index:
+            n.remove("Line", line)
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
@@ -1214,6 +1233,8 @@ if __name__ == "__main__":
     current_year = int(snakemake.wildcards.planning_horizons)
 
     enforce_transmission_project_build_years(n, current_year)
+
+    drop_duplicate_transmission_projects(n)
 
     force_connection_nep_offshore(n, current_year)
 
