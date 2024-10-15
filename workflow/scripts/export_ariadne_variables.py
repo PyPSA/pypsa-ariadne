@@ -4380,15 +4380,16 @@ def hack_DC_projects(n, model_year):
 def hack_AC_projects(n, n_start, model_year):
     logger.info(f"Hacking AC projects for year {model_year}")
 
+    # All transmission projects have build_year > 0, this is implicit in the query
     ac_projs = n.lines.query(
             "@model_year - 5 < build_year <= @model_year"
         ).index
     
     s_nom_start = n_start.lines.loc[ac_projs, "s_nom"]
 
-    # Even though the lines is available to the model from the start,
-    # we pretend that the line was in expanded in this year
-    # s_nom_start is used, because the model may expand the line
+    # Eventhough the lines are available to the model from the start,
+    # we pretend that the lines were in expanded in this year
+    # s_nom_start is used, because the model may expand lines
     # endogenously before that or after that
     n.lines.loc[ac_projs, "s_nom"] -= s_nom_start
     n.lines.loc[ac_projs, "s_nom_min"] -= s_nom_start
