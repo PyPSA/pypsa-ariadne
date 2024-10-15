@@ -1,4 +1,6 @@
 # Changelog
+- Except for Current Policies force a minimum of 5 GW of electrolysis capacity in Germany
+- limit the import/export limit to/from Germany
 - adjusting capacity factor of solar to match historic data
 - Rely on DEA investment costs for electrolysis
 - updated the Kernnetz to use latest data and operate it more flexible
