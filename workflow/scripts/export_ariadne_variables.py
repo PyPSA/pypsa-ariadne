@@ -3619,7 +3619,7 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     var["Investment|Energy Supply|Electricity|Transmission|Offwind-DC"] = (
         offwind_connection_dc.sum() / 5
     )
-    # TODO add international links with only 50% of the costs
+
     dc_links = n.links[
         (n.links.carrier == "DC")
         & (n.links.bus0 + n.links.bus1).str.contains(region)
@@ -3754,14 +3754,6 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
         var["Investment|Energy Supply|Gas|Transmission"] = gas_costs.sum() / 5
 
     # var["Investment|Energy Supply|Electricity|Electricity Storage"] = \
-    # var["Investment|Energy Supply|Hydrogen|Fossil"] = \
-    # var["Investment|Energy Supply|Hydrogen|Biomass"] = \
-    # var["Investment|Energy Supply|Hydrogen|Electrolysis"] =
-    # var["Investment|Energy Supply|Hydrogen|Other"] = \
-    # var["Investment|Energy Supply|Liquids"] = \
-    # var["Investment|Energy Supply|Liquids|Oil"] = \
-    # var["Investment|Energy Supply|Liquids|Coal and Gas"] = \
-    # var["Investment|Energy Supply|Liquids|Biomass"] = \
     # var["Investment|Energy Supply|CO2 Transport and Storage"] =
     # var["Investment|Energy Supply|Other"] =
     # var["Investment|Energy Efficiency"] = \
@@ -4334,11 +4326,10 @@ def get_operational_and_capital_costs(year):
     return var
 
 
-def hack_transmission_projects(n, model_year):
-    logger.info(f"Hacking transmission projects for year {model_year}")
-    logger.warning(f"Assuming all transmission projects are new links")
+def hack_DC_projects(n, model_year):
+    logger.info(f"Hacking DC projects for year {model_year}")
     logger.warning(
-        f"Assuming all indices of transmission projects start with 'DC' or 'TYNDP'"
+        f"Assuming all indices of DC projects start with 'DC' or 'TYNDP'"
     )
     tprojs = n.links.loc[
         (n.links.index.str.startswith("DC") | n.links.index.str.startswith("TYNDP"))
@@ -4379,12 +4370,36 @@ def hack_transmission_projects(n, model_year):
     # Past projects should have their p_nom_opt bigger or equal to p_nom
     if model_year <= 2035:
         assert (
-            n.links.loc[past_projects, "p_nom_opt"]
+            n.links.loc[past_projects, "p_nom_opt"] + 0.1 # numerical error tolerance
             >= n.links.loc[past_projects, "p_nom"]
         ).all()
 
     return n
 
+
+def hack_AC_projects(n, n_start, model_year):
+    logger.info(f"Hacking AC projects for year {model_year}")
+
+    # All transmission projects have build_year > 0, this is implicit in the query
+    ac_projs = n.lines.query(
+            "@model_year - 5 < build_year <= @model_year"
+        ).index
+    
+    s_nom_start = n_start.lines.loc[ac_projs, "s_nom"]
+
+    # Eventhough the lines are available to the model from the start,
+    # we pretend that the lines were in expanded in this year
+    # s_nom_start is used, because the model may expand lines
+    # endogenously before that or after that
+    n.lines.loc[ac_projs, "s_nom"] -= s_nom_start
+    n.lines.loc[ac_projs, "s_nom_min"] -= s_nom_start
+
+    return n
+
+def hack_transmission_projects(n, n_start, model_year):
+    n = hack_DC_projects(n, model_year)
+    n = hack_AC_projects(n, n_start, model_year)
+    return n
 
 def get_ariadne_var(
     n,
@@ -4559,7 +4574,7 @@ if __name__ == "__main__":
     modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
     # Hack the transmission projects
     networks = [
-        hack_transmission_projects(n.copy(), int(my))
+        hack_transmission_projects(n.copy(), _networks[0], int(my))
         for n, my in zip(_networks, modelyears)
     ]
 
