@@ -4405,11 +4405,17 @@ def get_transmission_grid_capacity(n, region, year):
         & ~(n.links.index.str.contains("reversed"))
     ]
 
-    var["Capacity|Transmission Grid|AC|Domestic"] = (
+    var["Capacity|Electricity|Transmission Grid|AC|Domestic"] = (
         ac_dom.s_nom_opt.multiply(ac_dom.length).sum() * MW2GW
     )
-    var["Capacity|Transmission Grid|DC|Domestic"] = (
+    var["Capacity Additions|Electricity|Transmission Grid|AC|Domestic"] = (
+        ac_dom.eval("(s_nom_opt - s_nom) * length").sum() * MW2GW
+    )
+    var["Capacity|Electricity|Transmission Grid|DC|Domestic"] = (
         dc_dom.p_nom_opt.multiply(dc_dom.length).sum() * MW2GW
+    )
+    var["Capacity Additions|Electricity|Transmission Grid|DC|Domestic"] = (
+        dc_dom.eval("(p_nom_opt - p_nom_min) * length").sum() * MW2GW
     )
 
     # get border crossing capacities and multiply with 0.5
@@ -4428,24 +4434,41 @@ def get_transmission_grid_capacity(n, region, year):
         )
         & ~(n.links.index.str.contains("reversed"))
     ]
-    var["Capacity|Transmission Grid|AC|International"] = (
+    var["Capacity|Electricity|Transmission Grid|AC|International"] = (
         ac_int.s_nom_opt.multiply(ac_int.length).sum() * 0.5 * MW2GW
     )
-    var["Capacity|Transmission Grid|DC|International"] = (
+    var["Capacity Additions|Electricity|Transmission Grid|AC|International"] = (
+        ac_int.eval("(s_nom_opt - s_nom) * length").sum() * 0.5 * MW2GW
+    )
+    var["Capacity|Electricity|Transmission Grid|DC|International"] = (
         dc_int.p_nom_opt.multiply(dc_int.length).sum() * 0.5 * MW2GW
     )
-
-    var["Capacity|Transmission Grid|AC"] = (
-        var["Capacity|Transmission Grid|AC|Domestic"]
-        + var["Capacity|Transmission Grid|AC|International"]
-    )
-    var["Capacity|Transmission Grid|DC"] = (
-        var["Capacity|Transmission Grid|DC|Domestic"]
-        + var["Capacity|Transmission Grid|DC|International"]
+    var["Capacity Additions|Electricity|Transmission Grid|DC|International"] = (
+        dc_int.eval("(p_nom_opt - p_nom_min) * length").sum() * 0.5 * MW2GW
     )
 
-    var["Capacity|Transmission Grid"] = (
-        var["Capacity|Transmission Grid|AC"] + var["Capacity|Transmission Grid|DC"]
+    var["Capacity|Electricity|Transmission Grid|AC"] = (
+        var["Capacity|Electricity|Transmission Grid|AC|Domestic"]
+        + var["Capacity|Electricity|Transmission Grid|AC|International"]
+    )
+    var["Capacity|Electricity|Transmission Grid|DC"] = (
+        var["Capacity|Electricity|Transmission Grid|DC|Domestic"]
+        + var["Capacity|Electricity|Transmission Grid|DC|International"]
+    )
+    var["Capacity Additions|Electricity|Transmission Grid|AC"] = (
+        var["Capacity Additions|Electricity|Transmission Grid|AC|Domestic"]
+        + var["Capacity Additions|Electricity|Transmission Grid|AC|International"]
+    )
+    var["Capacity Additions|Electricity|Transmission Grid|DC"] = (
+        var["Capacity Additions|Electricity|Transmission Grid|DC|Domestic"]
+        + var["Capacity Additions|Electricity|Transmission Grid|DC|International"]
+    )
+
+    var["Capacity|Electricity|Transmission Grid"] = (
+        var["Capacity|Electricity|Transmission Grid|AC"] + var["Capacity|Electricity|Transmission Grid|DC"]
+    )
+    var["Capacity Additions|Electricity|Transmission Grid"] = (
+        var["Capacity Additions|Electricity|Transmission Grid|AC"] + var["Capacity Additions|Electricity|Transmission Grid|DC"]
     )
 
     ## Distribution Grid
@@ -4456,6 +4479,9 @@ def get_transmission_grid_capacity(n, region, year):
     ]
 
     var["Capacity|Distribution Grid"] = distr_grid.p_nom_opt.sum() * MW2GW
+    var["Capacity Additions|Distribution Grid"] = (
+        distr_grid.eval("(p_nom_opt - p_nom)").sum() * MW2GW
+    )
 
     return var
 
