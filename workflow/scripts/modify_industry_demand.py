@@ -17,6 +17,7 @@ This includes
 import logging
 
 logger = logging.getLogger(__name__)
+from _helpers import configure_logging
 
 import pandas as pd
 
@@ -40,6 +41,7 @@ if __name__ == "__main__":
             planning_horizons=2020,
         )
 
+    configure_logging(snakemake)
     # leitmodell for industry demand
     leitmodell = "FORECAST v1.0"
 

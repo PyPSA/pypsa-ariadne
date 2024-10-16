@@ -19,6 +19,7 @@ Outputs:
 import logging
 
 logger = logging.getLogger(__name__)
+from _helpers import configure_logging
 import json
 import re
 
@@ -40,6 +41,7 @@ if __name__ == "__main__":
             "build_egon_data",
             run="KN2045_Bal_v4",
         )
+configure_logging(snakemake)
 
 logger.info("Retrieving and cleaning egon data")
 
