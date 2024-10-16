@@ -1552,7 +1552,6 @@ def get_secondary_energy(n, region, _industry_demand):
         total_oil_fuel_usage * oil_fractions["Efuel"]
     )
 
-
     try:
         methanol_production = (
             n.statistics.supply(bus_carrier="methanol", **kwargs)
@@ -1571,7 +1570,6 @@ def get_secondary_energy(n, region, _industry_demand):
         # Remeber to specify that Other Carrier == Methanol in Comments Tab
     except KeyError:
         var["Secondary Energy|Methanol"] = 0
-
 
     var["Secondary Energy|Liquids|Hydrogen"] += var["Secondary Energy|Methanol"]
 
@@ -2143,7 +2141,6 @@ def get_final_energy(
         + var["Final Energy|Transportation|Methanol"]
     )
 
-
     # var["Final Energy|Transportation|Liquids|Biomass"] = \
     # var["Final Energy|Transportation|Liquids|Synthetic Fossil"] = \
     var["Final Energy|Transportation|Liquids|Petroleum"] = (
@@ -2184,9 +2181,9 @@ def get_final_energy(
             var["Final Energy|Bunkers|Navigation|Liquids"] * oil_fractions[fraction_key]
         )
 
-    var["Final Energy|Bunkers|Navigation"] = (
-        var["Final Energy|Bunkers|Navigation|Liquids"]
-    )
+    var["Final Energy|Bunkers|Navigation"] = var[
+        "Final Energy|Bunkers|Navigation|Liquids"
+    ]
 
     # var["Final Energy|Bunkers|Navigation|Gases"] = \
     # ! Not implemented
@@ -3915,16 +3912,14 @@ def get_trade(n, region):
         DE_bio_fraction = 0
     else:
         DE_bio_fraction = (
-            DE_renewable_oil.filter(like="bio").sum()
-            / DE_renewable_oil.sum()
+            DE_renewable_oil.filter(like="bio").sum() / DE_renewable_oil.sum()
         )
 
     if EU_renewable_oil.sum() == 0:
         EU_bio_fraction = 0
     else:
         EU_bio_fraction = (
-            EU_renewable_oil.filter(like="bio").sum()
-            / EU_renewable_oil.sum()
+            EU_renewable_oil.filter(like="bio").sum() / EU_renewable_oil.sum()
         )
 
     exports_oil_renew, imports_oil_renew = get_export_import_links(
@@ -3932,36 +3927,31 @@ def get_trade(n, region):
     )
 
     var["Trade|Secondary Energy|Liquids|Biomass|Volume"] = (
-        exports_oil_renew * DE_bio_fraction 
-        - imports_oil_renew * EU_bio_fraction
+        exports_oil_renew * DE_bio_fraction - imports_oil_renew * EU_bio_fraction
     ) * MWh2PJ
-    
+
     var["Trade|Secondary Energy|Liquids|Biomass|Gross Import|Volume"] = (
         imports_oil_renew * EU_bio_fraction * MWh2PJ
     )
 
-    exports_meoh, imports_meoh = get_export_import_links(
-        n, region, ["methanol"]
-    )
+    exports_meoh, imports_meoh = get_export_import_links(n, region, ["methanol"])
 
     var["Trade|Secondary Energy|Liquids|Hydrogen|Volume"] = (
         exports_oil_renew * (1 - DE_bio_fraction)
         - imports_oil_renew * (1 - EU_bio_fraction)
-        + exports_meoh - imports_meoh
+        + exports_meoh
+        - imports_meoh
     ) * MWh2PJ
 
     var["Trade|Secondary Energy|Liquids|Hydrogen|Gross Import|Volume"] = (
-        imports_oil_renew * (1 - EU_bio_fraction) 
-        + imports_meoh
+        imports_oil_renew * (1 - EU_bio_fraction) + imports_meoh
     ) * MWh2PJ
 
     var["Trade|Secondary Energy|Methanol|Volume"] = (
         exports_meoh - imports_meoh
     ) * MWh2PJ
 
-    var["Trade|Secondary Energy|Methanol|Gross Import|Volume"] = (
-        imports_meoh * MWh2PJ
-    )
+    var["Trade|Secondary Energy|Methanol|Gross Import|Volume"] = imports_meoh * MWh2PJ
 
     # Trade|Secondary Energy|Gases|Hydrogen|Volume
 
@@ -4328,9 +4318,7 @@ def get_operational_and_capital_costs(year):
 
 def hack_DC_projects(n, model_year):
     logger.info(f"Hacking DC projects for year {model_year}")
-    logger.warning(
-        f"Assuming all indices of DC projects start with 'DC' or 'TYNDP'"
-    )
+    logger.warning(f"Assuming all indices of DC projects start with 'DC' or 'TYNDP'")
     tprojs = n.links.loc[
         (n.links.index.str.startswith("DC") | n.links.index.str.startswith("TYNDP"))
         & ~n.links.reversed
@@ -4370,7 +4358,7 @@ def hack_DC_projects(n, model_year):
     # Past projects should have their p_nom_opt bigger or equal to p_nom
     if model_year <= 2035:
         assert (
-            n.links.loc[past_projects, "p_nom_opt"] + 0.1 # numerical error tolerance
+            n.links.loc[past_projects, "p_nom_opt"] + 0.1  # numerical error tolerance
             >= n.links.loc[past_projects, "p_nom"]
         ).all()
 
@@ -4381,10 +4369,8 @@ def hack_AC_projects(n, n_start, model_year):
     logger.info(f"Hacking AC projects for year {model_year}")
 
     # All transmission projects have build_year > 0, this is implicit in the query
-    ac_projs = n.lines.query(
-            "@model_year - 5 < build_year <= @model_year"
-        ).index
-    
+    ac_projs = n.lines.query("@model_year - 5 < build_year <= @model_year").index
+
     s_nom_start = n_start.lines.loc[ac_projs, "s_nom"]
 
     # Eventhough the lines are available to the model from the start,
@@ -4396,10 +4382,12 @@ def hack_AC_projects(n, n_start, model_year):
 
     return n
 
+
 def hack_transmission_projects(n, n_start, model_year):
     n = hack_DC_projects(n, model_year)
     n = hack_AC_projects(n, n_start, model_year)
     return n
+
 
 def get_ariadne_var(
     n,
