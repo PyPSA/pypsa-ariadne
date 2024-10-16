@@ -3610,11 +3610,18 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     ) * 1e-9
     offwind_connection_ac = offwind_connection_overnight_cost.filter(like="ac")
     offwind_connection_dc = offwind_connection_overnight_cost.filter(regex="dc|float")
-    var["Investment|Energy Supply|Electricity|Transmission|Offwind-AC"] = (
+    var["Investment|Energy Supply|Electricity|Transmission|AC|Offshore"] = (
         offwind_connection_ac.sum() / 5
     )
-    var["Investment|Energy Supply|Electricity|Transmission|Offwind-DC"] = (
+    var["Investment|Energy Supply|Electricity|Transmission|AC|Offshore|NEP"] = (
+        offwind_connection_ac.filter(regex="25|30").sum() / 5
+    )
+
+    var["Investment|Energy Supply|Electricity|Transmission|DC|Offshore"] = (
         offwind_connection_dc.sum() / 5
+    )
+    var["Investment|Energy Supply|Electricity|Transmission|DC|Offshore|NEP"] = (
+        offwind_connection_dc.filter(regex="25|30").sum() / 5
     )
 
     dc_links = n.links[
@@ -3622,6 +3629,7 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
         & (n.links.bus0 + n.links.bus1).str.contains(region)
         & ~n.links.reversed
     ]
+    nep_dc = dc_links.query("index.str.startswith('DC') or index=='TYNDP2020_1' or index=='TYNDP2020_2' or index=='TYNDP2020_23'").index
     dc_expansion = dc_links.p_nom_opt.apply(
         lambda x: get_discretized_value(
             x,
@@ -3643,6 +3651,7 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     ] *= 0.5
 
     ac_lines = n.lines[(n.lines.bus0 + n.lines.bus1).str.contains(region)]
+    nep_ac = ac_lines.query("build_year > 2000").index
     ac_expansion = ac_lines.s_nom_opt.apply(
         lambda x: get_discretized_value(
             x,
@@ -3661,16 +3670,48 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     ac_investments[
         ~(ac_lines.bus0.str.contains(region) & ac_lines.bus1.str.contains(region))
     ] *= 0.5
+    var["Investment|Energy Supply|Electricity|Transmission|AC|Onshore"] = (
+        ac_investments.sum() / 5
+    )
+    var["Investment|Energy Supply|Electricity|Transmission|AC|Onshore|NEP"] = (
+        ac_investments[nep_ac].sum() / 5
+    )
+    var["Investment|Energy Supply|Electricity|Transmission|DC|Onshore"] = (
+        dc_investments.sum() / 5
+    )
+    var["Investment|Energy Supply|Electricity|Transmission|DC|Onshore|NEP"] = (
+        dc_investments[nep_dc].sum() / 5
+    )
+
+    for key in ["Onshore", "Onshore|NEP", "Offshore", "Offshore|NEP"]:
+        var[f"Investment|Energy Supply|Electricity|Transmission|{key}"] = (
+            var[f"Investment|Energy Supply|Electricity|Transmission|AC|{key}"]
+            + var[f"Investment|Energy Supply|Electricity|Transmission|DC|{key}"]
+        )
 
     var["Investment|Energy Supply|Electricity|Transmission|AC"] = (
-        ac_investments.sum() + offwind_connection_ac.sum()
-    ) / 5
+        var["Investment|Energy Supply|Electricity|Transmission|AC|Onshore"]
+        + var["Investment|Energy Supply|Electricity|Transmission|AC|Offshore"]
+    ) 
     var["Investment|Energy Supply|Electricity|Transmission|DC"] = (
-        dc_investments.sum() + offwind_connection_dc.sum()
-    ) / 5
+        var["Investment|Energy Supply|Electricity|Transmission|DC|Onshore"]
+        + var["Investment|Energy Supply|Electricity|Transmission|DC|Offshore"]
+    ) 
+    var["Investment|Energy Supply|Electricity|Transmission|AC|NEP"] = (
+        var["Investment|Energy Supply|Electricity|Transmission|AC|Onshore|NEP"]
+        + var["Investment|Energy Supply|Electricity|Transmission|AC|Offshore|NEP"]
+    )
+    var["Investment|Energy Supply|Electricity|Transmission|DC|NEP"] = (
+        var["Investment|Energy Supply|Electricity|Transmission|DC|Onshore|NEP"]
+        + var["Investment|Energy Supply|Electricity|Transmission|DC|Offshore|NEP"]
+    )
     var["Investment|Energy Supply|Electricity|Transmission"] = (
         var["Investment|Energy Supply|Electricity|Transmission|AC"]
         + var["Investment|Energy Supply|Electricity|Transmission|DC"]
+    )
+    var["Investment|Energy Supply|Electricity|Transmission|NEP"] = (
+        var["Investment|Energy Supply|Electricity|Transmission|AC|NEP"]
+        + var["Investment|Energy Supply|Electricity|Transmission|DC|NEP"]
     )
 
     distribution_grid = n.links[n.links.carrier.str.contains("distribution")].filter(
