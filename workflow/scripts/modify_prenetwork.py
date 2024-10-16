@@ -483,6 +483,14 @@ def unravel_carbonaceous_fuels(n):
     # check for loads
     # industry load
     if "EU industry methanol" in n.loads.index:
+        n.add(
+            "Bus",
+            "DE industry methanol",
+            carrier="industry methanol",
+            x=n.buses.loc["DE", "x"],
+            y=n.buses.loc["DE", "y"],
+            unit="MWh_LHV",
+        )
         industrial_demand = (
             pd.read_csv(snakemake.input.industrial_demand, index_col=0) * 1e6
         )  # TWh/a to MWh/a
@@ -498,14 +506,6 @@ def unravel_carbonaceous_fuels(n):
         )
         n.loads.loc["EU industry methanol", "p_set"] -= DE_meoh
 
-        n.add(
-            "Bus",
-            "DE industry methanol",
-            carrier="industry methanol",
-            x=n.buses.loc["DE", "x"],
-            y=n.buses.loc["DE", "y"],
-            unit="MWh_LHV",
-        )
         n.add(
             "Link",
             "DE industry methanol",
