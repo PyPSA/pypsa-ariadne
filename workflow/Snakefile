@@ -631,11 +631,12 @@ rule plot_ariadne_report:
         regions_onshore_clustered=expand(
             resources("regions_onshore_base_s_{clusters}.geojson"),
             clusters=config["scenario"]["clusters"],
-            allow_missing=True
+            allow_missing=True,
         ),
         rc="matplotlibrc",
     output:
-        elec_price_duration_curve=RESULTS + "ariadne/report/elec_price_duration_curve.png",
+        elec_price_duration_curve=RESULTS
+        + "ariadne/report/elec_price_duration_curve.png",
         elec_price_duration_hist=RESULTS + "ariadne/report/elec_price_duration_hist.png",
         results=directory(RESULTS + "ariadne/report"),
         elec_transmission=directory(RESULTS + "ariadne/report/elec_transmission"),
@@ -646,10 +647,10 @@ rule plot_ariadne_report:
     resources:
         mem_mb=10000,
     log:
-        RESULTS
-        + "logs/plot_ariadne_report.log",
+        RESULTS + "logs/plot_ariadne_report.log",
     script:
         "scripts/plot_ariadne_report.py"
+
 
 rule ariadne_report_only:
     input:
