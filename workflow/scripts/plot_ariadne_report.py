@@ -1,26 +1,26 @@
 # -*- coding: utf-8 -*-
+import logging
 import os
 import sys
-import logging
+from itertools import compress
+from multiprocessing import Pool
+
+import cartopy.crs as ccrs
+import geopandas as gpd
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pypsa
-import geopandas as gpd
-import cartopy.crs as ccrs
-
 from matplotlib.lines import Line2D
 from pypsa.plot import add_legend_lines
-from itertools import compress
-from multiprocessing import Pool
 
 path = "../submodules/pypsa-eur/scripts"
 sys.path.insert(1, os.path.abspath(path))
-from export_ariadne_variables import hack_transmission_projects
 from _helpers import configure_logging, set_scenario_config
-from plot_summary import preferred_order, rename_techs
+from export_ariadne_variables import hack_transmission_projects
 from plot_power_network import load_projection
+from plot_summary import preferred_order, rename_techs
 from pypsa.plot import add_legend_circles, add_legend_lines, add_legend_patches
 
 logger = logging.getLogger(__name__)
@@ -157,6 +157,7 @@ electricity_imports = [
     "DC",
 ]
 
+
 ####### functions #######
 def get_condense_sum(df, groups, groups_name, return_original=False):
     """
@@ -203,7 +204,7 @@ def plot_nodal_balance(
     plot_loads=True,
     resample=None,
     nice_names=False,
-    threshold=1e-3, # in GWh
+    threshold=1e-3,  # in GWh
     condense_groups=None,
     condense_names=None,
 ):
@@ -214,7 +215,7 @@ def plot_nodal_balance(
     end_date = end_date
     regions = regions
     period = network.generators_t.p.index[
-        (network.generators_t.p.index >= start_date) 
+        (network.generators_t.p.index >= start_date)
         & (network.generators_t.p.index <= end_date)
     ]
     # ToDo find out why this is overwriting itself
@@ -249,7 +250,7 @@ def plot_nodal_balance(
     # split into df with positive and negative values
     df_neg, df_pos = df.clip(upper=0), df.clip(lower=0)
     df_pos = df_pos[df_pos.sum().sort_values(ascending=False).index]
-    df_neg = df_neg[df_neg.sum().sort_values().index]  
+    df_neg = df_neg[df_neg.sum().sort_values().index]
     # get colors
     c_neg, c_pos = [tech_colors[col] for col in df_neg.columns], [
         tech_colors[col] for col in df_pos.columns
@@ -269,7 +270,7 @@ def plot_nodal_balance(
     )
 
     # plot lmps
-    if plot_lmps:   
+    if plot_lmps:
         lmps = network.buses_t.marginal_price[
             network.buses[network.buses.carrier.isin(carriers)].index
         ].mean(axis=1)[period]
@@ -654,12 +655,14 @@ def plot_price_duration_hist(
             lmps = pd.DataFrame(lmps.values.flatten())
 
         lmps.columns = ["lmp"]
-        axes[i].hist(lmps, 
-                     bins=100, 
-                     color=year_colors[i], 
-                     alpha=0.5, 
-                     label=years[i],
-                     range=x_lim_values,)
+        axes[i].hist(
+            lmps,
+            bins=100,
+            color=year_colors[i],
+            alpha=0.5,
+            label=years[i],
+            range=x_lim_values,
+        )
         axes[i].legend()
 
     axes[i].set_xlabel("Electricity Price [$€/MWh_{el}$")
@@ -705,10 +708,7 @@ def group_pipes(df, drop_direction=False):
     )
 
 
-def plot_h2_map(n, 
-                regions, 
-                savepath,
-                only_de=False):
+def plot_h2_map(n, regions, savepath, only_de=False):
 
     assign_location(n)
 
@@ -754,16 +754,12 @@ def plot_h2_map(n,
 
     if not h2_retro.empty:
         h2_retro = (
-            group_pipes(h2_retro, drop_direction=True)
-            .reindex(h2_new.index)
-            .fillna(0)
+            group_pipes(h2_retro, drop_direction=True).reindex(h2_new.index).fillna(0)
         )
 
     if not h2_kern.empty:
         h2_kern = (
-            group_pipes(h2_kern, drop_direction=True)
-            .reindex(h2_new.index)
-            .fillna(0)
+            group_pipes(h2_kern, drop_direction=True).reindex(h2_new.index).fillna(0)
         )
 
     h2_total = n.links.p_nom_opt.groupby(level=0).sum()
@@ -772,18 +768,20 @@ def plot_h2_map(n,
     # drop all reversed pipe
     n.links.drop(n.links.index[n.links.index.str.contains("reversed")], inplace=True)
     n.links.rename(index=lambda x: x.split("-2")[0], inplace=True)
-    n.links = n.links.groupby(level=0).agg({
-        **{col: 'first' for col in n.links.columns if col != 'p_nom_opt'},  # Take first value for all columns except 'p_nom_opt'
-        'p_nom_opt': 'sum'  # Sum values for 'p_nom_opt'
-    })
+    n.links = n.links.groupby(level=0).agg(
+        {
+            **{
+                col: "first" for col in n.links.columns if col != "p_nom_opt"
+            },  # Take first value for all columns except 'p_nom_opt'
+            "p_nom_opt": "sum",  # Sum values for 'p_nom_opt'
+        }
+    )
     link_widths_total = link_widths_total.reindex(n.links.index).fillna(0.0)
     link_widths_total[n.links.p_nom_opt < line_lower_threshold] = 0.0
 
     carriers_pipe = ["H2 pipeline", "H2 pipeline retrofitted", "H2 pipeline (Kernnetz)"]
-    total = n.links.p_nom_opt.where(
-        n.links.carrier.isin(carriers_pipe), other=0.0
-    )
-    
+    total = n.links.p_nom_opt.where(n.links.carrier.isin(carriers_pipe), other=0.0)
+
     retro = n.links.p_nom_opt.where(
         n.links.carrier == "H2 pipeline retrofitted", other=0.0
     )
@@ -927,11 +925,7 @@ def plot_h2_map(n,
     fig.savefig(savepath, bbox_inches="tight")
 
 
-def plot_h2_map_de(n, 
-                regions, 
-                tech_colors,
-                savepath,
-                specify_buses=None):
+def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
 
     assign_location(n)
 
@@ -944,7 +938,6 @@ def plot_h2_map_de(n,
     )  # TWh
     regions["H2"] = regions["H2"].where(regions["H2"] > 0.1)
 
-    
     linewidth_factor = 4e3
     # MW below which not drawn
     line_lower_threshold = 0
@@ -953,35 +946,78 @@ def plot_h2_map_de(n,
     if specify_buses is None:
         bus_size_factor = 1e5
         carriers = ["H2 Electrolysis", "H2 Fuel Cell"]
-        elec = n.links[(n.links.carrier.isin(carriers)) & (n.links.index.str.contains("DE"))].index
+        elec = n.links[
+            (n.links.carrier.isin(carriers)) & (n.links.index.str.contains("DE"))
+        ].index
         bus_sizes = (
-            n.links.loc[elec, "p_nom_opt"].groupby([n.links["bus0"], n.links.carrier]).sum()
+            n.links.loc[elec, "p_nom_opt"]
+            .groupby([n.links["bus0"], n.links.carrier])
+            .sum()
             / bus_size_factor
         )
     if specify_buses == "production":
         bus_size_factor = 2e8
-        h2_producers = n.links.index[n.links.index.str.startswith("DE") & (n.links.bus1.map(n.buses.carrier) == "H2")]
+        h2_producers = n.links.index[
+            n.links.index.str.startswith("DE")
+            & (n.links.bus1.map(n.buses.carrier) == "H2")
+        ]
         carriers = h2_producers.map(n.links.carrier).unique().tolist()
-        production = -n.links_t.p1[h2_producers].multiply(n.snapshot_weightings.generators,axis=0)
-        bus_sizes = production.sum().groupby(
-            [production.sum().index.map(n.links.bus1) , production.sum().index.map(n.links.carrier)]
-            ).sum() / bus_size_factor
+        production = -n.links_t.p1[h2_producers].multiply(
+            n.snapshot_weightings.generators, axis=0
+        )
+        bus_sizes = (
+            production.sum()
+            .groupby(
+                [
+                    production.sum().index.map(n.links.bus1),
+                    production.sum().index.map(n.links.carrier),
+                ]
+            )
+            .sum()
+            / bus_size_factor
+        )
 
     if specify_buses == "consumption":
         bus_size_factor = 2e8
         # links
-        h2_consumers_links = n.links.index[n.links.index.str.startswith("DE") & (n.links.bus0.map(n.buses.carrier) == "H2")]
-        consumption_links = n.links_t.p0[h2_consumers_links].multiply(n.snapshot_weightings.generators,axis=0)
-        bus_sizes_links = consumption_links.sum().groupby(
-            [consumption_links.sum().index.map(n.links.bus0) , consumption_links.sum().index.map(n.links.carrier)]
-            ).sum() / bus_size_factor
-        #loads
-        h2_consumers_loads = n.loads.index[n.loads.bus.str.startswith("DE") & (n.loads.bus.map(n.buses.carrier) == "H2")]
-        consumption_loads = n.loads_t.p[h2_consumers_loads].multiply(n.snapshot_weightings.generators,axis=0)
-        bus_sizes_loads = consumption_loads.sum().groupby(
-            [consumption_loads.sum().index.map(n.loads.bus) , consumption_loads.sum().index.map(n.loads.carrier)]
-            ).sum() / bus_size_factor
-        
+        h2_consumers_links = n.links.index[
+            n.links.index.str.startswith("DE")
+            & (n.links.bus0.map(n.buses.carrier) == "H2")
+        ]
+        consumption_links = n.links_t.p0[h2_consumers_links].multiply(
+            n.snapshot_weightings.generators, axis=0
+        )
+        bus_sizes_links = (
+            consumption_links.sum()
+            .groupby(
+                [
+                    consumption_links.sum().index.map(n.links.bus0),
+                    consumption_links.sum().index.map(n.links.carrier),
+                ]
+            )
+            .sum()
+            / bus_size_factor
+        )
+        # loads
+        h2_consumers_loads = n.loads.index[
+            n.loads.bus.str.startswith("DE")
+            & (n.loads.bus.map(n.buses.carrier) == "H2")
+        ]
+        consumption_loads = n.loads_t.p[h2_consumers_loads].multiply(
+            n.snapshot_weightings.generators, axis=0
+        )
+        bus_sizes_loads = (
+            consumption_loads.sum()
+            .groupby(
+                [
+                    consumption_loads.sum().index.map(n.loads.bus),
+                    consumption_loads.sum().index.map(n.loads.carrier),
+                ]
+            )
+            .sum()
+            / bus_size_factor
+        )
+
         bus_sizes = pd.concat([bus_sizes_links, bus_sizes_loads])
 
         def rename_carriers(carrier):
@@ -991,25 +1027,35 @@ def plot_h2_map_de(n,
                 return "H2 CHP"
             else:
                 return carrier
+
         bus_sizes = bus_sizes.rename(index=lambda x: rename_carriers(x), level=1)
         bus_sizes = bus_sizes.groupby(level=[0, 1]).sum()
         tech_colors["H2 CHP"] = "darkorange"
         # only select 4 most contributing carriers and summarise rest as other
-        others = (bus_sizes.groupby(level=[1]).sum() / bus_sizes.sum()).sort_values(ascending=False)[5:].index.tolist()
+        others = (
+            (bus_sizes.groupby(level=[1]).sum() / bus_sizes.sum())
+            .sort_values(ascending=False)[5:]
+            .index.tolist()
+        )
         replacement_dict = {value: "other" for value in others}
         bus_sizes = bus_sizes.rename(index=replacement_dict, level=1)
         bus_sizes = bus_sizes.groupby(level=[0, 1]).sum()
-        carriers =  bus_sizes.index.get_level_values(1).unique().tolist()
-        
+        carriers = bus_sizes.index.get_level_values(1).unique().tolist()
+
     # make a fake MultiIndex so that area is correct for legend
     bus_sizes.rename(index=lambda x: x.replace(" H2", ""), level=0, inplace=True)
-    
+
     # Drop non-electric buses so they don't clutter the plot
     n.buses.drop(n.buses.index[n.buses.carrier != "AC"], inplace=True)
     # drop all links which are not H2 pipelines or not in germany
     n.links.drop(
-        n.links.index[~((n.links['carrier'].str.contains("H2 pipeline")) & (n.links.index.str.contains("DE")))], 
-        inplace=True
+        n.links.index[
+            ~(
+                (n.links["carrier"].str.contains("H2 pipeline"))
+                & (n.links.index.str.contains("DE"))
+            )
+        ],
+        inplace=True,
     )
 
     h2_new = n.links[n.links.carrier == "H2 pipeline"]
@@ -1021,16 +1067,12 @@ def plot_h2_map_de(n,
 
     if not h2_retro.empty:
         h2_retro = (
-            group_pipes(h2_retro, drop_direction=True)
-            .reindex(h2_new.index)
-            .fillna(0)
+            group_pipes(h2_retro, drop_direction=True).reindex(h2_new.index).fillna(0)
         )
 
     if not h2_kern.empty:
         h2_kern = (
-            group_pipes(h2_kern, drop_direction=True)
-            .reindex(h2_new.index)
-            .fillna(0)
+            group_pipes(h2_kern, drop_direction=True).reindex(h2_new.index).fillna(0)
         )
 
     h2_total = n.links.p_nom_opt.groupby(level=0).sum()
@@ -1039,18 +1081,20 @@ def plot_h2_map_de(n,
     # drop all reversed pipe
     n.links.drop(n.links.index[n.links.index.str.contains("reversed")], inplace=True)
     n.links.rename(index=lambda x: x.split("-2")[0], inplace=True)
-    n.links = n.links.groupby(level=0).agg({
-        **{col: 'first' for col in n.links.columns if col != 'p_nom_opt'},  # Take first value for all columns except 'p_nom_opt'
-        'p_nom_opt': 'sum'  # Sum values for 'p_nom_opt'
-    })
+    n.links = n.links.groupby(level=0).agg(
+        {
+            **{
+                col: "first" for col in n.links.columns if col != "p_nom_opt"
+            },  # Take first value for all columns except 'p_nom_opt'
+            "p_nom_opt": "sum",  # Sum values for 'p_nom_opt'
+        }
+    )
     link_widths_total = link_widths_total.reindex(n.links.index).fillna(0.0)
     link_widths_total[n.links.p_nom_opt < line_lower_threshold] = 0.0
 
     carriers_pipe = ["H2 pipeline", "H2 pipeline retrofitted", "H2 pipeline (Kernnetz)"]
-    total = n.links.p_nom_opt.where(
-        n.links.carrier.isin(carriers_pipe), other=0.0
-    )
-    
+    total = n.links.p_nom_opt.where(n.links.carrier.isin(carriers_pipe), other=0.0)
+
     retro = n.links.p_nom_opt.where(
         n.links.carrier == "H2 pipeline retrofitted", other=0.0
     )
@@ -1079,7 +1123,6 @@ def plot_h2_map_de(n,
     color_retrofit = "#499a9c"
     color_kern = "#6b3161"
 
-    
     n.plot(
         geomap=True,
         bus_sizes=bus_sizes,
@@ -1209,16 +1252,18 @@ def plot_h2_map_de(n,
 
 ### electricity transmission
 
+
 def plot_elec_map_de(
     network,
     base_network,
     tech_colors,
     regions_de,
     savepath,
-    expansion_case = "total-expansion"):
+    expansion_case="total-expansion",
+):
 
     m = network.copy()
-    m.mremove("Bus",m.buses[m.buses.x == 0].index )
+    m.mremove("Bus", m.buses[m.buses.x == 0].index)
     m.buses.drop(m.buses.index[m.buses.carrier != "AC"], inplace=True)
 
     m_base = base_network.copy()
@@ -1226,7 +1271,9 @@ def plot_elec_map_de(
     # storage as cmap on map
     battery_storage = m.stores[m.stores.carrier.isin(["battery"])]
     regions_de["battery"] = (
-        battery_storage.rename(index=battery_storage.bus.str.replace(" battery", "").map(m.buses.location))
+        battery_storage.rename(
+            index=battery_storage.bus.str.replace(" battery", "").map(m.buses.location)
+        )
         .e_nom_opt.groupby(level=0)
         .sum()
         .div(1e3)
@@ -1235,22 +1282,26 @@ def plot_elec_map_de(
 
     # buses
     bus_size_factor = 0.5e6
-    carriers = ["onwind", 'offwind-ac', 'offwind-dc',"solar", 'solar-hsat']
-    elec = m.generators[(m.generators.carrier.isin(carriers)) & (m.generators.bus.str.contains("DE"))].index
+    carriers = ["onwind", "offwind-ac", "offwind-dc", "solar", "solar-hsat"]
+    elec = m.generators[
+        (m.generators.carrier.isin(carriers)) & (m.generators.bus.str.contains("DE"))
+    ].index
     bus_sizes = (
-        m.generators.loc[elec, "p_nom_opt"].groupby([m.generators.bus, m.generators.carrier]).sum()
+        m.generators.loc[elec, "p_nom_opt"]
+        .groupby([m.generators.bus, m.generators.carrier])
+        .sum()
         / bus_size_factor
     )
     replacement_dict = {
-        "onwind" : "Onshore Wind",
-        "offwind-ac" : "Offshore Wind",
-        "offwind-dc" : "Offshore Wind",     
-        "solar" : "Solar",
-        "solar-hsat" : "Solar", 
+        "onwind": "Onshore Wind",
+        "offwind-ac": "Offshore Wind",
+        "offwind-dc": "Offshore Wind",
+        "solar": "Solar",
+        "solar-hsat": "Solar",
     }
     bus_sizes = bus_sizes.rename(index=replacement_dict, level=1)
     bus_sizes = bus_sizes.groupby(level=[0, 1]).sum()
-    carriers =  bus_sizes.index.get_level_values(1).unique().tolist()
+    carriers = bus_sizes.index.get_level_values(1).unique().tolist()
 
     # lines
     linew_factor = 1e3
@@ -1291,7 +1342,7 @@ def plot_elec_map_de(
 
     regions_de = regions_de.to_crs(proj.proj4_init)
     fig, ax = plt.subplots(figsize=(10, 8), subplot_kw={"projection": proj})
-    
+
     m.plot(
         ax=ax,
         margin=0.06,
@@ -1315,7 +1366,7 @@ def plot_elec_map_de(
             "extend": "max",
         },
     )
-    
+
     # Set geographic extent for Germany
     ax.set_extent([5.5, 15.5, 47, 56], crs=ccrs.PlateCarree())
 
@@ -1340,7 +1391,7 @@ def plot_elec_map_de(
         patch_kw=dict(facecolor="lightgrey"),
         legend_kw=legend_kw,
     )
-    
+
     # AC
     sizes_ac = [10, 5]
     labels_ac = [f"HVAC ({s} GW)" for s in sizes_ac]
@@ -1367,12 +1418,10 @@ def plot_elec_map_de(
         facecolor="white",
     )
 
-    add_legend_lines(
-        ax, sizes, labels, colors = colors, legend_kw=legend_kw
-    )
+    add_legend_lines(ax, sizes, labels, colors=colors, legend_kw=legend_kw)
 
-    colors = [tech_colors[c] for c in carriers] 
-    labels = carriers 
+    colors = [tech_colors[c] for c in carriers]
+    labels = carriers
     legend_kw = dict(
         loc="upper left",
         bbox_to_anchor=(0, 0.9),
@@ -1383,7 +1432,6 @@ def plot_elec_map_de(
 
     add_legend_patches(ax, colors, labels, legend_kw=legend_kw)
     fig.savefig(savepath, bbox_inches="tight")
-
 
 
 if __name__ == "__main__":
@@ -1413,7 +1461,7 @@ if __name__ == "__main__":
     config = snakemake.config
     planning_horizons = snakemake.params.planning_horizons
     tech_colors = snakemake.params.plotting["tech_colors"]
-    
+
     # define possible renaming and grouping of carriers
     c_g = [solar, electricity_load, electricity_imports]
     c_n = ["Solar", "Electricity load", "Electricity trade"]
@@ -1443,18 +1491,24 @@ if __name__ == "__main__":
         for n, my in zip(_networks, modelyears)
     ]
     # update the tech_colors
-    tech_colors.update(networks[0].carriers.color.rename(networks[0].carriers.nice_name).to_dict())
+    tech_colors.update(
+        networks[0].carriers.color.rename(networks[0].carriers.nice_name).to_dict()
+    )
 
     ### plotting
     for year in planning_horizons:
         network = networks[planning_horizons.index(year)].copy()
         ct = "DE"
         buses = network.buses.index[(network.buses.index.str[:2] == ct)].drop("DE")
-        balance = network.statistics.energy_balance(
-            aggregate_time=False,
-            nice_names=False,
-            groupby=network.statistics.groupers.get_bus_and_carrier_and_bus_carrier
-            ).loc[:,buses,:,:].droplevel("bus")
+        balance = (
+            network.statistics.energy_balance(
+                aggregate_time=False,
+                nice_names=False,
+                groupby=network.statistics.groupers.get_bus_and_carrier_and_bus_carrier,
+            )
+            .loc[:, buses, :, :]
+            .droplevel("bus")
+        )
 
         # electricity supply and demand
         plot_nodal_balance(
@@ -1469,7 +1523,7 @@ if __name__ == "__main__":
             plot_lmps=False,
             plot_loads=False,
             nice_names=True,
-            threshold=1e2, # in GWh as sum over period
+            threshold=1e2,  # in GWh as sum over period
             condense_groups=c_g,
             condense_names=c_n,
         )
@@ -1484,8 +1538,8 @@ if __name__ == "__main__":
             model_run=snakemake.wildcards.run,
             nice_names=True,
             threshold=1e2,
-            condense_groups= [electricity_load, electricity_imports],
-            condense_names= ["Electricity load", "Electricity trade"],
+            condense_groups=[electricity_load, electricity_imports],
+            condense_names=["Electricity load", "Electricity trade"],
         )
 
         plot_nodal_balance(
@@ -1498,8 +1552,8 @@ if __name__ == "__main__":
             model_run=snakemake.wildcards.run,
             nice_names=True,
             threshold=1e2,
-            condense_groups= [electricity_load, electricity_imports],
-            condense_names= ["Electricity load", "Electricity trade"],
+            condense_groups=[electricity_load, electricity_imports],
+            condense_names=["Electricity load", "Electricity trade"],
         )
 
         # storage
@@ -1532,28 +1586,28 @@ if __name__ == "__main__":
 
     ## hydrogen transmission
     map_opts = snakemake.params.plotting["map"]
-    snakemake.params.plotting["projection"] = {
-        "name": "EqualEarth"
-    }
+    snakemake.params.plotting["projection"] = {"name": "EqualEarth"}
     proj = load_projection(snakemake.params.plotting)
     regions = gpd.read_file(snakemake.input.regions_onshore_clustered).set_index("name")
-    
+
     for year in planning_horizons:
         network = networks[planning_horizons.index(year)].copy()
-        plot_h2_map(network, 
-                    regions,
-                    savepath=f"{snakemake.output.h2_transmission}/h2_transmission_all-regions_{year}.png")
+        plot_h2_map(
+            network,
+            regions,
+            savepath=f"{snakemake.output.h2_transmission}/h2_transmission_all-regions_{year}.png",
+        )
 
         regions_de = regions[regions.index.str.startswith("DE")]
         for sb in ["production", "consumption"]:
             network = networks[planning_horizons.index(year)].copy()
-            plot_h2_map_de(network, 
-                        regions_de,
-                        tech_colors = tech_colors,
-                        specify_buses=sb,
-                        savepath=f"{snakemake.output.h2_transmission}/h2_transmission_DE_{sb}_{year}.png",
-                        )
-
+            plot_h2_map_de(
+                network,
+                regions_de,
+                tech_colors=tech_colors,
+                specify_buses=sb,
+                savepath=f"{snakemake.output.h2_transmission}/h2_transmission_DE_{sb}_{year}.png",
+            )
 
     ## electricity transmission
     for year in planning_horizons:
@@ -1567,12 +1621,11 @@ if __name__ == "__main__":
                 regions_de,
                 savepath=f"{snakemake.output.elec_transmission}/elec-transmission-DE-{s}-{year}.png",
                 expansion_case=s,
-                )
+            )
 
-    
-    ## nodal balances general (might not be very robust)    
+    ## nodal balances general (might not be very robust)
     plt.style.use(["bmh", snakemake.input.rc])
-    
+
     year = 2045
     network = networks[planning_horizons.index(year)].copy()
     n = network
@@ -1583,14 +1636,17 @@ if __name__ == "__main__":
 
     balance = n.statistics.energy_balance(aggregate_time=False)
 
-    # only DE 
+    # only DE
     ct = "DE"
     buses = n.buses.index[(n.buses.index.str[:2] == ct)].drop("DE")
-    balance = n.statistics.energy_balance(
-        aggregate_time=False,
-        groupby=n.statistics.groupers.get_bus_and_carrier_and_bus_carrier
-        ).loc[:,buses,:,:].droplevel("bus")
-
+    balance = (
+        n.statistics.energy_balance(
+            aggregate_time=False,
+            groupby=n.statistics.groupers.get_bus_and_carrier_and_bus_carrier,
+        )
+        .loc[:, buses, :, :]
+        .droplevel("bus")
+    )
 
     n.carriers.color.update(snakemake.config["plotting"]["tech_colors"])
     colors = n.carriers.color.rename(n.carriers.nice_name)
@@ -1642,6 +1698,3 @@ if __name__ == "__main__":
     ]
     with Pool(processes=snakemake.threads) as pool:
         pool.starmap(process_group, args)
-
-
-
