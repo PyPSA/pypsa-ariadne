@@ -11,13 +11,14 @@ Using BNetzA data to get a high resolution map of German CHP plants.
 import logging
 
 logger = logging.getLogger(__name__)
-from _helpers import configure_logging
 import os
 import sys
-import numpy as np
+
 import geopandas as gpd
+import numpy as np
 import pandas as pd
 import pypsa
+from _helpers import configure_logging
 from powerplantmatching.export import map_country_bus
 
 
@@ -36,11 +37,16 @@ def clean_data(combustion, biomass, geodata):
     data = pd.concat([biomass, combustion], join="inner", ignore_index=True)
 
     data["IndustryStatus"] = data["Einsatzort"].str.contains("Industrie")
-    data["IndustryStatus"] = data["IndustryStatus"].apply(lambda x: False if pd.isna(x) else x)
+    data["IndustryStatus"] = data["IndustryStatus"].apply(
+        lambda x: False if pd.isna(x) else x
+    )
 
     # Get only CHP plants
     CHP_raw = data.query("ThermischeNutzleistung > 0").copy()
-    CHP_raw.NameKraftwerk = CHP_raw.apply(lambda x: x.EinheitMastrNummer if pd.isna(x.NameKraftwerk) else x.NameKraftwerk, axis=1)
+    CHP_raw.NameKraftwerk = CHP_raw.apply(
+        lambda x: x.EinheitMastrNummer if pd.isna(x.NameKraftwerk) else x.NameKraftwerk,
+        axis=1,
+    )
 
     rename_columns = {
         "KwkMastrNummer": "ID",
@@ -211,17 +217,19 @@ if __name__ == "__main__":
         sys.path.insert(0, os.path.abspath(path))
         from _helpers import mock_snakemake
 
-        snakemake = mock_snakemake("build_existing_chp_de",
-                                   clusters=27,
-                                   run="KN2045_Bal_v4",
-                                   )
+        snakemake = mock_snakemake(
+            "build_existing_chp_de",
+            clusters=27,
+            run="KN2045_Bal_v4",
+        )
 
     configure_logging(snakemake)
     logger.info("Retrieving and cleaning CHP data from BNetzA")
-    biomass = pd.read_csv(snakemake.input.mastr_biomass, dtype={"Postleitzahl": str}, low_memory=False)
+    biomass = pd.read_csv(
+        snakemake.input.mastr_biomass, dtype={"Postleitzahl": str}, low_memory=False
+    )
     combustion = pd.read_csv(
-        snakemake.input.mastr_combustion, dtype={"Postleitzahl": str},
-        low_memory=False
+        snakemake.input.mastr_combustion, dtype={"Postleitzahl": str}, low_memory=False
     )
 
     geodata = pd.read_csv(
@@ -235,7 +243,9 @@ if __name__ == "__main__":
     logger.info("Cleaning data")
     CHP_de = clean_data(combustion, biomass, geodata)
 
-    logger.info("Calculating efficiency of CHP plants depending on capacity and build year.")
+    logger.info(
+        "Calculating efficiency of CHP plants depending on capacity and build year."
+    )
     CHP_de = calculate_efficiency(CHP_de)
 
     logger.info("Mapping CHP plants to regions")

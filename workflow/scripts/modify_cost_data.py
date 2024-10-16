@@ -6,8 +6,8 @@ import re
 
 import numpy as np
 import pandas as pd
-
 from _helpers import configure_logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -89,7 +89,9 @@ if __name__ == "__main__":
         logger.info(f"Optimistic cost scenario for {matched_year}.")
         new_year = matched_year - 5
     else:
-        logger.error("Invalid specification of cost options. Please choose 'mean', 'pessimist' or 'optimist' as config[costs][horizon].")
+        logger.error(
+            "Invalid specification of cost options. Please choose 'mean', 'pessimist' or 'optimist' as config[costs][horizon]."
+        )
         raise ValueError("Invalid specification of cost options.")
 
     new_filename = re.sub(
@@ -109,7 +111,9 @@ if __name__ == "__main__":
         modifications = modifications.query("source != 'NEP2023'")
 
     costs.loc[modifications.index] = modifications
-    logger.info(f"Modifications to the following technologies are applied:\n{list(costs.loc[modifications.index].index.get_level_values(0))}.")
+    logger.info(
+        f"Modifications to the following technologies are applied:\n{list(costs.loc[modifications.index].index.get_level_values(0))}."
+    )
 
     # add carbon component to fossil fuel costs
     investment_year = int(snakemake.wildcards.planning_horizons[-4:])
@@ -120,13 +124,17 @@ if __name__ == "__main__":
         )
         costs = carbon_component_fossils(costs, co2_price)
 
-    logger.info(f"Scaling onwind costs towards Fh-ISE for Germany: {costs.loc["onwind", "investment"].value} {costs.loc['onwind', 'investment'].unit}.")
+    logger.info(
+        f"Scaling onwind costs towards Fh-ISE for Germany: {costs.loc["onwind", "investment"].value} {costs.loc['onwind', 'investment'].unit}."
+    )
     # https://github.com/PyPSA/pypsa-ariadne/issues/179
     # https://www.ise.fraunhofer.de/de/veroeffentlichungen/studien/studie-stromgestehungskosten-erneuerbare-energien.html
     costs.at[("onwind", "investment"), "value"] *= 1.12
 
     # Assumption based on doi:10.1016/j.rser.2019.109506
     costs.at[("biomass boiler", "pelletizing cost"), "value"] += 8.8
-    logger.info(f"Adding transport costs of 8.8 EUR/MWh to solid biomass pelletizing costs. New value: {costs.loc['biomass boiler', 'pelletizing cost'].value} {costs.loc['biomass boiler', 'pelletizing cost'].unit}.")
+    logger.info(
+        f"Adding transport costs of 8.8 EUR/MWh to solid biomass pelletizing costs. New value: {costs.loc['biomass boiler', 'pelletizing cost'].value} {costs.loc['biomass boiler', 'pelletizing cost'].unit}."
+    )
 
     costs.to_csv(snakemake.output[0])

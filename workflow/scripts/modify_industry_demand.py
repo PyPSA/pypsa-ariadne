@@ -17,9 +17,8 @@ This includes
 import logging
 
 logger = logging.getLogger(__name__)
-from _helpers import configure_logging
-
 import pandas as pd
+from _helpers import configure_logging
 
 if __name__ == "__main__":
     if "snakemake" not in globals():

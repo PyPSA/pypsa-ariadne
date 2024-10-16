@@ -7,9 +7,9 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pypsa
+from _helpers import configure_logging
 from shapely.geometry import Point
 
-from _helpers import configure_logging
 logger = logging.getLogger(__name__)
 
 paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]

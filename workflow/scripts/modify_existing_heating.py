@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
-import pandas as pd
 import logging
+
+import pandas as pd
 from _helpers import configure_logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -63,10 +65,8 @@ if __name__ == "__main__":
         )
         existing_heating.at["Germany", tech] = peak
 
-
     logger.info(
         f"Heating demand after modification with {leitmodell}: {existing_heating.loc['Germany']}"
     )
-
 
     existing_heating.to_csv(snakemake.output.existing_heating)

@@ -5,7 +5,9 @@
 
 # This script reads in data from the IIASA database to create the scenario.yaml file
 import logging
+
 from _helpers import configure_logging
+
 logger = logging.getLogger(__name__)
 
 import os

@@ -25,8 +25,8 @@ from shapely.geometry import LineString, Point
 paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
 for path in paths:
     sys.path.insert(0, os.path.abspath(path))
-from build_gas_network import diameter_to_capacity
 from _helpers import configure_logging
+from build_gas_network import diameter_to_capacity
 
 MANUAL_ADDRESSES = {
     "Oude Statenzijl": (7.205108658430258, 53.20183834422634),

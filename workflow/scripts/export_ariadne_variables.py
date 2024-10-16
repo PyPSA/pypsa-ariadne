@@ -21,7 +21,7 @@ paths = [
 for path in paths:
     sys.path.insert(0, os.path.abspath(path))
 
-from _helpers import mute_print, configure_logging
+from _helpers import configure_logging, mute_print
 from prepare_sector_network import prepare_costs
 
 # Defining global varibales

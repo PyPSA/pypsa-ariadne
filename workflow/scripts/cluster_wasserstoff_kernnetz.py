@@ -15,10 +15,10 @@ import sys
 
 import pandas as pd
 import pyproj
+from _helpers import configure_logging
 from shapely import wkt
 from shapely.geometry import LineString, Point
 from shapely.ops import transform
-from _helpers import configure_logging
 
 paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
 for path in paths:
