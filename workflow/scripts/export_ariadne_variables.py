@@ -4444,10 +4444,12 @@ def get_transmission_grid_capacity(n, region, year):
     )
 
     var["Capacity|Electricity|Transmission Grid"] = (
-        var["Capacity|Electricity|Transmission Grid|AC"] + var["Capacity|Electricity|Transmission Grid|DC"]
+        var["Capacity|Electricity|Transmission Grid|AC"]
+        + var["Capacity|Electricity|Transmission Grid|DC"]
     )
     var["Capacity Additions|Electricity|Transmission Grid"] = (
-        var["Capacity Additions|Electricity|Transmission Grid|AC"] + var["Capacity Additions|Electricity|Transmission Grid|DC"]
+        var["Capacity Additions|Electricity|Transmission Grid|AC"]
+        + var["Capacity Additions|Electricity|Transmission Grid|DC"]
     )
 
     ## Distribution Grid

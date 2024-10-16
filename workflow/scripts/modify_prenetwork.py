@@ -1134,7 +1134,6 @@ def drop_duplicate_transmission_projects(n):
     n.mremove("Line", to_drop)
 
 
-
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
