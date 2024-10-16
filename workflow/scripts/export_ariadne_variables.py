@@ -3629,7 +3629,9 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
         & (n.links.bus0 + n.links.bus1).str.contains(region)
         & ~n.links.reversed
     ]
-    nep_dc = dc_links.query("index.str.startswith('DC') or index=='TYNDP2020_1' or index=='TYNDP2020_2' or index=='TYNDP2020_23'").index
+    nep_dc = dc_links.query(
+        "index.str.startswith('DC') or index=='TYNDP2020_1' or index=='TYNDP2020_2' or index=='TYNDP2020_23'"
+    ).index
     dc_expansion = dc_links.p_nom_opt.apply(
         lambda x: get_discretized_value(
             x,
@@ -3692,11 +3694,11 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     var["Investment|Energy Supply|Electricity|Transmission|AC"] = (
         var["Investment|Energy Supply|Electricity|Transmission|AC|Onshore"]
         + var["Investment|Energy Supply|Electricity|Transmission|AC|Offshore"]
-    ) 
+    )
     var["Investment|Energy Supply|Electricity|Transmission|DC"] = (
         var["Investment|Energy Supply|Electricity|Transmission|DC|Onshore"]
         + var["Investment|Energy Supply|Electricity|Transmission|DC|Offshore"]
-    ) 
+    )
     var["Investment|Energy Supply|Electricity|Transmission|AC|NEP"] = (
         var["Investment|Energy Supply|Electricity|Transmission|AC|Onshore|NEP"]
         + var["Investment|Energy Supply|Electricity|Transmission|AC|Offshore|NEP"]
