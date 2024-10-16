@@ -4359,7 +4359,7 @@ def get_operational_and_capital_costs(year):
     return var
 
 
-def hack_DC_projects(n, model_year):
+def hack_DC_projects(n, n_start, model_year):
     logger.info(f"Hacking DC projects for year {model_year}")
     logger.warning(f"Assuming all indices of DC projects start with 'DC' or 'TYNDP'")
     tprojs = n.links.loc[
@@ -4384,14 +4384,32 @@ def hack_DC_projects(n, model_year):
     n.links.loc[future_projects, "p_nom_min"] = 0
 
     # Current projects should have their p_nom_opt bigger or equal to p_nom until the year 2030 (Startnetz that we force in)
+    if snakemake.params.NEP_year == 2021:
+        logger.warning("Switching DC projects to NEP23 costs post-optimization")
+        n.links.loc[current_projects, "overnight_cost"] = (
+            n.links.loc[current_projects, "length"]        
+            * (
+                (1.0 - n.links.loc[current_projects, "underwater_fraction"])
+                * costs[0].at["HVDC underground", "investment"] / 1e-9
+                + n.links.loc[current_projects, "underwater_fraction"]
+                * costs[0].at["HVDC submarine", "investment"] / 1e-9
+            )
+            + costs[0].at["HVDC inverter pair", "investment"] / 1e-9
+        ) 
+
+
     if model_year <= 2030:
         assert (
             n.links.loc[current_projects, "p_nom"]
             <= n.links.loc[current_projects, "p_nom_opt"]
         ).all()
 
-        n.links.loc[current_projects, "p_nom"] = 0
-        n.links.loc[current_projects, "p_nom_min"] = 0
+        n.links.loc[current_projects, "p_nom"] -= n_start.links.loc[
+            current_projects, "p_nom"
+        ]
+        n.links.loc[current_projects, "p_nom_min"] -= n_start.links.loc[
+            current_projects, "p_nom"
+        ]
 
     else:
         n.links.loc[current_projects, "p_nom"] = n.links.loc[
@@ -4431,7 +4449,7 @@ def get_transmission_grid_capacity(n, region, year):
         ac_dom.s_nom_opt.multiply(ac_dom.length).sum() * MW2GW
     )
     var["Capacity Additions|Electricity|Transmission Grid|AC|Domestic"] = (
-        ac_dom.eval("(s_nom_opt - s_nom) * length").sum() * MW2GW
+        ac_dom.eval("(s_nom_opt - s_nom_min) * length").sum() * MW2GW
     )
     var["Capacity|Electricity|Transmission Grid|DC|Domestic"] = (
         dc_dom.p_nom_opt.multiply(dc_dom.length).sum() * MW2GW
@@ -4460,7 +4478,7 @@ def get_transmission_grid_capacity(n, region, year):
         ac_int.s_nom_opt.multiply(ac_int.length).sum() * 0.5 * MW2GW
     )
     var["Capacity Additions|Electricity|Transmission Grid|AC|International"] = (
-        ac_int.eval("(s_nom_opt - s_nom) * length").sum() * 0.5 * MW2GW
+        ac_int.eval("(s_nom_opt - s_nom_min) * length").sum() * 0.5 * MW2GW
     )
     var["Capacity|Electricity|Transmission Grid|DC|International"] = (
         dc_int.p_nom_opt.multiply(dc_int.length).sum() * 0.5 * MW2GW
@@ -4516,7 +4534,17 @@ def hack_AC_projects(n, n_start, model_year):
     # All transmission projects have build_year > 0, this is implicit in the query
     ac_projs = n.lines.query("@model_year - 5 < build_year <= @model_year").index
 
-    s_nom_start = n_start.lines.loc[ac_projs, "s_nom"]
+    s_nom_start = n_start.lines.loc[ac_projs, "s_nom"].apply(
+        lambda x: get_discretized_value(
+            x,
+            post_discretization["line_unit_size"],
+            post_discretization["line_threshold"],
+        )
+    )
+    
+    if snakemake.params.NEP_year == 2021:
+        logger.warning("Switching AC projects to NEP23 costs post-optimization")
+        n.lines.loc[ac_projs, "overnight_cost"] *= 772/472
 
     # Eventhough the lines are available to the model from the start,
     # we pretend that the lines were in expanded in this year
@@ -4529,7 +4557,7 @@ def hack_AC_projects(n, n_start, model_year):
 
 
 def hack_transmission_projects(n, n_start, model_year):
-    n = hack_DC_projects(n, model_year)
+    n = hack_DC_projects(n, n_start, model_year)
     n = hack_AC_projects(n, n_start, model_year)
     return n
 
