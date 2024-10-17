@@ -3606,21 +3606,23 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
 
     offwind = n.generators.filter(like="offwind", axis=0).filter(like="DE", axis=0)
     offwind_connection_overnight_cost = (
-        (offwind.p_nom_opt - offwind.p_nom) * offwind.connection_overnight_cost
+        (offwind.p_nom_opt - offwind.p_nom) 
+        * offwind.connection_overnight_cost
     ) * 1e-9
     offwind_connection_ac = offwind_connection_overnight_cost.filter(like="ac")
     offwind_connection_dc = offwind_connection_overnight_cost.filter(regex="dc|float")
-    var["Investment|Energy Supply|Electricity|Transmission|AC|Offshore"] = (
+    var_name = "Investment|Energy Supply|Electricity|Transmission|"
+    var[var_name + "AC|Offshore"] = (
         offwind_connection_ac.sum() / 5
     )
-    var["Investment|Energy Supply|Electricity|Transmission|AC|Offshore|NEP"] = (
+    var[var_name + "AC|Offshore|NEP"] = (
         offwind_connection_ac.filter(regex="25|30").sum() / 5
     )
 
-    var["Investment|Energy Supply|Electricity|Transmission|DC|Offshore"] = (
+    var[var_name + "DC|Offshore"] = (
         offwind_connection_dc.sum() / 5
     )
-    var["Investment|Energy Supply|Electricity|Transmission|DC|Offshore|NEP"] = (
+    var[var_name + "DC|Offshore|NEP"] = (
         offwind_connection_dc.filter(regex="25|30").sum() / 5
     )
 
@@ -3672,48 +3674,48 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     ac_investments[
         ~(ac_lines.bus0.str.contains(region) & ac_lines.bus1.str.contains(region))
     ] *= 0.5
-    var["Investment|Energy Supply|Electricity|Transmission|AC|Onshore"] = (
+    var[var_name + "AC|Onshore"] = (
         ac_investments.sum() / 5
     )
-    var["Investment|Energy Supply|Electricity|Transmission|AC|Onshore|NEP"] = (
+    var[var_name + "AC|Onshore|NEP"] = (
         ac_investments[nep_ac].sum() / 5
     )
-    var["Investment|Energy Supply|Electricity|Transmission|DC|Onshore"] = (
+    var[var_name + "DC|Onshore"] = (
         dc_investments.sum() / 5
     )
-    var["Investment|Energy Supply|Electricity|Transmission|DC|Onshore|NEP"] = (
+    var[var_name + "DC|Onshore|NEP"] = (
         dc_investments[nep_dc].sum() / 5
     )
 
     for key in ["Onshore", "Onshore|NEP", "Offshore", "Offshore|NEP"]:
-        var[f"Investment|Energy Supply|Electricity|Transmission|{key}"] = (
-            var[f"Investment|Energy Supply|Electricity|Transmission|AC|{key}"]
-            + var[f"Investment|Energy Supply|Electricity|Transmission|DC|{key}"]
+        var[var_name + "{key}"] = (
+            var[var_name + "AC|{key}"]
+            + var[var_name + "DC|{key}"]
         )
 
-    var["Investment|Energy Supply|Electricity|Transmission|AC"] = (
-        var["Investment|Energy Supply|Electricity|Transmission|AC|Onshore"]
-        + var["Investment|Energy Supply|Electricity|Transmission|AC|Offshore"]
+    var[var_name + "AC"] = (
+        var[var_name + "AC|Onshore"]
+        + var[var_name + "AC|Offshore"]
     )
-    var["Investment|Energy Supply|Electricity|Transmission|DC"] = (
-        var["Investment|Energy Supply|Electricity|Transmission|DC|Onshore"]
-        + var["Investment|Energy Supply|Electricity|Transmission|DC|Offshore"]
+    var[var_name + "DC"] = (
+        var[var_name + "DC|Onshore"]
+        + var[var_name + "DC|Offshore"]
     )
-    var["Investment|Energy Supply|Electricity|Transmission|AC|NEP"] = (
-        var["Investment|Energy Supply|Electricity|Transmission|AC|Onshore|NEP"]
-        + var["Investment|Energy Supply|Electricity|Transmission|AC|Offshore|NEP"]
+    var[var_name + "AC|NEP"] = (
+        var[var_name + "AC|Onshore|NEP"]
+        + var[var_name + "AC|Offshore|NEP"]
     )
-    var["Investment|Energy Supply|Electricity|Transmission|DC|NEP"] = (
-        var["Investment|Energy Supply|Electricity|Transmission|DC|Onshore|NEP"]
-        + var["Investment|Energy Supply|Electricity|Transmission|DC|Offshore|NEP"]
+    var[var_name + "DC|NEP"] = (
+        var[var_name + "DC|Onshore|NEP"]
+        + var[var_name + "DC|Offshore|NEP"]
     )
     var["Investment|Energy Supply|Electricity|Transmission"] = (
-        var["Investment|Energy Supply|Electricity|Transmission|AC"]
-        + var["Investment|Energy Supply|Electricity|Transmission|DC"]
+        var[var_name + "AC"]
+        + var[var_name + "DC"]
     )
-    var["Investment|Energy Supply|Electricity|Transmission|NEP"] = (
-        var["Investment|Energy Supply|Electricity|Transmission|AC|NEP"]
-        + var["Investment|Energy Supply|Electricity|Transmission|DC|NEP"]
+    var[var_name + "NEP"] = (
+        var[var_name + "AC|NEP"]
+        + var[var_name + "DC|NEP"]
     )
 
     distribution_grid = n.links[n.links.carrier.str.contains("distribution")].filter(
@@ -4359,72 +4361,6 @@ def get_operational_and_capital_costs(year):
     return var
 
 
-def hack_DC_projects(n, n_start, model_year):
-    logger.info(f"Hacking DC projects for year {model_year}")
-    logger.warning(f"Assuming all indices of DC projects start with 'DC' or 'TYNDP'")
-    tprojs = n.links.loc[
-        (n.links.index.str.startswith("DC") | n.links.index.str.startswith("TYNDP"))
-        & ~n.links.reversed
-    ].index
-
-    future_projects = tprojs[n.links.loc[tprojs, "build_year"] > model_year]
-    current_projects = tprojs[
-        (n.links.loc[tprojs, "build_year"] > (model_year - 5))
-        & (n.links.loc[tprojs, "build_year"] <= model_year)
-    ]
-    past_projects = tprojs[n.links.loc[tprojs, "build_year"] <= (model_year - 5)]
-
-    # Future projects should not have any capacity
-    assert isclose(n.links.loc[future_projects, "p_nom_opt"], 0).all()
-    # Setting p_nom to 0 such that n.statistics does not compute negative expanded capex or capacity additions
-    # Setting p_nom_min to 0 for the grid_expansion calculation
-    # This is ONLY POSSIBLE IN POST-PROCESSING
-    # We pretend that the model expanded the grid endogenously
-    n.links.loc[future_projects, "p_nom"] = 0
-    n.links.loc[future_projects, "p_nom_min"] = 0
-
-    # Current projects should have their p_nom_opt bigger or equal to p_nom until the year 2030 (Startnetz that we force in)
-    if snakemake.params.NEP_year == 2021:
-        logger.warning("Switching DC projects to NEP23 costs post-optimization")
-        n.links.loc[current_projects, "overnight_cost"] = (
-            n.links.loc[current_projects, "length"]        
-            * (
-                (1.0 - n.links.loc[current_projects, "underwater_fraction"])
-                * costs[0].at["HVDC underground", "investment"] / 1e-9
-                + n.links.loc[current_projects, "underwater_fraction"]
-                * costs[0].at["HVDC submarine", "investment"] / 1e-9
-            )
-            + costs[0].at["HVDC inverter pair", "investment"] / 1e-9
-        ) 
-
-
-    if model_year <= 2030:
-        assert (
-            n.links.loc[current_projects, "p_nom"]
-            <= n.links.loc[current_projects, "p_nom_opt"]
-        ).all()
-
-        n.links.loc[current_projects, "p_nom"] -= n_start.links.loc[
-            current_projects, "p_nom"
-        ]
-        n.links.loc[current_projects, "p_nom_min"] -= n_start.links.loc[
-            current_projects, "p_nom"
-        ]
-
-    else:
-        n.links.loc[current_projects, "p_nom"] = n.links.loc[
-            current_projects, "p_nom_min"
-        ]
-
-    # Past projects should have their p_nom_opt bigger or equal to p_nom
-    if model_year <= 2035:
-        assert (
-            n.links.loc[past_projects, "p_nom_opt"] + 0.1  # numerical error tolerance
-            >= n.links.loc[past_projects, "p_nom"]
-        ).all()
-
-    return n
-
 
 def get_transmission_grid_capacity(n, region, year):
 
@@ -4526,6 +4462,73 @@ def get_transmission_grid_capacity(n, region, year):
     )
 
     return var
+
+
+def hack_DC_projects(n, n_start, model_year):
+    logger.info(f"Hacking DC projects for year {model_year}")
+    logger.warning(f"Assuming all indices of DC projects start with 'DC' or 'TYNDP'")
+    tprojs = n.links.loc[
+        (n.links.index.str.startswith("DC") | n.links.index.str.startswith("TYNDP"))
+        & ~n.links.reversed
+    ].index
+
+    future_projects = tprojs[n.links.loc[tprojs, "build_year"] > model_year]
+    current_projects = tprojs[
+        (n.links.loc[tprojs, "build_year"] > (model_year - 5))
+        & (n.links.loc[tprojs, "build_year"] <= model_year)
+    ]
+    past_projects = tprojs[n.links.loc[tprojs, "build_year"] <= (model_year - 5)]
+
+    # Future projects should not have any capacity
+    assert isclose(n.links.loc[future_projects, "p_nom_opt"], 0).all()
+    # Setting p_nom to 0 such that n.statistics does not compute negative expanded capex or capacity additions
+    # Setting p_nom_min to 0 for the grid_expansion calculation
+    # This is ONLY POSSIBLE IN POST-PROCESSING
+    # We pretend that the model expanded the grid endogenously
+    n.links.loc[future_projects, "p_nom"] = 0
+    n.links.loc[future_projects, "p_nom_min"] = 0
+
+    # Current projects should have their p_nom_opt bigger or equal to p_nom until the year 2030 (Startnetz that we force in)
+    if snakemake.params.NEP_year == 2021:
+        logger.warning("Switching DC projects to NEP23 costs post-optimization")
+        n.links.loc[current_projects, "overnight_cost"] = (
+            n.links.loc[current_projects, "length"]        
+            * (
+                (1.0 - n.links.loc[current_projects, "underwater_fraction"])
+                * costs[0].at["HVDC underground", "investment"] / 1e-9
+                + n.links.loc[current_projects, "underwater_fraction"]
+                * costs[0].at["HVDC submarine", "investment"] / 1e-9
+            )
+            + costs[0].at["HVDC inverter pair", "investment"] / 1e-9
+        ) 
+
+
+    if model_year <= 2030:
+        assert (
+            n.links.loc[current_projects, "p_nom"]
+            <= n.links.loc[current_projects, "p_nom_opt"]
+        ).all()
+
+        n.links.loc[current_projects, "p_nom"] -= n_start.links.loc[
+            current_projects, "p_nom"
+        ]
+        n.links.loc[current_projects, "p_nom_min"] -= n_start.links.loc[
+            current_projects, "p_nom"
+        ]
+
+    else:
+        n.links.loc[current_projects, "p_nom"] = n.links.loc[
+            current_projects, "p_nom_min"
+        ]
+
+    # Past projects should have their p_nom_opt bigger or equal to p_nom
+    if model_year <= 2035:
+        assert (
+            n.links.loc[past_projects, "p_nom_opt"] + 0.1  # numerical error tolerance
+            >= n.links.loc[past_projects, "p_nom"]
+        ).all()
+
+    return n
 
 
 def hack_AC_projects(n, n_start, model_year):
