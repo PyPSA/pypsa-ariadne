@@ -1089,6 +1089,7 @@ def get_primary_energy(n, region):
             **kwargs,
         )
         .filter(like=region)
+        .drop("Store", errors="ignore")
         .groupby("carrier")
         .sum()
         .multiply(MWh2PJ)
@@ -1120,7 +1121,7 @@ def get_primary_energy(n, region):
 
     var["Primary Energy|Biomass|Liquids"] = (
         biomass_usage.filter(like="biomass to liquid").sum()
-        + unsus_btl_secondary / 0.35  # BtL efficiency 2020
+        + unsus_btl_secondary # divide by the BtL efficiency 2020?
     )
 
     var["Primary Energy|Biomass|w/ CCS"] = biomass_usage[
@@ -1144,7 +1145,18 @@ def get_primary_energy(n, region):
         + biomass_usage.get("urban decentral biomass boiler", 0)
     )
 
-    var["Primary Energy|Biomass"] = biomass_usage.sum()
+    var["Primary Energy|Biomass"] = (
+        var["Primary Energy|Biomass|Electricity"]
+        + var["Primary Energy|Biomass|Heat"]
+        + var["Primary Energy|Biomass|Liquids"]
+        + var["Primary Energy|Biomass|Solids"]
+        + var["Primary Energy|Biomass|Gases"]
+    )
+
+    assert isclose(
+        var["Primary Energy|Biomass"],
+        biomass_usage.sum() + unsus_btl_secondary,
+    )
 
     var["Primary Energy|Nuclear"] = (
         n.statistics.withdrawal(
