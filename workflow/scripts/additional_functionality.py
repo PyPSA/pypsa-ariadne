@@ -661,23 +661,20 @@ def adapt_nuclear_output(n):
 
 
 def FT_capacity_limit(n, config):
-    """"
+    """ "
     Limit the expansion of German FT synthesis to an addition of +5 GW per
     planning_horizon or 50% of the existing capacity, whichever is higher.
     """
     installed_capacity = n.links.loc[
-        (n.links.index.str[:2] == "DE") &
-        (n.links.carrier == "Fischer-Tropsch")
+        (n.links.index.str[:2] == "DE") & (n.links.carrier == "Fischer-Tropsch")
     ].p_nom.sum()
 
-    if installed_capacity < config["absolute"]*1e3/config["relative"]:
-        limit = config["absolute"]*1e3
+    if installed_capacity < config["absolute"] * 1e3 / config["relative"]:
+        limit = config["absolute"] * 1e3
     else:
         limit = config["relative"] * installed_capacity
-    
-    logger.info(
-        f"Limiting FT synthesis capacity expansion to {limit} MW"
-    )
+
+    logger.info(f"Limiting FT synthesis capacity expansion to {limit} MW")
     FT_addition_links = n.links[
         (n.links.index.str[:2] == "DE")
         & (n.links.carrier == "Fischer-Tropsch")
@@ -686,7 +683,7 @@ def FT_capacity_limit(n, config):
 
     p_nom = n.model["Link-p_nom"].loc[FT_addition_links]
     lhs = p_nom.sum()
-    
+
     n.model.add_constraints(lhs <= limit, name="GlobalConstraint-FT-capacity-DE")
 
     if "FT-capacity-DE" in n.global_constraints.index:
