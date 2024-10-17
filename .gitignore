@@ -9,6 +9,9 @@ dconf
 *.png
 
 # generated files
+import-data/
+report/
+workflow/notebooks/
 results/
 resources/
 data/
