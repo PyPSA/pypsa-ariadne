@@ -3688,22 +3688,22 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     )
 
     for key in ["Onshore", "Onshore|NEP", "Offshore", "Offshore|NEP"]:
-        var[var_name + "{key}"] = (
-            var[var_name + "AC|{key}"]
-            + var[var_name + "DC|{key}"]
+        var[var_name + f"{key}"] = (
+            var[var_name + f"AC|{key}"]
+            + var[var_name + f"DC|{key}"]
         )
 
     var[var_name + "AC"] = (
         var[var_name + "AC|Onshore"]
         + var[var_name + "AC|Offshore"]
     )
-    var[var_name + "DC"] = (
-        var[var_name + "DC|Onshore"]
-        + var[var_name + "DC|Offshore"]
-    )
     var[var_name + "AC|NEP"] = (
         var[var_name + "AC|Onshore|NEP"]
         + var[var_name + "AC|Offshore|NEP"]
+    )
+    var[var_name + "DC"] = (
+        var[var_name + "DC|Onshore"]
+        + var[var_name + "DC|Offshore"]
     )
     var[var_name + "DC|NEP"] = (
         var[var_name + "DC|Onshore|NEP"]
@@ -4362,91 +4362,77 @@ def get_operational_and_capital_costs(year):
 
 
 
-def get_transmission_grid_capacity(n, region, year):
+def get_grid_capacity(n, region, year):
 
     var = pd.Series()
     ### Total Capacity
-    ## Tranmission Grid
-    # get domestic capacities
-    ac_dom = n.lines[
-        (n.lines.carrier == "AC")
-        & (n.lines.bus0.str[:2] == region)
-        & (n.lines.bus1.str[:2] == region)
-        & ~(n.lines.index.str.contains("reversed"))
-    ]
-    dc_dom = n.links[
+    ## Transmission Grid
+    # TODO add offwind (requires changes in modify_prenetwork!)
+
+    dc_links = n.links[
         (n.links.carrier == "DC")
-        & (n.links.bus0.str[:2] == region)
-        & (n.links.bus1.str[:2] == region)
-        & ~(n.links.index.str.contains("reversed"))
+        & (n.links.bus0 + n.links.bus1).str.contains(region)
+        & ~n.links.reversed
     ]
+    ac_lines = n.lines[(n.lines.bus0 + n.lines.bus1).str.contains(region)]
 
-    var["Capacity|Electricity|Transmission Grid|AC|Domestic"] = (
-        ac_dom.s_nom_opt.multiply(ac_dom.length).sum() * MW2GW
-    )
-    var["Capacity Additions|Electricity|Transmission Grid|AC|Domestic"] = (
-        ac_dom.eval("(s_nom_opt - s_nom_min) * length").sum() * MW2GW
-    )
-    var["Capacity|Electricity|Transmission Grid|DC|Domestic"] = (
-        dc_dom.p_nom_opt.multiply(dc_dom.length).sum() * MW2GW
-    )
-    var["Capacity Additions|Electricity|Transmission Grid|DC|Domestic"] = (
-        dc_dom.eval("(p_nom_opt - p_nom_min) * length").sum() * MW2GW
-    )
+    # Count length of internationl links only half
+    dc_links.loc[
+        ~(dc_links.bus0.str.contains(region) & dc_links.bus1.str.contains(region)), "length"
+    ] *= 0.5
+    ac_lines.loc[
+        ~(ac_lines.bus0.str.contains(region) & ac_lines.bus1.str.contains(region)), "length"
+    ] *= 0.5
 
-    # get border crossing capacities and multiply with 0.5
-    ac_int = n.lines[
-        (n.lines.carrier == "AC")
-        & (
-            (n.lines.bus0.str[:2] == region) & (n.lines.bus1.str[:2] != region)
-            | (n.lines.bus0.str[:2] != region) & (n.lines.bus1.str[:2] == region)
-        )
-    ]
-    dc_int = n.links[
-        (n.links.carrier == "DC")
-        & (
-            (n.links.bus0.str[:2] == region) & (n.links.bus1.str[:2] != region)
-            | (n.links.bus0.str[:2] != region) & (n.links.bus1.str[:2] == region)
-        )
-        & ~(n.links.index.str.contains("reversed"))
-    ]
-    var["Capacity|Electricity|Transmission Grid|AC|International"] = (
-        ac_int.s_nom_opt.multiply(ac_int.length).sum() * 0.5 * MW2GW
+    # NEP subsets
+    nep_dc = dc_links.query(
+        "index.str.startswith('DC') or index=='TYNDP2020_1' or index=='TYNDP2020_2' or index=='TYNDP2020_23'"
+    ).index
+    nep_ac = ac_lines.query("build_year > 2000").index
+
+
+    var["Capacity|Electricity|Transmission|DC"] = (
+        dc_links.eval("p_nom_opt * length").sum() * MW2GW
     )
-    var["Capacity Additions|Electricity|Transmission Grid|AC|International"] = (
-        ac_int.eval("(s_nom_opt - s_nom_min) * length").sum() * 0.5 * MW2GW
+    var["Capacity|Electricity|Transmission|DC|NEP"] = (
+        dc_links.loc[nep_dc].eval("p_nom_opt * length").sum() * MW2GW
     )
-    var["Capacity|Electricity|Transmission Grid|DC|International"] = (
-        dc_int.p_nom_opt.multiply(dc_int.length).sum() * 0.5 * MW2GW
+    var["Capacity Additions|Electricity|Transmission|DC"] = (
+        dc_links.eval("(p_nom_opt - p_nom_min) * length").sum() * MW2GW
     )
-    var["Capacity Additions|Electricity|Transmission Grid|DC|International"] = (
-        dc_int.eval("(p_nom_opt - p_nom_min) * length").sum() * 0.5 * MW2GW
+    var["Capacity Additions|Electricity|Transmission|DC|NEP"] = (
+        dc_links.loc[nep_dc].eval("(p_nom_opt - p_nom_min) * length").sum() * MW2GW
     )
 
-    var["Capacity|Electricity|Transmission Grid|AC"] = (
-        var["Capacity|Electricity|Transmission Grid|AC|Domestic"]
-        + var["Capacity|Electricity|Transmission Grid|AC|International"]
+    var["Capacity|Electricity|Transmission|AC"] = (
+        ac_lines.eval("s_nom_opt * length").sum() * MW2GW
     )
-    var["Capacity|Electricity|Transmission Grid|DC"] = (
-        var["Capacity|Electricity|Transmission Grid|DC|Domestic"]
-        + var["Capacity|Electricity|Transmission Grid|DC|International"]
+    var["Capacity|Electricity|Transmission|AC|NEP"] = (
+        ac_lines.loc[nep_ac].eval("s_nom_opt * length").sum() * MW2GW
     )
-    var["Capacity Additions|Electricity|Transmission Grid|AC"] = (
-        var["Capacity Additions|Electricity|Transmission Grid|AC|Domestic"]
-        + var["Capacity Additions|Electricity|Transmission Grid|AC|International"]
+    var["Capacity Additions|Electricity|Transmission|AC"] = (
+        ac_lines.eval("(s_nom_opt - s_nom_min) * length").sum() * MW2GW
     )
-    var["Capacity Additions|Electricity|Transmission Grid|DC"] = (
-        var["Capacity Additions|Electricity|Transmission Grid|DC|Domestic"]
-        + var["Capacity Additions|Electricity|Transmission Grid|DC|International"]
+    var["Capacity Additions|Electricity|Transmission|AC|NEP"] = (
+        ac_lines.loc[nep_ac].eval("(s_nom_opt - s_nom_min) * length").sum() * MW2GW
     )
 
-    var["Capacity|Electricity|Transmission Grid"] = (
-        var["Capacity|Electricity|Transmission Grid|AC"]
-        + var["Capacity|Electricity|Transmission Grid|DC"]
+
+    var["Capacity|Electricity|Transmission"] = (
+        var["Capacity|Electricity|Transmission|AC"]
+        + var["Capacity|Electricity|Transmission|DC"]
     )
-    var["Capacity Additions|Electricity|Transmission Grid"] = (
-        var["Capacity Additions|Electricity|Transmission Grid|AC"]
-        + var["Capacity Additions|Electricity|Transmission Grid|DC"]
+    var["Capacity|Electricity|Transmission|NEP"] = (
+        var["Capacity|Electricity|Transmission|AC|NEP"]
+        + var["Capacity|Electricity|Transmission|DC|NEP"]
+    )
+    var["Capacity Additions|Electricity|Transmission"] = (
+        var["Capacity Additions|Electricity|Transmission|AC"]
+        + var["Capacity Additions|Electricity|Transmission|DC"]
+    )
+    var["Capacity Additions|Electricity|Transmission|NEP"] = (
+        var["Capacity Additions|Electricity|Transmission|AC|NEP"]
+        + var["Capacity Additions|Electricity|Transmission|DC|NEP"]
     )
 
     ## Distribution Grid
@@ -4456,9 +4442,9 @@ def get_transmission_grid_capacity(n, region, year):
         & ~(n.links.index.str.contains("reversed"))
     ]
 
-    var["Capacity|Distribution Grid"] = distr_grid.p_nom_opt.sum() * MW2GW
-    var["Capacity Additions|Distribution Grid"] = (
-        distr_grid.eval("(p_nom_opt - p_nom)").sum() * MW2GW
+    var["Capacity|Electricity|Distribution"] = distr_grid.p_nom_opt.sum() * MW2GW
+    var["Capacity Additions|Electricity|Distribution"] = (
+        distr_grid.eval("(p_nom_opt - p_nom_min)").sum() * MW2GW
     )
 
     return var
@@ -4579,7 +4565,7 @@ def get_ariadne_var(
     var = pd.concat(
         [
             get_capacities(n, region),
-            get_transmission_grid_capacity(n, region, year),
+            get_grid_capacity(n, region, year),
             # get_capacity_additions_simple(n,region),
             # get_installed_capacities(n,region),
             get_capacity_additions(n, region),
