@@ -961,6 +961,193 @@ def FT_production_limit(n, investment_year, config):
         )
 
 
+def import_limit_de(n, snapshots, limit_non_eu_de, limit_eu_de, investment_year):
+
+    if type(limit_non_eu_de) == int:
+        logger.info("Limiting non-European imports")
+        import_gens = n.generators.loc[n.generators.carrier.str.contains("import") & n.generators.index.str.contains("DE")].index
+        import_links = n.links.loc[n.links.carrier.str.contains("import") & n.links.index.str.contains("DE")].index
+
+        if isinstance(limit_non_eu_de, int):
+            limit = limit_non_eu_de
+        elif isinstance(limit_non_eu_de, dict):
+            limit = limit_non_eu_de[investment_year]
+
+        if (import_gens.empty and import_links.empty):
+            return
+
+        weightings = n.snapshot_weightings.loc[snapshots, "generators"]
+
+        p_gens = n.model["Generator-p"].loc[snapshots, import_gens]
+        p_links = n.model["Link-p"].loc[snapshots, import_links]
+
+        # using energy content of iron as proxy: 2.1 MWh/t hbi: 1.5 MWh/t
+        energy_weightings = np.where(import_gens.str.contains("steel"), 2.1, 1.0)
+        energy_weightings = np.where(import_gens.str.contains("hbi"), 1.5, energy_weightings)
+        energy_weightings = pd.Series(energy_weightings, index=import_gens)
+
+        lhs = (p_gens * weightings * energy_weightings).sum() + (p_links * weightings).sum()
+
+        rhs = limit * 1e6
+
+        n.model.add_constraints(lhs, "==", rhs, name="energy_import_limit_non_eu_de")
+
+        if "energy_import_limit_non_eu_de" not in n.global_constraints.index:
+            n.add(
+                "GlobalConstraint",
+                "energy_import_limit_non_eu_de",
+                constant=limit,
+                sense="==",
+                type="",
+                carrier_attribute="",
+            )
+
+    if type(limit_eu_de) == int:
+        logger.info("Limiting European imports")
+        ct = "DE"
+        h2_in = n.links.index[(n.links.carrier.str.contains("H2 pipeline")) & 
+                          (n.links.bus0.str[:2] != ct) &
+                          (n.links.bus1.str[:2] == ct)]
+        h2_out = n.links.index[(n.links.carrier.str.contains("H2 pipeline")) & 
+                           (n.links.bus0.str[:2] == ct) &
+                           (n.links.bus1.str[:2] != ct)]
+        elec_links_in = n.links.index[((n.links.carrier == "DC") | (n.links.carrier == "AC")) & (n.links.bus0.str[:2] != ct) & (n.links.bus1.str[:2] == ct)]
+        elec_links_out = n.links.index[((n.links.carrier == "DC") | (n.links.carrier == "AC")) & (n.links.bus0.str[:2] == ct) & (n.links.bus1.str[:2] != ct)]
+        elec_lines_in = n.lines.index[(n.lines.carrier == "AC") & (n.lines.bus0.str[:2] != ct) & (n.lines.bus1.str[:2] == ct)]
+        elec_lines_out = n.lines.index[(n.lines.carrier == "AC") & (n.lines.bus0.str[:2] == ct) & (n.lines.bus1.str[:2] != ct)]
+        h2_der_in = n.links.loc[[
+            "EU renewable oil -> DE oil", 
+            "EU steel -> DE steel",
+            "EU NH3 -> DE NH3",
+            "EU methanol -> DE methanol",
+            "EU renewable gas -> DE gas",
+            ]].index
+        h2_der_out = n.links.loc[[
+            "DE renewable oil -> EU oil",
+            "DE steel -> EU steel",
+            "DE NH3 -> EU NH3",
+            "DE methanol -> EU methanol",
+            "DE renewable gas -> EU gas",
+            ]].index
+        
+        links_in = h2_in.append(elec_links_in).append(h2_der_in)
+        links_out = h2_out.append(elec_links_out).append(h2_der_out)
+
+        incoming_link_p = n.model["Link-p"].loc[snapshots, links_in]
+        outgoing_link_p = n.model["Link-p"].loc[snapshots, links_out]
+
+        incoming_line_p = n.model["Line-s"].loc[snapshots, elec_lines_in]
+        outgoing_line_p = n.model["Line-s"].loc[snapshots, elec_lines_out]
+        
+        if isinstance(limit_eu_de, int):
+            limit = limit_eu_de
+        elif isinstance(limit_eu_de, dict):
+            limit = limit_eu_de[investment_year]
+
+        weightings = n.snapshot_weightings.loc[snapshots, "generators"]
+
+        # using energy content of iron as proxy: 2.1 MWh/t
+        # energy_weightings_in = np.where(links_in.str.contains("steel"), 2.1, 1.0)
+        # energy_weightings_in = pd.Series(energy_weightings_in, index=links_in)
+        # energy_weightings_out = np.where(links_out.str.contains("steel"), 2.1, 1.0)
+        # energy_weightings_out = pd.Series(energy_weightings_out, index=links_out)
+
+        # lhs1 = (incoming_link_p * weightings * energy_weightings_in).sum() - (outgoing_link_p * weightings * energy_weightings_out).sum()
+        lhs2 = (incoming_line_p * weightings).sum() - (outgoing_line_p * weightings).sum()
+        lhs_h2 = (n.model["Link-p"].loc[snapshots, h2_in] * weightings).sum() - (n.model["Link-p"].loc[snapshots, h2_out] * weightings).sum()
+        lhs_ele = (n.model["Link-p"].loc[snapshots, elec_links_in] * weightings).sum() - (n.model["Link-p"].loc[snapshots, elec_links_out] * weightings).sum()
+        lhs_ft = (n.model["Link-p"].loc[snapshots, "EU renewable oil -> DE oil"] * weightings) - (n.model["Link-p"].loc[snapshots, "DE renewable oil -> EU oil"] * weightings)
+        lhs_steel = (n.model["Link-p"].loc[snapshots, "EU steel -> DE steel"] * weightings) - (n.model["Link-p"].loc[snapshots, "DE steel -> EU steel"] * weightings)
+        lhs_nh3 = (n.model["Link-p"].loc[snapshots, "EU NH3 -> DE NH3"] * weightings) - (n.model["Link-p"].loc[snapshots, "DE NH3 -> EU NH3"] * weightings)
+        lhs_methanol = (n.model["Link-p"].loc[snapshots, "EU methanol -> DE methanol"] * weightings) - (n.model["Link-p"].loc[snapshots, "DE methanol -> EU methanol"] * weightings)
+        lhs_gas = (n.model["Link-p"].loc[snapshots, "EU renewable gas -> DE gas"] * weightings) - (n.model["Link-p"].loc[snapshots, "DE renewable gas -> EU gas"] * weightings)
+        
+        rhs = limit * 1e6
+
+        n.model.add_constraints(lhs2, "==", rhs, name="import_limit_lines")
+
+        if "import_limit_lines" not in n.global_constraints.index:
+            n.add(
+                "GlobalConstraint",
+                "import_limit_lines",
+                constant=limit,
+                sense="==",
+                type="",
+                carrier_attribute="",
+            )
+
+        n.model.add_constraints(lhs_ele, "==", rhs, name="import_limit_ele")
+        if "import_limit_ele" not in n.global_constraints.index:
+            n.add(
+                "GlobalConstraint",
+                "import_limit_ele",
+                constant=limit,
+                sense="==",
+                type="",
+                carrier_attribute="",
+            )
+        n.model.add_constraints(lhs_h2, "==", rhs, name="import_limit_h2")
+        if "import_limit_h2" not in n.global_constraints.index:
+            n.add(
+                "GlobalConstraint",
+                "import_limit_h2",
+                constant=limit,
+                sense="==",
+                type="",
+                carrier_attribute="",
+            )
+        n.model.add_constraints(lhs_ft, "==", rhs, name="import_limit_ft")
+        if "import_limit_ft" not in n.global_constraints.index:
+            n.add(
+                "GlobalConstraint",
+                "import_limit_ft",
+                constant=limit,
+                sense="==",
+                type="",
+                carrier_attribute="",
+            )
+        n.model.add_constraints(lhs_steel, "==", rhs, name="import_limit_steel")
+        if "import_limit_steel" not in n.global_constraints.index:
+            n.add(
+                "GlobalConstraint",
+                "import_limit_steel",
+                constant=limit,
+                sense="==",
+                type="",
+                carrier_attribute="",
+            )
+        n.model.add_constraints(lhs_nh3, "==", rhs, name="import_limit_nh3")
+        if "import_limit_nh3" not in n.global_constraints.index:
+            n.add(
+                "GlobalConstraint",
+                "import_limit_nh3",
+                constant=limit,
+                sense="==",
+                type="",
+                carrier_attribute="",
+            )
+        n.model.add_constraints(lhs_methanol, "==", rhs, name="import_limit_meoh")
+        if "import_limit_meoh" not in n.global_constraints.index:
+            n.add(
+                "GlobalConstraint",
+                "import_limit_meoh",
+                constant=limit,
+                sense="==",
+                type="",
+                carrier_attribute="",
+            )
+        n.model.add_constraints(lhs_gas, "==", rhs, name="import_limit_gas")
+        if "import_limit_gas" not in n.global_constraints.index:
+            n.add(
+                "GlobalConstraint",
+                "import_limit_gas",
+                constant=limit,
+                sense="==",
+                type="",
+                carrier_attribute="",
+            )
+
+
 def additional_functionality(n, snapshots, snakemake):
 
     logger.info("Adding Ariadne-specific functionality")

@@ -279,7 +279,6 @@ def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
             length=d,
         )
 
-
 def add_import_options(n, capacity_boost, import_options, endogenous_hvdc=False):
 
     if not snakemake.config["sector"]["gas_network"]:
