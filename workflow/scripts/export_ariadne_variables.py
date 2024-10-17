@@ -1121,7 +1121,7 @@ def get_primary_energy(n, region):
 
     var["Primary Energy|Biomass|Liquids"] = (
         biomass_usage.filter(like="biomass to liquid").sum()
-        + unsus_btl_secondary # divide by the BtL efficiency 2020?
+        + unsus_btl_secondary  # divide by the BtL efficiency 2020?
     )
 
     var["Primary Energy|Biomass|w/ CCS"] = biomass_usage[
@@ -1538,36 +1538,28 @@ def get_secondary_energy(n, region, _industry_demand):
         atol=1e-5,
     )
 
-
     # Liquids
     liquids_production = (
-        n.statistics.supply(
-            bus_carrier=["oil", "renewable oil", "methanol"], **kwargs)
+        n.statistics.supply(bus_carrier=["oil", "renewable oil", "methanol"], **kwargs)
         .filter(like=region)
         .multiply(MWh2PJ)
-        .drop([
-            ("Store", "DE oil Store"), 
-            ("Store", "DE methanol Store")
-            ], errors="ignore")
-        .groupby(["carrier"]).sum()
-        .drop(["renewable oil", "methanol"], errors="ignore") # Drop trade links
+        .drop(
+            [("Store", "DE oil Store"), ("Store", "DE methanol Store")], errors="ignore"
+        )
+        .groupby(["carrier"])
+        .sum()
+        .drop(["renewable oil", "methanol"], errors="ignore")  # Drop trade links
     )
 
-    var["Secondary Energy|Liquids|Oil"] = (
-        liquids_production.get("oil refining", 0)
-    )
-    var["Secondary Energy|Methanol"] = (
-        liquids_production.get("methanolisation", 0)
-    )
-    var["Secondary Energy|Liquids|Hydrogen"] = (
-        liquids_production.get("Fischer-Tropsch", 0)
-        + liquids_production.get("methanolisation", 0)
-    ) 
+    var["Secondary Energy|Liquids|Oil"] = liquids_production.get("oil refining", 0)
+    var["Secondary Energy|Methanol"] = liquids_production.get("methanolisation", 0)
+    var["Secondary Energy|Liquids|Hydrogen"] = liquids_production.get(
+        "Fischer-Tropsch", 0
+    ) + liquids_production.get("methanolisation", 0)
 
-    var["Secondary Energy|Liquids|Biomass"] = (
-        liquids_production.filter(like="bio").sum()
-    )
-
+    var["Secondary Energy|Liquids|Biomass"] = liquids_production.filter(
+        like="bio"
+    ).sum()
 
     var["Secondary Energy|Liquids"] = (
         var["Secondary Energy|Liquids|Oil"]
@@ -1591,17 +1583,11 @@ def get_secondary_energy(n, region, _industry_demand):
     )
 
     # Fraction supplied by Hydrogen conversion
-    var["Secondary Energy|Gases|Hydrogen"] = (
-        gas_supply.get("Sabatier", 0)
-    )
+    var["Secondary Energy|Gases|Hydrogen"] = gas_supply.get("Sabatier", 0)
 
-    var["Secondary Energy|Gases|Biomass"] = (
-        gas_supply.filter(like="bio").sum()
-    )
+    var["Secondary Energy|Gases|Biomass"] = gas_supply.filter(like="bio").sum()
 
-    var["Secondary Energy|Gases|Natural Gas"] = (
-        gas_supply.get("gas", 0)
-    )
+    var["Secondary Energy|Gases|Natural Gas"] = gas_supply.get("gas", 0)
 
     var["Secondary Energy|Gases"] = (
         var["Secondary Energy|Gases|Hydrogen"]
@@ -1633,7 +1619,6 @@ def get_secondary_energy(n, region, _industry_demand):
         biomass_usage.get("urban decentral biomass boiler", 0)
         + biomass_usage.get("rural biomass boiler", 0)
         + biomass_usage.filter(like="solid biomass for industry").sum()
-        
     )
 
     electricity_withdrawal = (
@@ -2185,9 +2170,11 @@ def get_final_energy(
         )
 
     var["Final Energy|Bunkers|Navigation|Liquids"] += var[
-        "Final Energy|Bunkers|Navigation|Methanol"]
+        "Final Energy|Bunkers|Navigation|Methanol"
+    ]
     var["Final Energy|Bunkers|Navigation|Liquids|Efuel"] += var[
-        "Final Energy|Bunkers|Navigation|Methanol"]
+        "Final Energy|Bunkers|Navigation|Methanol"
+    ]
 
     var["Final Energy|Bunkers|Navigation"] = var[
         "Final Energy|Bunkers|Navigation|Liquids"
