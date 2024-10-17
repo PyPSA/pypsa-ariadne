@@ -4,10 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-
-  prefix: 20241015_transmission_capacity
-
-
+  prefix: 20241016_maintenance
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -29,6 +26,7 @@ run:
     - retrieve_cost   # This is necessary to save retrieve_cost_data_{year}.log in the correct folder
     - industry_sector_ratios
     - build_industry_sector_ratios   # This is necessary to save build_industry_sector_ratios_data.log in the correct folder
+    - modify_existing_heating
   disable_progressbar: true
   debug_co2_limit: false
   debug_h2deriv_limit: false

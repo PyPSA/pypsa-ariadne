@@ -21,7 +21,7 @@ paths = [
 for path in paths:
     sys.path.insert(0, os.path.abspath(path))
 
-from _helpers import mute_print
+from _helpers import configure_logging, mute_print
 from prepare_sector_network import prepare_costs
 
 # Defining global varibales
@@ -4636,7 +4636,7 @@ if __name__ == "__main__":
             sector_opts="None",
             run="KN2045_Bal_v4",
         )
-
+    configure_logging(snakemake)
     config = snakemake.config
     planning_horizons = snakemake.params.planning_horizons
     post_discretization = snakemake.params.post_discretization

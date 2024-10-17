@@ -1453,6 +1453,8 @@ if __name__ == "__main__":
             run="KN2045_Bal_v4",
         )
 
+    configure_logging(snakemake)
+
     for dir in snakemake.output[2:]:
         if not os.path.exists(dir):
             os.makedirs(dir)

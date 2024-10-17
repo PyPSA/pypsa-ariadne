@@ -25,6 +25,7 @@ from shapely.geometry import LineString, Point
 paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
 for path in paths:
     sys.path.insert(0, os.path.abspath(path))
+from _helpers import configure_logging
 from build_gas_network import diameter_to_capacity
 
 MANUAL_ADDRESSES = {
@@ -410,16 +411,21 @@ def filter_kernnetz(
 
     # Filter for only IPCEI projects if ipcei_only is True
     if ipcei_pci_only:
+        logger.info("Filtering for IPCEI and PCI projects only")
         wkn = wkn.query("(ipcei != 'no') or (pci != 'no')")
 
     # Apply the logic when force_all_ipcei is True
     if force_all_ipcei_pci:
         # Keep all IPCEI projects regardless of cutoff, but restrict non-IPCEI projects to cutoff year
+        logger.info(
+            f"Forcing all IPCEI and PCI projects to be included until {cutoff_year}"
+        )
         wkn = wkn.query(
             "(build_year <= @cutoff_year) or (ipcei != 'no') or (pci != 'no')"
         )
     else:
         # Default filtering, exclude all projects beyond the cutoff year
+        logger.info(f"Filtering for projects built until {cutoff_year}")
         wkn = wkn.query("build_year <= @cutoff_year")
 
     return wkn
@@ -436,15 +442,16 @@ if __name__ == "__main__":
 
         snakemake = mock_snakemake("build_wasserstoff_kernnetz")
 
-    logging.basicConfig(level=snakemake.config["logging"]["level"])
+    configure_logging(snakemake)
     kernnetz_cf = snakemake.params.kernnetz
 
+    logger.info("Collecting raw data from FNB Gas")
     wasserstoff_kernnetz = load_and_merge_raw(
         snakemake.input.wasserstoff_kernnetz_1,
         snakemake.input.wasserstoff_kernnetz_2,
         snakemake.input.wasserstoff_kernnetz_3,
     )
-
+    logger.info("Data retrievel successful. Preparing dataset ...")
     wasserstoff_kernnetz = prepare_dataset(wasserstoff_kernnetz)
 
     if kernnetz_cf["reload_locations"]:

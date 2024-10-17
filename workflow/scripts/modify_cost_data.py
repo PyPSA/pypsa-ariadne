@@ -6,6 +6,9 @@ import re
 
 import numpy as np
 import pandas as pd
+from _helpers import configure_logging
+
+logger = logging.getLogger(__name__)
 
 
 def carbon_component_fossils(costs, co2_price):
@@ -52,7 +55,7 @@ if __name__ == "__main__":
             cost_horizon="mean",
             run="KN2045_Bal_v4",
         )
-    logger = logging.getLogger(__name__)
+    configure_logging(snakemake)
 
     # read in cost data from technology-data library
     costs = os.path.join(
@@ -77,15 +80,18 @@ if __name__ == "__main__":
     )
 
     if matched_year <= 2020 or snakemake.params.cost_horizon == "mean":
-        logger.warning(f"Mean cost scenario for {matched_year}.")
+        logger.info(f"Mean cost scenario for {matched_year}.")
         new_year = matched_year
     elif snakemake.params.cost_horizon == "pessimist":
-        logger.warning(f"Pessimistic cost scenario for {matched_year}.")
+        logger.info(f"Pessimistic cost scenario for {matched_year}.")
         new_year = matched_year + 5
     elif snakemake.params.cost_horizon == "optimist":
-        logger.warning(f"Optimistic cost scenario for {matched_year}.")
+        logger.info(f"Optimistic cost scenario for {matched_year}.")
         new_year = matched_year - 5
     else:
+        logger.error(
+            "Invalid specification of cost options. Please choose 'mean', 'pessimist' or 'optimist' as config[costs][horizon]."
+        )
         raise ValueError("Invalid specification of cost options.")
 
     new_filename = re.sub(
@@ -105,26 +111,30 @@ if __name__ == "__main__":
         modifications = modifications.query("source != 'NEP2023'")
 
     costs.loc[modifications.index] = modifications
-    print(costs.loc[modifications.index])
+    logger.info(
+        f"Modifications to the following technologies are applied:\n{list(costs.loc[modifications.index].index.get_level_values(0))}."
+    )
 
     # add carbon component to fossil fuel costs
     investment_year = int(snakemake.wildcards.planning_horizons[-4:])
     if investment_year in snakemake.params.co2_price_add_on_fossils.keys():
         co2_price = snakemake.params.co2_price_add_on_fossils[investment_year]
-        logger.warning(
+        logger.info(
             f"Adding carbon component according to a co2 price of {co2_price} €/t to fossil fuel costs."
         )
         costs = carbon_component_fossils(costs, co2_price)
 
-    logger.warning("Scaling onwind costs towards Fh-ISE  for Germany.")
+    logger.info(
+        f"Scaling onwind costs towards Fh-ISE for Germany: {costs.loc["onwind", "investment"].value} {costs.loc['onwind', 'investment'].unit}."
+    )
     # https://github.com/PyPSA/pypsa-ariadne/issues/179
     # https://www.ise.fraunhofer.de/de/veroeffentlichungen/studien/studie-stromgestehungskosten-erneuerbare-energien.html
     costs.at[("onwind", "investment"), "value"] *= 1.12
-    print(costs.loc["onwind", "investment"])
 
-    logger.warning("Adding transport costs of 8.8 EUR/MWh to pelletizing costs.")
     # Assumption based on doi:10.1016/j.rser.2019.109506
     costs.at[("biomass boiler", "pelletizing cost"), "value"] += 8.8
-    print(costs.loc["biomass boiler", "pelletizing cost"])
+    logger.info(
+        f"Adding transport costs of 8.8 EUR/MWh to solid biomass pelletizing costs. New value: {costs.loc['biomass boiler', 'pelletizing cost'].value} {costs.loc['biomass boiler', 'pelletizing cost'].unit}."
+    )
 
     costs.to_csv(snakemake.output[0])

@@ -7,6 +7,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pypsa
+from _helpers import configure_logging
 from shapely.geometry import Point
 
 logger = logging.getLogger(__name__)
@@ -54,7 +55,6 @@ def fix_new_boiler_profiles(n):
 
     for attr in ["p_min_pu", "p_max_pu"]:
         n.links_t[attr] = pd.concat([n.links_t[attr], boiler_profiles_pu], axis=1)
-        logger.info(f"new boiler profiles:\n{n.links_t[attr][decentral_boilers]}")
 
 
 def remove_old_boiler_profiles(n):
@@ -302,13 +302,12 @@ def unravel_carbonaceous_fuels(n):
     # add buses
     n.add("Carrier", "renewable oil")
 
-    n.add("Bus", "DE", location="DE", x=10.5, y=51.2, carrier="none")
-    n.add("Bus", "DE oil", location="DE", x=10.5, y=51.2, carrier="oil")
-    n.add("Bus", "DE oil primary", location="DE", x=10.5, y=51.2, carrier="oil primary")
+    n.add("Bus", "DE", x=10.5, y=51.2, carrier="none")
+    n.add("Bus", "DE oil", x=10.5, y=51.2, carrier="oil")
+    n.add("Bus", "DE oil primary", x=10.5, y=51.2, carrier="oil primary")
     n.add(
         "Bus",
         "DE renewable oil",
-        location="DE",
         x=10.5,
         y=51.2,
         carrier="renewable oil",
@@ -316,7 +315,6 @@ def unravel_carbonaceous_fuels(n):
     n.add(
         "Bus",
         "EU renewable oil",
-        location="EU",
         x=n.buses.loc["EU", "x"],
         y=n.buses.loc["EU", "y"],
         carrier="renewable oil",
@@ -339,7 +337,6 @@ def unravel_carbonaceous_fuels(n):
         bus0="DE oil primary",
         bus1="DE oil",
         bus2="co2 atmosphere",
-        location="DE",
         carrier="oil refining",
         p_nom=1e6,
         efficiency=1
@@ -443,7 +440,6 @@ def unravel_carbonaceous_fuels(n):
     n.add(
         "Bus",
         "DE methanol",
-        location="DE",
         x=n.buses.loc["DE", "x"],
         y=n.buses.loc["DE", "y"],
         carrier="methanol",
@@ -487,6 +483,14 @@ def unravel_carbonaceous_fuels(n):
     # check for loads
     # industry load
     if "EU industry methanol" in n.loads.index:
+        n.add(
+            "Bus",
+            "DE industry methanol",
+            carrier="industry methanol",
+            x=n.buses.loc["DE", "x"],
+            y=n.buses.loc["DE", "y"],
+            unit="MWh_LHV",
+        )
         industrial_demand = (
             pd.read_csv(snakemake.input.industrial_demand, index_col=0) * 1e6
         )  # TWh/a to MWh/a
@@ -502,15 +506,6 @@ def unravel_carbonaceous_fuels(n):
         )
         n.loads.loc["EU industry methanol", "p_set"] -= DE_meoh
 
-        n.add(
-            "Bus",
-            "DE industry methanol",
-            carrier="industry methanol",
-            location="DE",
-            x=n.buses.loc["DE", "x"],
-            y=n.buses.loc["DE", "y"],
-            unit="MWh_LHV",
-        )
         n.add(
             "Link",
             "DE industry methanol",
@@ -571,7 +566,6 @@ def unravel_carbonaceous_fuels(n):
             "Bus",
             "DE shipping methanol",
             carrier="shipping methanol",
-            location="DE",
             x=n.buses.loc["DE", "x"],
             y=n.buses.loc["DE", "y"],
             unit="MWh_LHV",
@@ -599,7 +593,6 @@ def unravel_gasbus(n, costs):
     n.add(
         "Bus",
         "DE gas",
-        location="DE",
         x=10.5,
         y=51.2,
         carrier="gas",
@@ -630,7 +623,6 @@ def unravel_gasbus(n, costs):
     n.add(
         "Bus",
         "DE renewable gas",
-        location="DE",
         carrier="renewable gas",
         x=10.5,
         y=51.2,
@@ -638,7 +630,8 @@ def unravel_gasbus(n, costs):
     n.add(
         "Bus",
         "EU renewable gas",
-        location="EU",
+        x=n.buses.loc["EU", "x"],
+        y=n.buses.loc["EU", "y"],
         carrier="renewable gas",
     )
 
@@ -1150,10 +1143,11 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts="none",
-            planning_horizons="2030",
+            planning_horizons="2020",
             run="KN2045_Bal_v4",
         )
 
+    configure_logging(snakemake)
     logger.info("Adding Ariadne-specific functionality")
 
     n = pypsa.Network(snakemake.input.network)
