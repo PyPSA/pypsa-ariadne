@@ -3804,6 +3804,14 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
 
 def get_policy(n, investment_year):
     var = pd.Series()
+    n_glob_co2 = (
+        "CO2Limit" if "CO2Limit" in n.global_constraints.index else "CO2LimitUpstream"
+    )
+    n_loc_co2 = (
+        "co2_limit-DE"
+        if "co2_limit-DE" in n.global_constraints.index
+        else "co2_limit_upstream-DE"
+    )
 
     # add carbon component to fossil fuels if specified
     if investment_year in snakemake.params.co2_price_add_on_fossils.keys():

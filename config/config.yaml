@@ -233,7 +233,7 @@ clustering:
     # 'ES': 0.0408
     # 'IT': 0.0612
   temporal:
-    resolution_sector: 365H
+    resolution_sector: 780H
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:
@@ -297,8 +297,6 @@ sector:
   regional_oil_demand: true  #set to true if regional CO2 constraints needed
   regional_coal_demand: true  #set to true if regional CO2 constraints needed
   gas_network: false
-  regional_gas_demand: true
-  H2_retrofit: true
   biogas_upgrading_cc: true
   biomass_to_liquid: true
   biomass_to_liquid_cc: true
@@ -401,7 +399,7 @@ solving:
   mem_mb: 70000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
   options:
     assign_all_duals: true
-    load_shedding: false
+    load_shedding: true
     skip_iterations: true # settings for post-discretization: false
     min_iterations: 1 # settings for post-discretization: 1
     max_iterations: 1 # settings for post-discretization: 1
@@ -639,6 +637,9 @@ must_run_biogas:
   enable: false
   p_min_pu: 0.6
   regions: ['DE']
+
+emissions_upstream:
+  enable: true
 
 transmission_projects:
   new_link_capacity: keep #keep or zero

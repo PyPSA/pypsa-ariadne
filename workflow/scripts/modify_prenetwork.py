@@ -390,6 +390,9 @@ def unravel_carbonaceous_fuels(n):
         marginal_cost=0.01,
     )
 
+        marginal_cost=0.01,
+    )
+
     n.madd(
         "Link",
         [
@@ -830,6 +833,21 @@ def aladin_mobility_demand(n):
         n.stores.loc[dsm_i].e_nom *= pd.Series(factor.values, index=dsm_i)
 
 
+def remove_downstream_constraint(n):
+    """
+    Delete current downstream constraint and save global co2 limit in n.meta.
+
+    Parameters:
+        n (pypsa.Network): The PyPSA network object.
+
+    Returns:
+        None
+    """
+    logger.info(f"Remove global downstream co2 constraint.")
+    n.meta["_global_co2_limit"] = n.global_constraints.loc["CO2Limit", "constant"]
+    n.remove("GlobalConstraint", "CO2Limit")
+
+
 def add_hydrogen_turbines(n):
     """
     This adds links that instead of a gas turbine use a hydrogen turbine.
@@ -1217,6 +1235,9 @@ if __name__ == "__main__":
             snakemake.wildcards.planning_horizons
         ):
             force_retrofit(n, snakemake.params.H2_plants)
+
+    if snakemake.params.emissions_upstream["enable"]:
+        remove_downstream_constraint(n)
 
     current_year = int(snakemake.wildcards.planning_horizons)
 

@@ -238,6 +238,7 @@ rule modify_prenetwork:
         transmission_costs=config_provider("costs", "transmission"),
         biogas_must_run=config_provider("must_run_biogas"),
         clustering=config_provider("clustering", "temporal", "resolution_sector"),
+        emissions_upstream=config_provider("emissions_upstream"),
         H2_plants=config_provider("electricity", "H2_plants_DE"),
         land_transport_electric_share=config_provider(
             "sector", "land_transport_electric_share"
