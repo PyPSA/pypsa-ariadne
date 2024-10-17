@@ -59,6 +59,7 @@ dependencies:
 - rasterio<1.4
 
 - pip:
+
   - pypsa>=0.31.0
   - tsam>=2.3.1
   - snakemake-storage-plugin-http
