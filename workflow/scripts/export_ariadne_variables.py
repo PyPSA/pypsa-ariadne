@@ -988,8 +988,6 @@ def get_primary_energy(n, region):
 
     gas_fractions = _get_fuel_fractions(n, region, "gas")
 
-    # Eventhough biogas gets routed through the EU gas bus,
-    # it should be counted separately as Primary Energy|Biomass
     gas_usage = (
         n.statistics.withdrawal(
             bus_carrier="gas",
@@ -1138,6 +1136,12 @@ def get_primary_energy(n, region):
     )
     var["Primary Energy|Biomass|Heat"] = biomass_CHP_H_usage + biomass_usage.get(
         "urban central solid biomass boiler", 0
+    )
+
+    var["Primary Energy|Biomass|Solids"] = (
+        biomass_usage.filter(like="solid biomass for industry").sum()
+        + biomass_usage.get("rural biomass boiler", 0)
+        + biomass_usage.get("urban decentral biomass boiler", 0)
     )
 
     var["Primary Energy|Biomass"] = biomass_usage.sum()
@@ -1522,97 +1526,69 @@ def get_secondary_energy(n, region, _industry_demand):
         atol=1e-5,
     )
 
-    oil_fractions = _get_fuel_fractions(n, region, "oil")
 
-    oil_fuel_usage = (
-        n.statistics.withdrawal(bus_carrier="oil", **kwargs)
+    # Liquids
+    liquids_production = (
+        n.statistics.supply(
+            bus_carrier=["oil", "renewable oil", "methanol"], **kwargs)
         .filter(like=region)
-        .groupby("carrier")
-        .sum()
         .multiply(MWh2PJ)
-        .reindex(
-            [
-                "agriculture machinery oil",
-                "kerosene for aviation",
-                "land transport oil",
-                "naphtha for industry",
-                "shipping oil",
-                # TODO is decentral heating oil considered a fuel?
-                "rural oil boiler",
-                "urban decentral oil boiler",
-            ]
-        )
+        .drop([
+            ("Store", "DE oil Store"), 
+            ("Store", "DE methanol Store")
+            ], errors="ignore")
+        .groupby(["carrier"]).sum()
+        .drop(["renewable oil", "methanol"], errors="ignore") # Drop trade links
     )
 
-    total_oil_fuel_usage = oil_fuel_usage.sum()
-    var["Secondary Energy|Liquids|Fossil"] = var["Secondary Energy|Liquids|Oil"] = (
-        total_oil_fuel_usage * oil_fractions["Fossil"]
+    var["Secondary Energy|Liquids|Oil"] = (
+        liquids_production.get("oil refining", 0)
+    )
+    var["Secondary Energy|Methanol"] = (
+        liquids_production.get("methanolisation", 0)
     )
     var["Secondary Energy|Liquids|Hydrogen"] = (
-        total_oil_fuel_usage * oil_fractions["Efuel"]
-    )
-
-    try:
-        methanol_production = (
-            n.statistics.supply(bus_carrier="methanol", **kwargs)
-            .filter(like=region)
-            .groupby(["carrier"])
-            .sum()
-            .multiply(MWh2PJ)
-        )
-
-        assert (
-            methanol_production.size <= 2
-        )  # only methanolisation and methanol imports
-
-        # var["Production|Chemicals|Methanol"] = \ # here units are Mt/year
-        var["Secondary Energy|Methanol"] = methanol_production.get("methanolisation", 0)
-        # Remeber to specify that Other Carrier == Methanol in Comments Tab
-    except KeyError:
-        var["Secondary Energy|Methanol"] = 0
-
-    var["Secondary Energy|Liquids|Hydrogen"] += var["Secondary Energy|Methanol"]
+        liquids_production.get("Fischer-Tropsch", 0)
+        + liquids_production.get("methanolisation", 0)
+    ) 
 
     var["Secondary Energy|Liquids|Biomass"] = (
-        total_oil_fuel_usage * oil_fractions["Biomass"]
+        liquids_production.filter(like="bio").sum()
     )
+
 
     var["Secondary Energy|Liquids"] = (
         var["Secondary Energy|Liquids|Oil"]
         + var["Secondary Energy|Liquids|Hydrogen"]
         + var["Secondary Energy|Liquids|Biomass"]
     )
-    gas_fuel_usage = (
-        n.statistics.withdrawal(bus_carrier="gas", **kwargs)
+    assert isclose(
+        var["Secondary Energy|Liquids"],
+        liquids_production.sum(),
+        rtol=0.01,
+        atol=1e-5,
+    )
+
+    gas_supply = (
+        n.statistics.supply(bus_carrier=["gas", "renewable gas"], **kwargs)
         .filter(like=region)
         .groupby(["carrier"])
         .sum()
+        .drop("renewable gas", errors="ignore")
         .multiply(MWh2PJ)
-        .reindex(
-            [
-                "gas for industry",
-                "gas for industry CC",
-                "rural gas boiler",
-                "urban decentral gas boiler",
-            ]
-        )
-    )  # Building, Transport and Industry sectors
-
-    total_gas_fuel_usage = gas_fuel_usage.sum()
-
-    gas_fractions = _get_fuel_fractions(n, region, "gas")
-
-    # Fraction supplied by Hydrogen conversion
-    var["Secondary Energy|Gases|Hydrogen"] = total_gas_fuel_usage * gas_fractions.get(
-        "Efuel"
     )
 
-    var["Secondary Energy|Gases|Biomass"] = total_gas_fuel_usage * gas_fractions.get(
-        "Biomass"
+    # Fraction supplied by Hydrogen conversion
+    var["Secondary Energy|Gases|Hydrogen"] = (
+        gas_supply.get("Sabatier", 0)
+    )
+
+    var["Secondary Energy|Gases|Biomass"] = (
+        gas_supply.filter(like="bio").sum()
     )
 
     var["Secondary Energy|Gases|Natural Gas"] = (
-        total_gas_fuel_usage * gas_fractions.get("Natural Gas")
+        gas_supply.get("gas", 0)
     )
 
     var["Secondary Energy|Gases"] = (
@@ -1621,7 +1597,7 @@ def get_secondary_energy(n, region, _industry_demand):
         + var["Secondary Energy|Gases|Natural Gas"]
     )
 
-    assert isclose(var["Secondary Energy|Gases"], total_gas_fuel_usage)
+    assert isclose(var["Secondary Energy|Gases"], gas_supply.sum())
 
     industry_demand = _industry_demand.filter(
         like=region,
@@ -1631,6 +1607,21 @@ def get_secondary_energy(n, region, _industry_demand):
     # Coke is added as a coal demand, so we need to convert back to units of coke for secondary energy
     var["Secondary Energy|Solids|Coal"] = var["Secondary Energy|Solids"] = (
         industry_demand.get("coke", 0) / mwh_coal_per_mwh_coke
+    )
+
+    biomass_usage = (
+        n.statistics.withdrawal(bus_carrier="solid biomass", **kwargs)
+        .filter(like=region)
+        .groupby(["carrier"])
+        .sum()
+        .multiply(MWh2PJ)
+    )
+
+    var["Secondary Energy|Solids|Biomass"] = (
+        biomass_usage.get("urban decentral biomass boiler", 0)
+        + biomass_usage.get("rural biomass boiler", 0)
+        + biomass_usage.filter(like="solid biomass for industry").sum()
+        
     )
 
     electricity_withdrawal = (
@@ -2172,7 +2163,7 @@ def get_final_energy(
     )
     var["Final Energy|Bunkers|Navigation|Liquids"] = (
         sum_load(n, "shipping oil", region) * international_navigation_fraction
-    ) + var["Final Energy|Bunkers|Navigation|Methanol"]
+    )
 
     for var_key, fraction_key in zip(
         ["Petroleum", "Efuel", "Biomass"], oil_fractions.index
@@ -2180,6 +2171,11 @@ def get_final_energy(
         var[f"Final Energy|Bunkers|Navigation|Liquids|{var_key}"] = (
             var["Final Energy|Bunkers|Navigation|Liquids"] * oil_fractions[fraction_key]
         )
+
+    var["Final Energy|Bunkers|Navigation|Liquids"] += var[
+        "Final Energy|Bunkers|Navigation|Methanol"]
+    var["Final Energy|Bunkers|Navigation|Liquids|Efuel"] += var[
+        "Final Energy|Bunkers|Navigation|Methanol"]
 
     var["Final Energy|Bunkers|Navigation"] = var[
         "Final Energy|Bunkers|Navigation|Liquids"
