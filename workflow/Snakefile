@@ -457,6 +457,7 @@ rule export_ariadne_variables:
         co2_price_add_on_fossils=config_provider("co2_price_add_on_fossils"),
         co2_sequestration_cost=config_provider("sector", "co2_sequestration_cost"),
         post_discretization=config_provider("solving", "options", "post_discretization"),
+        NEP_year=config_provider("costs", "NEP"),
     input:
         template=resources("template_ariadne_database.xlsx"),
         industry_demands=expand(
