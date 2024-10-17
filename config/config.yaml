@@ -4,8 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241030_limit_FT
-
+  prefix: import
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -62,7 +61,7 @@ scenario:
   ll:
   - vopt
   clusters:
-  - 27 #current options: 27, 49
+  - 49 #current options: 27, 49
   opts:
   - ''
   sector_opts:
@@ -201,40 +200,40 @@ clustering:
   # print(fw.div(fw.sum()).subtract(5e-5).round(4).to_dict().__repr__().replace(",","\n"))
   focus_weights:
   # 27 nodes: 8 for Germany, 3 for Italy, 2 each for Denmark, UK and Spain, 1 per each of other 10 "Stromnachbarn"
-    'DE': 0.2966
-    'AT': 0.0370
-    'BE': 0.0370
-    'CH': 0.0370
-    'CZ': 0.0370
-    'DK': 0.0741
-    'FR': 0.0370
-    'GB': 0.0741
-    'LU': 0.0370
-    'NL': 0.0370
-    'NO': 0.0370
-    'PL': 0.0370
-    'SE': 0.0370
-    'ES': 0.0741
-    'IT': 0.1111
+    # 'DE': 0.2966
+    # 'AT': 0.0370
+    # 'BE': 0.0370
+    # 'CH': 0.0370
+    # 'CZ': 0.0370
+    # 'DK': 0.0741
+    # 'FR': 0.0370
+    # 'GB': 0.0741
+    # 'LU': 0.0370
+    # 'NL': 0.0370
+    # 'NO': 0.0370
+    # 'PL': 0.0370
+    # 'SE': 0.0370
+    # 'ES': 0.0741
+    # 'IT': 0.1111
   # high spatial resolution: change clusters to 49
   # 49 nodes: 30 for Germany, 3 for Italy, 2 each for Denmark, UK and Spain, 1 per each of other 10 "Stromnachbarn"
-    # 'DE': 0.6124
-    # 'AT': 0.0204
-    # 'BE': 0.0204
-    # 'CH': 0.0204
-    # 'CZ': 0.0204
-    # 'DK': 0.0408
-    # 'FR': 0.0204
-    # 'GB': 0.0408
-    # 'LU': 0.0204
-    # 'NL': 0.0204
-    # 'NO': 0.0204
-    # 'PL': 0.0204
-    # 'SE': 0.0204
-    # 'ES': 0.0408
-    # 'IT': 0.0612
+    'DE': 0.6124
+    'AT': 0.0204
+    'BE': 0.0204
+    'CH': 0.0204
+    'CZ': 0.0204
+    'DK': 0.0408
+    'FR': 0.0204
+    'GB': 0.0408
+    'LU': 0.0204
+    'NL': 0.0204
+    'NO': 0.0204
+    'PL': 0.0204
+    'SE': 0.0204
+    'ES': 0.0408
+    'IT': 0.0612
   temporal:
-    resolution_sector: 365H
+    resolution_sector: 3H
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:
@@ -274,9 +273,104 @@ first_technology_occurrence:
 
 costs:
   horizon: "mean" # "optimist", "pessimist" or "mean"
+  NEP: 2021
+  transmission: "overhead"
+
+import:
+  enable: true
+  carriers: "all" # "all" or "eleh2"
+  cost_factor: 1.0
+  capacity_boost: 1.0
+  endogenous_hvdc_import:
+    enable: false
+    cost_factor: 1.0
+    exporters:
+    - CN-West
+    - DZ
+    - EG
+    - KZ
+    - LY
+    - MA
+    - SA
+    - TN
+    - TR
+    - UA
+    extra_connections:
+    - MA-DZ
+    - DZ-LY
+    - DZ-TN
+    - TN-LY
+    - LY-EG
+    - EG-SA
+    xlinks:
+      MA:
+      # Plymouth
+      - x: -4.14
+        y: 50.39
+        length: 3800
+      # Cork
+      - x: -8.52
+        y: 51.92
+        length: 4000
+      # Brest
+      - x: -4.49
+        y: 48.43
+        length: 3200
+      # Vigo
+      - x: -8.70
+        y: 42.31
+        length: 1800
+      DZ:
+      # Barcelona
+      - x: 2.37
+        y: 41.57
+        length: 1300
+      # Genoa
+      - x: 8.93
+        y: 44.41
+        length: 1800
+      # Marseille
+      - x: 5.30
+        y: 43.38
+        length: 1400
+      TN:
+      # Genoa
+      - x: 8.93
+        y: 44.41
+        length: 1500
+      # Marseille
+      - x: 5.30
+        y: 43.38
+        length: 1500
+      LY:
+      # Venice
+      - x: 12.39
+        y: 45.56
+        length: 2500
+      EG:
+      # Venice
+      - x: 12.39
+        y: 45.56
+        length: 2500
+    efficiency_static: 0.98
+    efficiency_per_1000km: 0.977 # p.u./km
+    length_factor: 1.25
+    distance_threshold: 0.05 # quantile
+    p_nom_max: .inf # for HVDC links
+    share_of_p_nom_max_available: 1. # for wind and solar generators
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
+  # TODO:
+  # shipping: false
+  ammonia: true
+  steel:
+    endogenous: true
+    relocation: false
+    flexibility: false
+  hvc: 
+    endogenous: true
+    demand_factor: 1.0
   v2g: false
   solar_thermal: false
   district_heating:
@@ -342,7 +436,6 @@ sector:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#industry
 industry:
-  ammonia: false
   St_primary_fraction:
     2020: 0.6
     2025: 0.55
@@ -400,7 +493,7 @@ industry:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
 solving:
   runtime: 12h
-  mem_mb: 70000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
+  mem_mb: 400000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
   options:
     assign_all_duals: true
     load_shedding: false
@@ -427,6 +520,8 @@ solving:
         H2 pipeline retrofitted: 0.05
       fractional_last_unit_size: true
   constraints:
+    limit_non_eu_de: false # true equals 0, number or false
+    limit_eu_de: false # true equals 0, number or false
     limits_capacity_max:
       Generator:
         onwind:
@@ -594,6 +689,40 @@ plotting:
     H2 CCGT: '#ff0000'
     urban central H2 CHP: '#ff0000'
     renewable gas: '#e05b09'
+    # import
+    hbi: '#858d99'
+    steel: '#b1bbc9'
+    DRI + Electric arc: '#b1bbc9'
+    shipping ammonia: '#46caf0'
+    Methanol steam reforming CC: '#468c8b'
+    biomass to methanol CC: '#468c8b'
+    biomass to methanol: '#468c8b'
+    Methanol steam reforming: '#468c8b'
+    shipping LNG: '#e0986c'
+    industry methanol: '#468c8b'
+    industry methanol emissions: '#468c8b'
+    HVC: '#012345'
+    methanol-to-olefins/aromatics: '#012345'
+    methanol-to-kerosene: '#012345'
+    electric steam cracker: '#012345'
+    load: "#dd2e23"
+    waste CHP: '#e3d37d'
+    waste CHP CC: '#e3d3ff'
+    HVC to air: 'k'
+    # apparently there is a problem with colors that end with a number
+    import pipeline-h2: '#6b3161'
+    import pipeline-h: '#6b3161'
+    import shipping-lh2: '#e0986c'
+    import shipping-lh: '#e0986c'
+    import shipping-lch4: '#e0986c'
+    import shipping-lch: '#e0986c'
+    import shipping-lnh3: '#46caf0'
+    import shipping-lnh: '#46caf0'
+    import shipping-ftfuel: '#468c8b'
+    import shipping-meoh: '#468c8b'
+    impport hvdc-to-elec: '#ff0000'
+    import shipping-hbi: '#858d99'
+    import shipping-steel: '#b1bbc9'
   countries:
   - all
   - DE

@@ -309,7 +309,7 @@ use rule solve_sector_network_myopic from pypsaeur with:
             if k != "network"
         },
         network=RESULTS
-        + "prenetworks-final/base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
+        + "prenetworks-final-import/base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
         co2_totals_name=resources("co2_totals.csv"),
 
 
@@ -687,3 +687,67 @@ rule ariadne_report_only:
             RESULTS + "ariadne/report/elec_price_duration_curve.png",
             run=config_provider("run", "name"),
         ),
+
+
+rule build_import_ports:
+    input:
+        gem="data/gem/Europe-Gas-Tracker-2024-05.xlsx",
+        entry="data/gas_network/scigrid-gas/data/IGGIELGN_BorderPoints.geojson",
+        storage="data/gas_network/scigrid-gas/data/IGGIELGN_Storages.geojson",
+        regions_onshore=resources("regions_onshore_base_s_{clusters}.geojson"),
+        regions_offshore=resources("regions_offshore_base_s_{clusters}.geojson"),
+        europe_shape=resources("europe_shape.geojson"),
+        reference_import_sites=("import-data/import-sites.csv"),
+    output:
+        ports=resources("ports_s_{clusters}.csv"),
+        gas_input_nodes_simplified=resources(
+            "gas_input_nodes_simplified_elec_s_{clusters}.csv"
+        ),
+    resources:
+        mem_mb=2000,
+    log:
+        logs("build_import_ports_{clusters}.log"),
+    script:
+        "scripts/build_import_ports.py"
+
+
+rule modify_final_network:
+    params:
+        import_options=config_provider("import"),
+        sector_options=config_provider("sector"),
+        industry_options=config_provider("industry"),
+        gas_network=config_provider("gas_network"),
+        h2_network=config_provider("h2_network"),
+        costs=config_provider("costs"),
+    input:
+        network=RESULTS
+        + "prenetworks-final/base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
+        gas_input_nodes_simplified=resources(
+            "gas_input_nodes_simplified_elec_s_{clusters}.csv"
+        ),
+        import_ports=resources("ports_s_{clusters}.csv"),
+        import_costs="import-data/imports/results-230505.csv",
+        country_centroids="import-data/countries_centroids.csv",
+        costs=resources("costs_{planning_horizons}.csv"),
+        clustered_pop_layout=resources("pop_layout_base_s_{clusters}.csv"),
+        # shipping_demand=resources("shipping_demand_s_{clusters}.csv"),
+        # TODO: that's the wrong file!
+        industry_sector_ratios=resources(
+            "industry_sector_ratios_{planning_horizons}.csv"
+        ),
+        industrial_production_per_node=resources(
+            "industrial_production_base_s_{clusters}_{planning_horizons}.csv"
+        ),
+        industrial_energy_demand_per_node_today=resources(
+            "industrial_energy_demand_today_base_s_{clusters}.csv"
+        ),
+        # industrial_demand=resources("industrial_energy_demand_base_s_{clusters}_{planning_horizons}.csv"),
+        industrial_demand_today=resources("industrial_energy_demand_today_base_s_{clusters}.csv"),
+        industrial_production=resources("industrial_production_base_s_{clusters}_{planning_horizons}.csv"),
+    output:
+        network=RESULTS
+        + "prenetworks-final-import/base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
+    log:
+        logs("modify_final_network_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.log"),
+    script:
+        "scripts/modify_final_network.py"
