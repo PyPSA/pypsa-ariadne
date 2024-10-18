@@ -226,7 +226,7 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
         )
 
         # add kernnetz to network
-        n.madd(
+        n.add(
             "Link",
             names,
             bus0=wkn_new.bus0.values + " H2",
@@ -373,7 +373,7 @@ def unravel_carbonaceous_fuels(n):
     n.links.loc[german_oil_consumers, "bus0"] = "DE oil"
 
     # add links between oil buses
-    n.madd(
+    n.add(
         "Link",
         [
             "EU renewable oil -> DE oil",
@@ -390,7 +390,7 @@ def unravel_carbonaceous_fuels(n):
         marginal_cost=0.01,
     )
 
-    n.madd(
+    n.add(
         "Link",
         [
             "EU renewable oil -> EU oil",
@@ -456,7 +456,7 @@ def unravel_carbonaceous_fuels(n):
     n.links.loc[DE_meoh_in, "bus1"] = "DE methanol"
 
     # add links between methanol buses
-    n.madd(
+    n.add(
         "Link",
         ["EU methanol -> DE methanol", "DE methanol -> EU methanol"],
         bus0=["EU methanol", "DE methanol"],
@@ -652,7 +652,7 @@ def unravel_gasbus(n, costs):
     n.links.loc[fossil_links.index, "bus0"] = "DE gas"
 
     ### add import/export links
-    n.madd(
+    n.add(
         "Link",
         ["EU renewable gas -> DE gas", "DE renewable gas -> EU gas"],
         bus0=["EU renewable gas", "DE renewable gas"],
@@ -664,7 +664,7 @@ def unravel_gasbus(n, costs):
     )
 
     ### add links between renewable and fossil gas buses
-    n.madd(
+    n.add(
         "Link",
         ["EU renewable gas -> EU gas", "DE renewable gas -> DE gas"],
         bus0=["EU renewable gas", "DE renewable gas"],
@@ -1124,7 +1124,7 @@ def drop_duplicate_transmission_projects(n):
 
     to_drop = n.lines.query("0 < build_year <= @year").index
 
-    n.mremove("Line", to_drop)
+    n.remove("Line", to_drop)
 
 
 if __name__ == "__main__":
