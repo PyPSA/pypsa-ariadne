@@ -661,7 +661,7 @@ def adapt_nuclear_output(n):
 
 
 def FT_production_limit(n, investment_year, config):
-    """"
+    """ "
     Limit the production of FT fuels in a country to a certain volume.
     """
 
@@ -671,8 +671,7 @@ def FT_production_limit(n, investment_year, config):
         logger.info(f"limiting FT production in {ct} to {limit/1e6} TWh/a")
 
         prod_links = n.links[
-            (n.links.index.str[:2] == "DE")
-            & (n.links.carrier == "Fischer-Tropsch")
+            (n.links.index.str[:2] == "DE") & (n.links.carrier == "Fischer-Tropsch")
         ].index
 
         prod_volume = (
