@@ -660,6 +660,46 @@ def adapt_nuclear_output(n):
     )
 
 
+def FT_production_limit(n, investment_year, config):
+    """ "
+    Limit the production of FT fuels in a country to a certain volume.
+    """
+
+    for ct in config["FT_production"]:
+        limit = config["FT_production"][ct][investment_year] * 1e6
+
+        logger.info(f"limiting FT production in {ct} to {limit/1e6} TWh/a")
+
+        prod_links = n.links[
+            (n.links.index.str[:2] == "DE") & (n.links.carrier == "Fischer-Tropsch")
+        ].index
+
+        prod_volume = (
+            n.model["Link-p"].loc[:, prod_links] * n.snapshot_weightings.generators
+        ).sum() / 100
+        # avoid large bounds
+        limit /= 100
+
+        cname = f"FT_production_volume_limit-{ct}"
+
+        n.model.add_constraints(prod_volume <= limit, name=f"GlobalConstraint-{cname}")
+
+        if cname in n.global_constraints.index:
+            logger.warning(
+                f"Global constraint {cname} already exists. Dropping and adding it again."
+            )
+            n.global_constraints.drop(cname, inplace=True)
+
+        n.add(
+            "GlobalConstraint",
+            cname,
+            constant=limit,
+            sense="<=",
+            type="",
+            carrier_attribute="",
+        )
+
+
 def additional_functionality(n, snapshots, snakemake):
 
     logger.info("Adding Ariadne-specific functionality")
@@ -676,6 +716,8 @@ def additional_functionality(n, snapshots, snakemake):
     )
 
     add_power_limits(n, investment_year, constraints["limits_power_max"])
+
+    FT_production_limit(n, investment_year, constraints["limits_volume_max"])
 
     if int(snakemake.wildcards.clusters) != 1:
         h2_import_limits(n, investment_year, constraints["limits_volume_max"])
