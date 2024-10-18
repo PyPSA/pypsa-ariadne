@@ -677,7 +677,9 @@ def FT_production_limit(n, investment_year, config):
 
         prod_volume = (
             n.model["Link-p"].loc[:, prod_links] * n.snapshot_weightings.generators
-        ).sum()
+        ).sum() / 100
+        # avoid large bounds
+        limit /= 100
 
         cname = f"FT_production_volume_limit-{ct}"
 
@@ -716,7 +718,7 @@ def additional_functionality(n, snapshots, snakemake):
 
     add_power_limits(n, investment_year, constraints["limits_power_max"])
 
-    FT_production_limit(n, investment_year, constraints["limit_volume_max"])
+    FT_production_limit(n, investment_year, constraints["limits_volume_max"])
 
     if int(snakemake.wildcards.clusters) != 1:
         h2_import_limits(n, investment_year, constraints["limits_volume_max"])
