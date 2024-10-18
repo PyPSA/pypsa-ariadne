@@ -5,7 +5,7 @@
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
 
-  prefix: 20241014_restrict_power_flow
+  prefix: 20241018-KernnetzUpdate
 
 
   name:
@@ -252,6 +252,7 @@ wasserstoff_kernnetz:
   reload_locations: false
   divide_pipes: true
   pipes_segment_length: 10
+  border_crossing: true
   aggregate_build_years: "mean"
   ipcei_pci_only: false
   cutoff_year: 2028
