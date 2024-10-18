@@ -660,46 +660,43 @@ def adapt_nuclear_output(n):
     )
 
 
-def FT_capacity_limit(n, config):
-    """ "
-    Limit the expansion of German FT synthesis to an addition of +5 GW per
-    planning_horizon or 50% of the existing capacity, whichever is higher.
+def FT_production_limit(n, investment_year, config):
+    """"
+    Limit the production of FT fuels in a country to a certain volume.
     """
-    installed_capacity = n.links.loc[
-        (n.links.index.str[:2] == "DE") & (n.links.carrier == "Fischer-Tropsch")
-    ].p_nom.sum()
 
-    if installed_capacity < config["absolute"] * 1e3 / config["relative"]:
-        limit = config["absolute"] * 1e3
-    else:
-        limit = config["relative"] * installed_capacity
+    for ct in config["FT_production"]:
+        limit = config["FT_production"][ct][investment_year] * 1e6
 
-    logger.info(f"Limiting FT synthesis capacity expansion to {limit} MW")
-    FT_addition_links = n.links[
-        (n.links.index.str[:2] == "DE")
-        & (n.links.carrier == "Fischer-Tropsch")
-        & (n.links.p_nom_extendable)
-    ].index
+        logger.info(f"limiting FT production in {ct} to {limit/1e6} TWh/a")
 
-    p_nom = n.model["Link-p_nom"].loc[FT_addition_links]
-    lhs = p_nom.sum()
+        prod_links = n.links[
+            (n.links.index.str[:2] == "DE")
+            & (n.links.carrier == "Fischer-Tropsch")
+        ].index
 
-    n.model.add_constraints(lhs <= limit, name="GlobalConstraint-FT-capacity-DE")
+        prod_volume = (
+            n.model["Link-p"].loc[:, prod_links] * n.snapshot_weightings.generators
+        ).sum()
 
-    if "FT-capacity-DE" in n.global_constraints.index:
-        logger.warning(
-            f"Global constraint FT-capacity-DE already exists. Dropping and adding it again."
+        cname = f"FT_production_volume_limit-{ct}"
+
+        n.model.add_constraints(prod_volume <= limit, name=f"GlobalConstraint-{cname}")
+
+        if cname in n.global_constraints.index:
+            logger.warning(
+                f"Global constraint {cname} already exists. Dropping and adding it again."
+            )
+            n.global_constraints.drop(cname, inplace=True)
+
+        n.add(
+            "GlobalConstraint",
+            cname,
+            constant=limit,
+            sense="<=",
+            type="",
+            carrier_attribute="",
         )
-        n.global_constraints.drop("FT-capacity-DE", inplace=True)
-
-    n.add(
-        "GlobalConstraint",
-        "FT-capacity-DE",
-        constant=limit,
-        sense="<=",
-        type="",
-        carrier_attribute="",
-    )
 
 
 def additional_functionality(n, snapshots, snakemake):
@@ -719,7 +716,7 @@ def additional_functionality(n, snapshots, snakemake):
 
     add_power_limits(n, investment_year, constraints["limits_power_max"])
 
-    # FT_capacity_limit(n, constraints["limit_DE_FT_cap"])
+    FT_production_limit(n, investment_year, constraints["limit_volume_max"])
 
     if int(snakemake.wildcards.clusters) != 1:
         h2_import_limits(n, investment_year, constraints["limits_volume_max"])

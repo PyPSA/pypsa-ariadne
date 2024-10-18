@@ -547,6 +547,14 @@ solving:
           2035: 115
           2040: 220
           2045: 325
+      FT_production:
+        DE:
+          2020: 200
+          2025: 200
+          2030: 200
+          2035: 200
+          2040: 200
+          2045: 200
     limits_volume_min:
       electrolysis:
         DE:
