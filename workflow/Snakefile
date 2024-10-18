@@ -434,6 +434,8 @@ rule build_wasserstoff_kernnetz:
             keep_local=True,
         ),
         locations="ariadne-data/wasserstoff_kernnetz/locations_wasserstoff_kernnetz.csv",
+        regions_onshore=resources("regions_onshore_base_s.geojson"),
+        regions_offshore=resources("regions_offshore_base_s.geojson"),
     output:
         cleaned_wasserstoff_kernnetz=resources("wasserstoff_kernnetz.csv"),
     log:
