@@ -965,6 +965,10 @@ def enforce_transmission_project_build_years(n, current_year):
 
 
 def force_connection_nep_offshore(n, current_year):
+    # WARNING this code adds a new generator for the offwind connection
+    # at an onshore locations. These extra capacities are not accounted
+    # for in the land use contraint
+
     # Load costs
     nep23_costs = (
         pd.read_csv(
@@ -1056,7 +1060,7 @@ def force_connection_nep_offshore(n, current_year):
 
     # this is a hack to stop solve_network.py > _add_land_use_constraint breaking
     # if there are existing generators, add a new extendable one
-    # WARNING land_use_constraint might not break but no guarantee that it still functions as expected
+    # WARNING land_use_constraint is not respected for the onshore generators
     # TODO rewrite this part less hacky
     existings = n.generators.index[
         (n.generators.carrier == "offwind-dc") & ~n.generators.p_nom_extendable
@@ -1071,6 +1075,11 @@ def force_connection_nep_offshore(n, current_year):
             n.generators_t.p_max_pu[node_off] = n.generators_t.p_max_pu[
                 nordsee_duck_off
             ]
+            # The new dummy generator shall not be extended
+            n.generators.at[node_off, "p_nom_max"] = 0
+            # Try out the new pypsa keyword to ignore the generator during optimization
+            n.generators.at[node_off, "active"] = False
+
     # WARNING: Code duplication ahead
     ac_projects = goffshore[
         (goffshore.Inbetriebnahmejahr > current_year - 5)
