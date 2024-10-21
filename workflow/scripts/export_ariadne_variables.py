@@ -3677,9 +3677,9 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
         2040: 6,
         2045: 1,
     }
-    var[var_name + "AC|Reactive Power Compensation"] = reactive_power_compensation.get(
-        year, 0
-    ) / 5
+    var[var_name + "AC|Reactive Power Compensation"] = (
+        reactive_power_compensation.get(year, 0) / 5
+    )
 
     var[var_name + "AC|Onshore"] = ac_investments.sum() / 5
     var[var_name + "AC|Onshore|NEP"] = ac_investments[nep_ac].sum() / 5
@@ -3692,12 +3692,12 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
         )
 
     var[var_name + "AC"] = (
-        var[var_name + "AC|Onshore"] 
+        var[var_name + "AC|Onshore"]
         + var[var_name + "AC|Offshore"]
         + var[var_name + "AC|Reactive Power Compensation"]
     )
     var[var_name + "AC|NEP"] = (
-        var[var_name + "AC|Onshore|NEP"] 
+        var[var_name + "AC|Onshore|NEP"]
         + var[var_name + "AC|Offshore|NEP"]
         + var[var_name + "AC|Reactive Power Compensation"]
     )

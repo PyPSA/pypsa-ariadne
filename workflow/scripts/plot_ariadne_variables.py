@@ -574,16 +574,15 @@ if __name__ == "__main__":
         unit="PJ/yr",
     )
 
-
-
-
     # NEP Plot WIP
     NEP_Trassen = {
-        "DC_NEP_Startnetz": 321 + 560 + 2466, # Zu-/Umbeseilung + Ersatz-/Parallelneubau + Neubau
+        "DC_NEP_Startnetz": 321
+        + 560
+        + 2466,  # Zu-/Umbeseilung + Ersatz-/Parallelneubau + Neubau
         "DC_NEP_Zubaunetz": 0 + 179 + 4396,
-        "AC_NEP_Startnetz": 919 + 2081 + 599, 
+        "AC_NEP_Startnetz": 919 + 2081 + 599,
         "AC_NEP_Zubaunetz": 2279 + 3846 + 1714,
-    }  
+    }
     key = "Investment|Energy Supply|Electricity|Transmission|"
     NEP_investment = {
         "NEP-DC": {"Startnetz": 26, "Zubaunetz": 46.2},
@@ -592,18 +591,26 @@ if __name__ == "__main__":
             "endogen": (
                 df.loc[key + "DC|Onshore"].values
                 - df.loc[key + "DC|Onshore|NEP"].values
-            ).sum() * 5},
-        "NEP-AC": {"Startnetz": 14.5, "Zubaunetz": 30.5,},
+            ).sum()
+            * 5,
+        },
+        "NEP-AC": {
+            "Startnetz": 14.5,
+            "Zubaunetz": 30.5,
+        },
         "PyPSA-AC": {
             "exogen": df.loc[key + "AC|Onshore|NEP"].values.sum() * 5,
             "endogen": (
                 df.loc[key + "AC|Onshore"].values
                 - df.loc[key + "AC|Onshore|NEP"].values
-            ).sum() * 5},
+            ).sum()
+            * 5,
+        },
         "NEP-Q": {"Startnetz": 9.4, "Zubaunetz": 29.5},
         "PyPSA-Q": {
-            "exogen": df.loc[key + "AC|Reactive Power Compensation"].values.sum() * 5,},
-    }  
+            "exogen": df.loc[key + "AC|Reactive Power Compensation"].values.sum() * 5,
+        },
+    }
     NEP_investment = pd.DataFrame(NEP_investment).T
     NEP_investment.loc["NEP-Total", "Startnetz"] = (
         NEP_investment.loc["NEP-DC", "Startnetz"]
@@ -625,6 +632,7 @@ if __name__ == "__main__":
         + NEP_investment.loc["PyPSA-AC", "endogen"]
     )
     ax = pd.DataFrame(NEP_investment).plot.bar(
-        stacked=True, 
+        stacked=True,
         ylabel="Investment in billion EUR",
-        title="Investments Onshore Transmission Grid",)
+        title="Investments Onshore Transmission Grid",
+    )
