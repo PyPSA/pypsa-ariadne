@@ -20,7 +20,8 @@ import numpy as np
 import pandas as pd
 from pypsa.geo import haversine_pts
 from shapely import wkt
-from shapely.geometry import LineString, Point
+from shapely.geometry import LineString, Point, Polygon
+from shapely.ops import nearest_points
 
 paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
 for path in paths:
@@ -342,6 +343,9 @@ def assign_locations(df, locations):
 
     df = df.copy()
 
+    # manual cleaning
+    df.loc[(df["Endpunkt(Ort)"] == "Wettringen") & (df["BL2"] == "Niedersachsen"), "BL2"] = "Nordrhein-Westfalen"
+
     df["point0"] = pd.merge(
         df,
         locations,
@@ -380,6 +384,118 @@ def assign_locations(df, locations):
     df["geometry"] = df.apply(lambda x: LineString([x["point0"], x["point1"]]), axis=1)
 
     return df
+
+
+def concat_gdf(gdf_list, crs="EPSG:4326"):
+    """
+    Concatenate multiple geopandas dataframes with common coordinate reference
+    system (crs).
+    """
+    return gpd.GeoDataFrame(pd.concat(gdf_list), crs=crs)
+
+
+def load_bus_regions(onshore_path, offshore_path):
+    """
+    Load pypsa-eur on- and offshore regions and concat.
+    """
+    bus_regions_offshore = gpd.read_file(offshore_path)
+    bus_regions_onshore = gpd.read_file(onshore_path)
+    bus_regions = concat_gdf([bus_regions_offshore, bus_regions_onshore])
+    bus_regions = bus_regions.dissolve(by="name", aggfunc="first")
+
+    return bus_regions
+
+
+def find_point_across_ring(point, ring, distance=1000):
+    if isinstance(point, gpd.GeoSeries):
+        point = point.iloc[0]
+    elif isinstance(point, gpd.GeoDataFrame):
+        point = point.geometry.iloc[0]
+
+    if isinstance(ring, gpd.GeoSeries):
+        ring = ring.iloc[0]
+    elif isinstance(ring, gpd.GeoDataFrame):
+        ring = ring.geometry.iloc[0]
+
+    nearest_point_on_ring = nearest_points(ring, point)[0]
+    direction = np.array(point.coords[0]) - np.array(nearest_point_on_ring.coords[0])
+    direction_normalized = direction / np.linalg.norm(direction)
+    new_point_coords = (
+        np.array(nearest_point_on_ring.coords[0]) - direction_normalized * distance
+    )
+
+    return Point(new_point_coords)
+
+
+def create_border_crossing(wkn, regions_onshore, regions_offshore):
+
+    # get shapes
+    regions = load_bus_regions(regions_onshore, regions_offshore)
+
+    # extract DE border
+    de = regions[regions.country.isin(["DE"])].union_all()
+    de_border = de.exterior
+    de_border_projected = gpd.GeoSeries([de_border], crs="EPSG:4326").to_crs(epsg=32633)
+    de_polygon = Polygon(de_border_projected.iloc[0])
+
+    # project to calc distance in meters
+    wkn_proj = gpd.GeoDataFrame(wkn, geometry="point0", crs="EPSG:4326").to_crs(
+        epsg=32633
+    )
+    wkn_proj["point1"] = gpd.GeoDataFrame(
+        wkn, geometry="point1", crs="EPSG:4326"
+    ).to_crs(epsg=32633)["point1"]
+
+    wkn_proj["point0_dist"] = (
+        wkn_proj["point0"].distance(de_border_projected.iloc[0]) / 1e3
+    )  # in km
+    wkn_proj["point1_dist"] = (
+        wkn_proj["point1"].distance(de_border_projected.iloc[0]) / 1e3
+    )
+
+    wkn_proj["point0_in"] = wkn_proj.point0.within(de_polygon)
+    wkn_proj["point1_in"] = wkn_proj.point1.within(de_polygon)
+
+    # flter border points
+    border_distance = 3  # km
+    wkn_proj_sub = wkn_proj[
+        (
+            (wkn_proj["point0_dist"] < border_distance)
+            | (wkn_proj["point1_dist"] < border_distance)
+        )
+        & (wkn_proj["point0_in"] == wkn_proj["point1_in"])
+    ]
+
+    # manually delete pipes that are not indicated for imports at all (according to source data)
+    names = [
+        "18-Fürstenhausen-Carling",
+        "Emden-Ost-Nüttermoor",
+        "Lengthal-Burgkirchen",
+        "Hittistetten-Lindau",
+        "Hüthum-Praest",
+    ]
+    wkn_proj_sub = wkn_proj_sub[~wkn_proj_sub.name.isin(names)]
+
+    # find points across the border
+    for idx, row in wkn_proj_sub.iterrows():
+        col = "point0" if row["point0_dist"] < row["point1_dist"] else "point1"
+        wkn_proj_sub.loc[idx, col] = find_point_across_ring(
+            row[col], de_border_projected.iloc[0], distance=5000
+        )
+
+    # convert back to xy coordinates and calc linestring
+    wkn_proj_sub["point0_epsg4326"] = wkn_proj_sub["point0"].to_crs(epsg=4326)
+    wkn_proj_sub["point1_epsg4326"] = wkn_proj_sub["point1"].to_crs(epsg=4326)
+    wkn_proj_sub["geometry"] = wkn_proj_sub.apply(
+        lambda x: LineString([x["point0_epsg4326"], x["point1_epsg4326"]]), axis=1
+    )
+
+    # paste data back to original dataframe
+    wkn.loc[wkn_proj_sub.index, "point0"] = wkn_proj_sub["point0"]
+    wkn.loc[wkn_proj_sub.index, "point1"] = wkn_proj_sub["point1"]
+    wkn.loc[wkn_proj_sub.index, "geometry"] = wkn_proj_sub["geometry"]
+
+    return wkn
 
 
 def filter_kernnetz(
@@ -461,6 +577,13 @@ if __name__ == "__main__":
         locations["point"] = locations["point"].apply(wkt.loads)
 
     wasserstoff_kernnetz = assign_locations(wasserstoff_kernnetz, locations)
+
+    if kernnetz_cf["border_crossing"]:
+        wasserstoff_kernnetz = create_border_crossing(
+            wasserstoff_kernnetz,
+            snakemake.input.regions_onshore,
+            snakemake.input.regions_offshore,
+        )
 
     wasserstoff_kernnetz = filter_kernnetz(
         wasserstoff_kernnetz,
