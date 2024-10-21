@@ -72,11 +72,11 @@ CurrentPolicies:
         # 2022: 54 TWh importiert
           DE:
             2020: 50
-            2025: 50
-            2030: 50
-            2035: 75
-            2040: 100
-            2045: 150
+            2025: 70
+            2030: 100
+            2035: 150
+            2040: 200
+            2045: 250
         electrolysis:
         # boundary condition lower?
           DE:
