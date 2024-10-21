@@ -1,0 +1,81 @@
+# -*- coding: utf-8 -*-
+# SPDX-FileCopyrightText: : 2017-2023 The PyPSA-Eur Authors
+#
+# SPDX-License-Identifier: MIT
+no_import_me:
+# no net import of energy carriers to Germany
+
+  iiasa_database:
+    reference_scenario: KN2045_Bal_v4
+    fallback_reference_scenario: KN2045_Bal_v4
+  co2_budget_DE_source: KSG
+
+  solving:
+    constraints:
+      limit_non_eu_de: true # true equals 0, number or false
+      limit_eu_de: true # true equals 0, number or false
+      limits_capacity_min:
+        Link:
+          H2 Electrolysis:
+            DE:
+              2030: 5
+
+  import:
+    enable: false
+
+  industry:
+    steam_biomass_fraction: 0.4
+    steam_hydrogen_fraction: 0.3
+    steam_electricity_fraction: 0.3
+
+eu_import_me_all:
+# unlimited net import of energy carriers to Germany
+
+  iiasa_database:
+    reference_scenario: KN2045_Bal_v4
+    fallback_reference_scenario: KN2045_Bal_v4
+  co2_budget_DE_source: KSG
+
+  solving:
+    constraints:
+      limit_non_eu_de: true # true equals 0, number or false
+      limit_eu_de: false # true equals 0, number or false
+      limits_capacity_min:
+        Link:
+          H2 Electrolysis:
+            DE:
+              2030: 5
+
+  import:
+    enable: false
+
+  industry:
+    steam_biomass_fraction: 0.4
+    steam_hydrogen_fraction: 0.3
+    steam_electricity_fraction: 0.3
+
+all_import_me_all:
+# unlimited net import of energy carriers to Germany even from non-European countries
+
+  iiasa_database:
+    reference_scenario: KN2045_Bal_v4
+    fallback_reference_scenario: KN2045_Bal_v4
+  co2_budget_DE_source: KSG
+
+  solving:
+    constraints:
+      limit_non_eu_de: false # true equals 0, number or false
+      limit_eu_de: false # true equals 0, number or false
+      limits_capacity_min:
+        Link:
+          H2 Electrolysis:
+            DE:
+              2030: 5
+
+  import:
+    enable: true
+
+  industry:
+    steam_biomass_fraction: 0.4
+    steam_hydrogen_fraction: 0.3
+    steam_electricity_fraction: 0.3

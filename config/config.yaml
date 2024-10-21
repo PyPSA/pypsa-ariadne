@@ -6,8 +6,11 @@
 run:
   prefix: import
   name:
+  - no_import_me
+  - eu_import_me_all
+  - all_import_me_all
   # - CurrentPolicies
-  - KN2045_Bal_v4
+  # - KN2045_Bal_v4
   # - KN2045_Elec_v4
   # - KN2045_H2_v4
   # - KN2045plus_EasyRide
@@ -16,17 +19,17 @@ run:
   # - KN2045minus_SupplyFocus
   scenarios:
     enable: true
-    manual_file: config/scenarios.manual.yaml
-    file: config/scenarios.automated.yaml
+    manual_file: config/scenarios.manual.import.yaml
+    file: config/scenarios.automated.import.yaml
   shared_resources:
-    policy: base #stops recalculating
+    policy: true #stops recalculating
     exclude:
-    - existing_heating.csv   # specify files which should not be shared between scenarios
-    - costs
-    - retrieve_cost   # This is necessary to save retrieve_cost_data_{year}.log in the correct folder
-    - industry_sector_ratios
-    - build_industry_sector_ratios   # This is necessary to save build_industry_sector_ratios_data.log in the correct folder
-    - modify_existing_heating
+    # - existing_heating.csv   # specify files which should not be shared between scenarios
+    # - costs
+    # - retrieve_cost   # This is necessary to save retrieve_cost_data_{year}.log in the correct folder
+    # - industry_sector_ratios
+    # - build_industry_sector_ratios   # This is necessary to save build_industry_sector_ratios_data.log in the correct folder
+    # - modify_existing_heating
   disable_progressbar: true
   debug_co2_limit: false
   debug_h2deriv_limit: false
@@ -50,6 +53,7 @@ iiasa_database:
   - KN2045minus_WorstCase
   - KN2045minus_SupplyFocus
   reference_scenario: KN2045_Bal_v4
+  fallback_reference_scenario: KN2045_Bal_v4
   region: Deutschland
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#foresight
@@ -61,7 +65,7 @@ scenario:
   ll:
   - vopt
   clusters:
-  - 49 #current options: 27, 49
+  - 68 #current options: 27, 49
   opts:
   - ''
   sector_opts:
@@ -81,7 +85,7 @@ existing_capacities:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#countries
 # Germany plus 12 "Stromnachbarn"
-countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'PL', 'SE', 'ES', 'IT']
+countries: ['AT', 'BE', 'CH', 'CZ', 'DE', 'DK', 'FR', 'GB', 'LU', 'NL', 'NO', 'PL', 'SE', 'ES', 'IT', 'AL', 'BA', 'BG', 'EE', 'FI', 'GR', 'HR', 'HU', 'IE' ,'LT', 'LV', 'ME', 'MK', 'PT', 'RO', 'RS', 'SI', 'SK', 'XK']
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#snapshots
 snapshots:
@@ -217,23 +221,42 @@ clustering:
     # 'IT': 0.1111
   # high spatial resolution: change clusters to 49
   # 49 nodes: 30 for Germany, 3 for Italy, 2 each for Denmark, UK and Spain, 1 per each of other 10 "Stromnachbarn"
-    'DE': 0.6124
-    'AT': 0.0204
-    'BE': 0.0204
-    'CH': 0.0204
-    'CZ': 0.0204
-    'DK': 0.0408
-    'FR': 0.0204
-    'GB': 0.0408
-    'LU': 0.0204
-    'NL': 0.0204
-    'NO': 0.0204
-    'PL': 0.0204
-    'SE': 0.0204
-    'ES': 0.0408
-    'IT': 0.0612
+    'DE': 0.4414
+    'AT': 0.0147
+    'BE': 0.0147
+    'CH': 0.0147
+    'CZ': 0.0147
+    'DK': 0.0294 # 2 nodes
+    'FR': 0.0147
+    'GB': 0.0294 # 2 nodes
+    'LU': 0.0147
+    'NL': 0.0147
+    'NO': 0.0147
+    'PL': 0.0147
+    'SE': 0.0147
+    'ES': 0.0294 # 2 nodes
+    'IT': 0.0441 # 3 nodes
+    'AL': 0.0147
+    'BA': 0.0147
+    'BG': 0.0147
+    'EE': 0.0147
+    'FI': 0.0147
+    'GR': 0.0147
+    'HR': 0.0147
+    'HU': 0.0147
+    'IE': 0.0147
+    'LT': 0.0147
+    'LV': 0.0147
+    'ME': 0.0147
+    'MK': 0.0147
+    'PT': 0.0147
+    'RO': 0.0147
+    'RS': 0.0147
+    'SI': 0.0147
+    'SK': 0.0147
+    'XK': 0.0147
   temporal:
-    resolution_sector: 3H
+    resolution_sector: 365H
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:
@@ -282,7 +305,7 @@ import:
   cost_factor: 1.0
   capacity_boost: 1.0
   endogenous_hvdc_import:
-    enable: false
+    enable: true
     cost_factor: 1.0
     exporters:
     - CN-West
@@ -493,7 +516,7 @@ industry:
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#solving
 solving:
   runtime: 12h
-  mem_mb: 400000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
+  mem_mb: 70000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
   options:
     assign_all_duals: true
     load_shedding: false
