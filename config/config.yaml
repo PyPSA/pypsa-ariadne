@@ -4,9 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-
-  prefix: 20241018_KernnetzUpdate
-  
+  prefix: 20241017_restrict_FT_cap
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -550,6 +548,14 @@ solving:
           2035: 115
           2040: 220
           2045: 325
+      FT_production:
+        DE:
+          2020: 200
+          2025: 200
+          2030: 200
+          2035: 200
+          2040: 200
+          2045: 200
     limits_volume_min:
       electrolysis:
         DE:

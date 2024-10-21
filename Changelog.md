@@ -1,4 +1,5 @@
 # Changelog
+- Restricting Fischer Tropsch capacity addition with config[solving][limit_DE_FT_cap]
 - Except for Current Policies force a minimum of 5 GW of electrolysis capacity in Germany
 - limit the import/export limit to/from Germany
 - adjusting capacity factor of solar to match historic data

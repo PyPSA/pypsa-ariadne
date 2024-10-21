@@ -344,7 +344,9 @@ def assign_locations(df, locations):
     df = df.copy()
 
     # manual cleaning
-    df.loc[(df["Endpunkt(Ort)"] == "Wettringen") & (df["BL2"] == "Niedersachsen"), "BL2"] = "Nordrhein-Westfalen"
+    df.loc[
+        (df["Endpunkt(Ort)"] == "Wettringen") & (df["BL2"] == "Niedersachsen"), "BL2"
+    ] = "Nordrhein-Westfalen"
 
     df["point0"] = pd.merge(
         df,
