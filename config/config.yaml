@@ -572,9 +572,6 @@ solving:
         2035: 25
         2040: 30
         2045: 35
-    limit_DE_FT_cap:
-      relative: 0.5 # of current capacity
-      absolute: 5 # in GW addition per planning horizon
   # solver:
   #   options: gurobi-numeric-focus
   # solver_options:
