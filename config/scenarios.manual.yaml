@@ -68,6 +68,15 @@ CurrentPolicies:
             2035: 40
             2040: 80
             2045: 125
+        electricity_gross_import:
+        # 2022: 54 TWh importiert
+          DE:
+            2020: 50
+            2025: 50
+            2030: 50
+            2035: 75
+            2040: 100
+            2045: 150
         electrolysis:
         # boundary condition lower?
           DE:
@@ -82,7 +91,7 @@ CurrentPolicies:
           DE:
             2020: 0
             2025: 0
-            2030: 10
+            2030: 0
             2035: 105
             2040: 200
             2045: 300
@@ -90,8 +99,8 @@ CurrentPolicies:
         # boundary condition lower?
           DE:
             2020: 0
-            2025: 5
-            2030: 15
+            2025: 0
+            2030: 5
             2035: 115
             2040: 220
             2045: 325
@@ -104,6 +113,14 @@ CurrentPolicies:
             2035: 0
             2040: 0
             2045: 0
+      limits_power_max: # in GW
+        DE:
+          2020: 15
+          2025: 15
+          2030: 15
+          2035: 20
+          2040: 25
+          2045: 30
 
   industry:
     steam_biomass_fraction: 0.4

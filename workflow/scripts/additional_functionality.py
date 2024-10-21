@@ -331,6 +331,53 @@ def electricity_import_limits(n, investment_year, limits_volume_max):
             carrier_attribute="",
         )
 
+    if limits_volume_max["electricity_gross_import"]:
+        # add a gross volume constraint
+        for ct in limits_volume_max["electricity_gross_import"]:
+            limit = limits_volume_max["electricity_gross_import"][ct][investment_year] * 1e6
+
+            logger.info(f"limiting electricity gross imports in {ct} to {limit/1e6} TWh/a")
+
+            incoming_line = n.lines.index[
+                (n.lines.carrier == "AC")
+                & (n.lines.bus0.str[:2] != ct)
+                & (n.lines.bus1.str[:2] == ct)
+            ]
+
+            incoming_link = n.links.index[
+                (n.links.carrier == "DC")
+                & (n.links.bus0.str[:2] != ct)
+                & (n.links.bus1.str[:2] == ct)
+            ]
+
+            incoming_line_p = (
+                n.model["Line-s"].loc[:, incoming_line] * n.snapshot_weightings.generators
+            ).sum()
+            incoming_link_p = (
+                n.model["Link-p"].loc[:, incoming_link] * n.snapshot_weightings.generators
+            ).sum()
+
+            lhs = incoming_link_p + incoming_line_p
+
+            cname = f"Electricity_gross_import_limit-{ct}"
+
+            n.model.add_constraints(lhs <= limit, name=f"GlobalConstraint-{cname}")
+
+            if cname in n.global_constraints.index:
+                logger.warning(
+                    f"Global constraint {cname} already exists. Dropping and adding it again."
+                )
+                n.global_constraints.drop(cname, inplace=True)
+
+            n.add(
+                "GlobalConstraint",
+                cname,
+                constant=limit,
+                sense="<=",
+                type="",
+                carrier_attribute="",
+            )
+
 
 def add_co2limit_country(n, limit_countries, snakemake, debug=False):
     """
