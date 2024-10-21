@@ -334,9 +334,13 @@ def electricity_import_limits(n, investment_year, limits_volume_max):
     if limits_volume_max["electricity_gross_import"]:
         # add a gross volume constraint
         for ct in limits_volume_max["electricity_gross_import"]:
-            limit = limits_volume_max["electricity_gross_import"][ct][investment_year] * 1e6
+            limit = (
+                limits_volume_max["electricity_gross_import"][ct][investment_year] * 1e6
+            )
 
-            logger.info(f"limiting electricity gross imports in {ct} to {limit/1e6} TWh/a")
+            logger.info(
+                f"limiting electricity gross imports in {ct} to {limit/1e6} TWh/a"
+            )
 
             incoming_line = n.lines.index[
                 (n.lines.carrier == "AC")
@@ -351,10 +355,12 @@ def electricity_import_limits(n, investment_year, limits_volume_max):
             ]
 
             incoming_line_p = (
-                n.model["Line-s"].loc[:, incoming_line] * n.snapshot_weightings.generators
+                n.model["Line-s"].loc[:, incoming_line]
+                * n.snapshot_weightings.generators
             ).sum()
             incoming_link_p = (
-                n.model["Link-p"].loc[:, incoming_link] * n.snapshot_weightings.generators
+                n.model["Link-p"].loc[:, incoming_link]
+                * n.snapshot_weightings.generators
             ).sum()
 
             lhs = incoming_link_p + incoming_line_p
