@@ -24,6 +24,7 @@ import re
 
 import geopandas as gpd
 import pandas as pd
+from _helpers import configure_logging
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -40,6 +41,7 @@ if __name__ == "__main__":
             "build_egon_data",
             run="KN2045_Bal_v4",
         )
+configure_logging(snakemake)
 
 logger.info("Retrieving and cleaning egon data")
 

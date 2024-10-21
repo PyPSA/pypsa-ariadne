@@ -6,6 +6,8 @@
 # This script reads in data from the IIASA database to create the scenario.yaml file
 import logging
 
+from _helpers import configure_logging
+
 logger = logging.getLogger(__name__)
 
 import os
@@ -230,6 +232,7 @@ if __name__ == "__main__":
 
         snakemake = mock_snakemake("build_scenarios")
 
+    configure_logging(snakemake)
     # Set USERNAME and PASSWORD for the Ariadne DB
     ariadne_db = pd.read_csv(
         snakemake.input.ariadne_database,

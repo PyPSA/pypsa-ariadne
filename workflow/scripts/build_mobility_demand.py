@@ -4,6 +4,7 @@ import logging
 import pandas as pd
 
 logger = logging.getLogger(__name__)
+from _helpers import configure_logging
 
 
 def get_transport_data(db):
@@ -61,6 +62,7 @@ if __name__ == "__main__":
             planning_horizons="2020",
             run="KN2045_Bal_v4",
         )
+    configure_logging(snakemake)
 
     db = pd.read_csv(
         snakemake.input.ariadne,
@@ -75,7 +77,9 @@ if __name__ == "__main__":
         snakemake.wildcards.planning_horizons
     ]
 
-    logger.info("Retrieving German mobility demand from transport_data model.")
+    logger.info(
+        f"Retrieving German mobility demand from {snakemake.params.leitmodelle["transport"]} transport model."
+    )
     # get transport_data data
     transport_data = get_transport_data(db)
 
