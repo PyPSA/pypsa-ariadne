@@ -2149,7 +2149,7 @@ def get_final_energy(
     ] = (sum_load(n, "kerosene for aviation", region) * international_aviation_fraction)
 
     for var_key, fraction_key in zip(
-        ["Petroleum", "Efuel", "Biomass"], oil_fractions.index
+        ["Biomass", "Petroleum", "Efuel"], oil_fractions.index
     ):
         var[f"Final Energy|Bunkers|Aviation|Liquids|{var_key}"] = (
             var["Final Energy|Bunkers|Aviation|Liquids"] * oil_fractions[fraction_key]
@@ -2163,7 +2163,7 @@ def get_final_energy(
     )
 
     for var_key, fraction_key in zip(
-        ["Petroleum", "Efuel", "Biomass"], oil_fractions.index
+        ["Biomass", "Petroleum", "Efuel"], oil_fractions.index
     ):
         var[f"Final Energy|Bunkers|Navigation|Liquids|{var_key}"] = (
             var["Final Energy|Bunkers|Navigation|Liquids"] * oil_fractions[fraction_key]
