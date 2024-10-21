@@ -3664,6 +3664,23 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     ac_investments[
         ~(ac_lines.bus0.str.contains(region) & ac_lines.bus1.str.contains(region))
     ] *= 0.5
+
+    # Blindleistungskompensation
+    # https://www.netzentwicklungsplan.de/sites/default/files/2023-07/NEP_2037_2045_V2023_2_Entwurf_Teil1_1.pdf
+    # Tabelle 30, Abbildung 70, Kostenannahmen NEP + eigene Berechnungen, gerundet
+    year = n.generators.build_year.max()
+    reactive_power_compensation = {
+        2020: 0,
+        2025: 8,
+        2030: 14,
+        2035: 10,
+        2040: 6,
+        2045: 1,
+    }
+    var[var_name + "AC|Reactive Power Compensation"] = reactive_power_compensation.get(
+        year, 0
+    ) / 5
+
     var[var_name + "AC|Onshore"] = ac_investments.sum() / 5
     var[var_name + "AC|Onshore|NEP"] = ac_investments[nep_ac].sum() / 5
     var[var_name + "DC|Onshore"] = dc_investments.sum() / 5
@@ -3674,9 +3691,15 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
             var[var_name + f"AC|{key}"] + var[var_name + f"DC|{key}"]
         )
 
-    var[var_name + "AC"] = var[var_name + "AC|Onshore"] + var[var_name + "AC|Offshore"]
+    var[var_name + "AC"] = (
+        var[var_name + "AC|Onshore"] 
+        + var[var_name + "AC|Offshore"]
+        + var[var_name + "AC|Reactive Power Compensation"]
+    )
     var[var_name + "AC|NEP"] = (
-        var[var_name + "AC|Onshore|NEP"] + var[var_name + "AC|Offshore|NEP"]
+        var[var_name + "AC|Onshore|NEP"] 
+        + var[var_name + "AC|Offshore|NEP"]
+        + var[var_name + "AC|Reactive Power Compensation"]
     )
     var[var_name + "DC"] = var[var_name + "DC|Onshore"] + var[var_name + "DC|Offshore"]
     var[var_name + "DC|NEP"] = (
