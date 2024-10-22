@@ -5,6 +5,121 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+def plot_NEP(df, savepath=snakemake.output.NEP_plot):
+    key = "Investment|Energy Supply|Electricity|Transmission|"
+
+    # Trassen are WIP
+    NEP_Trassen = {
+        "DC_NEP_Startnetz": 321
+        + 560
+        + 2466,  # Zu-/Umbeseilung + Ersatz-/Parallelneubau + Neubau
+        "DC_NEP_Zubaunetz": 0 + 179 + 4396,
+        "AC_NEP_Startnetz": 919 + 2081 + 599,
+        "AC_NEP_Zubaunetz": 2279 + 3846 + 1714,
+    }
+
+    NEP_investment = {
+        "NEP-Offshore": {"Startnetz": 0, "Zubaunetz": 160},
+        "PyPSA-Offshore": {
+            "exogen": df.loc[key + "Offshore|NEP"].values.sum() * 5,
+            "endogen": (
+                df.loc[key + "Offshore"].values - df.loc[key + "Offshore|NEP"].values
+            ).sum() * 5,},
+        "NEP-DC": {"Startnetz": 26, "Zubaunetz": 46.2},
+        "PyPSA-DC": {
+            "exogen": df.loc[key + "DC|Onshore|NEP"].values.sum() * 5,
+            "endogen": (
+                df.loc[key + "DC|Onshore"].values
+                - df.loc[key + "DC|Onshore|NEP"].values
+            ).sum() * 5,},
+        "NEP-AC": {"Startnetz": 14.5, "Zubaunetz": 30.5},
+        "PyPSA-AC": {
+            "exogen": df.loc[key + "AC|Onshore|NEP"].values.sum() * 5,
+            "endogen": (
+                df.loc[key + "AC|Onshore"].values
+                - df.loc[key + "AC|Onshore|NEP"].values
+            ).sum() * 5,},
+        "NEP-Q": {"Startnetz": 9.4, "Zubaunetz": 29.5},
+        "PyPSA-Q": {
+            "exogen": df.loc[key + "AC|Reactive Power Compensation"].values.sum() * 5,
+        },
+    }
+    NEP_investment = pd.DataFrame(NEP_investment).T
+    NEP_investment.loc["NEP-Onshore", "Startnetz"] = (
+        NEP_investment.loc["NEP-DC", "Startnetz"]
+        + NEP_investment.loc["NEP-AC", "Startnetz"]
+        + NEP_investment.loc["NEP-Q", "Startnetz"]
+    )
+    NEP_investment.loc["NEP-Onshore", "Zubaunetz"] = (
+        NEP_investment.loc["NEP-DC", "Zubaunetz"]
+        + NEP_investment.loc["NEP-AC", "Zubaunetz"]
+        + NEP_investment.loc["NEP-Q", "Zubaunetz"]
+    )
+    NEP_investment.loc["PyPSA-Onshore", "exogen"] = (
+        NEP_investment.loc["PyPSA-DC", "exogen"]
+        + NEP_investment.loc["PyPSA-AC", "exogen"]
+        + NEP_investment.loc["PyPSA-Q", "exogen"]
+    )
+    NEP_investment.loc["PyPSA-Onshore", "endogen"] = (
+        NEP_investment.loc["PyPSA-DC", "endogen"]
+        + NEP_investment.loc["PyPSA-AC", "endogen"]
+    )
+
+    # Create a DataFrame in the format ChatGPT suggested
+    data = {
+        'Category': ['DC', 'AC', 'Q', 'Onshore', 'Offshore'],
+        'Startnetz': [
+            NEP_investment.loc["NEP-DC", "Startnetz"],
+            NEP_investment.loc["NEP-AC", "Startnetz"],
+            NEP_investment.loc["NEP-Q", "Startnetz"],
+            NEP_investment.loc["NEP-Onshore", "Startnetz"],
+            NEP_investment.loc["NEP-Offshore", "Startnetz"]
+        ],
+        'Zubaunetz': [
+            NEP_investment.loc["NEP-DC", "Zubaunetz"],
+            NEP_investment.loc["NEP-AC", "Zubaunetz"],
+            NEP_investment.loc["NEP-Q", "Zubaunetz"],
+            NEP_investment.loc["NEP-Onshore", "Zubaunetz"],
+            NEP_investment.loc["NEP-Offshore", "Zubaunetz"]
+        ],
+        'exogen': [
+            NEP_investment.loc["PyPSA-DC", "exogen"],
+            NEP_investment.loc["PyPSA-AC", "exogen"],
+            NEP_investment.loc["PyPSA-Q", "exogen"],
+            NEP_investment.loc["PyPSA-Onshore", "exogen"],
+            NEP_investment.loc["PyPSA-Offshore", "exogen"]
+        ],
+        'endogen': [
+            NEP_investment.loc["PyPSA-DC", "endogen"],
+            NEP_investment.loc["PyPSA-AC", "endogen"],
+            0,
+            NEP_investment.loc["PyPSA-Onshore", "endogen"],
+            NEP_investment.loc["PyPSA-Offshore", "endogen"]
+        ]}
+
+    df = pd.DataFrame(data)
+
+    # Define the width of the bars
+    bar_width = 0.35
+    indices = np.arange(len(df))  # Bar positions
+
+    plt.clf()
+
+    plt.bar(indices, df['Startnetz'], bar_width, label='Startnetz')
+    plt.bar(indices, df['Zubaunetz'], bar_width, bottom=df['Startnetz'], label='Zubaunetz')
+    plt.bar(indices + bar_width, df['exogen'], bar_width, label='exogen')
+    plt.bar(indices + bar_width, df['endogen'], bar_width, bottom=df['exogen'], label='endogen')
+
+    plt.xlabel('Category')
+    plt.ylabel('billion EUR')
+    plt.title('Investment in Transmission Grid')
+
+    # Adjust the x-ticks to be between the two bars
+    plt.xticks(indices + bar_width / 2, df['Category'])
+    plt.legend()
+
+    plt.savefig(savepath, bbox_inches='tight')
+
 
 def secondary_energy_plot(ddf, name="Secondary Energy"):
     # Get Secondary Energy data
@@ -574,65 +689,5 @@ if __name__ == "__main__":
         unit="PJ/yr",
     )
 
-    # NEP Plot WIP
-    NEP_Trassen = {
-        "DC_NEP_Startnetz": 321
-        + 560
-        + 2466,  # Zu-/Umbeseilung + Ersatz-/Parallelneubau + Neubau
-        "DC_NEP_Zubaunetz": 0 + 179 + 4396,
-        "AC_NEP_Startnetz": 919 + 2081 + 599,
-        "AC_NEP_Zubaunetz": 2279 + 3846 + 1714,
-    }
-    key = "Investment|Energy Supply|Electricity|Transmission|"
-    NEP_investment = {
-        "NEP-DC": {"Startnetz": 26, "Zubaunetz": 46.2},
-        "PyPSA-DC": {
-            "exogen": df.loc[key + "DC|Onshore|NEP"].values.sum() * 5,
-            "endogen": (
-                df.loc[key + "DC|Onshore"].values
-                - df.loc[key + "DC|Onshore|NEP"].values
-            ).sum()
-            * 5,
-        },
-        "NEP-AC": {
-            "Startnetz": 14.5,
-            "Zubaunetz": 30.5,
-        },
-        "PyPSA-AC": {
-            "exogen": df.loc[key + "AC|Onshore|NEP"].values.sum() * 5,
-            "endogen": (
-                df.loc[key + "AC|Onshore"].values
-                - df.loc[key + "AC|Onshore|NEP"].values
-            ).sum()
-            * 5,
-        },
-        "NEP-Q": {"Startnetz": 9.4, "Zubaunetz": 29.5},
-        "PyPSA-Q": {
-            "exogen": df.loc[key + "AC|Reactive Power Compensation"].values.sum() * 5,
-        },
-    }
-    NEP_investment = pd.DataFrame(NEP_investment).T
-    NEP_investment.loc["NEP-Total", "Startnetz"] = (
-        NEP_investment.loc["NEP-DC", "Startnetz"]
-        + NEP_investment.loc["NEP-AC", "Startnetz"]
-        + NEP_investment.loc["NEP-Q", "Startnetz"]
-    )
-    NEP_investment.loc["NEP-Total", "Zubaunetz"] = (
-        NEP_investment.loc["NEP-DC", "Zubaunetz"]
-        + NEP_investment.loc["NEP-AC", "Zubaunetz"]
-        + NEP_investment.loc["NEP-Q", "Zubaunetz"]
-    )
-    NEP_investment.loc["PyPSA-Total", "exogen"] = (
-        NEP_investment.loc["PyPSA-DC", "exogen"]
-        + NEP_investment.loc["PyPSA-AC", "exogen"]
-        + NEP_investment.loc["PyPSA-Q", "exogen"]
-    )
-    NEP_investment.loc["PyPSA-Total", "endogen"] = (
-        NEP_investment.loc["PyPSA-DC", "endogen"]
-        + NEP_investment.loc["PyPSA-AC", "endogen"]
-    )
-    ax = pd.DataFrame(NEP_investment).plot.bar(
-        stacked=True,
-        ylabel="Investment in billion EUR",
-        title="Investments Onshore Transmission Grid",
-    )
+    plot_NEP(df, savepath=snakemake.output.NEP_plot)
+
