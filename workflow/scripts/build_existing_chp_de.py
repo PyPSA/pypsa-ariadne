@@ -215,14 +215,16 @@ def assign_subnode(CHP_de, subnodes):
     )
     CHP_de.crs = subnodes.crs
     # Set nuts_3 shape wkt column as geometry
-    subnodes["geometry"] = gpd.GeoSeries.from_wkt(subnodes["nuts3_shape"])
-    subnodes.drop("nuts3_shape", axis=1, inplace=True)
+    subnodes["geometry"] = gpd.GeoSeries.from_wkt(subnodes["lau_shape"])
+    subnodes.drop("lau_shape", axis=1, inplace=True)
     subnodes.index.rename("city", inplace=True)
 
     # Assign subnode to CHP plants based on the nuts3 region
     CHP_de = CHP_de.sjoin(subnodes, how="left", predicate="within")
-    CHP_de["subnode"] = CHP_de["cluster"] + " " + CHP_de["city"]
-    CHP_de.drop(["city", "cluster"], axis=1, inplace=True)
+    # Insert leading whitespace for citynames where not nan
+    CHP_de["city"] = CHP_de["city"].apply(lambda x: " " + x if pd.notna(x) else "")
+    CHP_de["bus"] = CHP_de["bus"] + CHP_de["city"]
+    CHP_de.drop("city", axis=1, inplace=True)
 
     return CHP_de
 
@@ -241,7 +243,7 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "build_existing_chp_de",
             simpl="",
-            clusters=44,
+            clusters=27,
             opts="",
             ll="vopt",
             sector_opts="none",
@@ -268,14 +270,16 @@ if __name__ == "__main__":
     CHP_de = clean_data(combustion, biomass, geodata)
 
     CHP_de = calculate_efficiency(CHP_de)
-    bn = pypsa.Network(snakemake.input.busmap)
-    substations = bn.buses.query("substation_lv")
-    CHP_de = map_country_bus(CHP_de, substations)
+    logger.info("Mapping CHP plants to regions")
+    regions = gpd.read_file(snakemake.input.regions).set_index("name")
+    geometry = gpd.points_from_xy(CHP_de["lon"], CHP_de["lat"])
+    gdf = gpd.GeoDataFrame(geometry=geometry, crs=4326)
+    CHP_de["bus"] = gpd.sjoin_nearest(gdf, regions, how="left")["name"]
 
     if snakemake.params.add_district_heating_subnodes:
         subnodes = gpd.read_file(
             snakemake.input.district_heating_subnodes,
-            columns=["Stadt", "cluster", "nuts3_shape"],
+            columns=["Stadt", "lau_shape"],
         ).set_index("Stadt")
         CHP_de = assign_subnode(CHP_de, subnodes)
 

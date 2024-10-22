@@ -89,7 +89,7 @@ def add_subnodes(n, subnodes):
             y=row.geometry.y,
             x=row.geometry.x,
             country="DE",
-            location=row["cluster"],
+            location=f"{row['cluster']} {row['Stadt']}",
             carrier="urban central heat",
             unit="MWh_th",
         )
@@ -136,7 +136,7 @@ def add_subnodes(n, subnodes):
             bus=name,
             p_set=uch_load,
             carrier="urban central heat",
-            location=row["cluster"],
+            location=f"{row['cluster']} {row['Stadt']}",
         )
 
         lti_load = (
@@ -153,11 +153,11 @@ def add_subnodes(n, subnodes):
         )
         n.madd(
             "Load",
-            [f"{name} low-temperature heat for industry"],
+            [f"{row['cluster']} {row['Stadt']} low-temperature heat for industry"],
             bus=name,
             p_set=lti_load,
             carrier="low-temperature heat for industry",
-            location=row["cluster"],
+            location=f"{row['cluster']} {row['Stadt']}",
         )
 
         # Adjust loads of cluster buses
@@ -173,7 +173,7 @@ def add_subnodes(n, subnodes):
         n.madd(
             "Bus",
             [f"{row['cluster']} {row['Stadt']} urban central water tanks"],
-            location=row["cluster"],
+            location=f"{row['cluster']} {row['Stadt']}",
             carrier="urban central water tanks",
             unit="MWh_th",
         )
@@ -275,12 +275,36 @@ def extend_heating_distribution(existing_heating_distribution, subnodes):
     corresponding mother node.
     """
     # Merge the existing heating distribution with subnodes on the cluster name
-    mother_nodes = existing_heating_distribution.loc[subnodes.cluster.unique()]
-    mother_nodes["cities"] = subnodes.groupby("cluster")["Stadt"].apply(list)
+    mother_nodes = (
+        existing_heating_distribution.loc[subnodes.cluster.unique()]
+        .unstack(-1)
+        .to_frame()
+    )
+    cities_within_cluster = subnodes.groupby("cluster")["Stadt"].apply(list)
+    mother_nodes["cities"] = mother_nodes.apply(
+        lambda i: cities_within_cluster[i.name[2]], axis=1
+    )
     # Explode the list of cities
-    mother_nodes = mother_nodes.explode(("cities", ""))
-    mother_nodes.index = mother_nodes.index + " " + mother_nodes[("cities", "")]
-    mother_nodes.drop(columns=("cities", ""), inplace=True)
+    mother_nodes = mother_nodes.explode("cities")
+
+    # Reset index to temporarily flatten it
+    mother_nodes_reset = mother_nodes.reset_index()
+
+    # Append city name to the third level of the index
+    mother_nodes_reset["name"] = (
+        mother_nodes_reset["name"] + " " + mother_nodes_reset["cities"]
+    )
+
+    # Set the index back
+    mother_nodes = mother_nodes_reset.set_index(["heat name", "technology", "name"])
+
+    # Drop the temporary 'cities' column
+    mother_nodes.drop("cities", axis=1, inplace=True)
+
+    # Reformat to match the existing heating distribution
+    mother_nodes = mother_nodes.squeeze().unstack(-1).T
+
+    # Combine the exploded data with the existing heating distribution
     existing_heating_distribution_extended = pd.concat(
         [existing_heating_distribution, mother_nodes]
     )
@@ -316,7 +340,9 @@ if __name__ == "__main__":
         "index"
     )
     lau = gpd.read_file(
-        f"{snakemake.input.lau}!LAU_RG_01M_2021_3035.geojson", crs="EPSG:3035"
+        # "/home/cpschau/Code/dev/pypsa-ariadne/.snakemake/storage/http/gisco-services.ec.europa.eu/distribution/v2/lau/download/ref-lau-2021-01m.geojson/LAU_RG_01M_2021_3035.geojson",
+        f"{snakemake.input.lau}!LAU_RG_01M_2021_3035.geojson",
+        crs="EPSG:3035",
     ).to_crs("EPSG:4326")
 
     fernwaermeatlas = pd.read_excel(
