@@ -133,6 +133,7 @@ rule modify_cost_data:
         NEP=config_provider("costs", "NEP"),
         planning_horizons=config_provider("scenario", "planning_horizons"),
         co2_price_add_on_fossils=config_provider("co2_price_add_on_fossils"),
+        ptes_cost=config_provider("costs", "ptes"),
     input:
         modifications=lambda w: (
             "ariadne-data/costs_2019-modifications.csv"
