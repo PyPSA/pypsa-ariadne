@@ -11,6 +11,8 @@ __pycache__
 
 # project specific
 data
-resources
 *.nc
 ariadne-data
+import-data
+benchmarks
+logs
