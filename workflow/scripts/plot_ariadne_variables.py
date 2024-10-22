@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+
 def plot_NEP(df, savepath=snakemake.output.NEP_plot):
     key = "Investment|Energy Supply|Electricity|Transmission|"
 
@@ -24,21 +25,27 @@ def plot_NEP(df, savepath=snakemake.output.NEP_plot):
             "exogen": df.loc[key + "Offshore|NEP"].values.sum() * 5,
             "endogen": (
                 df.loc[key + "Offshore"].values - df.loc[key + "Offshore|NEP"].values
-            ).sum() * 5,},
+            ).sum()
+            * 5,
+        },
         "NEP-DC": {"Startnetz": 26, "Zubaunetz": 46.2},
         "PyPSA-DC": {
             "exogen": df.loc[key + "DC|Onshore|NEP"].values.sum() * 5,
             "endogen": (
                 df.loc[key + "DC|Onshore"].values
                 - df.loc[key + "DC|Onshore|NEP"].values
-            ).sum() * 5,},
+            ).sum()
+            * 5,
+        },
         "NEP-AC": {"Startnetz": 14.5, "Zubaunetz": 30.5},
         "PyPSA-AC": {
             "exogen": df.loc[key + "AC|Onshore|NEP"].values.sum() * 5,
             "endogen": (
                 df.loc[key + "AC|Onshore"].values
                 - df.loc[key + "AC|Onshore|NEP"].values
-            ).sum() * 5,},
+            ).sum()
+            * 5,
+        },
         "NEP-Q": {"Startnetz": 9.4, "Zubaunetz": 29.5},
         "PyPSA-Q": {
             "exogen": df.loc[key + "AC|Reactive Power Compensation"].values.sum() * 5,
@@ -67,35 +74,36 @@ def plot_NEP(df, savepath=snakemake.output.NEP_plot):
 
     # Create a DataFrame in the format ChatGPT suggested
     data = {
-        'Category': ['DC', 'AC', 'Q', 'Onshore', 'Offshore'],
-        'Startnetz': [
+        "Category": ["DC", "AC", "Q", "Onshore", "Offshore"],
+        "Startnetz": [
             NEP_investment.loc["NEP-DC", "Startnetz"],
             NEP_investment.loc["NEP-AC", "Startnetz"],
             NEP_investment.loc["NEP-Q", "Startnetz"],
             NEP_investment.loc["NEP-Onshore", "Startnetz"],
-            NEP_investment.loc["NEP-Offshore", "Startnetz"]
+            NEP_investment.loc["NEP-Offshore", "Startnetz"],
         ],
-        'Zubaunetz': [
+        "Zubaunetz": [
             NEP_investment.loc["NEP-DC", "Zubaunetz"],
             NEP_investment.loc["NEP-AC", "Zubaunetz"],
             NEP_investment.loc["NEP-Q", "Zubaunetz"],
             NEP_investment.loc["NEP-Onshore", "Zubaunetz"],
-            NEP_investment.loc["NEP-Offshore", "Zubaunetz"]
+            NEP_investment.loc["NEP-Offshore", "Zubaunetz"],
         ],
-        'exogen': [
+        "exogen": [
             NEP_investment.loc["PyPSA-DC", "exogen"],
             NEP_investment.loc["PyPSA-AC", "exogen"],
             NEP_investment.loc["PyPSA-Q", "exogen"],
             NEP_investment.loc["PyPSA-Onshore", "exogen"],
-            NEP_investment.loc["PyPSA-Offshore", "exogen"]
+            NEP_investment.loc["PyPSA-Offshore", "exogen"],
         ],
-        'endogen': [
+        "endogen": [
             NEP_investment.loc["PyPSA-DC", "endogen"],
             NEP_investment.loc["PyPSA-AC", "endogen"],
             0,
             NEP_investment.loc["PyPSA-Onshore", "endogen"],
-            NEP_investment.loc["PyPSA-Offshore", "endogen"]
-        ]}
+            NEP_investment.loc["PyPSA-Offshore", "endogen"],
+        ],
+    }
 
     df = pd.DataFrame(data)
 
@@ -105,20 +113,28 @@ def plot_NEP(df, savepath=snakemake.output.NEP_plot):
 
     plt.clf()
 
-    plt.bar(indices, df['Startnetz'], bar_width, label='Startnetz')
-    plt.bar(indices, df['Zubaunetz'], bar_width, bottom=df['Startnetz'], label='Zubaunetz')
-    plt.bar(indices + bar_width, df['exogen'], bar_width, label='exogen')
-    plt.bar(indices + bar_width, df['endogen'], bar_width, bottom=df['exogen'], label='endogen')
+    plt.bar(indices, df["Startnetz"], bar_width, label="Startnetz")
+    plt.bar(
+        indices, df["Zubaunetz"], bar_width, bottom=df["Startnetz"], label="Zubaunetz"
+    )
+    plt.bar(indices + bar_width, df["exogen"], bar_width, label="exogen")
+    plt.bar(
+        indices + bar_width,
+        df["endogen"],
+        bar_width,
+        bottom=df["exogen"],
+        label="endogen",
+    )
 
-    plt.xlabel('Category')
-    plt.ylabel('billion EUR')
-    plt.title('Investment in Transmission Grid')
+    plt.xlabel("Category")
+    plt.ylabel("billion EUR")
+    plt.title("Investment in Transmission Grid")
 
     # Adjust the x-ticks to be between the two bars
-    plt.xticks(indices + bar_width / 2, df['Category'])
+    plt.xticks(indices + bar_width / 2, df["Category"])
     plt.legend()
 
-    plt.savefig(savepath, bbox_inches='tight')
+    plt.savefig(savepath, bbox_inches="tight")
 
 
 def secondary_energy_plot(ddf, name="Secondary Energy"):
@@ -690,4 +706,3 @@ if __name__ == "__main__":
     )
 
     plot_NEP(df, savepath=snakemake.output.NEP_plot)
-
