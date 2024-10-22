@@ -6,8 +6,8 @@
 run:
   prefix: import
   name:
-  - no_import_me
-  - eu_import_me_all
+  # - no_import_me
+  # - eu_import_me_all
   - all_import_me_all
   # - CurrentPolicies
   # - KN2045_Bal_v4
@@ -716,6 +716,8 @@ plotting:
     hbi: '#858d99'
     steel: '#b1bbc9'
     DRI + Electric arc: '#b1bbc9'
+    DRI: '#b1bbc9'
+    EAF: '#b1bba1'
     shipping ammonia: '#46caf0'
     Methanol steam reforming CC: '#468c8b'
     biomass to methanol CC: '#468c8b'
@@ -746,6 +748,25 @@ plotting:
     impport hvdc-to-elec: '#ff0000'
     import shipping-hbi: '#858d99'
     import shipping-steel: '#b1bbc9'
+    import hvdc-to-elec: '#ff0000'
+    H2: '#ff0000'
+    H2 Electrolysis: '#ff0000'
+    H2 Turbine: '#ff0000'
+    HVDC: '#ff0000'
+    onwind: '#ff0000'
+    solar-utility: '#ff0000'
+    external H2: '#f7cdf0'
+    external H2 Turbine: '#991f83'
+    external H2 Electrolysis: '#991f83'
+    external battery discharger: '#dff7cb'
+    external battery charger: '#dff7cb'
+    external battery: '#dff7cb'
+    external offwind: '#d0e8f5'
+    external onwind: '#accbfc'
+    external solar: '#fcf1c7'
+    external solar-utility: '#fcf1c7'
+    external HVDC: "#8a1caf"
+
   countries:
   - all
   - DE

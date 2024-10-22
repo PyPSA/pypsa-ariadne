@@ -4,7 +4,9 @@ import numpy as np
 import xarray as xr
 import geopandas as gpd
 import logging
+import warnings
 from types import SimpleNamespace
+from shapely.geometry import Point
 
 import sys
 import os
@@ -12,9 +14,15 @@ paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scrip
 for path in paths:
     sys.path.insert(0, os.path.abspath(path))
 from prepare_sector_network import prepare_costs
+from _helpers import(
+    configure_logging,
+    get,
+)
 
 logger = logging.getLogger(__name__)
 
+
+DISTANCE_CRS = 3857
 carriers_eleh2 = ["pipeline-h2",
                 "shipping-lh2",
                 "hvdc-to-elec"]
@@ -35,7 +43,9 @@ y = 51.2
 
 def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
     logger.info("Add import options: endogenous hvdc-to-elec")
-    cf = snakemake.config["sector"]["import"].get("endogenous_hvdc_import", {})
+
+    cf = snakemake.params.import_options.get("endogenous_hvdc_import", {})
+
     if not cf["enable"]:
         return
 
@@ -81,22 +91,26 @@ def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
         )  # km
     import_links = pd.concat(import_links)
     import_links.loc[
-        import_links.index.get_level_values(0).str.contains("KZ|CN")
-    ] *= 1.2  # proxy for detour through Caucasus
+        import_links.index.get_level_values(0).str.contains("KZ|CN|MN|UZ")
+    ] *= (
+        1.2  # proxy for detour through Caucasus in addition to crow-fly distance factor
+    )
 
-    # xlinks
-    xlinks = {}
-    for bus0, links in cf["xlinks"].items():
-        for link in links:
-            landing_point = gpd.GeoSeries(
-                [Point(link["x"], link["y"])], crs=4326
-            ).to_crs(DISTANCE_CRS)
-            bus1 = (
-                regions.to_crs(DISTANCE_CRS)
-                .geometry.distance(landing_point[0])
-                .idxmin()
-            )
-            xlinks[(bus0, bus1)] = link["length"]
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+        # xlinks
+        xlinks = {}
+        for bus0, links in cf["xlinks"].items():
+            for link in links:
+                landing_point = gpd.GeoSeries(
+                    [Point(link["x"], link["y"])], crs=4326
+                ).to_crs(DISTANCE_CRS)
+                bus1 = (
+                    regions.to_crs(DISTANCE_CRS)
+                    .geometry.distance(landing_point[0])
+                    .idxmin()
+                )
+                xlinks[(bus0, bus1)] = link["length"]
 
     import_links = pd.concat([import_links, pd.Series(xlinks)], axis=0)
     import_links = import_links.drop_duplicates(keep="first")
@@ -110,19 +124,19 @@ def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
 
     buses_i = exporters.index
 
-    n.madd("Bus", buses_i, **exporters.drop("geometry", axis=1))
+    n.add("Bus", buses_i, x=exporters.x, y=exporters.y)
+    # n.add("Bus", buses_i + " export", x=exporters.x.values, y=exporters.y.values)
 
     efficiency = cf["efficiency_static"] * cf["efficiency_per_1000km"] ** (
         import_links.values / 1e3
     )
 
-    n.madd(
+    n.add(
         "Link",
         ["import hvdc-to-elec " + " ".join(idx).strip() for idx in import_links.index],
         bus0=import_links.index.get_level_values(0),
         bus1=import_links.index.get_level_values(1),
         carrier="import hvdc-to-elec",
-        p_min_pu=0,
         p_nom_extendable=True,
         length=import_links.values,
         capital_cost=hvdc_cost * cost_factor,
@@ -130,34 +144,37 @@ def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
         p_nom_max=cf["p_nom_max"],
     )
 
+    hours = int(snakemake.params.temporal_clustering[:-1])
+
     for tech in ["solar-utility", "onwind"]:
         p_max_pu_tech = p_max_pu.sel(technology=tech).to_pandas().dropna().T
-
+        # build average over every three lines but keeo index
+        p_max_pu_tech = p_max_pu_tech.resample(f"{hours}h").mean()
         exporters_tech_i = exporters.index.intersection(p_max_pu_tech.columns)
 
         grid_connection = costs.at["electricity grid connection", "fixed"]
 
-        n.madd(
+        n.add(
             "Generator",
             exporters_tech_i,
             suffix=" " + tech,
             bus=exporters_tech_i,
-            carrier=f"external {tech}",
+            carrier="external " + tech,
             p_nom_extendable=True,
             capital_cost=(costs.at[tech, "fixed"] + grid_connection) * cost_factor,
             lifetime=costs.at[tech, "lifetime"],
-            p_max_pu=p_max_pu_tech.reindex(columns=exporters_tech_i),
-            p_nom_max=p_nom_max[tech].reindex(index=exporters_tech_i)
+            p_max_pu=p_max_pu_tech.reindex(columns=exporters_tech_i).values,
+            p_nom_max=p_nom_max[tech].reindex(index=exporters_tech_i).values
             * cf["share_of_p_nom_max_available"],
         )
 
     # hydrogen storage
 
-    h2_buses_i = n.madd(
+    h2_buses_i = n.add(
         "Bus", buses_i, suffix=" H2", carrier="external H2", location=buses_i
     )
 
-    n.madd(
+    n.add(
         "Store",
         h2_buses_i,
         bus=h2_buses_i,
@@ -170,7 +187,7 @@ def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
         * cost_factor,
     )
 
-    n.madd(
+    n.add(
         "Link",
         h2_buses_i + " Electrolysis",
         bus0=buses_i,
@@ -182,7 +199,7 @@ def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
         lifetime=costs.at["electrolysis", "lifetime"],
     )
 
-    n.madd(
+    n.add(
         "Link",
         h2_buses_i + " H2 Turbine",
         bus0=h2_buses_i,
@@ -198,11 +215,11 @@ def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
 
     # battery storage
 
-    b_buses_i = n.madd(
+    b_buses_i = n.add(
         "Bus", buses_i, suffix=" battery", carrier="external battery", location=buses_i
     )
 
-    n.madd(
+    n.add(
         "Store",
         b_buses_i,
         bus=b_buses_i,
@@ -213,7 +230,7 @@ def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
         lifetime=costs.at["battery storage", "lifetime"],
     )
 
-    n.madd(
+    n.add(
         "Link",
         b_buses_i + " charger",
         bus0=buses_i,
@@ -225,7 +242,7 @@ def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
         lifetime=costs.at["battery inverter", "lifetime"],
     )
 
-    n.madd(
+    n.add(
         "Link",
         b_buses_i + " discharger",
         bus0=b_buses_i,
@@ -261,6 +278,7 @@ def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
             capital_cost=capital_cost * cost_factor,
             length=d,
         )
+
 
 def add_import_options(n, capacity_boost, import_options, endogenous_hvdc=False):
 
@@ -359,9 +377,9 @@ def add_import_options(n, capacity_boost, import_options, endogenous_hvdc=False)
             buses = import_nodes_tech.index + f"{suffix} import {tech}"
             capital_cost = 7018.0 if tech == "shipping-lch4" else 0.0  # €/MW/a
 
-            n.madd("Bus", buses + " bus", carrier=f"import {tech}")
+            n.add("Bus", buses + " bus", carrier=f"import {tech}")
             # TODO:
-            n.madd(
+            n.add(
                 "Store",
                 buses + " store",
                 bus=buses + " bus",
@@ -375,7 +393,7 @@ def add_import_options(n, capacity_boost, import_options, endogenous_hvdc=False)
                 bus1 = import_nodes_tech.index + suffix
             else:
                 bus1 = ["EU gas"]
-            n.madd(
+            n.add(
                 "Link",
                 buses,
                 bus0=buses + " bus",
@@ -396,7 +414,7 @@ def add_import_options(n, capacity_boost, import_options, endogenous_hvdc=False)
                 1.2 * 7018.0 if tech == "shipping-lh2" else 0.0
             )  # €/MW/a, +20% compared to LNG
 
-            n.madd(
+            n.add(
                 "Generator",
                 import_nodes_tech.index + f"{suffix} import {tech}",
                 bus=buses,
@@ -530,7 +548,7 @@ def unravel_ammonia(n, costs, sector_options):
     n.links.loc[crack_links, "bus0"] = "DE NH3"
 
     # transport links
-    n.madd(
+    n.add(
         "Link",
         ["EU NH3 -> DE NH3", "DE NH3 -> EU NH3"],
         bus0=["EU NH3", "DE NH3"],
@@ -708,7 +726,7 @@ def endogenise_steel(n, costs, sector_options):
             / electricity_input
         )
 
-    n.madd(
+    n.add(
         "Link",
         EU_nodes,
         suffix=" DRI",
@@ -724,7 +742,7 @@ def endogenise_steel(n, costs, sector_options):
         efficiency=1 / electricity_input,
         efficiency2=-hydrogen_input / electricity_input,
     )
-    n.madd(
+    n.add(
         "Link",
         DE_nodes,
         suffix=" DRI",
@@ -755,7 +773,7 @@ def endogenise_steel(n, costs, sector_options):
         / 8760
     )
 
-    n.madd(
+    n.add(
         "Link",
         EU_nodes,
         suffix=" EAF",
@@ -770,7 +788,7 @@ def endogenise_steel(n, costs, sector_options):
         efficiency2=-costs.at["electric arc furnace", "hbi-input"]
         / electricity_input,
     )
-    n.madd(
+    n.add(
         "Link",
         DE_nodes,
         suffix=" EAF",
@@ -787,7 +805,7 @@ def endogenise_steel(n, costs, sector_options):
     )
 
     # allow transport of steel between EU and DE
-    n.madd(
+    n.add(
         "Link",
         ["EU steel -> DE steel", "DE steel -> EU steel", "EU hbi -> DE hbi", "DE hbi -> EU hbi"],
         bus0=["EU steel", "DE steel", "EU hbi", "DE hbi"],
@@ -804,7 +822,7 @@ def endogenise_steel(n, costs, sector_options):
 def adjust_industry_loads(n, nodes, industrial_demand, endogenous_sectors):
 
     #TODO: get in a bunch of error messages if configs are not right
-
+    #TODO: check coal demand comes from modifying the industry energy demand not the production! Do I have to backwards calculate the coal demand from the ebergy demand?
     # readjust the loads from industry without steel and potentially hvc
     remaining_sectors = ~industrial_demand.index.get_level_values(1).isin(endogenous_sectors)
     
@@ -884,12 +902,12 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "modify_final_network",
             simpl="",
-            clusters=27,
+            clusters=68,
             opts="",
             ll="vopt",
             sector_opts="none",
-            planning_horizons="2030",
-            run="KN2045_Bal_v4",
+            planning_horizons="2020",
+            run="all_import_me_all",
         )
 
     logger.info("Unravelling remaining import vectors.")
