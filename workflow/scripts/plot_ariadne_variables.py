@@ -115,7 +115,11 @@ def plot_NEP(df, savepath=snakemake.output.NEP_plot):
 
     plt.bar(indices, plotframe["Startnetz"], bar_width, label="Startnetz")
     plt.bar(
-        indices, plotframe["Zubaunetz"], bar_width, bottom=plotframe["Startnetz"], label="Zubaunetz"
+        indices,
+        plotframe["Zubaunetz"],
+        bar_width,
+        bottom=plotframe["Startnetz"],
+        label="Zubaunetz",
     )
     plt.bar(indices + bar_width, plotframe["exogen"], bar_width, label="exogen")
     plt.bar(
