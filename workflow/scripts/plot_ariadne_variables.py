@@ -105,24 +105,24 @@ def plot_NEP(df, savepath=snakemake.output.NEP_plot):
         ],
     }
 
-    df = pd.DataFrame(data)
+    plotframe = pd.DataFrame(data)
 
     # Define the width of the bars
     bar_width = 0.35
-    indices = np.arange(len(df))  # Bar positions
+    indices = np.arange(len(plotframe))  # Bar positions
 
     plt.clf()
 
-    plt.bar(indices, df["Startnetz"], bar_width, label="Startnetz")
+    plt.bar(indices, plotframe["Startnetz"], bar_width, label="Startnetz")
     plt.bar(
-        indices, df["Zubaunetz"], bar_width, bottom=df["Startnetz"], label="Zubaunetz"
+        indices, plotframe["Zubaunetz"], bar_width, bottom=plotframe["Startnetz"], label="Zubaunetz"
     )
-    plt.bar(indices + bar_width, df["exogen"], bar_width, label="exogen")
+    plt.bar(indices + bar_width, plotframe["exogen"], bar_width, label="exogen")
     plt.bar(
         indices + bar_width,
-        df["endogen"],
+        plotframe["endogen"],
         bar_width,
-        bottom=df["exogen"],
+        bottom=plotframe["exogen"],
         label="endogen",
     )
 
@@ -131,7 +131,7 @@ def plot_NEP(df, savepath=snakemake.output.NEP_plot):
     plt.title("Investment in Transmission Grid")
 
     # Adjust the x-ticks to be between the two bars
-    plt.xticks(indices + bar_width / 2, df["Category"])
+    plt.xticks(indices + bar_width / 2, plotframe["Category"])
     plt.legend()
 
     plt.savefig(savepath, bbox_inches="tight")

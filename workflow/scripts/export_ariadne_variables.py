@@ -4615,7 +4615,6 @@ def get_data(
         try:
             unit = var2unit[v]
         except KeyError:
-            print("Warning: Variable '", v, "' not in Ariadne Database", sep="")
             unit = "NA"
 
         data.append(
