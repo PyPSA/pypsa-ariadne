@@ -2384,8 +2384,6 @@ def get_emissions(n, region, _energy_totals, industry_demand):
     ccs_fraction = total_ccs / co2_storage.sum()
     ccu_fraction = 1 - ccs_fraction
 
-
-
     # Correcting for fossil CCU (3.)
     # Step 1: Add the stored CO2 back to the emissions
     # Step 2 (below): CCU goes to e-fuels -> subtract from e-fuel users
@@ -2395,10 +2393,9 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         common_index_emitters
     ].multiply(ccu_fraction)
 
-    var["Emissions|CO2|Model|CCU"] = co2_storage.loc[common_index_emitters].multiply(
-        ccu_fraction
-    ).sum()
-
+    var["Emissions|CO2|Model|CCU"] = (
+        co2_storage.loc[common_index_emitters].multiply(ccu_fraction).sum()
+    )
 
     # Correcting for BECCS and DACCS (1.)
     # Only stored and sequestered emissions are accounted as negative
@@ -2408,7 +2405,6 @@ def get_emissions(n, region, _energy_totals, industry_demand):
     co2_negative_emissions = co2_storage.loc[common_index_withdrawals].multiply(
         ccs_fraction
     )
-
 
     # Now repeat the same for the CHP emissions
 
@@ -2537,15 +2533,14 @@ def get_emissions(n, region, _energy_totals, industry_demand):
 
     var["Emissions|CO2"] = co2_emissions.sum() - co2_negative_emissions.sum()
 
-
     # I am not sure any longer how to exactly capture the difference between Model emissions and the reported emissions
     # assert isclose(
     #     var["Emissions|CO2"],
-    #     var["Emissions|CO2|Model"] 
+    #     var["Emissions|CO2|Model"]
     #     - var["Emissions|CO2|Efuels|Liquids"]
     #     - var["Emissions|CO2|Efuels|Gases"]
     #     - var["Emissions|CO2|Efuels|Methanol"]
-    #     - var["Emissions|CO2|Model|CCU"], 
+    #     - var["Emissions|CO2|Model|CCU"],
     #     rtol=1e-2, atol=1e-2,
     # )
 
@@ -2584,15 +2579,12 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         CHP_atmosphere_withdrawal.sum(),
     )
 
-  
-
     var["Carbon Sequestration|DACCS"] = co2_negative_emissions.get("DAC", 0)
 
     var["Carbon Sequestration|BECCS"] = co2_negative_emissions.filter(like="bio").sum()
 
-    var["Carbon Sequestration"] =  (
-        var["Carbon Sequestration|DACCS"]
-        + var["Carbon Sequestration|BECCS"]
+    var["Carbon Sequestration"] = (
+        var["Carbon Sequestration|DACCS"] + var["Carbon Sequestration|BECCS"]
     )
 
     assert isclose(
@@ -2750,11 +2742,9 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         "oil refining", 0
     )
 
-    var["Emissions|CO2|Energy|Supply|Liquids"] = (
-        var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"]
-        - co2_negative_emissions.get("biomass to liquid CC", 0)
-
-    )
+    var["Emissions|CO2|Energy|Supply|Liquids"] = var[
+        "Emissions|Gross Fossil CO2|Energy|Supply|Liquids"
+    ] - co2_negative_emissions.get("biomass to liquid CC", 0)
 
     var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = (
         var["Emissions|CO2|Energy|Supply|Liquids"]
