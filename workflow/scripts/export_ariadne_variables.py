@@ -3196,14 +3196,17 @@ def get_prices(n, region):
     # var["Price|Secondary Energy|Hydrogen"] = (
     #     nodal_flows_h2.mul(nodal_prices_h2).values.sum() / nodal_flows_h2.values.sum()
     # ) / MWh2GJ
-    
+
     carriers = ["SMR", "SMR CC", "H2 Electrolysis"]
-    var["Price|Secondary Energy|Hydrogen"] = get_weighted_costs_links(carriers, n, region)
-    
+    var["Price|Secondary Energy|Hydrogen"] = get_weighted_costs_links(
+        carriers, n, region
+    )
+
     # Price|Secondary Energy|Hydrogen|Green
     # incorporate CAPEX and electricity price as electrolysis is forced in in some years
-    var["Price|Secondary Energy|Hydrogen|Green"] = costs_gen_links(n, region,"H2 Electrolysis")[0]
-
+    var["Price|Secondary Energy|Hydrogen|Green"] = costs_gen_links(
+        n, region, "H2 Electrolysis"
+    )[0]
 
     # Price|Secondary Energy|Liquids
     nodal_flows_oil = get_nodal_flows(
