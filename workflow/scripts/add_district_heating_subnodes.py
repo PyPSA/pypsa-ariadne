@@ -226,17 +226,17 @@ def add_subnodes(n, subnodes):
         )
         n.madd("Link", heat_pumps.index, efficiency=heat_pumps_t, **heat_pumps)
 
-        # Add artificial gas boiler to subnode
+        # Add heat vent to subnode
         n.madd(
             "Generator",
-            [f"{name} load shedding"],
+            [f"{name} heat vent"],
             bus=name,
-            carrier="gas",
+            location=f"{row['cluster']} {row['Stadt']}",
+            carrier="urban central heat vent",
             p_nom_extendable=True,
-            p_nom_max=1e6,
-            capital_cost=10000,
-            marginal_cost=200,
-            efficiency=1,
+            p_min_pu=-1,
+            p_max_pu=0,
+            unit="MWh_th",
         )
 
     return
