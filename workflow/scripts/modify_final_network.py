@@ -347,7 +347,6 @@ def add_import_options(n, capacity_boost, import_options, endogenous_hvdc=False)
         "hvdc-to-elec",
         "pipeline-h2",
         "shipping-lh2",
-        "shipping-lch4",
     }
 
     for tech in set(import_options).intersection(regionalised_options):
@@ -427,6 +426,7 @@ def add_import_options(n, capacity_boost, import_options, endogenous_hvdc=False)
     copperplated_carbonaceous_options = {
         "shipping-ftfuel",
         "shipping-meoh",
+        "shipping-lch4",
     }
     # add for EU and DE
     for tech in set(import_options).intersection(copperplated_carbonaceous_options):
@@ -905,10 +905,11 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts="none",
-            planning_horizons="2020",
+            planning_horizons="2030",
             run="all_import_me_all",
         )
 
+    configure_logging(snakemake)
     logger.info("Unravelling remaining import vectors.")
 
     n = pypsa.Network(snakemake.input.network)
