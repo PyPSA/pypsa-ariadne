@@ -310,11 +310,13 @@ def electricity_import_limits(n, investment_year, limits_volume_max):
             n.model["Link-p"].loc[:, outgoing_link] * n.snapshot_weightings.generators
         ).sum()
 
-        lhs = (incoming_link_p - outgoing_link_p) + (incoming_line_p - outgoing_line_p)
+        # divide by 10 to avoid large bounds
+        lhs = (incoming_link_p - outgoing_link_p) + (incoming_line_p - outgoing_line_p) / 100
+        rhs = limit / 100
 
         cname = f"Electricity_import_limit-{ct}"
 
-        n.model.add_constraints(lhs <= limit, name=f"GlobalConstraint-{cname}")
+        n.model.add_constraints(lhs <= rhs, name=f"GlobalConstraint-{cname}")
 
         if cname in n.global_constraints.index:
             logger.warning(
