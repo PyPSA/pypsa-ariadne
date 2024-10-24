@@ -137,4 +137,10 @@ if __name__ == "__main__":
         f"Adding transport costs of 8.8 EUR/MWh to solid biomass pelletizing costs. New value: {costs.loc['biomass boiler', 'pelletizing cost'].value} {costs.loc['biomass boiler', 'pelletizing cost'].unit}."
     )
 
+    costs[("central water tank storage", "investment"), "value"] = (
+        snakemake.params.ptes_cost
+    )
+    logger.info(
+        f"Setting investment costs for central water tank storage. New value: {costs.loc['central water tanks storage', 'investment'].value} {costs.loc['central water tanks storage', 'investment'].unit}."
+    )
     costs.to_csv(snakemake.output[0])
