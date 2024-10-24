@@ -3722,6 +3722,23 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     ac_investments[
         ~(ac_lines.bus0.str.contains(region) & ac_lines.bus1.str.contains(region))
     ] *= 0.5
+
+    # Blindleistungskompensation
+    # https://www.netzentwicklungsplan.de/sites/default/files/2023-07/NEP_2037_2045_V2023_2_Entwurf_Teil1_1.pdf
+    # Tabelle 30, Abbildung 70, Kostenannahmen NEP + eigene Berechnungen, gerundet
+    year = n.generators.build_year.max()
+    reactive_power_compensation = {
+        2020: 0,
+        2025: 4.4,
+        2030: 8,
+        2035: 15,
+        2040: 10,
+        2045: 1.5,
+    }
+    var[var_name + "AC|Reactive Power Compensation"] = (
+        reactive_power_compensation.get(year, 0) / 5
+    )
+
     var[var_name + "AC|Onshore"] = ac_investments.sum() / 5
     var[var_name + "AC|Onshore|NEP"] = ac_investments[nep_ac].sum() / 5
     var[var_name + "DC|Onshore"] = dc_investments.sum() / 5
@@ -3732,9 +3749,15 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
             var[var_name + f"AC|{key}"] + var[var_name + f"DC|{key}"]
         )
 
-    var[var_name + "AC"] = var[var_name + "AC|Onshore"] + var[var_name + "AC|Offshore"]
+    var[var_name + "AC"] = (
+        var[var_name + "AC|Onshore"]
+        + var[var_name + "AC|Offshore"]
+        + var[var_name + "AC|Reactive Power Compensation"]
+    )
     var[var_name + "AC|NEP"] = (
-        var[var_name + "AC|Onshore|NEP"] + var[var_name + "AC|Offshore|NEP"]
+        var[var_name + "AC|Onshore|NEP"]
+        + var[var_name + "AC|Offshore|NEP"]
+        + var[var_name + "AC|Reactive Power Compensation"]
     )
     var[var_name + "DC"] = var[var_name + "DC|Onshore"] + var[var_name + "DC|Offshore"]
     var[var_name + "DC|NEP"] = (
@@ -4430,7 +4453,19 @@ def get_grid_capacity(n, region, year):
     var["Capacity Additions|Electricity|Transmission|DC|NEP"] = (
         dc_links.loc[nep_dc].eval("(p_nom_opt - p_nom_min) * length").sum() * MW2GW
     )
-
+    var["Length Additions|Electricity|Transmission|DC"] = (
+        dc_links.eval("p_nom_opt - p_nom_min")
+        .floordiv(1995)
+        .multiply(dc_links.length)
+        .sum()
+    )
+    var["Length Additions|Electricity|Transmission|DC|NEP"] = (
+        dc_links.loc[nep_dc]
+        .eval("p_nom_opt - p_nom_min")
+        .floordiv(1995)
+        .multiply(dc_links.length)
+        .sum()
+    )
     var["Capacity|Electricity|Transmission|AC"] = (
         ac_lines.eval("s_nom_opt * length").sum() * MW2GW
     )
@@ -4442,6 +4477,19 @@ def get_grid_capacity(n, region, year):
     )
     var["Capacity Additions|Electricity|Transmission|AC|NEP"] = (
         ac_lines.loc[nep_ac].eval("(s_nom_opt - s_nom_min) * length").sum() * MW2GW
+    )
+    var["Length Additions|Electricity|Transmission|AC"] = (
+        ac_lines.eval("s_nom_opt - s_nom_min")
+        .floordiv(1695)
+        .multiply(ac_lines.length)
+        .sum()
+    )
+    var["Length Additions|Electricity|Transmission|AC|NEP"] = (
+        ac_lines.loc[nep_ac]
+        .eval("s_nom_opt - s_nom_min")
+        .floordiv(1695)
+        .multiply(ac_lines.length)
+        .sum()
     )
 
     var["Capacity|Electricity|Transmission"] = (
@@ -4459,6 +4507,14 @@ def get_grid_capacity(n, region, year):
     var["Capacity Additions|Electricity|Transmission|NEP"] = (
         var["Capacity Additions|Electricity|Transmission|AC|NEP"]
         + var["Capacity Additions|Electricity|Transmission|DC|NEP"]
+    )
+    var["Length Additions|Electricity|Transmission"] = (
+        var["Length Additions|Electricity|Transmission|AC"]
+        + var["Length Additions|Electricity|Transmission|DC"]
+    )
+    var["Length Additions|Electricity|Transmission|NEP"] = (
+        var["Length Additions|Electricity|Transmission|AC|NEP"]
+        + var["Length Additions|Electricity|Transmission|DC|NEP"]
     )
 
     ## Distribution Grid
@@ -4650,7 +4706,6 @@ def get_data(
         try:
             unit = var2unit[v]
         except KeyError:
-            print("Warning: Variable '", v, "' not in Ariadne Database", sep="")
             unit = "NA"
 
         data.append(

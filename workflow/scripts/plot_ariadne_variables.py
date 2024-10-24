@@ -6,6 +6,211 @@ import numpy as np
 import pandas as pd
 
 
+def plot_NEP_Trassen(df, savepath=None):
+
+    NEP_Trassen = {
+        "NEP-DC": {
+            # Zu-/Umbeseilung + Ersatz-/Parallelneubau + Neubau
+            "Startnetz": 321 + 560 + 2466,
+            "Zubaunetz": 0 + 179 + 4396,
+        },
+        "NEP-AC": {"Startnetz": 919 + 2081 + 599, "Zubaunetz": 2279 + 3846 + 1714},
+    }
+
+    key = "Length Additions|Electricity|Transmission|"
+
+    NEP_Trassen["PyPSA-DC"] = {
+        "exogen": df.loc[key + "DC|NEP"].values.sum(),
+        "endogen": (df.loc[key + "DC"].values - df.loc[key + "DC|NEP"].values).sum(),
+    }
+    NEP_Trassen["PyPSA-AC"] = {
+        "exogen": df.loc[key + "AC|NEP"].values.sum(),
+        "endogen": (df.loc[key + "AC"].values - df.loc[key + "AC|NEP"].values).sum(),
+    }
+
+    data = {
+        "Category": ["DC", "AC"],
+        "Startnetz": [
+            NEP_Trassen["NEP-DC"]["Startnetz"],
+            NEP_Trassen["NEP-AC"]["Startnetz"],
+        ],
+        "Zubaunetz": [
+            NEP_Trassen["NEP-DC"]["Zubaunetz"],
+            NEP_Trassen["NEP-AC"]["Zubaunetz"],
+        ],
+        "exogen": [
+            NEP_Trassen["PyPSA-DC"]["exogen"],
+            NEP_Trassen["PyPSA-AC"]["exogen"],
+        ],
+        "endogen": [
+            NEP_Trassen["PyPSA-DC"]["endogen"],
+            NEP_Trassen["PyPSA-AC"]["endogen"],
+        ],
+    }
+
+    plotframe = pd.DataFrame(data)
+
+    # Define the width of the bars
+    bar_width = 0.35
+    indices = np.arange(len(plotframe))  # Bar positions
+
+    plt.clf()
+
+    plt.bar(indices, plotframe["Startnetz"], bar_width, label="Startnetz")
+    plt.bar(
+        indices,
+        plotframe["Zubaunetz"],
+        bar_width,
+        bottom=plotframe["Startnetz"],
+        label="Zubaunetz",
+    )
+    plt.bar(indices + bar_width, plotframe["exogen"], bar_width, label="exogen")
+    plt.bar(
+        indices + bar_width,
+        plotframe["endogen"],
+        bar_width,
+        bottom=plotframe["exogen"],
+        label="endogen",
+    )
+
+    plt.xlabel("Category")
+    plt.ylabel("km")
+    plt.title("Trassenlänge Onshore Transmission Grid")
+
+    # Adjust the x-ticks to be between the two bars
+    plt.xticks(indices + bar_width / 2, plotframe["Category"])
+    plt.legend()
+    if savepath:
+        plt.savefig(savepath, bbox_inches="tight")
+    else:
+        plt.show()
+
+
+def plot_NEP(df, savepath=None):
+    key = "Investment|Energy Supply|Electricity|Transmission|"
+
+    NEP_investment = {
+        "NEP-Offshore": {"Startnetz": 12.4, "Zubaunetz": 145.1},
+        "PyPSA-Offshore": {
+            "exogen": df.loc[key + "Offshore|NEP"].values.sum() * 5,
+            "endogen": (
+                df.loc[key + "Offshore"].values - df.loc[key + "Offshore|NEP"].values
+            ).sum()
+            * 5,
+        },
+        "NEP-DC": {"Startnetz": 26, "Zubaunetz": 46.2},
+        "PyPSA-DC": {
+            "exogen": df.loc[key + "DC|Onshore|NEP"].values.sum() * 5,
+            "endogen": (
+                df.loc[key + "DC|Onshore"].values
+                - df.loc[key + "DC|Onshore|NEP"].values
+            ).sum()
+            * 5,
+        },
+        "NEP-AC": {"Startnetz": 14.5, "Zubaunetz": 30.5},
+        "PyPSA-AC": {
+            "exogen": df.loc[key + "AC|Onshore|NEP"].values.sum() * 5,
+            "endogen": (
+                df.loc[key + "AC|Onshore"].values
+                - df.loc[key + "AC|Onshore|NEP"].values
+            ).sum()
+            * 5,
+        },
+        "NEP-Q": {"Startnetz": 9.4, "Zubaunetz": 29.5},
+        "PyPSA-Q": {
+            "exogen": df.loc[key + "AC|Reactive Power Compensation"].values.sum() * 5,
+        },
+    }
+    NEP_investment = pd.DataFrame(NEP_investment).T
+    NEP_investment.loc["NEP-Onshore", "Startnetz"] = (
+        NEP_investment.loc["NEP-DC", "Startnetz"]
+        + NEP_investment.loc["NEP-AC", "Startnetz"]
+        + NEP_investment.loc["NEP-Q", "Startnetz"]
+    )
+    NEP_investment.loc["NEP-Onshore", "Zubaunetz"] = (
+        NEP_investment.loc["NEP-DC", "Zubaunetz"]
+        + NEP_investment.loc["NEP-AC", "Zubaunetz"]
+        + NEP_investment.loc["NEP-Q", "Zubaunetz"]
+    )
+    NEP_investment.loc["PyPSA-Onshore", "exogen"] = (
+        NEP_investment.loc["PyPSA-DC", "exogen"]
+        + NEP_investment.loc["PyPSA-AC", "exogen"]
+        + NEP_investment.loc["PyPSA-Q", "exogen"]
+    )
+    NEP_investment.loc["PyPSA-Onshore", "endogen"] = (
+        NEP_investment.loc["PyPSA-DC", "endogen"]
+        + NEP_investment.loc["PyPSA-AC", "endogen"]
+    )
+
+    # Create a DataFrame in the format ChatGPT suggested
+    data = {
+        "Category": ["DC", "AC", "Q", "Onshore", "Offshore"],
+        "Startnetz": [
+            NEP_investment.loc["NEP-DC", "Startnetz"],
+            NEP_investment.loc["NEP-AC", "Startnetz"],
+            NEP_investment.loc["NEP-Q", "Startnetz"],
+            NEP_investment.loc["NEP-Onshore", "Startnetz"],
+            NEP_investment.loc["NEP-Offshore", "Startnetz"],
+        ],
+        "Zubaunetz": [
+            NEP_investment.loc["NEP-DC", "Zubaunetz"],
+            NEP_investment.loc["NEP-AC", "Zubaunetz"],
+            NEP_investment.loc["NEP-Q", "Zubaunetz"],
+            NEP_investment.loc["NEP-Onshore", "Zubaunetz"],
+            NEP_investment.loc["NEP-Offshore", "Zubaunetz"],
+        ],
+        "exogen": [
+            NEP_investment.loc["PyPSA-DC", "exogen"],
+            NEP_investment.loc["PyPSA-AC", "exogen"],
+            NEP_investment.loc["PyPSA-Q", "exogen"],
+            NEP_investment.loc["PyPSA-Onshore", "exogen"],
+            NEP_investment.loc["PyPSA-Offshore", "exogen"],
+        ],
+        "endogen": [
+            NEP_investment.loc["PyPSA-DC", "endogen"],
+            NEP_investment.loc["PyPSA-AC", "endogen"],
+            0,
+            NEP_investment.loc["PyPSA-Onshore", "endogen"],
+            NEP_investment.loc["PyPSA-Offshore", "endogen"],
+        ],
+    }
+
+    plotframe = pd.DataFrame(data)
+
+    # Define the width of the bars
+    bar_width = 0.35
+    indices = np.arange(len(plotframe))  # Bar positions
+
+    plt.clf()
+
+    plt.bar(indices, plotframe["Startnetz"], bar_width, label="Startnetz")
+    plt.bar(
+        indices,
+        plotframe["Zubaunetz"],
+        bar_width,
+        bottom=plotframe["Startnetz"],
+        label="Zubaunetz",
+    )
+    plt.bar(indices + bar_width, plotframe["exogen"], bar_width, label="exogen")
+    plt.bar(
+        indices + bar_width,
+        plotframe["endogen"],
+        bar_width,
+        bottom=plotframe["exogen"],
+        label="endogen",
+    )
+
+    plt.xlabel("Category")
+    plt.ylabel("billion EUR")
+    plt.title("Investment in Transmission Grid")
+
+    # Adjust the x-ticks to be between the two bars
+    plt.xticks(indices + bar_width / 2, plotframe["Category"])
+    plt.legend()
+
+    plt.savefig(savepath, bbox_inches="tight")
+
+
 def secondary_energy_plot(ddf, name="Secondary Energy"):
     # Get Secondary Energy data
     df = ddf[ddf.index.get_level_values("Variable").str.startswith(name)]
@@ -577,3 +782,6 @@ if __name__ == "__main__":
         savepath=snakemake.output.trade,
         unit="PJ/yr",
     )
+
+    plot_NEP(df, savepath=snakemake.output.NEP_plot)
+    plot_NEP_Trassen(df, savepath=snakemake.output.NEP_Trassen_plot)
