@@ -59,7 +59,7 @@ def _get_fuel_fractions(n, region, fuel):
     ).round(3)
 
     if fuel == "gas":
-        fuel_refining = "gas"
+        fuel_refining = "gas compressing"
     elif fuel == "oil":
         fuel_refining = "oil refining"
     else:
@@ -158,7 +158,7 @@ def _get_fuel_fractions(n, region, fuel):
     fuel_fractions["Biomass"] = renewable_fuel_balance.filter(like="bio").sum()
 
     if fuel == "gas":
-        fuel_fractions["Natural Gas"] = domestic_fuel_supply.get("gas", 0)
+        fuel_fractions["Natural Gas"] = domestic_fuel_supply.get("gas compressing", 0)
         fuel_fractions["Efuel"] = renewable_fuel_balance.get("Sabatier", 0)
     elif fuel == "oil":
         fuel_fractions["Fossil"] = domestic_fuel_supply.get("oil refining", 0)
@@ -1003,6 +1003,9 @@ def get_primary_energy(n, region):
         .multiply(gas_fractions["Natural Gas"])
         .multiply(MWh2PJ)
     )
+    primary_gas_factor = (
+        n.links.query("carrier=='gas compressing'").efficiency.unique().item()
+    )
 
     gas_CHP_E_usage, gas_CHP_H_usage = get_CHP_E_and_H_usage(
         n, "gas", region, fossil_fraction=gas_fractions["Natural Gas"]
@@ -1010,7 +1013,7 @@ def get_primary_energy(n, region):
 
     var["Primary Energy|Gas|Heat"] = (
         gas_usage.filter(like="urban central gas boiler").sum() + gas_CHP_H_usage
-    )
+    ) * primary_gas_factor
 
     var["Primary Energy|Gas|Electricity"] = (
         gas_usage.reindex(
@@ -1020,11 +1023,11 @@ def get_primary_energy(n, region):
             ],
         ).sum()
         + gas_CHP_E_usage
-    )
+    ) * primary_gas_factor
 
-    var["Primary Energy|Gas|Hydrogen"] = gas_usage.filter(like="SMR").sum()
+    var["Primary Energy|Gas|Hydrogen"] = gas_usage.filter(like="SMR").sum()  * primary_gas_factor
 
-    var["Primary Energy|Gas"] = gas_usage.sum()
+    var["Primary Energy|Gas"] = gas_usage.sum() * primary_gas_factor
 
     waste_CHP_E_usage, waste_CHP_H_usage = get_CHP_E_and_H_usage(
         n, "non-sequestered HVC", region
@@ -1578,7 +1581,7 @@ def get_secondary_energy(n, region, _industry_demand):
         .filter(like=region)
         .groupby(["carrier"])
         .sum()
-        .drop("renewable gas", errors="ignore")
+        .drop(["renewable gas", "gas compressing"], errors="ignore")
         .multiply(MWh2PJ)
     )
 
@@ -2714,9 +2717,13 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         "Emissions|Gross Fossil CO2|Energy|Supply|Hydrogen"
     ] = co2_emissions.filter(like="SMR").sum()
 
+    var["Emissions|Gross Fossil CO2|Energy|Supply|Gases"] = co2_emissions.get(
+        "gas compressing", 0
+    )
+
     var["Emissions|CO2|Energy|Supply|Gases"] = (-1) * co2_atmosphere_withdrawal.filter(
         like="biogas to gas"
-    ).sum()
+    ).sum() + var["Emissions|Gross Fossil CO2|Energy|Supply|Gases"]
 
     var["Emissions|CO2|Supply|Non-Renewable Waste"] = (
         co2_emissions.get("HVC to air").sum() + waste_CHP_emissions.sum()
@@ -4700,10 +4707,11 @@ if __name__ == "__main__":
 
     if "debug" == "debug":  # For debugging
         var = pd.Series()
-        idx = -1
+        idx = 0
         n = networks[idx]
         c = costs[idx]
         _industry_demand = industry_demands[idx]
+        industry_demand = industry_demands[idx]
         _energy_totals = energy_totals.copy()
         region = "DE"
         cap_func = n.statistics.optimal_capacity
