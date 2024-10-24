@@ -627,7 +627,7 @@ def unravel_gasbus(n, costs):
         marginal_cost=costs.at["gas", "fuel"],
     )
 
-     # add link for DE gas compressing
+    # add link for DE gas compressing
     n.add(
         "Link",
         "DE gas compressing",
@@ -636,9 +636,10 @@ def unravel_gasbus(n, costs):
         bus2="co2 atmosphere",
         carrier="gas compressing",
         p_nom=1e6,
-        efficiency=1-snakemake.config["industry"]["gas_compression_losses"],
-        efficiency2=snakemake.config["industry"]["gas_compression_losses"] * costs.at["gas", "CO2 intensity"],
-    )   
+        efficiency=1 - snakemake.config["industry"]["gas_compression_losses"],
+        efficiency2=snakemake.config["industry"]["gas_compression_losses"]
+        * costs.at["gas", "CO2 intensity"],
+    )
 
     ### create renewable gas buses
     n.add("Carrier", "renewable gas")

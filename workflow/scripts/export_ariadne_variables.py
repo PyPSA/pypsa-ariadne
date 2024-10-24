@@ -1025,7 +1025,9 @@ def get_primary_energy(n, region):
         + gas_CHP_E_usage
     ) * primary_gas_factor
 
-    var["Primary Energy|Gas|Hydrogen"] = gas_usage.filter(like="SMR").sum()  * primary_gas_factor
+    var["Primary Energy|Gas|Hydrogen"] = (
+        gas_usage.filter(like="SMR").sum() * primary_gas_factor
+    )
 
     var["Primary Energy|Gas"] = gas_usage.sum() * primary_gas_factor
 
