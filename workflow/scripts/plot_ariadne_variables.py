@@ -7,7 +7,7 @@ import pandas as pd
 
 
 def plot_NEP_Trassen(df, savepath=None):
-    
+
     NEP_Trassen = {
         "NEP-DC": {
             # Zu-/Umbeseilung + Ersatz-/Parallelneubau + Neubau
