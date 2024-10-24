@@ -971,13 +971,13 @@ def get_primary_energy(n, region):
 
     var["Primary Energy|Oil|Heat"] = (
         oil_usage.filter(like="urban central oil boiler").sum() + oil_CHP_H_usage
-    ) * primary_oil_factor
+    ) / primary_oil_factor
 
     var["Primary Energy|Oil|Electricity"] = (
         oil_usage.get("oil", 0) + oil_CHP_E_usage
-    ) * primary_oil_factor
+    ) / primary_oil_factor
 
-    var["Primary Energy|Oil"] = oil_usage.sum() * primary_oil_factor
+    var["Primary Energy|Oil"] = oil_usage.sum() / primary_oil_factor
 
     # At the moment, everyting that is not electricity or heat is counted as liquid fuel
     var["Primary Energy|Oil|Liquids"] = (
@@ -985,6 +985,14 @@ def get_primary_energy(n, region):
         - var["Primary Energy|Oil|Electricity"]
         - var["Primary Energy|Oil|Heat"]
     )
+
+    assert isclose(
+        var["Primary Energy|Oil"], 
+        n.statistics.withdrawal(bus_carrier="oil primary", **kwargs).get(
+            ("Link", "DE oil refining")
+        ).multiply(MWh2PJ).item()
+    )
+    
 
     gas_fractions = _get_fuel_fractions(n, region, "gas")
 
@@ -1013,7 +1021,7 @@ def get_primary_energy(n, region):
 
     var["Primary Energy|Gas|Heat"] = (
         gas_usage.filter(like="urban central gas boiler").sum() + gas_CHP_H_usage
-    ) * primary_gas_factor
+    ) / primary_gas_factor
 
     var["Primary Energy|Gas|Electricity"] = (
         gas_usage.reindex(
@@ -1023,13 +1031,27 @@ def get_primary_energy(n, region):
             ],
         ).sum()
         + gas_CHP_E_usage
-    ) * primary_gas_factor
+    ) / primary_gas_factor
 
     var["Primary Energy|Gas|Hydrogen"] = (
-        gas_usage.filter(like="SMR").sum() * primary_gas_factor
+        gas_usage.filter(like="SMR").sum() / primary_gas_factor
     )
 
-    var["Primary Energy|Gas"] = gas_usage.sum() * primary_gas_factor
+    var["Primary Energy|Gas"] = gas_usage.sum() / primary_gas_factor
+
+    assert isclose(
+        var["Primary Energy|Gas"],
+        n.statistics.withdrawal(bus_carrier="gas primary", **kwargs).get(
+            ("Link", "DE gas compressing")
+        ).multiply(MWh2PJ).item()
+    )
+
+    var["Primary Energy|Gas|Gases"] = (
+        var["Primary Energy|Gas"]
+        - var["Primary Energy|Gas|Electricity"]
+        - var["Primary Energy|Gas|Heat"]
+        - var["Primary Energy|Gas|Hydrogen"]
+    )
 
     waste_CHP_E_usage, waste_CHP_H_usage = get_CHP_E_and_H_usage(
         n, "non-sequestered HVC", region
@@ -1583,7 +1605,7 @@ def get_secondary_energy(n, region, _industry_demand):
         .filter(like=region)
         .groupby(["carrier"])
         .sum()
-        .drop(["renewable gas", "gas compressing"], errors="ignore")
+        .drop(["renewable gas"], errors="ignore")
         .multiply(MWh2PJ)
     )
 
@@ -1592,7 +1614,7 @@ def get_secondary_energy(n, region, _industry_demand):
 
     var["Secondary Energy|Gases|Biomass"] = gas_supply.filter(like="bio").sum()
 
-    var["Secondary Energy|Gases|Natural Gas"] = gas_supply.get("gas", 0)
+    var["Secondary Energy|Gases|Natural Gas"] = gas_supply.get("gas compressing", 0)
 
     var["Secondary Energy|Gases"] = (
         var["Secondary Energy|Gases|Hydrogen"]
