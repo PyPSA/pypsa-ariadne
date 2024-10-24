@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 
-def plot_NEP(df, savepath=snakemake.output.NEP_plot):
+def plot_NEP(df, savepath=None):
     key = "Investment|Energy Supply|Electricity|Transmission|"
 
     # Trassen are WIP
@@ -20,7 +20,7 @@ def plot_NEP(df, savepath=snakemake.output.NEP_plot):
     }
 
     NEP_investment = {
-        "NEP-Offshore": {"Startnetz": 0, "Zubaunetz": 160},
+        "NEP-Offshore": {"Startnetz": 12.4, "Zubaunetz": 145.1},
         "PyPSA-Offshore": {
             "exogen": df.loc[key + "Offshore|NEP"].values.sum() * 5,
             "endogen": (
