@@ -75,7 +75,7 @@ def plot_NEP_Trassen(df, savepath=None):
 
     plt.xlabel("Category")
     plt.ylabel("km")
-    plt.title("Trassenlänge Transmission Grid")
+    plt.title("Trassenlänge Onshore Transmission Grid")
 
     # Adjust the x-ticks to be between the two bars
     plt.xticks(indices + bar_width / 2, plotframe["Category"])
