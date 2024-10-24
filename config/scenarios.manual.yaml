@@ -129,6 +129,7 @@ KN2045_Bal_v4:
   co2_budget_DE_source: KSG
 
   costs:
+    ptes: 1.2
     horizon: "mean"
     NEP: 2021
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
