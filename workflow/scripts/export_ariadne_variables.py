@@ -4453,9 +4453,9 @@ def get_grid_capacity(n, region, year):
     var["Capacity Additions|Electricity|Transmission|DC|NEP"] = (
         dc_links.loc[nep_dc].eval("(p_nom_opt - p_nom_min) * length").sum() * MW2GW
     )
-    var["Length Additions|Electricity|Transmission|DC"] = (
-        dc_links.query("p_nom_opt - p_nom_min > 1000").length.sum()
-    )
+    var["Length Additions|Electricity|Transmission|DC"] = dc_links.query(
+        "p_nom_opt - p_nom_min > 1000"
+    ).length.sum()
     var["Length Additions|Electricity|Transmission|DC|NEP"] = (
         dc_links.loc[nep_dc].query("p_nom_opt - p_nom_min > 1000").length.sum()
     )
@@ -4471,9 +4471,9 @@ def get_grid_capacity(n, region, year):
     var["Capacity Additions|Electricity|Transmission|AC|NEP"] = (
         ac_lines.loc[nep_ac].eval("(s_nom_opt - s_nom_min) * length").sum() * MW2GW
     )
-    var["Length Additions|Electricity|Transmission|AC"] = (
-        ac_lines.query("s_nom_opt - s_nom_min > 300").length.sum()
-    )
+    var["Length Additions|Electricity|Transmission|AC"] = ac_lines.query(
+        "s_nom_opt - s_nom_min > 300"
+    ).length.sum()
     var["Length Additions|Electricity|Transmission|AC|NEP"] = (
         ac_lines.loc[nep_ac].query("s_nom_opt - s_nom_min > 300").length.sum()
     )

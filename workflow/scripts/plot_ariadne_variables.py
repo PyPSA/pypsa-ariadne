@@ -7,32 +7,25 @@ import pandas as pd
 
 
 def plot_NEP_Trasse(df, savepath=None):
-    
+
     NEP_Trassen = {
         "NEP-DC": {
             # Zu-/Umbeseilung + Ersatz-/Parallelneubau + Neubau
-            "Startnetz": 321  + 560 + 2466, 
-            "Zubaunetz": 0 + 179 + 4396
-            },
-        "NEP-AC": {
-            "Startnetz": 919 + 2081 + 599,
-            "Zubaunetz": 2279 + 3846 + 1714
-            },
+            "Startnetz": 321 + 560 + 2466,
+            "Zubaunetz": 0 + 179 + 4396,
+        },
+        "NEP-AC": {"Startnetz": 919 + 2081 + 599, "Zubaunetz": 2279 + 3846 + 1714},
     }
 
     key = "Length Additions|Electricity|Transmission|"
 
     NEP_Trassen["PyPSA-DC"] = {
         "exogen": df.loc[key + "DC|NEP"].values.sum(),
-        "endogen": (
-            df.loc[key + "DC"].values - df.loc[key + "DC|NEP"].values
-        ).sum()
+        "endogen": (df.loc[key + "DC"].values - df.loc[key + "DC|NEP"].values).sum(),
     }
     NEP_Trassen["PyPSA-AC"] = {
         "exogen": df.loc[key + "AC|NEP"].values.sum(),
-        "endogen": (
-            df.loc[key + "AC"].values - df.loc[key + "AC|NEP"].values
-        ).sum()
+        "endogen": (df.loc[key + "AC"].values - df.loc[key + "AC|NEP"].values).sum(),
     }
 
     data = {
@@ -91,6 +84,7 @@ def plot_NEP_Trasse(df, savepath=None):
         plt.savefig(savepath, bbox_inches="tight")
     else:
         plt.show()
+
 
 def plot_NEP(df, savepath=None):
     key = "Investment|Energy Supply|Electricity|Transmission|"
