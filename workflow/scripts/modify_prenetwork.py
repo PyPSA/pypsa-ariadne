@@ -597,14 +597,15 @@ def unravel_gasbus(n, costs):
         y=51.2,
         carrier="gas",
     )
+
     n.add(
-        "Generator",
-        "DE gas",
-        bus="DE gas",
-        p_nom_extendable=True,
-        carrier="gas",
-        marginal_cost=costs.at["gas", "fuel"],
+        "Bus",
+        "DE gas primary",
+        x=10.5,
+        y=51.2,
+        carrier="gas primary",
     )
+
     n.add(
         "Store",
         "DE gas Store",
@@ -615,6 +616,29 @@ def unravel_gasbus(n, costs):
         capital_cost=costs.at["gas storage", "fixed"],
         overnight_cost=costs.at["gas storage", "investment"],
         lifetime=costs.at["gas storage", "lifetime"],
+    )
+
+    n.add(
+        "Generator",
+        "DE gas primary",
+        bus="DE gas primary",
+        p_nom_extendable=True,
+        carrier="gas primary",
+        marginal_cost=costs.at["gas", "fuel"],
+    )
+
+    # add link for DE gas compressing
+    n.add(
+        "Link",
+        "DE gas compressing",
+        bus0="DE gas primary",
+        bus1="DE gas",
+        bus2="co2 atmosphere",
+        carrier="gas compressing",
+        p_nom=1e6,
+        efficiency=1 - snakemake.config["industry"]["gas_compression_losses"],
+        efficiency2=snakemake.config["industry"]["gas_compression_losses"]
+        * costs.at["gas", "CO2 intensity"],
     )
 
     ### create renewable gas buses
