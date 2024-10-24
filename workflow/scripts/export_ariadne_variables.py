@@ -3204,12 +3204,23 @@ def get_prices(n, region):
 
     # Price|Secondary Energy|Hydrogen
     # (carbon costs not yet included)
-    nodal_flows_h2 = get_nodal_flows(n, "H2", region)
-    nodal_prices_h2 = n.buses_t.marginal_price[nodal_flows_h2.columns]
+    # nodal_flows_h2 = get_nodal_flows(n, "H2", region)
+    # nodal_prices_h2 = n.buses_t.marginal_price[nodal_flows_h2.columns]
 
+    # var["Price|Secondary Energy|Hydrogen"] = (
+    #     nodal_flows_h2.mul(nodal_prices_h2).values.sum() / nodal_flows_h2.values.sum()
+    # ) / MWh2GJ
+
+    carriers = ["SMR", "SMR CC", "H2 Electrolysis"]
     var["Price|Secondary Energy|Hydrogen"] = (
-        nodal_flows_h2.mul(nodal_prices_h2).values.sum() / nodal_flows_h2.values.sum()
-    ) / MWh2GJ
+        get_weighted_costs_links(carriers, n, region) / MWh2GJ
+    )
+
+    # Price|Secondary Energy|Hydrogen|Green
+    # incorporate CAPEX and electricity price as electrolysis is forced in in some years
+    var["Price|Secondary Energy|Hydrogen|Green"] = (
+        costs_gen_links(n, region, "H2 Electrolysis")[0] / MWh2GJ
+    )
 
     # Price|Secondary Energy|Liquids
     nodal_flows_oil = get_nodal_flows(
@@ -3233,8 +3244,9 @@ def get_prices(n, region):
     # Price|Secondary Energy|Liquids|Biomass
     # Price|Secondary Energy|Liquids|Oil
     # Price|Secondary Energy|Liquids|Hydrogen
+    carriers = ["Fischer-Tropsch", "methanol"]
     var["Price|Secondary Energy|Liquids|Hydrogen"] = (
-        costs_gen_links(n, region, "Fischer-Tropsch")[0] / MWh2GJ
+        get_weighted_costs_links(carriers, n, region) / MWh2GJ
     )
 
     # Price|Secondary Energy|Liquids|Efuel
