@@ -24,12 +24,6 @@ run:
   shared_resources:
     policy: true #stops recalculating
     exclude:
-    # - existing_heating.csv   # specify files which should not be shared between scenarios
-    # - costs
-    # - retrieve_cost   # This is necessary to save retrieve_cost_data_{year}.log in the correct folder
-    # - industry_sector_ratios
-    # - build_industry_sector_ratios   # This is necessary to save build_industry_sector_ratios_data.log in the correct folder
-    # - modify_existing_heating
   disable_progressbar: true
   debug_co2_limit: false
   debug_h2deriv_limit: false
@@ -71,8 +65,6 @@ scenario:
   sector_opts:
   - none
   planning_horizons:
-  - 2020
-  - 2025
   - 2030
   - 2035
   - 2040
@@ -256,7 +248,7 @@ clustering:
     'SK': 0.0147
     'XK': 0.0147
   temporal:
-    resolution_sector: 3H
+    resolution_sector: 365H
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:
@@ -295,6 +287,7 @@ first_technology_occurrence:
     H2 pipeline retrofitted: 2025
 
 costs:
+  year: 2030
   horizon: "mean" # "optimist", "pessimist" or "mean"
   NEP: 2021
   transmission: "overhead"
@@ -304,6 +297,75 @@ import:
   carriers: "all" # "all" or "eleh2"
   cost_factor: 1.0
   capacity_boost: 1.0
+  exporters:
+    - AR-South
+    - AR-North
+    - AU-West
+    - AU-East
+    - BR-Northeast
+    - BR-Southeast
+    - CA-East
+    - CL
+    - CN-Northeast
+    - CN-Southeast
+    - CN-West
+    - DZ
+    - EG
+    - KZ
+    - LY
+    - MA
+    - EH
+    - NA
+    - OM
+    - SA
+    - TN
+    - TR
+    - UA
+    - US-Northeast
+    - US-Southeast
+    - US-Northwest
+    - US-South
+    - US-Southwest
+    - US-Alaska
+    - MX
+    - TM
+    - UZ
+    - MN
+    - PK
+    - VN
+    - MM
+    - TH
+    - ZA
+    - KE
+    - TZ
+    - NG
+    - AO
+    - ET
+    - MZ
+    - ER
+    - MR
+    - SN
+    - UY
+    - CO
+    - PE
+    - IN-Northwest
+    - IN-South
+    - IN-East
+    - SD
+    - SY
+    - YE
+    - IR
+    - IQ
+    - AF
+    - SO
+    - MG
+    - BO
+    - VE
+  p_nom_max:
+    pipeline-h2: .inf
+  min_part_load_shipping_imports: 0
+  min_part_load_pipeline_imports: 0.9
+  exporter_energy_limit: 500.e+6
   endogenous_hvdc_import:
     enable: true
     cost_factor: 1.0
@@ -343,6 +405,40 @@ import:
       - x: -8.70
         y: 42.31
         length: 1800
+      MR:
+      # Plymouth
+      - x: -4.14
+        y: 50.39
+        length: 5300
+      # Cork
+      - x: -8.52
+        y: 51.92
+        length: 5500
+      # Brest
+      - x: -4.49
+        y: 48.43
+        length: 4700
+      # Vigo
+      - x: -8.70
+        y: 42.31
+        length: 3300
+      EH:
+      # Plymouth
+      - x: -4.14
+        y: 50.39
+        length: 4800
+      # Cork
+      - x: -8.52
+        y: 51.92
+        length: 5000
+      # Brest
+      - x: -4.49
+        y: 48.43
+        length: 4200
+      # Vigo
+      - x: -8.70
+        y: 42.31
+        length: 2800
       DZ:
       # Barcelona
       - x: 2.37
@@ -745,6 +841,9 @@ plotting:
     import shipping-lnh: '#46caf0'
     import shipping-ftfuel: '#468c8b'
     import shipping-meoh: '#468c8b'
+    import infrastructure shipping-lch4: '#e0986c'
+    import infrastructure shipping-lh2: '#e0986c'
+    import infrastructure pipeline-h2: '#6b3161'
     impport hvdc-to-elec: '#ff0000'
     import shipping-hbi: '#858d99'
     import shipping-steel: '#b1bbc9'

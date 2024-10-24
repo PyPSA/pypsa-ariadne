@@ -279,17 +279,31 @@ def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
             length=d,
         )
 
-def add_import_options(n, capacity_boost, import_options, endogenous_hvdc=False):
-
-    if not snakemake.config["sector"]["gas_network"]:
-        logger.warning(
-            "Gas network is not resolved but recommended for import options."
-        )
+def add_import_options(
+    n,
+    capacity_boost=3.0,
+    import_options=[
+        "hvdc-to-elec",
+        "pipeline-h2",
+        "shipping-lh2",
+        "shipping-lch4",
+        "shipping-meoh",
+        "shipping-ftfuel",
+        "shipping-lnh3",
+        "shipping-steel",
+        "shipping-hbi",
+    ],
+    endogenous_hvdc=False,
+):
 
     logger.info("Add import options: " + " ".join(import_options.keys()))
     fn = snakemake.input.gas_input_nodes_simplified
     import_nodes = pd.read_csv(fn, index_col=0)
     import_nodes["hvdc-to-elec"] = 15000
+
+    import_config = snakemake.params.import_options
+    cost_year = snakemake.params.costs["year"]  # noqa: F841
+    exporters = import_config["exporters"]  # noqa: F841
 
     ports = pd.read_csv(snakemake.input.import_ports, index_col=0)
 
@@ -305,9 +319,9 @@ def add_import_options(n, capacity_boost, import_options, endogenous_hvdc=False)
         "pipeline-h2": " H2",
         "hvdc-to-elec": "",
         "shipping-lh2": " H2",
-        "shipping-lch4": " gas",
+        "shipping-lch4": " renewable gas",
         "shipping-lnh3": " NH3",
-        "shipping-ftfuel": " oil",
+        "shipping-ftfuel": " renewable oil",
         "shipping-meoh": " methanol",
         "shipping-steel": " steel",
         "shipping-hbi": " hbi",
@@ -319,19 +333,20 @@ def add_import_options(n, capacity_boost, import_options, endogenous_hvdc=False)
         "shipping-meoh": ("methanolisation", "carbondioxide-input"),
     }
 
-    # import_costs = pd.read_csv(
-    #     snakemake.input.import_costs, index_col=0)
-    
-    
-    import_costs = pd.read_csv(
-        snakemake.input.import_costs, delimiter=";", keep_default_na=False
-    )
+    terminal_capital_cost = {
+        "shipping-lch4": 7018,  # €/MW/a
+        "shipping-lh2": 7018 * 1.2,  # +20% compared to LNG
+    }
 
-    # temporary bugfix for Namibia
-    import_costs["exporter"] = import_costs.exporter.replace("", "NA")
+    import_costs = pd.read_csv(
+        snakemake.input.import_costs,
+        delimiter=";",
+        keep_default_na=False).query(
+            "year == @cost_year and scenario == 'default' and exporter in @exporters"
+        )
 
     cols = ["esc", "exporter", "importer", "value"]
-    fields = ["Cost per MWh delivered", "Cost per t delivered"]
+    fields = ["Cost per MWh delivered", "Cost per t delivered"]  # noqa: F841
     import_costs = import_costs.query("subcategory in @fields")[cols]
     import_costs.rename(columns={"value": "marginal_cost"}, inplace=True)
 
@@ -339,182 +354,178 @@ def add_import_options(n, capacity_boost, import_options, endogenous_hvdc=False)
         import_nodes[k] = import_nodes[v]
         ports[k] = ports.get(v)
 
-    # TODO: Check how and if this works
+    export_buses = (
+        import_costs.query("esc in @import_options").exporter.unique() + " export"
+    )
+    # add buses and a store with the capacity that can be imported from each exporter
+    n.add("Bus", export_buses, carrier="export")
+    n.add(
+        "Store",
+        export_buses + " budget",
+        bus=export_buses,
+        e_nom=import_config["exporter_energy_limit"],
+        e_initial=import_config["exporter_energy_limit"],
+    )
+
     if endogenous_hvdc and "hvdc-to-elec" in import_options:
-        add_endogenous_hvdc_import_options(n, import_options.pop("hvdc-to-elec"))
+        cost_factor = import_options.pop("hvdc-to-elec")
+        add_endogenous_hvdc_import_options(n, cost_factor)
 
     regionalised_options = {
         "hvdc-to-elec",
         "pipeline-h2",
         "shipping-lh2",
+        "shipping-lch4",
     }
 
     for tech in set(import_options).intersection(regionalised_options):
-        import_costs_tech = (
-            import_costs.query("esc == @tech").groupby("importer").marginal_cost.min()
-        ) * import_options[tech]
 
-        sel = ~import_nodes[tech].isna()
-        if tech == "pipeline-h2":
-            entrypoints_internal = ["DE", "BE", "FR", "GB"]
-            entrypoints_via_RU_BY = ["EE", "LT", "LV", "FI"]  # maybe PL Yamal
-            forbidden_pipelines = entrypoints_internal + entrypoints_via_RU_BY
-            sel &= ~import_nodes.index.str[:2].isin(forbidden_pipelines)
-        import_nodes_tech = import_nodes.loc[sel, [tech]]
+        import_nodes_tech = import_nodes[tech].dropna()
+        forbidden_importers = []
+        if "pipeline" in tech:
+            forbidden_importers.extend(["DE", "BE", "FR", "GB"])  # internal entrypoints
+            forbidden_importers.extend(
+                ["EE", "LT", "LV", "FI"]
+            )  # entrypoints via RU_BY
+            sel = ~import_nodes_tech.index.str.contains("|".join(forbidden_importers))
+            import_nodes_tech = import_nodes_tech.loc[sel]
 
-        import_nodes_tech = import_nodes_tech.rename(columns={tech: "p_nom"})
+        groupers = ["exporter", "importer"]
+        df = (
+            import_costs.query("esc == @tech")
+            .groupby(groupers)
+            .marginal_cost.min()
+            .mul(import_options[tech])
+            .reset_index()
+        )
 
-        marginal_costs = ports[tech].dropna().map(import_costs_tech)
-        import_nodes_tech["marginal_cost"] = marginal_costs
+        bus_ports = ports[tech].dropna()
 
-        import_nodes_tech.dropna(inplace=True)
+        df["importer"] = df["importer"].map(bus_ports.groupby(bus_ports).groups)
+        df = df.explode("importer").query("importer in @import_nodes_tech.index")
+        df["p_nom"] = df["importer"].map(import_nodes_tech)
 
         suffix = bus_suffix[tech]
 
-        if tech in co2_intensity.keys():
-            buses = import_nodes_tech.index + f"{suffix} import {tech}"
-            capital_cost = 7018.0 if tech == "shipping-lch4" else 0.0  # €/MW/a
-
-            n.add("Bus", buses + " bus", carrier=f"import {tech}")
-            # TODO:
-            n.add(
-                "Store",
-                buses + " store",
-                bus=buses + " bus",
-                e_nom_extendable=True,
-                e_nom_min=-np.inf,
-                e_nom_max=0,
-                e_min_pu=1,
-                e_max_pu=0,
-            )
-            if snakemake.config["sector"]["gas_network"]:
-                bus1 = import_nodes_tech.index + suffix
-            else:
-                bus1 = ["EU gas"]
-            n.add(
-                "Link",
-                buses,
-                bus0=buses + " bus",
-                bus1=bus1,
-                bus2="co2 atmosphere",
-                carrier=f"import {tech}",
-                efficiency2=-costs.at[co2_intensity[tech][0], co2_intensity[tech][1]],
-                marginal_cost=import_nodes_tech.marginal_cost.values,
-                p_nom_extendable=True,
-                capital_cost=capital_cost,
-            )
-
+        import_buses = df.importer.unique() + " import " + tech
+        if tech == "shipping-lch4":
+            data = import_buses.astype(str)
+            domestic_buses = np.where(np.char.find(data, "DE") != -1, "DE renewable gas", "EU renewable gas")
         else:
-            location = import_nodes_tech.index
-            buses = location if tech == "hvdc-to-elec" else location + suffix
+            domestic_buses = df.importer.unique() + suffix
 
-            capital_cost = (
-                1.2 * 7018.0 if tech == "shipping-lh2" else 0.0
-            )  # €/MW/a, +20% compared to LNG
+        # pipeline imports require high minimum loading
+        if "pipeline" in tech:
+            p_min_pu = import_config["min_part_load_pipeline_imports"]
+        elif "shipping" in tech:
+            p_min_pu = import_config["min_part_load_shipping_imports"]
+        else:
+            p_min_pu = 0
 
-            n.add(
-                "Generator",
-                import_nodes_tech.index + f"{suffix} import {tech}",
-                bus=buses,
-                carrier=f"import {tech}",
-                marginal_cost=import_nodes_tech.marginal_cost.values,
-                p_nom_extendable=True,
-                capital_cost=capital_cost,
-            )
+        upper_p_nom_max = import_config["p_nom_max"].get(tech, np.inf)
+        import_nodes_p_nom = import_nodes_tech.loc[df.importer.unique()]
+        p_nom_max = (
+            import_nodes_p_nom.mul(capacity_boost).clip(upper=upper_p_nom_max).values
+        )
+        p_nom_min = (
+            import_nodes_p_nom.clip(upper=upper_p_nom_max).values
+            if tech == "shipping-lch4"
+            else 0
+        )
+
+        bus2 = "co2 atmosphere" if tech in co2_intensity else ""
+        efficiency2 = (
+            -costs.at[co2_intensity[tech][0], co2_intensity[tech][1]]
+            if tech in co2_intensity
+            else np.nan
+        )
+
+        n.add("Bus", import_buses, carrier="import " + tech)
+
+        n.add(
+            "Link",
+            pd.Index(df.exporter + " " + df.importer + " import " + tech),
+            bus0=df.exporter.values + " export",
+            bus1=df.importer.values + " import " + tech,
+            carrier="import " + tech,
+            marginal_cost=df.marginal_cost.values,
+            p_nom=import_config["exporter_energy_limit"] / 1e3,
+            # in one hour at most 0.1% of total annual energy
+        )
+        n.add(
+            "Link",
+            pd.Index(df.importer.unique() + " import infrastructure " + tech),
+            bus0=import_buses,
+            bus1=domestic_buses,
+            carrier="import infrastructure " + tech,
+            capital_cost=terminal_capital_cost.get(tech, 0),
+            p_nom_extendable=True,
+            p_nom_max=p_nom_max,
+            p_nom_min=p_nom_min,
+            p_min_pu=p_min_pu,
+            bus2=bus2,
+            efficiency2=efficiency2,
+        )
 
     # need special handling for copperplated imports
-    copperplated_carbonaceous_options = {
+    copperplated_options = {
         "shipping-ftfuel",
         "shipping-meoh",
-        "shipping-lch4",
-    }
-    # add for EU and DE
-    for tech in set(import_options).intersection(copperplated_carbonaceous_options):
-        marginal_costs = (
-            import_costs.query("esc == @tech").marginal_cost.min()
-            * import_options[tech]
-        )
-
-        suffix = bus_suffix[tech]
-
-        n.add("Bus", f"EU import {tech} bus", carrier=f"import {tech}")
-        n.add("Bus", f"DE import {tech} bus", carrier=f"import {tech}")
-
-        n.add(
-            "Store",
-            f"EU import {tech} store",
-            bus=f"EU import {tech} bus",
-            e_nom_extendable=True,
-            e_nom_min=-np.inf,
-            e_nom_max=0,
-            e_min_pu=1,
-            e_max_pu=0,
-        )
-
-        n.add(
-            "Store",
-            f"DE import {tech} store",
-            bus=f"DE import {tech} bus",
-            e_nom_extendable=True,
-            e_nom_min=-np.inf,
-            e_nom_max=0,
-            e_min_pu=1,
-            e_max_pu=0,
-        )
-
-        n.add(
-            "Link",
-            f"EU import {tech}",
-            bus0=f"EU import {tech} bus",
-            bus1="EU" + suffix,
-            bus2="co2 atmosphere",
-            carrier=f"import {tech}",
-            efficiency2=-costs.at[co2_intensity[tech][0], co2_intensity[tech][1]],
-            marginal_cost=marginal_costs,
-            p_nom=1e7,
-        )
-        n.add(
-            "Link",
-            f"DE import {tech}",
-            bus0=f"DE import {tech} bus",
-            bus1="DE" + suffix,
-            bus2="co2 atmosphere",
-            carrier=f"import {tech}",
-            efficiency2=-costs.at[co2_intensity[tech][0], co2_intensity[tech][1]],
-            marginal_cost=marginal_costs,
-            p_nom=1e7,
-        )
-
-    copperplated_carbonfree_options = {
         "shipping-steel",
         "shipping-hbi",
         "shipping-lnh3",
     }
 
-    # add for EU and DE
-    for tech in set(import_options).intersection(copperplated_carbonfree_options):
+    for tech in set(import_options).intersection(copperplated_options):
+        marginal_costs = (
+            import_costs.query("esc == @tech")
+            .groupby("exporter")
+            .marginal_cost.min()
+            .mul(import_options[tech])
+        )
+
+        bus2 = "co2 atmosphere" if tech in co2_intensity else ""
+        efficiency2 = (
+            -costs.at[co2_intensity[tech][0], co2_intensity[tech][1]]
+            if tech in co2_intensity
+            else np.nan
+        )
+
+        # using energy content of iron as proxy: 2.1 MWh/t
+        unit_to_mwh = 2.1 if tech in ["shipping-steel", "shipping-hbi"] else 1.0
+
         suffix = bus_suffix[tech]
 
-        marginal_costs = (
-            import_costs.query("esc == @tech").marginal_cost.min()
-            * import_options[tech]
-        )
         n.add(
-            "Generator",
-            f"EU import {tech}",
-            bus="EU" + suffix,
-            carrier=f"import {tech}",
-            marginal_cost=marginal_costs,
-            p_nom=1e7,
+            "Link",
+            marginal_costs.index + " import " + tech,
+            bus0=marginal_costs.index + " export",
+            bus1="EU" + suffix,
+            carrier="import " + tech,
+            p_nom=import_config["exporter_energy_limit"] / 1e3,
+            # in one hour at most 0.1% of total annual energy
+            marginal_cost=marginal_costs.values / unit_to_mwh,
+            efficiency=1 / unit_to_mwh,
+            p_min_pu=import_config["min_part_load_shipping_imports"],
+            bus2=bus2,
+            efficiency2=efficiency2,
         )
+
         n.add(
-            "Generator",
-            f"DE import {tech}",
-            bus="DE" + suffix,
-            carrier=f"import {tech}",
-            marginal_cost=marginal_costs,
-            p_nom=1e7,
+            "Link",
+            marginal_costs.index + " DE import " + tech,
+            bus0=marginal_costs.index + " export",
+            bus1="DE" + suffix,
+            carrier="import " + tech,
+            p_nom=import_config["exporter_energy_limit"] / 1e3,
+            # in one hour at most 0.1% of total annual energy
+            marginal_cost=marginal_costs.values / unit_to_mwh,
+            efficiency=1 / unit_to_mwh,
+            p_min_pu=import_config["min_part_load_shipping_imports"],
+            bus2=bus2,
+            efficiency2=efficiency2,
         )
+
 
 def unravel_ammonia(n, costs, sector_options):
     
