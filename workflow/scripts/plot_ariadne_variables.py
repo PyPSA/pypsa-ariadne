@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 
 
-def plot_NEP_Trasse(df, savepath=None):
-
+def plot_NEP_Trassen(df, savepath=None):
+    
     NEP_Trassen = {
         "NEP-DC": {
             # Zu-/Umbeseilung + Ersatz-/Parallelneubau + Neubau
@@ -784,3 +784,4 @@ if __name__ == "__main__":
     )
 
     plot_NEP(df, savepath=snakemake.output.NEP_plot)
+    plot_NEP_Trassen(df, savepath=snakemake.output.NEP_Trassen_plot)

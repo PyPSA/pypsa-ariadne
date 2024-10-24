@@ -3729,11 +3729,11 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     year = n.generators.build_year.max()
     reactive_power_compensation = {
         2020: 0,
-        2025: 8,
-        2030: 14,
-        2035: 10,
-        2040: 6,
-        2045: 1,
+        2025: 4.4,
+        2030: 8,
+        2035: 15,
+        2040: 10,
+        2045: 1.5,
     }
     var[var_name + "AC|Reactive Power Compensation"] = (
         reactive_power_compensation.get(year, 0) / 5
@@ -4453,11 +4453,17 @@ def get_grid_capacity(n, region, year):
     var["Capacity Additions|Electricity|Transmission|DC|NEP"] = (
         dc_links.loc[nep_dc].eval("(p_nom_opt - p_nom_min) * length").sum() * MW2GW
     )
-    var["Length Additions|Electricity|Transmission|DC"] = dc_links.query(
-        "p_nom_opt - p_nom_min > 1000"
-    ).length.sum()
+    var["Length Additions|Electricity|Transmission|DC"] = (
+        dc_links.eval("p_nom_opt - p_nom_min")
+        .floordiv(1995)
+        .multiply(dc_links.length)
+        .sum()
+    )
     var["Length Additions|Electricity|Transmission|DC|NEP"] = (
-        dc_links.loc[nep_dc].query("p_nom_opt - p_nom_min > 1000").length.sum()
+        dc_links.loc[nep_dc].eval("p_nom_opt - p_nom_min")
+        .floordiv(1995)
+        .multiply(dc_links.length)
+        .sum()
     )
     var["Capacity|Electricity|Transmission|AC"] = (
         ac_lines.eval("s_nom_opt * length").sum() * MW2GW
@@ -4471,11 +4477,17 @@ def get_grid_capacity(n, region, year):
     var["Capacity Additions|Electricity|Transmission|AC|NEP"] = (
         ac_lines.loc[nep_ac].eval("(s_nom_opt - s_nom_min) * length").sum() * MW2GW
     )
-    var["Length Additions|Electricity|Transmission|AC"] = ac_lines.query(
-        "s_nom_opt - s_nom_min > 300"
-    ).length.sum()
+    var["Length Additions|Electricity|Transmission|AC"] = (
+        ac_lines.eval("s_nom_opt - s_nom_min")
+        .floordiv(1695)
+        .multiply(ac_lines.length)
+        .sum()
+    )
     var["Length Additions|Electricity|Transmission|AC|NEP"] = (
-        ac_lines.loc[nep_ac].query("s_nom_opt - s_nom_min > 300").length.sum()
+        ac_lines.loc[nep_ac].eval("s_nom_opt - s_nom_min")
+        .floordiv(1695)
+        .multiply(ac_lines.length)
+        .sum()       
     )
 
     var["Capacity|Electricity|Transmission"] = (
