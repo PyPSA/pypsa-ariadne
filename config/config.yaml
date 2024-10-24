@@ -4,11 +4,11 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241023GasCompressionActive
+  prefix: 20241024_adjust_RE_constraints
 
   name:
-  # - CurrentPolicies
-  - KN2045_Bal_v4
+  - CurrentPolicies
+  # - KN2045_Bal_v4
   # - KN2045_Elec_v4
   # - KN2045_H2_v4
   # - KN2045plus_EasyRide
@@ -441,7 +441,7 @@ solving:
           DE:
             2020: 7.8
             2025: 11.3
-            2030: 30.4
+            2030: 31.3 # uba Projektionsbericht
             2035: 70
             2040: 70
             2045: 70
