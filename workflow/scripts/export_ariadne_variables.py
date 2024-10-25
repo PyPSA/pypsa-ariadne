@@ -1604,6 +1604,7 @@ def get_secondary_energy(n, region, _industry_demand):
     gas_supply = (
         n.statistics.supply(bus_carrier=["gas", "renewable gas"], **kwargs)
         .filter(like=region)
+        .drop(("Store", "DE gas Store"), errors="ignore")
         .groupby(["carrier"])
         .sum()
         .drop(["renewable gas"], errors="ignore")
@@ -4813,7 +4814,7 @@ if __name__ == "__main__":
 
     if "debug" == "debug":  # For debugging
         var = pd.Series()
-        idx = 0
+        idx = -1
         n = networks[idx]
         c = costs[idx]
         _industry_demand = industry_demands[idx]
