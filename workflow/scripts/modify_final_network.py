@@ -618,6 +618,11 @@ def endogenise_steel(n, costs, sector_options):
 
     if not sector_options["steel"]["endogenous"]:
         logger.error("Endogenous steel demand must be activated. Please set config['sector']['steel']['endogenous'] to True.")
+    if not sector_options["H2_network"]:
+        logger.error("H2 network with regional demand must be activated. Please set config['sector']['H2_network'] to True.")
+    if not sector_options["regional_methanol_demand"] or not sector_options["regional_oil_demand"] or not sector_options["regional_coal_demand"]:
+        logger.error("Regional methanol, oil and coal demand must be activated. Please set config['sector']['regional_methanol_demand'], config['sector']['regional_oil_demand'] and config['sector']['regional_coal_demand'] to True.")
+    
 
     logger.info("Adding endogenous primary steel demand in tonnes.")
 
@@ -831,8 +836,7 @@ def endogenise_steel(n, costs, sector_options):
 
 def adjust_industry_loads(n, nodes, industrial_demand, endogenous_sectors):
 
-    #TODO: get in a bunch of error messages if configs are not right
-    #TODO: check coal demand comes from modifying the industry energy demand not the production! Do I have to backwards calculate the coal demand from the ebergy demand?
+    #TODO: check coal demand comes from modifying the industry energy demand not the production! Do I have to backwards calculate the coal demand from the energy demand?
     # readjust the loads from industry without steel and potentially hvc
     remaining_sectors = ~industrial_demand.index.get_level_values(1).isin(endogenous_sectors)
     
@@ -950,8 +954,19 @@ if __name__ == "__main__":
         add_import_options(
             n,
             capacity_boost=import_options["capacity_boost"],
-            import_options=carriers,
             endogenous_hvdc=import_options["endogenous_hvdc_import"]["enable"],
+            import_options=carriers,
         )
+    # if there is a limit for non European imports, remove the links from DE to EU
+    if snakemake.params.non_eu_constraint and snakemake.params.import_options["enable"]:
+        links_to_drop = [
+                "DE renewable oil -> EU oil",
+                "DE methanol -> EU methanol",
+                "DE renewable gas -> EU gas",
+                "DE NH3 -> EU NH3",
+                "DE steel -> EU steel",
+                "DE hbi -> EU hbi",
+        ]
+        n.links.drop(links_to_drop, inplace=True)
 
     n.export_to_netcdf(snakemake.output.network)

@@ -16,6 +16,7 @@ results/
 resources/
 data/
 config/scenarios.automated.yaml
+config/scenarios.automated.import.yaml
 
 ## Core latex/pdflatex auxiliary files:
 *.aux

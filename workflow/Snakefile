@@ -716,10 +716,8 @@ rule modify_final_network:
         temporal_clustering=config_provider("clustering", "temporal", "resolution_sector"),
         import_options=config_provider("import"),
         sector_options=config_provider("sector"),
-        industry_options=config_provider("industry"),
-        gas_network=config_provider("gas_network"),
-        h2_network=config_provider("h2_network"),
         costs=config_provider("costs"),
+        non_eu_constraint=config_provider("solving", "constraints", "limit_non_eu_de"),
     input:
         network=RESULTS
         + "prenetworks-final/base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
@@ -730,7 +728,6 @@ rule modify_final_network:
         import_costs="import-data/imports/results-230505.csv",
         import_p_max_pu="import-data/imports/combined_weighted_generator_timeseries.nc",
         regions_onshore=resources("regions_onshore_base_s_{clusters}.geojson"),
-        country_shapes="data/naturalearth/ne_10m_admin_0_countries_deu.shp",
         country_centroids="import-data/countries_centroids.csv",
         costs=resources("costs_{planning_horizons}.csv"),
         clustered_pop_layout=resources("pop_layout_base_s_{clusters}.csv"),
@@ -740,11 +737,6 @@ rule modify_final_network:
         industrial_production_per_node=resources(
             "industrial_production_base_s_{clusters}_{planning_horizons}.csv"
         ),
-        industrial_energy_demand_per_node_today=resources(
-            "industrial_energy_demand_today_base_s_{clusters}.csv"
-        ),
-        # industrial_demand=resources("industrial_energy_demand_base_s_{clusters}_{planning_horizons}.csv"),
-        industrial_demand_today=resources("industrial_energy_demand_today_base_s_{clusters}.csv"),
         industrial_production=resources("industrial_production_base_s_{clusters}_{planning_horizons}.csv"),
     output:
         network=RESULTS

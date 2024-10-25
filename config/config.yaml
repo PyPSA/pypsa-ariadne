@@ -6,17 +6,10 @@
 run:
   prefix: import
   name:
-  # - no_import_me
-  # - eu_import_me_all
+  - no_import_me
+  - eu_import_me_all
   - all_import_me_all
-  # - CurrentPolicies
-  # - KN2045_Bal_v4
-  # - KN2045_Elec_v4
-  # - KN2045_H2_v4
-  # - KN2045plus_EasyRide
-  # - KN2045plus_LowDemand
-  # - KN2045minus_WorstCase
-  # - KN2045minus_SupplyFocus
+  # - all_import_me_all_100
   scenarios:
     enable: true
     manual_file: config/scenarios.manual.import.yaml
@@ -480,8 +473,6 @@ import:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
-  # TODO:
-  # shipping: false
   ammonia: true
   steel:
     endogenous: true
@@ -640,7 +631,7 @@ solving:
       fractional_last_unit_size: true
   constraints:
     limit_non_eu_de: false # true equals 0, number or false
-    limit_eu_de: false # true equals 0, number or false
+    limit_eu_de: false # true equals 0 or false
     limits_capacity_max:
       Generator:
         onwind:
@@ -680,7 +671,7 @@ solving:
       Generator:
         onwind:
           DE:
-            2030: 99   # Wind-an-Land Law 2028
+            2030: 99    # Wind-an-Land Law 2028
             2035: 115   # Wind-an-Land Law 2030
             2040: 115   # Wind-an-Land Law
             2045: 115
@@ -699,33 +690,6 @@ solving:
             2035: 101
             2040: 101
             2045: 101
-  # For reference, this are the values specified in the laws
-  # limits_capacity_min:
-  #     Generator:
-  #       onwind:
-  #         DE:
-  #           2030: 115 # Wind-an-Land Law
-  #           2035: 157 # Wind-an-Land Law
-  #           2040: 160 # Wind-an-Land Law
-  #           2045: 160
-  #       offwind:
-  #         DE:
-  #           2030: 30 # Wind-auf-See Law
-  #           2035: 40 # 40 Wind-auf-See Law
-  #           # assuming at least 1/3 of difference reached in 2040
-  #           2040: 50
-  #           2045: 70 #70 Wind-auf-See Law
-  #       solar:
-  #         DE:
-  #           # EEG2023; Ziel for 2024: 88 GW and for 2026: 128 GW,
-  #           # assuming at least 1/3 of difference reached in 2025
-  #           2025: 101
-  #           2030: 215 # PV strategy
-  #           2035: 309
-  #           2040: 400 # PV strategy
-  #           2045: 400
-  #           # What about the EEG2023 "Strommengenpfad"?
-    # boundary condition of maximum volumes
     limits_volume_max:
       # constrain electricity import in TWh
       electricity_import:
@@ -752,8 +716,6 @@ solving:
           2025: 0
           2030: 10
           2035: 105
-          2040: 200
-          2045: 300
       h2_import:
       # boundary condition lower?
         DE:
@@ -761,8 +723,6 @@ solving:
           2025: 5
           2030: 15
           2035: 115
-          2040: 220
-          2045: 325
       FT_production:
         DE:
           2020: 15
