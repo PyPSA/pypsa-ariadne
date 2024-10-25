@@ -137,4 +137,11 @@ if __name__ == "__main__":
         f"Adding transport costs of 8.8 EUR/MWh to solid biomass pelletizing costs. New value: {costs.loc['biomass boiler', 'pelletizing cost'].value} {costs.loc['biomass boiler', 'pelletizing cost'].unit}."
     )
 
+    # Klimaschutz- und Energieagentur Baden-Württemberg (KEA) Technikkatalog
+
+    costs.at[("central water tank storage", "investment"), "value"] *= 1.12/0.6133 # KEA costs / 2020 costs
+    logger.info(
+        f"Scaling central water tank storage investment costs to KEA Technikkatalog: {costs.loc['central water tank storage', 'investment'].value} {costs.loc['central water tank storage', 'investment'].unit}."
+    )
+
     costs.to_csv(snakemake.output[0])

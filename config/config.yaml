@@ -4,11 +4,11 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241024_adjust_RE_constraints
+  prefix: 20241025_ptes_cost
 
   name:
-  - CurrentPolicies
-  # - KN2045_Bal_v4
+  # - CurrentPolicies
+  - KN2045_Bal_v4
   # - KN2045_Elec_v4
   # - KN2045_H2_v4
   # - KN2045plus_EasyRide
