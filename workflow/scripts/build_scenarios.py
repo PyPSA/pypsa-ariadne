@@ -191,7 +191,7 @@ def write_to_scenario_yaml(input, output, scenarios, df):
             config[scenario]["sector"]["aviation_demand_factor"][year] = round(
                 aviation_demand_factor.loc[year].item(), 4
             )
-        
+
         if not snakemake.params.db_name == "ariadne":
             st_primary_fraction = get_primary_steel_share(
                 df.loc[:, reference_scenario, :], planning_horizons
@@ -200,7 +200,7 @@ def write_to_scenario_yaml(input, output, scenarios, df):
             dri_fraction = get_DRI_share(
                 df.loc[:, reference_scenario, :], planning_horizons
             )
-            
+
             config[scenario]["industry"]["St_primary_fraction"] = {}
             config[scenario]["industry"]["DRI_fraction"] = {}
             for year in st_primary_fraction.columns:
