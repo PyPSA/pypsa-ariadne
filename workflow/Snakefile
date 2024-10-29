@@ -567,10 +567,10 @@ rule plot_ariadne_variables:
 rule ariadne_all:
     input:
         expand(RESULTS + "graphs/costs.svg", run=config_provider("run", "name")),
-        expand(
-            RESULTS + "ariadne/capacity_detailed.png",
-            run=config_provider("run", "name"),
-        ),
+        # expand(
+        #     RESULTS + "ariadne/capacity_detailed.png",
+        #     run=config_provider("run", "name"),
+        # ),
         expand(
             RESULTS
             + "maps/base_s_{clusters}_l{ll}_{opts}_{sector_opts}-h2_network_incl_kernnetz_{planning_horizons}.pdf",
@@ -578,12 +578,12 @@ rule ariadne_all:
             **config["scenario"],
             allow_missing=True,
         ),
-        exported_variables=expand(
-            RESULTS + "ariadne/exported_variables_full.xlsx",
-            run=config_provider("run", "name"),
-        ),
-    script:
-        "scripts/plot_ariadne_scenario_comparison.py"
+        # exported_variables=expand(
+        #     RESULTS + "ariadne/exported_variables_full.xlsx",
+        #     run=config_provider("run", "name"),
+        # ),
+    # script:
+    #     "scripts/plot_ariadne_scenario_comparison.py"
 
 
 rule build_scenarios:

@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 # specific emissions in tons CO2/MWh according to n.links[n.links.carrier =="your_carrier].efficiency2.unique().item()
 specific_emissions = {
     "oil" : 0.2571,
+    "oil primary" : 0.2571,
     "gas" : 0.198, # OCGT
     "coal" : 0.3361,
     "lignite" : 0.4069,
@@ -276,7 +277,7 @@ def electricity_import_limits(n, investment_year, limits_volume_max):
                 carrier_attribute="",
             )
 
-def emissions_upstream(n):
+def emissions_upstream(n,snakemake):
 
     logger.info(f"Adding global upstream co2 constraint.")
     limit =  n.meta["_global_co2_limit"]
@@ -292,16 +293,27 @@ def emissions_upstream(n):
     i_sequestered = n.links.index[(n.links.carrier == "co2 sequestered")]
     lhs.append((-1*n.model["Link-p"].loc[:, i_sequestered]*n.snapshot_weightings.generators).sum())
 
-    # process emissions
-    i_pe = n.links.index[n.links.carrier == "process emissions"]
-    lhs.append((n.model["Link-p"].loc[:, i_pe]*n.snapshot_weightings.generators).sum())
+    # process emissions load (negative load)
+    pe_load_i = n.loads.index[(n.loads.carrier == "process emissions")]
+    lhs.append(abs(n.loads.loc[pe_load_i, "p_set"]*n.snapshot_weightings.generators.sum()))
+        
+    #lost oil emissions: this is the hvc sequestered emissions that are not accounted in the downstream constraint
+    if snakemake.config["sector"]["regional_oil_demand"]:
+        nfi_load_i = n.loads.index[(n.loads.carrier == "naphtha for industry")]
+        nfi_load = n.loads.loc[nfi_load_i, "p_set"]*n.snapshot_weightings.generators.sum()
+        nfi_links_i = n.links.index[(n.links.carrier == "naphtha for industry") & (n.links.carrier == "naphtha for industry")]
+        lhs.append(nfi_load * ((1-n.links.loc[nfi_links_i].efficiency2) * specific_emisisons["oil"] - n.links.loc[nfi].efficiency3))
 
-    i_pecc = n.links.index[n.links.carrier == "process emissions CC"]
-    lhs.append((n.model["Link-p"].loc[:, i_pecc]*n.snapshot_weightings.generators).sum())
+    # # process emissions
+    # i_pe = n.links.index[n.links.carrier == "process emissions"]
+    # lhs.append((n.model["Link-p"].loc[:, i_pe]*n.snapshot_weightings.generators).sum())
 
-    # lost oil emissions: this is the hvc sequestered emissions that are not accounted in the downstream constraint
-    i_nfi = n.links.index[(n.links.carrier == "naphtha for industry")]
-    lhs.append(-1*((n.model["Link-p"].loc[:, i_nfi]*(1-n.links.loc[i_nfi, "efficiency2"])*specific_emissions["oil"]*n.snapshot_weightings.generators).sum()))
+    # i_pecc = n.links.index[n.links.carrier == "process emissions CC"]
+    # lhs.append((n.model["Link-p"].loc[:, i_pecc]*n.snapshot_weightings.generators).sum())
+
+    # # lost oil emissions: this is the hvc sequestered emissions that are not accounted in the downstream constraint
+    # i_nfi = n.links.index[(n.links.carrier == "naphtha for industry")]
+    # lhs.append(-1*((n.model["Link-p"].loc[:, i_nfi]*(1-n.links.loc[i_nfi, "efficiency2"])*specific_emissions["oil"]*n.snapshot_weightings.generators).sum()))
 
     lhs = sum(lhs)
 
@@ -312,20 +324,20 @@ def emissions_upstream(n):
         name=f"GlobalConstraint-{cname}",
     )
 
-        if cname in n.global_constraints.index:
-            logger.warning(
-                f"Global constraint {cname} already exists. Dropping and adding it again."
-            )
-            n.global_constraints.drop(cname, inplace=True)
-
-        n.add(
-            "GlobalConstraint",
-            cname,
-            constant=limit,
-            sense="<=",
-            type="",
-            carrier_attribute="",
+    if cname in n.global_constraints.index:
+        logger.warning(
+            f"Global constraint {cname} already exists. Dropping and adding it again."
         )
+        n.global_constraints.drop(cname, inplace=True)
+
+    n.add(
+        "GlobalConstraint",
+        cname,
+        constant=limit,
+        sense="<=",
+        type="",
+        carrier_attribute="",
+    )
 
 
 def add_co2limit_country(n, limit_countries, snakemake, debug=False):
@@ -509,7 +521,6 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
             lhs.append(-1*((n.model["Link-p"].loc[:, i_nfi]*(1-n.links.loc[i_nfi, "efficiency2"])*specific_emissions["oil"]*n.snapshot_weightings.generators).sum()))
 
             # trade: import of fossils must be restricted; trade of gas as well
-
             coal_in = n.links.index[(n.links.bus0 == "EU coal") & (n.links.bus1.str[:2] == ct)]
             lhs.append((n.model["Link-p"].loc[:, coal_in]*specific_emissions["coal"]*n.snapshot_weightings.generators).sum())
 
@@ -733,46 +744,48 @@ def additional_functionality(n, snapshots, snakemake):
     investment_year = int(snakemake.wildcards.planning_horizons[-4:])
     constraints = snakemake.params.solving["constraints"]
 
-    add_capacity_limits(
-        n, investment_year, constraints["limits_capacity_min"], "minimum"
-    )
+    # if constraints["limits_capacity_min"] is not None:
+    #     add_capacity_limits(
+    #         n, investment_year, constraints["limits_capacity_min"], "minimum"
+    #     )
 
-    add_capacity_limits(
-        n, investment_year, constraints["limits_capacity_max"], "maximum"
-    )
+    # if constraints["limits_capacity_max"] is not None:
+    #     add_capacity_limits(
+    #         n, investment_year, constraints["limits_capacity_max"], "maximum"
+    #     )
 
-    if int(snakemake.wildcards.clusters) != 1:
-        h2_import_limits(n, investment_year, constraints["limits_volume_max"])
+    # if int(snakemake.wildcards.clusters) != 1:
+    #     h2_import_limits(n, investment_year, constraints["limits_volume_max"])
 
-        electricity_import_limits(n, investment_year, constraints["limits_volume_max"])
+    #     electricity_import_limits(n, investment_year, constraints["limits_volume_max"])
 
-    if investment_year >= 2025:
-        h2_production_limits(
-            n,
-            investment_year,
-            constraints["limits_volume_min"],
-            constraints["limits_volume_max"],
-        )
+    # if investment_year >= 2025:
+    #     h2_production_limits(
+    #         n,
+    #         investment_year,
+    #         constraints["limits_volume_min"],
+    #         constraints["limits_volume_max"],
+    #     )
 
-    if not snakemake.config["run"]["debug_h2deriv_limit"]:
-        add_h2_derivate_limit(n, investment_year, constraints["limits_volume_max"])
+    # if not snakemake.config["run"]["debug_h2deriv_limit"]:
+    #     add_h2_derivate_limit(n, investment_year, constraints["limits_volume_max"])
 
-    # force_boiler_profiles_existing_per_load(n)
-    force_boiler_profiles_existing_per_boiler(n)
+    # # force_boiler_profiles_existing_per_load(n)
+    # force_boiler_profiles_existing_per_boiler(n)
 
-    if isinstance(constraints["co2_budget_national"], dict):
-        limit_countries = constraints["co2_budget_national"][investment_year]
-        add_co2limit_country(
-            n,
-            limit_countries,
-            snakemake,
-            debug=snakemake.config["run"]["debug_co2_limit"],
-        )
-    else:
-        logger.warning("No national CO2 budget specified!")
+    # if isinstance(constraints["co2_budget_national"], dict):
+    #     limit_countries = constraints["co2_budget_national"][investment_year]
+    #     add_co2limit_country(
+    #         n,
+    #         limit_countries,
+    #         snakemake,
+    #         debug=snakemake.config["run"]["debug_co2_limit"],
+    #     )
+    # else:
+    #     logger.warning("No national CO2 budget specified!")
 
     if snakemake.config["emissions_upstream"]["enable"]:
-        emissions_upstream(n)
+        emissions_upstream(n, snakemake)
 
     if investment_year == 2020:
         adapt_nuclear_output(n)

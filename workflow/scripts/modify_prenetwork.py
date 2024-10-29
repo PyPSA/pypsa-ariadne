@@ -393,9 +393,6 @@ def unravel_carbonaceous_fuels(n):
         marginal_cost=0.01,
     )
 
-        marginal_cost=0.01,
-    )
-
     n.madd(
         "Link",
         [
