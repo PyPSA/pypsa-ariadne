@@ -589,8 +589,10 @@ rule ariadne_all:
         #     RESULTS + "ariadne/exported_variables_full.xlsx",
         #     run=config_provider("run", "name"),
         # ),
-    # script:
-    #     "scripts/plot_ariadne_scenario_comparison.py"
+
+
+# script:
+#     "scripts/plot_ariadne_scenario_comparison.py"
 
 
 rule build_scenarios:
