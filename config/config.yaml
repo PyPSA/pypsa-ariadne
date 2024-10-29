@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241025-UpstreamVsDownstream
+  prefix: 20241025_ptes_cost
 
   name:
   # - CurrentPolicies
@@ -28,6 +28,7 @@ run:
     - retrieve_cost   # This is necessary to save retrieve_cost_data_{year}.log in the correct folder
     - industry_sector_ratios
     - build_industry_sector_ratios   # This is necessary to save build_industry_sector_ratios_data.log in the correct folder
+    - modify_existing_heating
   disable_progressbar: true
   debug_co2_limit: false
   debug_h2deriv_limit: false
@@ -252,6 +253,7 @@ wasserstoff_kernnetz:
   reload_locations: false
   divide_pipes: true
   pipes_segment_length: 10
+  border_crossing: true
   aggregate_build_years: "mean"
   ipcei_pci_only: false
   cutoff_year: 2028
@@ -443,7 +445,7 @@ solving:
           DE:
             2020: 7.8
             2025: 11.3
-            2030: 30.4
+            2030: 31.3 # uba Projektionsbericht
             2035: 70
             2040: 70
             2045: 70
@@ -560,6 +562,14 @@ solving:
           2035: 115
           2040: 220
           2045: 325
+      FT_production:
+        DE:
+          2020: 200
+          2025: 200
+          2030: 200
+          2035: 200
+          2040: 200
+          2045: 200
     limits_volume_min:
       electrolysis:
         DE:
@@ -569,6 +579,14 @@ solving:
           2035: 0
           2040: 0
           2045: 0
+    limits_power_max: # in GW
+      DE:
+        2020: 15
+        2025: 15
+        2030: 20
+        2035: 25
+        2040: 30
+        2045: 35
   # solver:
   #   options: gurobi-numeric-focus
   # solver_options:

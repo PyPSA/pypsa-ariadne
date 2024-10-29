@@ -15,6 +15,7 @@ import sys
 
 import pandas as pd
 import pyproj
+from _helpers import configure_logging
 from shapely import wkt
 from shapely.geometry import LineString, Point
 from shapely.ops import transform
@@ -160,7 +161,7 @@ if __name__ == "__main__":
             clusters=22,
         )
 
-    logging.basicConfig(level=snakemake.config["logging"]["level"])
+    configure_logging(snakemake)
 
     fn = snakemake.input.cleaned_h2_network
     df = pd.read_csv(fn, index_col=0)
@@ -170,7 +171,7 @@ if __name__ == "__main__":
     bus_regions = load_bus_regions(
         snakemake.input.regions_onshore, snakemake.input.regions_offshore
     )
-
+    logger.info(f"Clustering Wasserstoff Kernnetz for {list(bus_regions.index)}")
     kernnetz_cf = snakemake.params.kernnetz
 
     if kernnetz_cf["divide_pipes"]:

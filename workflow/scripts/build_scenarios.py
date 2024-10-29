@@ -6,6 +6,8 @@
 # This script reads in data from the IIASA database to create the scenario.yaml file
 import logging
 
+from _helpers import configure_logging
+
 logger = logging.getLogger(__name__)
 
 import os
@@ -190,23 +192,24 @@ def write_to_scenario_yaml(input, output, scenarios, df):
                 aviation_demand_factor.loc[year].item(), 4
             )
 
-        st_primary_fraction = get_primary_steel_share(
-            df.loc[:, reference_scenario, :], planning_horizons
-        )
-
-        dri_fraction = get_DRI_share(
-            df.loc[:, reference_scenario, :], planning_horizons
-        )
-
-        config[scenario]["industry"]["St_primary_fraction"] = {}
-        config[scenario]["industry"]["DRI_fraction"] = {}
-        for year in st_primary_fraction.columns:
-            config[scenario]["industry"]["St_primary_fraction"][year] = round(
-                st_primary_fraction.loc["Primary_Steel_Share", year].item(), 4
+        if not snakemake.params.db_name == "ariadne":
+            st_primary_fraction = get_primary_steel_share(
+                df.loc[:, reference_scenario, :], planning_horizons
             )
-            config[scenario]["industry"]["DRI_fraction"][year] = round(
-                dri_fraction.loc["DRI_Steel_Share", year].item(), 4
+
+            dri_fraction = get_DRI_share(
+                df.loc[:, reference_scenario, :], planning_horizons
             )
+
+            config[scenario]["industry"]["St_primary_fraction"] = {}
+            config[scenario]["industry"]["DRI_fraction"] = {}
+            for year in st_primary_fraction.columns:
+                config[scenario]["industry"]["St_primary_fraction"][year] = round(
+                    st_primary_fraction.loc["Primary_Steel_Share", year].item(), 4
+                )
+                config[scenario]["industry"]["DRI_fraction"][year] = round(
+                    dri_fraction.loc["DRI_Steel_Share", year].item(), 4
+                )
 
         config[scenario]["solving"]["constraints"]["co2_budget_national"] = {}
         for year, target in co2_budget_fractions.items():
@@ -230,6 +233,7 @@ if __name__ == "__main__":
 
         snakemake = mock_snakemake("build_scenarios")
 
+    configure_logging(snakemake)
     # Set USERNAME and PASSWORD for the Ariadne DB
     ariadne_db = pd.read_csv(
         snakemake.input.ariadne_database,

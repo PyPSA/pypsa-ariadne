@@ -54,10 +54,10 @@ CurrentPolicies:
         Generator:
           onwind:
             DE:
-              2030: 115 # not better than targets
+              2030: 94.5 # uba Projektionsbericht
           solar:
             DE:
-              2030: 215
+              2030: 215 # uba Projektionsbericht
       limits_volume_max:
         # constrain electricity import in TWh
         electricity_import:
@@ -575,11 +575,10 @@ KN2045minus_WorstCase:
         Generator:
           onwind:
             DE:
-              2030: 115 # not better than targets
-
+              2030: 94.5 # uba Projektionsbericht
           solar:
             DE:
-              2030: 215
+              2030: 215 # uba Projektionsbericht
   industry:
     steam_biomass_fraction: 0.4
     steam_hydrogen_fraction: 0.3
@@ -685,10 +684,10 @@ KN2045minus_SupplyFocus:
         Generator:
           onwind:
             DE:
-              2030: 115 # not better than targets
+              2030: 94.5 # uba Projektionsbericht
           solar:
             DE:
-              2030: 215
+              2030: 215 # uba Projektionsbericht
   industry:
     steam_biomass_fraction: 0.4
     steam_hydrogen_fraction: 0.3

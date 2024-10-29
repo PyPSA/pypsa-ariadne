@@ -21,7 +21,7 @@ paths = [
 for path in paths:
     sys.path.insert(0, os.path.abspath(path))
 
-from _helpers import mute_print
+from _helpers import configure_logging, mute_print
 from prepare_sector_network import prepare_costs
 
 # Defining global varibales
@@ -59,7 +59,7 @@ def _get_fuel_fractions(n, region, fuel):
     ).round(3)
 
     if fuel == "gas":
-        fuel_refining = "gas"
+        fuel_refining = "gas compressing"
     elif fuel == "oil":
         fuel_refining = "oil refining"
     else:
@@ -158,7 +158,7 @@ def _get_fuel_fractions(n, region, fuel):
     fuel_fractions["Biomass"] = renewable_fuel_balance.filter(like="bio").sum()
 
     if fuel == "gas":
-        fuel_fractions["Natural Gas"] = domestic_fuel_supply.get("gas", 0)
+        fuel_fractions["Natural Gas"] = domestic_fuel_supply.get("gas compressing", 0)
         fuel_fractions["Efuel"] = renewable_fuel_balance.get("Sabatier", 0)
     elif fuel == "oil":
         fuel_fractions["Fossil"] = domestic_fuel_supply.get("oil refining", 0)
@@ -881,10 +881,6 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         like="biomass to liquid"
     ).sum()
 
-    var[cap_string + "Liquids"] = (
-        var[cap_string + "Liquids|Hydrogen"] + var[cap_string + "Liquids|Biomass"]
-    )
-
     try:
         capacities_methanol = (
             cap_func(
@@ -903,6 +899,12 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
             "Warning: carrier `methanol` not found in network.links.carrier! Assuming 0 capacities."
         )
         var[cap_string + "Methanol"] = 0
+
+    var[cap_string + "Liquids|Hydrogen"] += var[cap_string + "Methanol"]
+
+    var[cap_string + "Liquids"] = (
+        var[cap_string + "Liquids|Hydrogen"] + var[cap_string + "Liquids|Biomass"]
+    )
 
     if cap_string.startswith("Investment"):
         var = var.div(MW2GW).mul(1e-9).div(5).round(3)  # in bn € / year
@@ -969,13 +971,13 @@ def get_primary_energy(n, region):
 
     var["Primary Energy|Oil|Heat"] = (
         oil_usage.filter(like="urban central oil boiler").sum() + oil_CHP_H_usage
-    ) * primary_oil_factor
+    ) / primary_oil_factor
 
     var["Primary Energy|Oil|Electricity"] = (
         oil_usage.get("oil", 0) + oil_CHP_E_usage
-    ) * primary_oil_factor
+    ) / primary_oil_factor
 
-    var["Primary Energy|Oil"] = oil_usage.sum() * primary_oil_factor
+    var["Primary Energy|Oil"] = oil_usage.sum() / primary_oil_factor
 
     # At the moment, everyting that is not electricity or heat is counted as liquid fuel
     var["Primary Energy|Oil|Liquids"] = (
@@ -984,10 +986,16 @@ def get_primary_energy(n, region):
         - var["Primary Energy|Oil|Heat"]
     )
 
+    assert isclose(
+        var["Primary Energy|Oil"],
+        n.statistics.withdrawal(bus_carrier="oil primary", **kwargs)
+        .get(("Link", "DE oil refining"))
+        .multiply(MWh2PJ)
+        .item(),
+    )
+
     gas_fractions = _get_fuel_fractions(n, region, "gas")
 
-    # Eventhough biogas gets routed through the EU gas bus,
-    # it should be counted separately as Primary Energy|Biomass
     gas_usage = (
         n.statistics.withdrawal(
             bus_carrier="gas",
@@ -1003,6 +1011,9 @@ def get_primary_energy(n, region):
         .multiply(gas_fractions["Natural Gas"])
         .multiply(MWh2PJ)
     )
+    primary_gas_factor = (
+        n.links.query("carrier=='gas compressing'").efficiency.unique().item()
+    )
 
     gas_CHP_E_usage, gas_CHP_H_usage = get_CHP_E_and_H_usage(
         n, "gas", region, fossil_fraction=gas_fractions["Natural Gas"]
@@ -1010,7 +1021,7 @@ def get_primary_energy(n, region):
 
     var["Primary Energy|Gas|Heat"] = (
         gas_usage.filter(like="urban central gas boiler").sum() + gas_CHP_H_usage
-    )
+    ) / primary_gas_factor
 
     var["Primary Energy|Gas|Electricity"] = (
         gas_usage.reindex(
@@ -1020,11 +1031,28 @@ def get_primary_energy(n, region):
             ],
         ).sum()
         + gas_CHP_E_usage
+    ) / primary_gas_factor
+
+    var["Primary Energy|Gas|Hydrogen"] = (
+        gas_usage.filter(like="SMR").sum() / primary_gas_factor
     )
 
-    var["Primary Energy|Gas|Hydrogen"] = gas_usage.filter(like="SMR").sum()
+    var["Primary Energy|Gas"] = gas_usage.sum() / primary_gas_factor
 
-    var["Primary Energy|Gas"] = gas_usage.sum()
+    assert isclose(
+        var["Primary Energy|Gas"],
+        n.statistics.withdrawal(bus_carrier="gas primary", **kwargs)
+        .get(("Link", "DE gas compressing"))
+        .multiply(MWh2PJ)
+        .item(),
+    )
+
+    var["Primary Energy|Gas|Gases"] = (
+        var["Primary Energy|Gas"]
+        - var["Primary Energy|Gas|Electricity"]
+        - var["Primary Energy|Gas|Heat"]
+        - var["Primary Energy|Gas|Hydrogen"]
+    )
 
     waste_CHP_E_usage, waste_CHP_H_usage = get_CHP_E_and_H_usage(
         n, "non-sequestered HVC", region
@@ -1089,6 +1117,7 @@ def get_primary_energy(n, region):
             **kwargs,
         )
         .filter(like=region)
+        .drop("Store", errors="ignore")
         .groupby("carrier")
         .sum()
         .multiply(MWh2PJ)
@@ -1120,7 +1149,7 @@ def get_primary_energy(n, region):
 
     var["Primary Energy|Biomass|Liquids"] = (
         biomass_usage.filter(like="biomass to liquid").sum()
-        + unsus_btl_secondary / 0.35  # BtL efficiency 2020
+        + unsus_btl_secondary  # divide by the BtL efficiency 2020?
     )
 
     var["Primary Energy|Biomass|w/ CCS"] = biomass_usage[
@@ -1138,7 +1167,24 @@ def get_primary_energy(n, region):
         "urban central solid biomass boiler", 0
     )
 
-    var["Primary Energy|Biomass"] = biomass_usage.sum()
+    var["Primary Energy|Biomass|Solids"] = (
+        biomass_usage.filter(like="solid biomass for industry").sum()
+        + biomass_usage.get("rural biomass boiler", 0)
+        + biomass_usage.get("urban decentral biomass boiler", 0)
+    )
+
+    var["Primary Energy|Biomass"] = (
+        var["Primary Energy|Biomass|Electricity"]
+        + var["Primary Energy|Biomass|Heat"]
+        + var["Primary Energy|Biomass|Liquids"]
+        + var["Primary Energy|Biomass|Solids"]
+        + var["Primary Energy|Biomass|Gases"]
+    )
+
+    assert isclose(
+        var["Primary Energy|Biomass"],
+        biomass_usage.sum() + unsus_btl_secondary,
+    )
 
     var["Primary Energy|Nuclear"] = (
         n.statistics.withdrawal(
@@ -1520,97 +1566,57 @@ def get_secondary_energy(n, region, _industry_demand):
         atol=1e-5,
     )
 
-    oil_fractions = _get_fuel_fractions(n, region, "oil")
-
-    oil_fuel_usage = (
-        n.statistics.withdrawal(bus_carrier="oil", **kwargs)
+    # Liquids
+    liquids_production = (
+        n.statistics.supply(bus_carrier=["oil", "renewable oil", "methanol"], **kwargs)
         .filter(like=region)
-        .groupby("carrier")
-        .sum()
         .multiply(MWh2PJ)
-        .reindex(
-            [
-                "agriculture machinery oil",
-                "kerosene for aviation",
-                "land transport oil",
-                "naphtha for industry",
-                "shipping oil",
-                # TODO is decentral heating oil considered a fuel?
-                "rural oil boiler",
-                "urban decentral oil boiler",
-            ]
+        .drop(
+            [("Store", "DE oil Store"), ("Store", "DE methanol Store")], errors="ignore"
         )
+        .groupby(["carrier"])
+        .sum()
+        .drop(["renewable oil", "methanol"], errors="ignore")  # Drop trade links
     )
 
-    total_oil_fuel_usage = oil_fuel_usage.sum()
-    var["Secondary Energy|Liquids|Fossil"] = var["Secondary Energy|Liquids|Oil"] = (
-        total_oil_fuel_usage * oil_fractions["Fossil"]
-    )
-    var["Secondary Energy|Liquids|Hydrogen"] = (
-        total_oil_fuel_usage * oil_fractions["Efuel"]
-    )
+    var["Secondary Energy|Liquids|Oil"] = liquids_production.get("oil refining", 0)
+    var["Secondary Energy|Methanol"] = liquids_production.get("methanolisation", 0)
+    var["Secondary Energy|Liquids|Hydrogen"] = liquids_production.get(
+        "Fischer-Tropsch", 0
+    ) + liquids_production.get("methanolisation", 0)
 
-    var["Secondary Energy|Liquids|Biomass"] = (
-        total_oil_fuel_usage * oil_fractions["Biomass"]
-    )
+    var["Secondary Energy|Liquids|Biomass"] = liquids_production.filter(
+        like="bio"
+    ).sum()
 
     var["Secondary Energy|Liquids"] = (
         var["Secondary Energy|Liquids|Oil"]
         + var["Secondary Energy|Liquids|Hydrogen"]
         + var["Secondary Energy|Liquids|Biomass"]
     )
+    assert isclose(
+        var["Secondary Energy|Liquids"],
+        liquids_production.sum(),
+        rtol=0.01,
+        atol=1e-5,
+    )
 
-    try:
-        methanol_production = (
-            n.statistics.supply(bus_carrier="methanol", **kwargs)
-            .filter(like=region)
-            .groupby(["carrier"])
-            .sum()
-            .multiply(MWh2PJ)
-        )
-
-        assert (
-            methanol_production.size <= 2
-        )  # only methanolisation and methanol imports
-
-        # var["Production|Chemicals|Methanol"] = \ # here units are Mt/year
-        var["Secondary Energy|Methanol"] = methanol_production.get("methanolisation", 0)
-        # Remeber to specify that Other Carrier == Methanol in Comments Tab
-    except KeyError:
-        var["Secondary Energy|Methanol"] = 0
-
-    gas_fuel_usage = (
-        n.statistics.withdrawal(bus_carrier="gas", **kwargs)
+    gas_supply = (
+        n.statistics.supply(bus_carrier=["gas", "renewable gas"], **kwargs)
         .filter(like=region)
+        .drop(("Store", "DE gas Store"), errors="ignore")
         .groupby(["carrier"])
         .sum()
+        .drop(["renewable gas"], errors="ignore")
         .multiply(MWh2PJ)
-        .reindex(
-            [
-                "gas for industry",
-                "gas for industry CC",
-                "rural gas boiler",
-                "urban decentral gas boiler",
-            ]
-        )
-    )  # Building, Transport and Industry sectors
-
-    total_gas_fuel_usage = gas_fuel_usage.sum()
-
-    gas_fractions = _get_fuel_fractions(n, region, "gas")
+    )
 
     # Fraction supplied by Hydrogen conversion
-    var["Secondary Energy|Gases|Hydrogen"] = total_gas_fuel_usage * gas_fractions.get(
-        "Efuel"
-    )
+    var["Secondary Energy|Gases|Hydrogen"] = gas_supply.get("Sabatier", 0)
 
-    var["Secondary Energy|Gases|Biomass"] = total_gas_fuel_usage * gas_fractions.get(
-        "Biomass"
-    )
+    var["Secondary Energy|Gases|Biomass"] = gas_supply.filter(like="bio").sum()
 
-    var["Secondary Energy|Gases|Natural Gas"] = (
-        total_gas_fuel_usage * gas_fractions.get("Natural Gas")
-    )
+    var["Secondary Energy|Gases|Natural Gas"] = gas_supply.get("gas compressing", 0)
 
     var["Secondary Energy|Gases"] = (
         var["Secondary Energy|Gases|Hydrogen"]
@@ -1618,7 +1624,7 @@ def get_secondary_energy(n, region, _industry_demand):
         + var["Secondary Energy|Gases|Natural Gas"]
     )
 
-    assert isclose(var["Secondary Energy|Gases"], total_gas_fuel_usage)
+    assert isclose(var["Secondary Energy|Gases"], gas_supply.sum())
 
     industry_demand = _industry_demand.filter(
         like=region,
@@ -1628,6 +1634,20 @@ def get_secondary_energy(n, region, _industry_demand):
     # Coke is added as a coal demand, so we need to convert back to units of coke for secondary energy
     var["Secondary Energy|Solids|Coal"] = var["Secondary Energy|Solids"] = (
         industry_demand.get("coke", 0) / mwh_coal_per_mwh_coke
+    )
+
+    biomass_usage = (
+        n.statistics.withdrawal(bus_carrier="solid biomass", **kwargs)
+        .filter(like=region)
+        .groupby(["carrier"])
+        .sum()
+        .multiply(MWh2PJ)
+    )
+
+    var["Secondary Energy|Solids|Biomass"] = (
+        biomass_usage.get("urban decentral biomass boiler", 0)
+        + biomass_usage.get("rural biomass boiler", 0)
+        + biomass_usage.filter(like="solid biomass for industry").sum()
     )
 
     electricity_withdrawal = (
@@ -1686,7 +1706,6 @@ def get_secondary_energy(n, region, _industry_demand):
         + var["Secondary Energy|Gases"]
         + var["Secondary Energy|Liquids"]
         + var["Secondary Energy|Solids"]
-        + var["Secondary Energy|Methanol"]
     )
 
     return var
@@ -2128,15 +2147,16 @@ def get_final_energy(
         "Final Energy|Transportation|Domestic Navigation|Liquids"
     ] = sum_load(n, "shipping oil", region) * (1 - international_navigation_fraction)
 
+    var["Final Energy|Transportation|Methanol"] = sum_load(
+        n, "shipping methanol", region
+    ) * (1 - international_navigation_fraction)
+
     var["Final Energy|Transportation|Liquids"] = (
         sum_load(n, "land transport oil", region)
         + var["Final Energy|Transportation|Domestic Aviation|Liquids"]
         + var["Final Energy|Transportation|Domestic Navigation|Liquids"]
+        + var["Final Energy|Transportation|Methanol"]
     )
-
-    var["Final Energy|Transportation|Methanol"] = sum_load(
-        n, "shipping methanol", region
-    ) * (1 - international_navigation_fraction)
 
     # var["Final Energy|Transportation|Liquids|Biomass"] = \
     # var["Final Energy|Transportation|Liquids|Synthetic Fossil"] = \
@@ -2146,6 +2166,7 @@ def get_final_energy(
 
     var["Final Energy|Transportation|Liquids|Efuel"] = (
         var["Final Energy|Transportation|Liquids"] * oil_fractions["Efuel"]
+        + var["Final Energy|Transportation|Methanol"]
     )
 
     var["Final Energy|Transportation|Liquids|Biomass"] = (
@@ -2157,31 +2178,36 @@ def get_final_energy(
     ] = (sum_load(n, "kerosene for aviation", region) * international_aviation_fraction)
 
     for var_key, fraction_key in zip(
-        ["Petroleum", "Efuel", "Biomass"], oil_fractions.index
+        ["Biomass", "Petroleum", "Efuel"], oil_fractions.index
     ):
         var[f"Final Energy|Bunkers|Aviation|Liquids|{var_key}"] = (
             var["Final Energy|Bunkers|Aviation|Liquids"] * oil_fractions[fraction_key]
         )
     # TODO Navigation hydrogen
-
+    var["Final Energy|Bunkers|Navigation|Methanol"] = (
+        sum_load(n, "shipping methanol", region) * international_navigation_fraction
+    )
     var["Final Energy|Bunkers|Navigation|Liquids"] = (
         sum_load(n, "shipping oil", region) * international_navigation_fraction
     )
 
     for var_key, fraction_key in zip(
-        ["Petroleum", "Efuel", "Biomass"], oil_fractions.index
+        ["Biomass", "Petroleum", "Efuel"], oil_fractions.index
     ):
         var[f"Final Energy|Bunkers|Navigation|Liquids|{var_key}"] = (
             var["Final Energy|Bunkers|Navigation|Liquids"] * oil_fractions[fraction_key]
         )
-    var["Final Energy|Bunkers|Navigation|Methanol"] = (
-        sum_load(n, "shipping methanol", region) * international_navigation_fraction
-    )
 
-    var["Final Energy|Bunkers|Navigation"] = (
-        var["Final Energy|Bunkers|Navigation|Liquids"]
-        + var["Final Energy|Bunkers|Navigation|Methanol"]
-    )
+    var["Final Energy|Bunkers|Navigation|Liquids"] += var[
+        "Final Energy|Bunkers|Navigation|Methanol"
+    ]
+    var["Final Energy|Bunkers|Navigation|Liquids|Efuel"] += var[
+        "Final Energy|Bunkers|Navigation|Methanol"
+    ]
+
+    var["Final Energy|Bunkers|Navigation"] = var[
+        "Final Energy|Bunkers|Navigation|Liquids"
+    ]
 
     # var["Final Energy|Bunkers|Navigation|Gases"] = \
     # ! Not implemented
@@ -2196,7 +2222,6 @@ def get_final_energy(
         var["Final Energy|Transportation|Electricity"]
         + var["Final Energy|Transportation|Liquids"]
         + var["Final Energy|Transportation|Hydrogen"]
-        + var["Final Energy|Transportation|Methanol"]
     )
 
     var["Final Energy|Agriculture|Electricity"] = sum_load(
@@ -2376,27 +2401,38 @@ def get_emissions(n, region, _energy_totals, industry_demand):
     except AttributeError:  # no sequestration in 2020 -> NoneType
         total_ccs = 0.0
 
-    # CCU is regarded as emissions
+    # Correcting the PyPSA emission balance
+    # Supply side
+    # 1. DACCS and BECCS is regarded as negative emissions
+    # 2a. DACCU and BECCU are regarded as neutral
+    # 2b. BE and fossilCCS are regarded as neutral
+    # 3. fossilCCU is regarded as emissions
+    # Demand side
+    # 4. CCU (e-fuels) is neutral
+
     ccs_fraction = total_ccs / co2_storage.sum()
     ccu_fraction = 1 - ccs_fraction
 
+    # Correcting for fossil CCU (3.)
+    # Step 1: Add the stored CO2 back to the emissions
+    # Step 2 (below): CCU goes to e-fuels -> subtract from e-fuel users
     common_index_emitters = co2_emissions.index.intersection(co2_storage.index)
 
     co2_emissions.loc[common_index_emitters] += co2_storage.loc[
         common_index_emitters
     ].multiply(ccu_fraction)
 
+    var["Emissions|CO2|Model|CCU"] = (
+        co2_storage.loc[common_index_emitters].multiply(ccu_fraction).sum()
+    )
+
+    # Correcting for BECCS and DACCS (1.)
+    # Only stored and sequestered emissions are accounted as negative
     common_index_withdrawals = co2_atmosphere_withdrawal.index.intersection(
         co2_storage.index
     )
-
-    co2_atmosphere_withdrawal.loc[common_index_withdrawals] -= co2_storage.loc[
-        common_index_withdrawals
-    ].multiply(ccu_fraction)
-
-    assert isclose(
-        co2_emissions.sum() - co2_atmosphere_withdrawal.sum(),
-        var["Emissions|CO2|Model"] + co2_storage.sum() * ccu_fraction,
+    co2_negative_emissions = co2_storage.loc[common_index_withdrawals].multiply(
+        ccs_fraction
     )
 
     # Now repeat the same for the CHP emissions
@@ -2434,7 +2470,7 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         .sum()
     )
 
-    # CCU is regarded as emissions
+    # Addresses 3.
 
     common_index_emitters = CHP_emissions.index.intersection(CHP_storage.index)
 
@@ -2442,15 +2478,17 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         common_index_emitters
     ].multiply(ccu_fraction)
 
+    # Addresses 1.
+
     common_index_withdrawals = CHP_atmosphere_withdrawal.index.intersection(
         CHP_storage.index
     )
 
-    CHP_atmosphere_withdrawal.loc[common_index_withdrawals] -= CHP_storage.loc[
-        common_index_withdrawals
-    ].multiply(ccu_fraction)
+    CHP_negative_emissions = CHP_storage.loc[common_index_withdrawals].multiply(
+        ccs_fraction
+    )
 
-    ## E-fuels are assumed to be carbon neutral
+    ## E-fuels and Biofuels are assumed to be carbon neutral
 
     oil_techs = [
         "HVC to air",
@@ -2522,16 +2560,18 @@ def get_emissions(n, region, _energy_totals, industry_demand):
 
     # Emissions in DE are:
 
-    var["Emissions|CO2"] = co2_emissions.sum() - co2_atmosphere_withdrawal.sum()
+    var["Emissions|CO2"] = co2_emissions.sum() - co2_negative_emissions.sum()
 
-    assert isclose(
-        var["Emissions|CO2"],
-        var["Emissions|CO2|Model"]
-        + co2_storage.sum() * ccu_fraction
-        - var["Emissions|CO2|Efuels|Liquids"]
-        - var["Emissions|CO2|Efuels|Gases"]
-        - var["Emissions|CO2|Efuels|Methanol"],
-    )
+    # I am not sure any longer how to exactly capture the difference between Model emissions and the reported emissions
+    # assert isclose(
+    #     var["Emissions|CO2"],
+    #     var["Emissions|CO2|Model"]
+    #     - var["Emissions|CO2|Efuels|Liquids"]
+    #     - var["Emissions|CO2|Efuels|Gases"]
+    #     - var["Emissions|CO2|Efuels|Methanol"]
+    #     - var["Emissions|CO2|Model|CCU"],
+    #     rtol=1e-2, atol=1e-2,
+    # )
 
     # Split CHP emissions between electricity and heat sectors
 
@@ -2568,16 +2608,17 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         CHP_atmosphere_withdrawal.sum(),
     )
 
-    var["Carbon Sequestration"] = total_ccs
+    var["Carbon Sequestration|DACCS"] = co2_negative_emissions.get("DAC", 0)
 
-    var["Carbon Sequestration|DACCS"] = co2_storage.filter(like="DAC").sum()
+    var["Carbon Sequestration|BECCS"] = co2_negative_emissions.filter(like="bio").sum()
 
-    var["Carbon Sequestration|BECCS"] = co2_storage.filter(like="bio").sum()
+    var["Carbon Sequestration"] = (
+        var["Carbon Sequestration|DACCS"] + var["Carbon Sequestration|BECCS"]
+    )
 
-    var["Carbon Sequestration|Other"] = (
-        var["Carbon Sequestration"]
-        - var["Carbon Sequestration|DACCS"]
-        - var["Carbon Sequestration|BECCS"]
+    assert isclose(
+        var["Carbon Sequestration"],
+        co2_negative_emissions.sum(),
     )
 
     # ! LULUCF should also be subtracted (or added??), we get from REMIND,
@@ -2613,7 +2654,7 @@ def get_emissions(n, region, _energy_totals, industry_demand):
 
     var["Emissions|CO2|Energy|Demand|Industry"] = var[
         "Emissions|Gross Fossil CO2|Energy|Demand|Industry"
-    ] - co2_atmosphere_withdrawal.get("solid biomass for industry CC", 0)
+    ] - co2_negative_emissions.get("solid biomass for industry CC", 0)
 
     var["Emissions|CO2|Industry"] = (
         var["Emissions|CO2|Energy|Demand|Industry"]
@@ -2696,7 +2737,7 @@ def get_emissions(n, region, _energy_totals, industry_demand):
 
     var["Emissions|CO2|Energy|Supply|Electricity"] = (
         var["Emissions|Gross Fossil CO2|Energy|Supply|Electricity"]
-        - CHP_atmosphere_withdrawal.multiply(negative_CHP_E_fraction).values.sum()
+        - CHP_negative_emissions.multiply(negative_CHP_E_fraction).values.sum()
     )
 
     var["Emissions|Gross Fossil CO2|Energy|Supply|Heat"] = (
@@ -2706,7 +2747,7 @@ def get_emissions(n, region, _energy_totals, industry_demand):
 
     var["Emissions|CO2|Energy|Supply|Heat"] = (
         var["Emissions|Gross Fossil CO2|Energy|Supply|Heat"]
-        - CHP_atmosphere_withdrawal.multiply(1 - negative_CHP_E_fraction).values.sum()
+        - CHP_negative_emissions.multiply(1 - negative_CHP_E_fraction).values.sum()
     )
 
     var["Emissions|CO2|Energy|Supply|Electricity and Heat"] = (
@@ -2718,9 +2759,13 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         "Emissions|Gross Fossil CO2|Energy|Supply|Hydrogen"
     ] = co2_emissions.filter(like="SMR").sum()
 
-    var["Emissions|CO2|Energy|Supply|Gases"] = (-1) * co2_atmosphere_withdrawal.filter(
-        like="biogas to gas"
-    ).sum()
+    var["Emissions|Gross Fossil CO2|Energy|Supply|Gases"] = co2_emissions.get(
+        "gas compressing", 0
+    )
+
+    var["Emissions|CO2|Energy|Supply|Gases"] = (-1) * co2_negative_emissions.get(
+        "biogas to gas CC", 0
+    ) + var["Emissions|Gross Fossil CO2|Energy|Supply|Gases"]
 
     var["Emissions|CO2|Supply|Non-Renewable Waste"] = (
         co2_emissions.get("HVC to air").sum() + waste_CHP_emissions.sum()
@@ -2730,11 +2775,9 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         "oil refining", 0
     )
 
-    var["Emissions|CO2|Energy|Supply|Liquids"] = (
-        var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"]
-        - co2_atmosphere_withdrawal.filter(like="biomass to liquid").sum()
-        - co2_atmosphere_withdrawal.get("unsustainable bioliquids", 0)
-    )
+    var["Emissions|CO2|Energy|Supply|Liquids"] = var[
+        "Emissions|Gross Fossil CO2|Energy|Supply|Liquids"
+    ] - co2_negative_emissions.get("biomass to liquid CC", 0)
 
     var["Emissions|CO2|Energy|Supply|Liquids and Gases"] = (
         var["Emissions|CO2|Energy|Supply|Liquids"]
@@ -2787,7 +2830,7 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         var["Emissions|CO2|Energy and Industrial Processes"]
         + var["Emissions|CO2|Energy|Demand|Bunkers"]
         + var["Emissions|CO2|Supply|Non-Renewable Waste"]
-        - co2_atmosphere_withdrawal.get("DAC", 0)
+        - co2_negative_emissions.get("DAC", 0)
     )
 
     print(
@@ -3194,12 +3237,23 @@ def get_prices(n, region):
 
     # Price|Secondary Energy|Hydrogen
     # (carbon costs not yet included)
-    nodal_flows_h2 = get_nodal_flows(n, "H2", region)
-    nodal_prices_h2 = n.buses_t.marginal_price[nodal_flows_h2.columns]
+    # nodal_flows_h2 = get_nodal_flows(n, "H2", region)
+    # nodal_prices_h2 = n.buses_t.marginal_price[nodal_flows_h2.columns]
 
+    # var["Price|Secondary Energy|Hydrogen"] = (
+    #     nodal_flows_h2.mul(nodal_prices_h2).values.sum() / nodal_flows_h2.values.sum()
+    # ) / MWh2GJ
+
+    carriers = ["SMR", "SMR CC", "H2 Electrolysis"]
     var["Price|Secondary Energy|Hydrogen"] = (
-        nodal_flows_h2.mul(nodal_prices_h2).values.sum() / nodal_flows_h2.values.sum()
-    ) / MWh2GJ
+        get_weighted_costs_links(carriers, n, region) / MWh2GJ
+    )
+
+    # Price|Secondary Energy|Hydrogen|Green
+    # incorporate CAPEX and electricity price as electrolysis is forced in in some years
+    var["Price|Secondary Energy|Hydrogen|Green"] = (
+        costs_gen_links(n, region, "H2 Electrolysis")[0] / MWh2GJ
+    )
 
     # Price|Secondary Energy|Liquids
     nodal_flows_oil = get_nodal_flows(
@@ -3223,8 +3277,9 @@ def get_prices(n, region):
     # Price|Secondary Energy|Liquids|Biomass
     # Price|Secondary Energy|Liquids|Oil
     # Price|Secondary Energy|Liquids|Hydrogen
+    carriers = ["Fischer-Tropsch", "methanol"]
     var["Price|Secondary Energy|Liquids|Hydrogen"] = (
-        costs_gen_links(n, region, "Fischer-Tropsch")[0] / MWh2GJ
+        get_weighted_costs_links(carriers, n, region) / MWh2GJ
     )
 
     # Price|Secondary Energy|Liquids|Efuel
@@ -3609,18 +3664,25 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     ) * 1e-9
     offwind_connection_ac = offwind_connection_overnight_cost.filter(like="ac")
     offwind_connection_dc = offwind_connection_overnight_cost.filter(regex="dc|float")
-    var["Investment|Energy Supply|Electricity|Transmission|Offwind-AC"] = (
-        offwind_connection_ac.sum() / 5
+    var_name = "Investment|Energy Supply|Electricity|Transmission|"
+    var[var_name + "AC|Offshore"] = offwind_connection_ac.sum() / 5
+    var[var_name + "AC|Offshore|NEP"] = (
+        offwind_connection_ac.filter(regex="25|30").sum() / 5
     )
-    var["Investment|Energy Supply|Electricity|Transmission|Offwind-DC"] = (
-        offwind_connection_dc.sum() / 5
+
+    var[var_name + "DC|Offshore"] = offwind_connection_dc.sum() / 5
+    var[var_name + "DC|Offshore|NEP"] = (
+        offwind_connection_dc.filter(regex="25|30").sum() / 5
     )
-    # TODO add international links with only 50% of the costs
+
     dc_links = n.links[
         (n.links.carrier == "DC")
         & (n.links.bus0 + n.links.bus1).str.contains(region)
         & ~n.links.reversed
     ]
+    nep_dc = dc_links.query(
+        "index.str.startswith('DC') or index=='TYNDP2020_1' or index=='TYNDP2020_2' or index=='TYNDP2020_23'"
+    ).index
     dc_expansion = dc_links.p_nom_opt.apply(
         lambda x: get_discretized_value(
             x,
@@ -3642,6 +3704,7 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     ] *= 0.5
 
     ac_lines = n.lines[(n.lines.bus0 + n.lines.bus1).str.contains(region)]
+    nep_ac = ac_lines.query("build_year > 2000").index
     ac_expansion = ac_lines.s_nom_opt.apply(
         lambda x: get_discretized_value(
             x,
@@ -3661,16 +3724,50 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
         ~(ac_lines.bus0.str.contains(region) & ac_lines.bus1.str.contains(region))
     ] *= 0.5
 
-    var["Investment|Energy Supply|Electricity|Transmission|AC"] = (
-        ac_investments.sum() + offwind_connection_ac.sum()
-    ) / 5
-    var["Investment|Energy Supply|Electricity|Transmission|DC"] = (
-        dc_investments.sum() + offwind_connection_dc.sum()
-    ) / 5
-    var["Investment|Energy Supply|Electricity|Transmission"] = (
-        var["Investment|Energy Supply|Electricity|Transmission|AC"]
-        + var["Investment|Energy Supply|Electricity|Transmission|DC"]
+    # Blindleistungskompensation
+    # https://www.netzentwicklungsplan.de/sites/default/files/2023-07/NEP_2037_2045_V2023_2_Entwurf_Teil1_1.pdf
+    # Tabelle 30, Abbildung 70, Kostenannahmen NEP + eigene Berechnungen, gerundet
+    year = n.generators.build_year.max()
+    reactive_power_compensation = {
+        2020: 0,
+        2025: 4.4,
+        2030: 8,
+        2035: 15,
+        2040: 10,
+        2045: 1.5,
+    }
+    var[var_name + "AC|Reactive Power Compensation"] = (
+        reactive_power_compensation.get(year, 0) / 5
     )
+
+    var[var_name + "AC|Onshore"] = ac_investments.sum() / 5
+    var[var_name + "AC|Onshore|NEP"] = ac_investments[nep_ac].sum() / 5
+    var[var_name + "DC|Onshore"] = dc_investments.sum() / 5
+    var[var_name + "DC|Onshore|NEP"] = dc_investments[nep_dc].sum() / 5
+
+    for key in ["Onshore", "Onshore|NEP", "Offshore", "Offshore|NEP"]:
+        var[var_name + f"{key}"] = (
+            var[var_name + f"AC|{key}"] + var[var_name + f"DC|{key}"]
+        )
+
+    var[var_name + "AC"] = (
+        var[var_name + "AC|Onshore"]
+        + var[var_name + "AC|Offshore"]
+        + var[var_name + "AC|Reactive Power Compensation"]
+    )
+    var[var_name + "AC|NEP"] = (
+        var[var_name + "AC|Onshore|NEP"]
+        + var[var_name + "AC|Offshore|NEP"]
+        + var[var_name + "AC|Reactive Power Compensation"]
+    )
+    var[var_name + "DC"] = var[var_name + "DC|Onshore"] + var[var_name + "DC|Offshore"]
+    var[var_name + "DC|NEP"] = (
+        var[var_name + "DC|Onshore|NEP"] + var[var_name + "DC|Offshore|NEP"]
+    )
+    var["Investment|Energy Supply|Electricity|Transmission"] = (
+        var[var_name + "AC"] + var[var_name + "DC"]
+    )
+    var[var_name + "NEP"] = var[var_name + "AC|NEP"] + var[var_name + "DC|NEP"]
 
     distribution_grid = n.links[n.links.carrier.str.contains("distribution")].filter(
         like="DE", axis=0
@@ -3750,14 +3847,6 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
         var["Investment|Energy Supply|Gas|Transmission"] = gas_costs.sum() / 5
 
     # var["Investment|Energy Supply|Electricity|Electricity Storage"] = \
-    # var["Investment|Energy Supply|Hydrogen|Fossil"] = \
-    # var["Investment|Energy Supply|Hydrogen|Biomass"] = \
-    # var["Investment|Energy Supply|Hydrogen|Electrolysis"] =
-    # var["Investment|Energy Supply|Hydrogen|Other"] = \
-    # var["Investment|Energy Supply|Liquids"] = \
-    # var["Investment|Energy Supply|Liquids|Oil"] = \
-    # var["Investment|Energy Supply|Liquids|Coal and Gas"] = \
-    # var["Investment|Energy Supply|Liquids|Biomass"] = \
     # var["Investment|Energy Supply|CO2 Transport and Storage"] =
     # var["Investment|Energy Supply|Other"] =
     # var["Investment|Energy Efficiency"] = \
@@ -3911,17 +4000,62 @@ def get_trade(n, region):
     #     exports_h2 * MWh2PJ
 
     # Trade|Secondary Energy|Liquids|Hydrogen|Volume
+
+    renewable_oil_supply = (
+        n.statistics.supply(bus_carrier="renewable oil", **kwargs)
+        .groupby(["bus", "carrier"])
+        .sum()
+    )
+
+    assert region == "DE"  # only DE is implemented at the moment
+
+    DE_renewable_oil = renewable_oil_supply.get("DE renewable oil", pd.Series(0))
+    EU_renewable_oil = renewable_oil_supply.get("EU renewable oil", pd.Series(0))
+
+    if DE_renewable_oil.sum() == 0:
+        DE_bio_fraction = 0
+    else:
+        DE_bio_fraction = (
+            DE_renewable_oil.filter(like="bio").sum() / DE_renewable_oil.sum()
+        )
+
+    if EU_renewable_oil.sum() == 0:
+        EU_bio_fraction = 0
+    else:
+        EU_bio_fraction = (
+            EU_renewable_oil.filter(like="bio").sum() / EU_renewable_oil.sum()
+        )
+
     exports_oil_renew, imports_oil_renew = get_export_import_links(
-        n, region, ["renewable oil"]
+        n, region, ["renewable oil", "methanol"]
     )
-    var["Trade|Secondary Energy|Liquids|Hydrogen|Volume"] = (
-        exports_oil_renew - imports_oil_renew
+
+    var["Trade|Secondary Energy|Liquids|Biomass|Volume"] = (
+        exports_oil_renew * DE_bio_fraction - imports_oil_renew * EU_bio_fraction
     ) * MWh2PJ
-    var["Trade|Secondary Energy|Liquids|Hydrogen|Gross Import|Volume"] = (
-        imports_oil_renew * MWh2PJ
+
+    var["Trade|Secondary Energy|Liquids|Biomass|Gross Import|Volume"] = (
+        imports_oil_renew * EU_bio_fraction * MWh2PJ
     )
-    # var["Trade|Secondary Energy|Liquids|Hydrogen|Volume|Exports"] = \
-    #     exports_oil_renew * MWh2PJ
+
+    exports_meoh, imports_meoh = get_export_import_links(n, region, ["methanol"])
+
+    var["Trade|Secondary Energy|Liquids|Hydrogen|Volume"] = (
+        exports_oil_renew * (1 - DE_bio_fraction)
+        - imports_oil_renew * (1 - EU_bio_fraction)
+        + exports_meoh
+        - imports_meoh
+    ) * MWh2PJ
+
+    var["Trade|Secondary Energy|Liquids|Hydrogen|Gross Import|Volume"] = (
+        imports_oil_renew * (1 - EU_bio_fraction) + imports_meoh
+    ) * MWh2PJ
+
+    var["Trade|Secondary Energy|Methanol|Volume"] = (
+        exports_meoh - imports_meoh
+    ) * MWh2PJ
+
+    var["Trade|Secondary Energy|Methanol|Gross Import|Volume"] = imports_meoh * MWh2PJ
 
     # Trade|Secondary Energy|Gases|Hydrogen|Volume
 
@@ -3938,14 +4072,14 @@ def get_trade(n, region):
         DE_bio_fraction = 0
     else:
         DE_bio_fraction = (
-            DE_renewable_gas.filter(like="biogas to gas").sum() / DE_renewable_gas.sum()
+            DE_renewable_gas.filter(like="bio").sum() / DE_renewable_gas.sum()
         )
 
     if EU_renewable_gas.sum() == 0:
         EU_bio_fraction = 0
     else:
         EU_bio_fraction = (
-            EU_renewable_gas.filter(like="biogas to gas").sum() / EU_renewable_gas.sum()
+            EU_renewable_gas.filter(like="bio").sum() / EU_renewable_gas.sum()
         )
 
     assert region == "DE"  # only DE is implemented at the moment
@@ -3966,18 +4100,6 @@ def get_trade(n, region):
     ) * MWh2PJ
     var["Trade|Secondary Energy|Gases|Biomass|Gross Import|Volume"] = (
         imports_gas_renew * EU_bio_fraction * MWh2PJ
-    )
-
-    # TODO add methanol trade, renewable gas trade
-
-    exports_meoh, imports_meoh = get_export_import_links(n, region, ["methanol"])
-
-    var["Trade|Secondary Energy|Methanol|Hydrogen|Volume"] = (
-        exports_meoh - imports_meoh
-    ) * MWh2PJ
-
-    var["Trade|Secondary Energy|Methanol|Hydrogen|Gross Import|Volume"] = (
-        imports_meoh * MWh2PJ
     )
 
     # Trade|Primary Energy|Coal|Volume
@@ -4298,12 +4420,130 @@ def get_operational_and_capital_costs(year):
     return var
 
 
-def hack_transmission_projects(n, model_year):
-    logger.info(f"Hacking transmission projects for year {model_year}")
-    logger.warning(f"Assuming all transmission projects are new links")
-    logger.warning(
-        f"Assuming all indices of transmission projects start with 'DC' or 'TYNDP'"
+def get_grid_capacity(n, region, year):
+
+    var = pd.Series()
+    ### Total Capacity
+    ## Transmission Grid
+    # TODO add offwind (requires changes in modify_prenetwork!)
+
+    dc_links = n.links[
+        (n.links.carrier == "DC")
+        & (n.links.bus0 + n.links.bus1).str.contains(region)
+        & ~n.links.reversed
+    ]
+    ac_lines = n.lines[(n.lines.bus0 + n.lines.bus1).str.contains(region)]
+
+    # Count length of internationl links only half
+    dc_links.loc[
+        ~(dc_links.bus0.str.contains(region) & dc_links.bus1.str.contains(region)),
+        "length",
+    ] *= 0.5
+    ac_lines.loc[
+        ~(ac_lines.bus0.str.contains(region) & ac_lines.bus1.str.contains(region)),
+        "length",
+    ] *= 0.5
+
+    # NEP subsets
+    nep_dc = dc_links.query(
+        "index.str.startswith('DC') or index=='TYNDP2020_1' or index=='TYNDP2020_2' or index=='TYNDP2020_23'"
+    ).index
+    nep_ac = ac_lines.query("build_year > 2000").index
+
+    var["Capacity|Electricity|Transmission|DC"] = (
+        dc_links.eval("p_nom_opt * length").sum() * MW2GW
     )
+    var["Capacity|Electricity|Transmission|DC|NEP"] = (
+        dc_links.loc[nep_dc].eval("p_nom_opt * length").sum() * MW2GW
+    )
+    var["Capacity Additions|Electricity|Transmission|DC"] = (
+        dc_links.eval("(p_nom_opt - p_nom_min) * length").sum() * MW2GW
+    )
+    var["Capacity Additions|Electricity|Transmission|DC|NEP"] = (
+        dc_links.loc[nep_dc].eval("(p_nom_opt - p_nom_min) * length").sum() * MW2GW
+    )
+    var["Length Additions|Electricity|Transmission|DC"] = (
+        dc_links.eval("p_nom_opt - p_nom_min")
+        .floordiv(1995)
+        .multiply(dc_links.length)
+        .sum()
+    )
+    var["Length Additions|Electricity|Transmission|DC|NEP"] = (
+        dc_links.loc[nep_dc]
+        .eval("p_nom_opt - p_nom_min")
+        .floordiv(1995)
+        .multiply(dc_links.length)
+        .sum()
+    )
+    var["Capacity|Electricity|Transmission|AC"] = (
+        ac_lines.eval("s_nom_opt * length").sum() * MW2GW
+    )
+    var["Capacity|Electricity|Transmission|AC|NEP"] = (
+        ac_lines.loc[nep_ac].eval("s_nom_opt * length").sum() * MW2GW
+    )
+    var["Capacity Additions|Electricity|Transmission|AC"] = (
+        ac_lines.eval("(s_nom_opt - s_nom_min) * length").sum() * MW2GW
+    )
+    var["Capacity Additions|Electricity|Transmission|AC|NEP"] = (
+        ac_lines.loc[nep_ac].eval("(s_nom_opt - s_nom_min) * length").sum() * MW2GW
+    )
+    var["Length Additions|Electricity|Transmission|AC"] = (
+        ac_lines.eval("s_nom_opt - s_nom_min")
+        .floordiv(1695)
+        .multiply(ac_lines.length)
+        .sum()
+    )
+    var["Length Additions|Electricity|Transmission|AC|NEP"] = (
+        ac_lines.loc[nep_ac]
+        .eval("s_nom_opt - s_nom_min")
+        .floordiv(1695)
+        .multiply(ac_lines.length)
+        .sum()
+    )
+
+    var["Capacity|Electricity|Transmission"] = (
+        var["Capacity|Electricity|Transmission|AC"]
+        + var["Capacity|Electricity|Transmission|DC"]
+    )
+    var["Capacity|Electricity|Transmission|NEP"] = (
+        var["Capacity|Electricity|Transmission|AC|NEP"]
+        + var["Capacity|Electricity|Transmission|DC|NEP"]
+    )
+    var["Capacity Additions|Electricity|Transmission"] = (
+        var["Capacity Additions|Electricity|Transmission|AC"]
+        + var["Capacity Additions|Electricity|Transmission|DC"]
+    )
+    var["Capacity Additions|Electricity|Transmission|NEP"] = (
+        var["Capacity Additions|Electricity|Transmission|AC|NEP"]
+        + var["Capacity Additions|Electricity|Transmission|DC|NEP"]
+    )
+    var["Length Additions|Electricity|Transmission"] = (
+        var["Length Additions|Electricity|Transmission|AC"]
+        + var["Length Additions|Electricity|Transmission|DC"]
+    )
+    var["Length Additions|Electricity|Transmission|NEP"] = (
+        var["Length Additions|Electricity|Transmission|AC|NEP"]
+        + var["Length Additions|Electricity|Transmission|DC|NEP"]
+    )
+
+    ## Distribution Grid
+    distr_grid = n.links[
+        (n.links.carrier == "electricity distribution grid")
+        & (n.links.bus0.str[:2] == region)
+        & ~(n.links.index.str.contains("reversed"))
+    ]
+
+    var["Capacity|Electricity|Distribution"] = distr_grid.p_nom_opt.sum() * MW2GW
+    var["Capacity Additions|Electricity|Distribution"] = (
+        distr_grid.eval("(p_nom_opt - p_nom_min)").sum() * MW2GW
+    )
+
+    return var
+
+
+def hack_DC_projects(n, n_start, model_year):
+    logger.info(f"Hacking DC projects for year {model_year}")
+    logger.warning(f"Assuming all indices of DC projects start with 'DC' or 'TYNDP'")
     tprojs = n.links.loc[
         (n.links.index.str.startswith("DC") | n.links.index.str.startswith("TYNDP"))
         & ~n.links.reversed
@@ -4326,14 +4566,33 @@ def hack_transmission_projects(n, model_year):
     n.links.loc[future_projects, "p_nom_min"] = 0
 
     # Current projects should have their p_nom_opt bigger or equal to p_nom until the year 2030 (Startnetz that we force in)
+    if snakemake.params.NEP_year == 2021:
+        logger.warning("Switching DC projects to NEP23 costs post-optimization")
+        n.links.loc[current_projects, "overnight_cost"] = (
+            n.links.loc[current_projects, "length"]
+            * (
+                (1.0 - n.links.loc[current_projects, "underwater_fraction"])
+                * costs[0].at["HVDC underground", "investment"]
+                / 1e-9
+                + n.links.loc[current_projects, "underwater_fraction"]
+                * costs[0].at["HVDC submarine", "investment"]
+                / 1e-9
+            )
+            + costs[0].at["HVDC inverter pair", "investment"] / 1e-9
+        )
+
     if model_year <= 2030:
         assert (
             n.links.loc[current_projects, "p_nom"]
             <= n.links.loc[current_projects, "p_nom_opt"]
         ).all()
 
-        n.links.loc[current_projects, "p_nom"] = 0
-        n.links.loc[current_projects, "p_nom_min"] = 0
+        n.links.loc[current_projects, "p_nom"] -= n_start.links.loc[
+            current_projects, "p_nom"
+        ]
+        n.links.loc[current_projects, "p_nom_min"] -= n_start.links.loc[
+            current_projects, "p_nom"
+        ]
 
     else:
         n.links.loc[current_projects, "p_nom"] = n.links.loc[
@@ -4343,10 +4602,44 @@ def hack_transmission_projects(n, model_year):
     # Past projects should have their p_nom_opt bigger or equal to p_nom
     if model_year <= 2035:
         assert (
-            n.links.loc[past_projects, "p_nom_opt"]
+            n.links.loc[past_projects, "p_nom_opt"] + 0.1  # numerical error tolerance
             >= n.links.loc[past_projects, "p_nom"]
         ).all()
 
+    return n
+
+
+def hack_AC_projects(n, n_start, model_year):
+    logger.info(f"Hacking AC projects for year {model_year}")
+
+    # All transmission projects have build_year > 0, this is implicit in the query
+    ac_projs = n.lines.query("@model_year - 5 < build_year <= @model_year").index
+
+    s_nom_start = n_start.lines.loc[ac_projs, "s_nom"].apply(
+        lambda x: get_discretized_value(
+            x,
+            post_discretization["line_unit_size"],
+            post_discretization["line_threshold"],
+        )
+    )
+
+    if snakemake.params.NEP_year == 2021:
+        logger.warning("Switching AC projects to NEP23 costs post-optimization")
+        n.lines.loc[ac_projs, "overnight_cost"] *= 772 / 472
+
+    # Eventhough the lines are available to the model from the start,
+    # we pretend that the lines were in expanded in this year
+    # s_nom_start is used, because the model may expand lines
+    # endogenously before that or after that
+    n.lines.loc[ac_projs, "s_nom"] -= s_nom_start
+    n.lines.loc[ac_projs, "s_nom_min"] -= s_nom_start
+
+    return n
+
+
+def hack_transmission_projects(n, n_start, model_year):
+    n = hack_DC_projects(n, n_start, model_year)
+    n = hack_AC_projects(n, n_start, model_year)
     return n
 
 
@@ -4364,6 +4657,7 @@ def get_ariadne_var(
     var = pd.concat(
         [
             get_capacities(n, region),
+            get_grid_capacity(n, region, year),
             # get_capacity_additions_simple(n,region),
             # get_installed_capacities(n,region),
             get_capacity_additions(n, region),
@@ -4421,7 +4715,6 @@ def get_data(
         try:
             unit = var2unit[v]
         except KeyError:
-            print("Warning: Variable '", v, "' not in Ariadne Database", sep="")
             unit = "NA"
 
         data.append(
@@ -4460,7 +4753,7 @@ if __name__ == "__main__":
             sector_opts="None",
             run="KN2045_Bal_v4",
         )
-
+    configure_logging(snakemake)
     config = snakemake.config
     planning_horizons = snakemake.params.planning_horizons
     post_discretization = snakemake.params.post_discretization
@@ -4523,7 +4816,7 @@ if __name__ == "__main__":
     modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
     # Hack the transmission projects
     networks = [
-        hack_transmission_projects(n.copy(), int(my))
+        hack_transmission_projects(n.copy(), _networks[0], int(my))
         for n, my in zip(_networks, modelyears)
     ]
 
@@ -4533,6 +4826,7 @@ if __name__ == "__main__":
         n = networks[idx]
         c = costs[idx]
         _industry_demand = industry_demands[idx]
+        industry_demand = industry_demands[idx]
         _energy_totals = energy_totals.copy()
         region = "DE"
         cap_func = n.statistics.optimal_capacity

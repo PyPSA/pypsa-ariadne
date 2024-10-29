@@ -7,6 +7,7 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pypsa
+from _helpers import configure_logging
 from shapely.geometry import Point
 
 logger = logging.getLogger(__name__)
@@ -54,7 +55,6 @@ def fix_new_boiler_profiles(n):
 
     for attr in ["p_min_pu", "p_max_pu"]:
         n.links_t[attr] = pd.concat([n.links_t[attr], boiler_profiles_pu], axis=1)
-        logger.info(f"new boiler profiles:\n{n.links_t[attr][decentral_boilers]}")
 
 
 def remove_old_boiler_profiles(n):
@@ -226,7 +226,7 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
         )
 
         # add kernnetz to network
-        n.madd(
+        n.add(
             "Link",
             names,
             bus0=wkn_new.bus0.values + " H2",
@@ -302,13 +302,12 @@ def unravel_carbonaceous_fuels(n):
     # add buses
     n.add("Carrier", "renewable oil")
 
-    n.add("Bus", "DE", location="DE", x=10.5, y=51.2, carrier="none")
-    n.add("Bus", "DE oil", location="DE", x=10.5, y=51.2, carrier="oil")
-    n.add("Bus", "DE oil primary", location="DE", x=10.5, y=51.2, carrier="oil primary")
+    n.add("Bus", "DE", x=10.5, y=51.2, carrier="none")
+    n.add("Bus", "DE oil", x=10.5, y=51.2, carrier="oil")
+    n.add("Bus", "DE oil primary", x=10.5, y=51.2, carrier="oil primary")
     n.add(
         "Bus",
         "DE renewable oil",
-        location="DE",
         x=10.5,
         y=51.2,
         carrier="renewable oil",
@@ -316,7 +315,6 @@ def unravel_carbonaceous_fuels(n):
     n.add(
         "Bus",
         "EU renewable oil",
-        location="EU",
         x=n.buses.loc["EU", "x"],
         y=n.buses.loc["EU", "y"],
         carrier="renewable oil",
@@ -339,7 +337,6 @@ def unravel_carbonaceous_fuels(n):
         bus0="DE oil primary",
         bus1="DE oil",
         bus2="co2 atmosphere",
-        location="DE",
         carrier="oil refining",
         p_nom=1e6,
         efficiency=1
@@ -376,7 +373,7 @@ def unravel_carbonaceous_fuels(n):
     n.links.loc[german_oil_consumers, "bus0"] = "DE oil"
 
     # add links between oil buses
-    n.madd(
+    n.add(
         "Link",
         [
             "EU renewable oil -> DE oil",
@@ -393,7 +390,7 @@ def unravel_carbonaceous_fuels(n):
         marginal_cost=0.01,
     )
 
-    n.madd(
+    n.add(
         "Link",
         [
             "EU renewable oil -> EU oil",
@@ -443,7 +440,6 @@ def unravel_carbonaceous_fuels(n):
     n.add(
         "Bus",
         "DE methanol",
-        location="DE",
         x=n.buses.loc["DE", "x"],
         y=n.buses.loc["DE", "y"],
         carrier="methanol",
@@ -460,7 +456,7 @@ def unravel_carbonaceous_fuels(n):
     n.links.loc[DE_meoh_in, "bus1"] = "DE methanol"
 
     # add links between methanol buses
-    n.madd(
+    n.add(
         "Link",
         ["EU methanol -> DE methanol", "DE methanol -> EU methanol"],
         bus0=["EU methanol", "DE methanol"],
@@ -487,6 +483,14 @@ def unravel_carbonaceous_fuels(n):
     # check for loads
     # industry load
     if "EU industry methanol" in n.loads.index:
+        n.add(
+            "Bus",
+            "DE industry methanol",
+            carrier="industry methanol",
+            x=n.buses.loc["DE", "x"],
+            y=n.buses.loc["DE", "y"],
+            unit="MWh_LHV",
+        )
         industrial_demand = (
             pd.read_csv(snakemake.input.industrial_demand, index_col=0) * 1e6
         )  # TWh/a to MWh/a
@@ -496,25 +500,16 @@ def unravel_carbonaceous_fuels(n):
         n.add(
             "Load",
             "DE industry methanol",
-            bus="DE methanol",
+            bus="DE industry methanol",
             carrier="industry methanol",
             p_set=DE_meoh,
         )
         n.loads.loc["EU industry methanol", "p_set"] -= DE_meoh
 
         n.add(
-            "Bus",
-            "DE industry methanol",
-            carrier="industry methanol",
-            location="DE",
-            x=n.buses.loc["DE", "x"],
-            y=n.buses.loc["DE", "y"],
-            unit="MWh_LHV",
-        )
-        n.add(
             "Link",
             "DE industry methanol",
-            bus0="DE industry methanol",
+            bus0="DE methanol",
             bus1="DE industry methanol",
             bus2="co2 atmosphere",
             carrier="industry methanol",
@@ -571,7 +566,6 @@ def unravel_carbonaceous_fuels(n):
             "Bus",
             "DE shipping methanol",
             carrier="shipping methanol",
-            location="DE",
             x=n.buses.loc["DE", "x"],
             y=n.buses.loc["DE", "y"],
             unit="MWh_LHV",
@@ -599,19 +593,19 @@ def unravel_gasbus(n, costs):
     n.add(
         "Bus",
         "DE gas",
-        location="DE",
         x=10.5,
         y=51.2,
         carrier="gas",
     )
+
     n.add(
-        "Generator",
-        "DE gas",
-        bus="DE gas",
-        p_nom_extendable=True,
-        carrier="gas",
-        marginal_cost=costs.at["gas", "fuel"],
+        "Bus",
+        "DE gas primary",
+        x=10.5,
+        y=51.2,
+        carrier="gas primary",
     )
+
     n.add(
         "Store",
         "DE gas Store",
@@ -624,13 +618,35 @@ def unravel_gasbus(n, costs):
         lifetime=costs.at["gas storage", "lifetime"],
     )
 
+    n.add(
+        "Generator",
+        "DE gas primary",
+        bus="DE gas primary",
+        p_nom_extendable=True,
+        carrier="gas primary",
+        marginal_cost=costs.at["gas", "fuel"],
+    )
+
+    # add link for DE gas compressing
+    n.add(
+        "Link",
+        "DE gas compressing",
+        bus0="DE gas primary",
+        bus1="DE gas",
+        bus2="co2 atmosphere",
+        carrier="gas compressing",
+        p_nom=1e6,
+        efficiency=1 - snakemake.config["industry"]["gas_compression_losses"],
+        efficiency2=snakemake.config["industry"]["gas_compression_losses"]
+        * costs.at["gas", "CO2 intensity"],
+    )
+
     ### create renewable gas buses
     n.add("Carrier", "renewable gas")
 
     n.add(
         "Bus",
         "DE renewable gas",
-        location="DE",
         carrier="renewable gas",
         x=10.5,
         y=51.2,
@@ -638,7 +654,8 @@ def unravel_gasbus(n, costs):
     n.add(
         "Bus",
         "EU renewable gas",
-        location="EU",
+        x=n.buses.loc["EU", "x"],
+        y=n.buses.loc["EU", "y"],
         carrier="renewable gas",
     )
 
@@ -659,7 +676,7 @@ def unravel_gasbus(n, costs):
     n.links.loc[fossil_links.index, "bus0"] = "DE gas"
 
     ### add import/export links
-    n.madd(
+    n.add(
         "Link",
         ["EU renewable gas -> DE gas", "DE renewable gas -> EU gas"],
         bus0=["EU renewable gas", "DE renewable gas"],
@@ -671,7 +688,7 @@ def unravel_gasbus(n, costs):
     )
 
     ### add links between renewable and fossil gas buses
-    n.madd(
+    n.add(
         "Link",
         ["EU renewable gas -> EU gas", "DE renewable gas -> DE gas"],
         bus0=["EU renewable gas", "DE renewable gas"],
@@ -987,6 +1004,10 @@ def enforce_transmission_project_build_years(n, current_year):
 
 
 def force_connection_nep_offshore(n, current_year):
+    # WARNING this code adds a new generator for the offwind connection
+    # at an onshore locations. These extra capacities are not accounted
+    # for in the land use contraint
+
     # Load costs
     nep23_costs = (
         pd.read_csv(
@@ -1078,7 +1099,7 @@ def force_connection_nep_offshore(n, current_year):
 
     # this is a hack to stop solve_network.py > _add_land_use_constraint breaking
     # if there are existing generators, add a new extendable one
-    # WARNING land_use_constraint might not break but no guarantee that it still functions as expected
+    # WARNING land_use_constraint is not respected for the onshore generators
     # TODO rewrite this part less hacky
     existings = n.generators.index[
         (n.generators.carrier == "offwind-dc") & ~n.generators.p_nom_extendable
@@ -1093,6 +1114,11 @@ def force_connection_nep_offshore(n, current_year):
             n.generators_t.p_max_pu[node_off] = n.generators_t.p_max_pu[
                 nordsee_duck_off
             ]
+            # The new dummy generator shall not be extended
+            n.generators.at[node_off, "p_nom_max"] = 0
+            # Try out the new pypsa keyword to ignore the generator during optimization
+            n.generators.at[node_off, "active"] = False
+
     # WARNING: Code duplication ahead
     ac_projects = goffshore[
         (goffshore.Inbetriebnahmejahr > current_year - 5)
@@ -1136,6 +1162,19 @@ def force_connection_nep_offshore(n, current_year):
             )
 
 
+def drop_duplicate_transmission_projects(n):
+
+    year = 2024
+
+    logger.info(
+        f"Dropping transmission projects with build year <= {year}. They are likely already in the OSM base network."
+    )  # Maybe one 2024 line is missing in the OSM base network
+
+    to_drop = n.lines.query("0 < build_year <= @year").index
+
+    n.remove("Line", to_drop)
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
@@ -1152,10 +1191,11 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts="none",
-            planning_horizons="2030",
+            planning_horizons="2020",
             run="KN2045_Bal_v4",
         )
 
+    configure_logging(snakemake)
     logger.info("Adding Ariadne-specific functionality")
 
     n = pypsa.Network(snakemake.input.network)
@@ -1232,6 +1272,8 @@ if __name__ == "__main__":
     current_year = int(snakemake.wildcards.planning_horizons)
 
     enforce_transmission_project_build_years(n, current_year)
+
+    drop_duplicate_transmission_projects(n)
 
     force_connection_nep_offshore(n, current_year)
 
