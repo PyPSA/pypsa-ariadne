@@ -3815,6 +3815,7 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
         )
     ] *= 0.5
 
+    var["Investment|Energy Supply|Hydrogen|Transmission and Distribution"] = \
     var["Investment|Energy Supply|Hydrogen|Transmission"] = h2_investments.sum() / 5
 
     # TODO add retrofitted costs!!
@@ -4701,6 +4702,37 @@ def get_data(
         region,
         year,
     )
+
+    # Renaming variables
+
+    var["Investment|Energy Supply|Electricity|Wind Onshore"] = (
+        var["Investment|Energy Supply|Electricity|Wind|Onshore"] 
+    )
+
+    var["Investment|Energy Supply|Electricity|Wind Offshore"] = (
+        var["Investment|Energy Supply|Electricity|Wind|Offshore"]
+    )
+    
+    var["Investment|Energy Supply|Electricity|Electricity Storage"] = (
+        var["Investment|Energy Supply|Electricity|Storage Reservoir"]
+    )
+
+    var["Investment|Energy Supply|Heat|Heatpump"] = (
+        var["Investment|Energy Supply|Heat|Heat pump"]
+    )
+
+    var["Investment|Energy Supply|Hydrogen|Storage"] = (
+        var["Investment|Energy Supply|Hydrogen|Reservoir"]
+    ) 
+
+    var["Investment|Energy Supply|Hydrogen|Electrolysis"] = (
+        var["Investment|Energy Supply|Hydrogen|Electricity"]
+    )
+
+    var["Investment|Energy Supply|Hydrogen|Fossil"] = (
+        var["Investment|Energy Supply|Hydrogen|Gas"]
+    )
+
 
     data = []
     for v in var.index:
