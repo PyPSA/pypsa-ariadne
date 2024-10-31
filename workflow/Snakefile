@@ -640,6 +640,10 @@ rule plot_ariadne_report:
         plotting=config_provider("plotting"),
         run=config_provider("run", "name"),
         foresight=config_provider("foresight"),
+        costs=config_provider("costs"),
+        post_discretization=config_provider("solving", "options", "post_discretization"),
+        NEP_year=config_provider("costs", "NEP"),
+        hours=config_provider("clustering", "temporal", "resolution_sector"),
     input:
         networks=expand(
             RESULTS
@@ -653,6 +657,11 @@ rule plot_ariadne_report:
             allow_missing=True,
         ),
         rc="matplotlibrc",
+        costs=expand(
+            resources("costs_{planning_horizons}.csv"),
+            **config["scenario"],
+            allow_missing=True,
+        ),
     output:
         elec_price_duration_curve=RESULTS
         + "ariadne/report/elec_price_duration_curve.png",
@@ -662,6 +671,7 @@ rule plot_ariadne_report:
         h2_transmission=directory(RESULTS + "ariadne/report/h2_transmission"),
         co2_transmission=directory(RESULTS + "ariadne/report/co2_transmission"),
         elec_balances=directory(RESULTS + "ariadne/report/elec_balance_timeseries"),
+        heat_balances=directory(RESULTS + "ariadne/report/heat_balance_timeseries"),
         nodal_balances=directory(RESULTS + "ariadne/report/balance_timeseries_2045"),
     resources:
         mem_mb=10000,

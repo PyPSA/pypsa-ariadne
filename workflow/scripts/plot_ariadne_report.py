@@ -2,6 +2,7 @@
 import logging
 import os
 import sys
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from itertools import compress
 from multiprocessing import Pool
 
@@ -18,8 +19,9 @@ from pypsa.plot import add_legend_lines
 path = "../submodules/pypsa-eur/scripts"
 sys.path.insert(1, os.path.abspath(path))
 from _helpers import configure_logging, set_scenario_config
-from export_ariadne_variables import hack_transmission_projects
+from export_ariadne_variables import hack_transmission_projects, get_discretized_value
 from plot_power_network import load_projection
+from prepare_sector_network import prepare_costs
 from plot_summary import preferred_order, rename_techs
 from pypsa.plot import add_legend_circles, add_legend_lines, add_legend_patches
 
@@ -92,7 +94,6 @@ gas_boiler = [
 air_heat_pump = [
     "urban central air heat pump",
     "rural air heat pump",
-    "rural ground heat pump",
     "urban decentral air heat pump",
 ]
 water_tanks_charger = [
@@ -207,6 +208,8 @@ def plot_nodal_balance(
     threshold=1e-3,  # in GWh
     condense_groups=None,
     condense_names=None,
+    ylabel= "total electricity balance [GW]",
+    title="Electricity balance",
 ):
 
     carriers = carriers
@@ -317,10 +320,10 @@ def plot_nodal_balance(
         title="Legend for left y-axis",
     )
 
-    ax.set_ylabel("total electricity balance [GW]")
+    ax.set_ylabel(ylabel)
     ax.set_xlabel("")
     ax.set_title(
-        f"Electricity balance (model: {model_run}, period: {start_date} - {end_date})",
+        f"{title} (model: {model_run}, period: {start_date} - {end_date})",
         fontsize=16,
         pad=15,
     )
@@ -1446,7 +1449,7 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "plot_ariadne_report",
             simpl="",
-            clusters=27,
+            clusters=49,
             opts="",
             ll="vopt",
             sector_opts="None",
@@ -1455,6 +1458,38 @@ if __name__ == "__main__":
 
     configure_logging(snakemake)
 
+    ### Modify postnetworks (this might be moved to a seperate script)
+
+    # Load costs (needed for modification)
+    nhours = int(snakemake.params.hours[:-1])
+    nyears = nhours / 8760
+
+    costs = list(
+        map(
+            lambda _costs: prepare_costs(
+                _costs,
+                snakemake.params.costs,
+                nyears,
+            ).multiply(
+                1e-9
+            ),  # in bn €
+            snakemake.input.costs,
+        )
+    )
+    
+    # Load data
+    _networks = [pypsa.Network(fn) for fn in snakemake.input.networks]
+    modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
+
+    # Hack the transmission projects
+    networks = [
+        hack_transmission_projects(n.copy(), _networks[0], int(my), snakemake, costs)
+        for n, my in zip(_networks, modelyears)
+    ]
+
+    ###
+
+    # ensure output directory exist
     for dir in snakemake.output[2:]:
         if not os.path.exists(dir):
             os.makedirs(dir)
@@ -1463,6 +1498,11 @@ if __name__ == "__main__":
     config = snakemake.config
     planning_horizons = snakemake.params.planning_horizons
     tech_colors = snakemake.params.plotting["tech_colors"]
+
+    # update tech_colors
+    colors_update = networks[0].carriers.color.rename(networks[0].carriers.nice_name).to_dict()
+    colors_update = {k: v for k, v in colors_update.items() if v != ""}
+    tech_colors.update(colors_update)
 
     # define possible renaming and grouping of carriers
     c_g = [solar, electricity_load, electricity_imports]
@@ -1483,19 +1523,19 @@ if __name__ == "__main__":
     tech_colors["Electricity load"] = tech_colors["electricity"]
     tech_colors["Electricity trade"] = tech_colors["AC"]
     tech_colors["Offshore Wind"] = tech_colors["offwind-ac"]
+    tech_colors["urban decentral heat"] = tech_colors["urban central heat"]
+    tech_colors["urban decentral biomass boiler"] = tech_colors["biomass boiler"]
+    tech_colors["rural biomass boiler"] = tech_colors["biomass boiler"]
+    tech_colors["urban decentral oil boiler"] = tech_colors["oil boiler"]
+    tech_colors["rural oil boiler"] = tech_colors["oil boiler"]
+    tech_colors["rural ground heat pump"] = tech_colors["ground heat pump"]
 
-    # Load data
-    _networks = [pypsa.Network(fn) for fn in snakemake.input.networks]
-    modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
-    # Hack the transmission projects
-    networks = [
-        hack_transmission_projects(n.copy(), int(my))
-        for n, my in zip(_networks, modelyears)
-    ]
-    # update the tech_colors
-    tech_colors.update(
-        networks[0].carriers.color.rename(networks[0].carriers.nice_name).to_dict()
-    )
+
+    # # clean tech_colors
+    # if "" in tech_colors:
+    #     del tech_colors[""]
+    # if "none" in tech_colors:
+    #     del tech_colors["none"]
 
     ### plotting
     for year in planning_horizons:
@@ -1558,6 +1598,62 @@ if __name__ == "__main__":
             condense_names=["Electricity load", "Electricity trade"],
         )
 
+        # heat supply and demand
+        for carriers in ["urban central heat", "urban decentral heat", "rural heat"]:
+            plot_nodal_balance(
+                network=network,
+                nodal_balance=balance,
+                tech_colors=tech_colors,
+                start_date="2019-01-01 00:00:00",
+                end_date="2019-12-31 00:00:00",
+                savepath=f"{snakemake.output.heat_balances}/heat-all-year-DE-{carriers}-{year}.png",
+                model_run=snakemake.wildcards.run,
+                resample="D",
+                plot_lmps=False,
+                plot_loads=False,
+                nice_names=True,
+                threshold=1e1,  # in GWh as sum over period
+                condense_groups=c_g,
+                condense_names=c_n,
+                carriers=[carriers],
+                ylabel="Heat [GW]",
+                title=f"{carriers} balance",
+            )
+
+            plot_nodal_balance(
+                network=network,
+                nodal_balance=balance,
+                tech_colors=tech_colors,
+                start_date="2019-01-01 00:00:00",
+                end_date="2019-01-31 00:00:00",
+                savepath=f"{snakemake.output.heat_balances}/heat-Jan-DE-{carriers}-{year}.png",
+                model_run=snakemake.wildcards.run,
+                plot_lmps=False,
+                plot_loads=False,
+                nice_names=True,
+                threshold=1e1,
+                carriers=[carriers],
+                ylabel="Heat [GW]",
+                title=f"{carriers} balance",
+            )
+
+            plot_nodal_balance(
+                network=network,
+                nodal_balance=balance,
+                tech_colors=tech_colors,
+                start_date="2019-05-01 00:00:00",
+                end_date="2019-05-31 00:00:00",
+                savepath=f"{snakemake.output.heat_balances}/heat-May-DE-{carriers}-{year}.png",
+                model_run=snakemake.wildcards.run,
+                plot_lmps=False,
+                plot_loads=False,
+                nice_names=True,
+                threshold=1e1,
+                carriers=[carriers],
+                ylabel="Heat [GW]",
+                title=f"{carriers} balance",
+            )        
+
         # storage
         plot_storage(
             network=network,
@@ -1591,7 +1687,7 @@ if __name__ == "__main__":
     snakemake.params.plotting["projection"] = {"name": "EqualEarth"}
     proj = load_projection(snakemake.params.plotting)
     regions = gpd.read_file(snakemake.input.regions_onshore_clustered).set_index("name")
-
+    
     for year in planning_horizons:
         network = networks[planning_horizons.index(year)].copy()
         plot_h2_map(
@@ -1651,6 +1747,7 @@ if __name__ == "__main__":
     )
 
     n.carriers.color.update(snakemake.config["plotting"]["tech_colors"])
+    n.carriers.color.update(tech_colors)
     colors = n.carriers.color.rename(n.carriers.nice_name)
     # replace empty values TODO add empty values with colors to plotting config
     colors[colors.values == ""] = "lightgrey"

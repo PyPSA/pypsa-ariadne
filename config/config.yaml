@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241025_ptes_cost
+  prefix: 20241030-PlotHeat
 
   name:
   # - CurrentPolicies

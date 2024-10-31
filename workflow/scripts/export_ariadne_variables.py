@@ -11,6 +11,7 @@ import pandas as pd
 import pypsa
 from numpy import isclose
 
+
 logger = logging.getLogger(__name__)
 
 paths = [
@@ -4534,7 +4535,7 @@ def get_grid_capacity(n, region, year):
     return var
 
 
-def hack_DC_projects(n, n_start, model_year):
+def hack_DC_projects(n, n_start, model_year, snakemake, costs):
     logger.info(f"Hacking DC projects for year {model_year}")
     logger.warning(f"Assuming all indices of DC projects start with 'DC' or 'TYNDP'")
     tprojs = n.links.loc[
@@ -4602,7 +4603,7 @@ def hack_DC_projects(n, n_start, model_year):
     return n
 
 
-def hack_AC_projects(n, n_start, model_year):
+def hack_AC_projects(n, n_start, model_year, snakemake):
     logger.info(f"Hacking AC projects for year {model_year}")
 
     # All transmission projects have build_year > 0, this is implicit in the query
@@ -4611,8 +4612,8 @@ def hack_AC_projects(n, n_start, model_year):
     s_nom_start = n_start.lines.loc[ac_projs, "s_nom"].apply(
         lambda x: get_discretized_value(
             x,
-            post_discretization["line_unit_size"],
-            post_discretization["line_threshold"],
+            snakemake.params.post_discretization["line_unit_size"],
+            snakemake.params.post_discretization["line_threshold"],
         )
     )
 
@@ -4630,9 +4631,9 @@ def hack_AC_projects(n, n_start, model_year):
     return n
 
 
-def hack_transmission_projects(n, n_start, model_year):
-    n = hack_DC_projects(n, n_start, model_year)
-    n = hack_AC_projects(n, n_start, model_year)
+def hack_transmission_projects(n, n_start, model_year, snakemake, costs):
+    n = hack_DC_projects(n, n_start, model_year, snakemake, costs)
+    n = hack_AC_projects(n, n_start, model_year, snakemake)
     return n
 
 
@@ -4840,7 +4841,7 @@ if __name__ == "__main__":
     modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
     # Hack the transmission projects
     networks = [
-        hack_transmission_projects(n.copy(), _networks[0], int(my))
+        hack_transmission_projects(n.copy(), _networks[0], int(my), snakemake, costs)
         for n, my in zip(_networks, modelyears)
     ]
 
