@@ -4536,22 +4536,43 @@ def get_grid_capacity(n, region, year):
 
 
 def hack_DC_projects(n, n_start, model_year, snakemake, costs):
+
     logger.info(f"Hacking DC projects for year {model_year}")
-    logger.warning(f"Assuming all indices of DC projects start with 'DC' or 'TYNDP'")
+
+    logger.info(f"Assuming all indices of DC projects start with 'DC' or 'TYNDP'")
     tprojs = n.links.loc[
         (n.links.index.str.startswith("DC") | n.links.index.str.startswith("TYNDP"))
         & ~n.links.reversed
     ].index
 
     future_projects = tprojs[n.links.loc[tprojs, "build_year"] > model_year]
+
     current_projects = tprojs[
         (n.links.loc[tprojs, "build_year"] > (model_year - 5))
         & (n.links.loc[tprojs, "build_year"] <= model_year)
     ]
     past_projects = tprojs[n.links.loc[tprojs, "build_year"] <= (model_year - 5)]
 
+    logger.info("Post-Discretizing DC projects")
+    # The values  in p_nom_opt may already be discretized, here we make sure that
+    # the same logic is applied to p_nom and p_nom_min
+    for attr in ["p_nom_opt", "p_nom", "p_nom_min"]:
+        n.links.loc[tprojs, attr] = n.links.loc[tprojs, attr].apply(
+            lambda x: get_discretized_value(
+                x,
+                snakemake.params.post_discretization["link_unit_size"]["DC"],
+                snakemake.params.post_discretization["link_threshold"]["DC"],
+            )
+        )
+    for proj in tprojs:
+        if not isclose(n.links.loc[proj, "p_nom"], n_start.links.loc[proj, "p_nom"]):
+            logger.warning(
+                f"post-discretization changed p_nom of DC project {proj} from {n_start.links.loc[proj, 'p_nom']} to {n.links.loc[proj, 'p_nom']}"
+            )
+
     # Future projects should not have any capacity
     assert isclose(n.links.loc[future_projects, "p_nom_opt"], 0).all()
+
     # Setting p_nom to 0 such that n.statistics does not compute negative expanded capex or capacity additions
     # Setting p_nom_min to 0 for the grid_expansion calculation
     # This is ONLY POSSIBLE IN POST-PROCESSING
@@ -4559,7 +4580,7 @@ def hack_DC_projects(n, n_start, model_year, snakemake, costs):
     n.links.loc[future_projects, "p_nom"] = 0
     n.links.loc[future_projects, "p_nom_min"] = 0
 
-    # Current projects should have their p_nom_opt bigger or equal to p_nom until the year 2030 (Startnetz that we force in)
+    
     if snakemake.params.NEP_year == 2021:
         logger.warning("Switching DC projects to NEP23 costs post-optimization")
         n.links.loc[current_projects, "overnight_cost"] = (
@@ -4574,11 +4595,11 @@ def hack_DC_projects(n, n_start, model_year, snakemake, costs):
             )
             + costs[0].at["HVDC inverter pair", "investment"] / 1e-9
         )
-
+    # Current projects should have their p_nom_opt bigger or equal to p_nom until the year 2030 (Startnetz that we force in)
     if model_year <= 2030:
         assert (
-            n.links.loc[current_projects, "p_nom"]
-            <= n.links.loc[current_projects, "p_nom_opt"]
+            n.links.loc[current_projects, "p_nom_opt"] + 0.1
+            >= n.links.loc[current_projects, "p_nom"]
         ).all()
 
         n.links.loc[current_projects, "p_nom"] -= n_start.links.loc[
@@ -4593,7 +4614,7 @@ def hack_DC_projects(n, n_start, model_year, snakemake, costs):
             current_projects, "p_nom_min"
         ]
 
-    # Past projects should have their p_nom_opt bigger or equal to p_nom
+    #Past projects should have their p_nom_opt bigger or equal to p_nom
     if model_year <= 2035:
         assert (
             n.links.loc[past_projects, "p_nom_opt"] + 0.1  # numerical error tolerance
@@ -4607,9 +4628,24 @@ def hack_AC_projects(n, n_start, model_year, snakemake):
     logger.info(f"Hacking AC projects for year {model_year}")
 
     # All transmission projects have build_year > 0, this is implicit in the query
-    ac_projs = n.lines.query("@model_year - 5 < build_year <= @model_year").index
+    ac_projs = n.lines.query("build_year > 0").index
+    current_projects = n.lines.query("@model_year - 5 < build_year <= @model_year").index
 
-    s_nom_start = n_start.lines.loc[ac_projs, "s_nom"].apply(
+    logger.info("Post-Discretizing AC projects")
+
+    for attr in ["s_nom_opt", "s_nom", "s_nom_min"]:
+    # The values  in s_nom_opt may already be discretized, here we make sure that
+    # the same logic is applied to s_nom and s_nom_min
+        n.lines.loc[ac_projs, attr] = n.lines.loc[ac_projs, attr].apply(
+            lambda x: get_discretized_value(
+                x,
+                snakemake.params.post_discretization["line_unit_size"],
+                snakemake.params.post_discretization["line_threshold"],
+            )
+        )
+
+
+    s_nom_start = n_start.lines.loc[current_projects, "s_nom"].apply(
         lambda x: get_discretized_value(
             x,
             snakemake.params.post_discretization["line_unit_size"],
@@ -4618,15 +4654,15 @@ def hack_AC_projects(n, n_start, model_year, snakemake):
     )
 
     if snakemake.params.NEP_year == 2021:
-        logger.warning("Switching AC projects to NEP23 costs post-optimization")
-        n.lines.loc[ac_projs, "overnight_cost"] *= 772 / 472
+        logger.info("Switching AC projects to NEP23 costs post-optimization")
+        n.lines.loc[current_projects, "overnight_cost"] *= 772 / 472
 
     # Eventhough the lines are available to the model from the start,
     # we pretend that the lines were in expanded in this year
     # s_nom_start is used, because the model may expand lines
     # endogenously before that or after that
-    n.lines.loc[ac_projs, "s_nom"] -= s_nom_start
-    n.lines.loc[ac_projs, "s_nom_min"] -= s_nom_start
+    n.lines.loc[current_projects, "s_nom"] -= s_nom_start
+    n.lines.loc[current_projects, "s_nom_min"] -= s_nom_start
 
     return n
 
