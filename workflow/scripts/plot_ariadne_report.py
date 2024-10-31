@@ -1533,12 +1533,6 @@ if __name__ == "__main__":
     tech_colors["rural oil boiler"] = tech_colors["oil boiler"]
     tech_colors["rural ground heat pump"] = tech_colors["ground heat pump"]
 
-    # # clean tech_colors
-    # if "" in tech_colors:
-    #     del tech_colors[""]
-    # if "none" in tech_colors:
-    #     del tech_colors["none"]
-
     ### plotting
     for year in planning_horizons:
         network = networks[planning_horizons.index(year)].copy()
