@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241030-PlotHeat
+  prefix: 20241030_limit_FT
 
   name:
   # - CurrentPolicies
@@ -551,12 +551,12 @@ solving:
           2045: 325
       FT_production:
         DE:
-          2020: 200
-          2025: 200
-          2030: 200
-          2035: 200
-          2040: 200
-          2045: 200
+          2020: 15
+          2025: 15
+          2030: 15
+          2035: 15
+          2040: 15
+          2045: 15
     limits_volume_min:
       electrolysis:
         DE:
