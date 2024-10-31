@@ -412,7 +412,7 @@ solving:
       line_unit_size: 1700
       line_threshold: 0.3
       link_unit_size:
-        DC: 2000
+        DC: 1000
         gas pipeline: 1500
         gas pipeline new: 1500
         H2 pipeline: 13000
