@@ -2,6 +2,7 @@
 import logging
 import os
 import sys
+
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from itertools import compress
 from multiprocessing import Pool
@@ -19,10 +20,10 @@ from pypsa.plot import add_legend_lines
 path = "../submodules/pypsa-eur/scripts"
 sys.path.insert(1, os.path.abspath(path))
 from _helpers import configure_logging, set_scenario_config
-from export_ariadne_variables import hack_transmission_projects, get_discretized_value
+from export_ariadne_variables import get_discretized_value, hack_transmission_projects
 from plot_power_network import load_projection
-from prepare_sector_network import prepare_costs
 from plot_summary import preferred_order, rename_techs
+from prepare_sector_network import prepare_costs
 from pypsa.plot import add_legend_circles, add_legend_lines, add_legend_patches
 
 logger = logging.getLogger(__name__)
@@ -208,7 +209,7 @@ def plot_nodal_balance(
     threshold=1e-3,  # in GWh
     condense_groups=None,
     condense_names=None,
-    ylabel= "total electricity balance [GW]",
+    ylabel="total electricity balance [GW]",
     title="Electricity balance",
 ):
 
@@ -1476,7 +1477,7 @@ if __name__ == "__main__":
             snakemake.input.costs,
         )
     )
-    
+
     # Load data
     _networks = [pypsa.Network(fn) for fn in snakemake.input.networks]
     modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
@@ -1500,7 +1501,9 @@ if __name__ == "__main__":
     tech_colors = snakemake.params.plotting["tech_colors"]
 
     # update tech_colors
-    colors_update = networks[0].carriers.color.rename(networks[0].carriers.nice_name).to_dict()
+    colors_update = (
+        networks[0].carriers.color.rename(networks[0].carriers.nice_name).to_dict()
+    )
     colors_update = {k: v for k, v in colors_update.items() if v != ""}
     tech_colors.update(colors_update)
 
@@ -1529,7 +1532,6 @@ if __name__ == "__main__":
     tech_colors["urban decentral oil boiler"] = tech_colors["oil boiler"]
     tech_colors["rural oil boiler"] = tech_colors["oil boiler"]
     tech_colors["rural ground heat pump"] = tech_colors["ground heat pump"]
-
 
     # # clean tech_colors
     # if "" in tech_colors:
@@ -1652,7 +1654,7 @@ if __name__ == "__main__":
                 carriers=[carriers],
                 ylabel="Heat [GW]",
                 title=f"{carriers} balance",
-            )        
+            )
 
         # storage
         plot_storage(
@@ -1687,7 +1689,7 @@ if __name__ == "__main__":
     snakemake.params.plotting["projection"] = {"name": "EqualEarth"}
     proj = load_projection(snakemake.params.plotting)
     regions = gpd.read_file(snakemake.input.regions_onshore_clustered).set_index("name")
-    
+
     for year in planning_horizons:
         network = networks[planning_horizons.index(year)].copy()
         plot_h2_map(
