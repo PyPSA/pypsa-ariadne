@@ -12,7 +12,7 @@
 
   costs:
     horizon: "mean"
-    NEP: 2021
+    NEP: 2023
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
   solving:
     constraints:
@@ -79,7 +79,7 @@
 
   costs:
     horizon: "mean"
-    NEP: 2021
+    NEP: 2023
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
   solving:
     constraints:
@@ -145,7 +145,7 @@
 
   costs:
     horizon: "mean"
-    NEP: 2021
+    NEP: 2023
     transmission: "overhead" # either overhead line ("overhead") or underground cable ("underground")
   solving:
     constraints:
