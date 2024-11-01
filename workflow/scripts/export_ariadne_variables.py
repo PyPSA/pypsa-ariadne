@@ -4436,14 +4436,16 @@ def get_grid_capacity(n, region, year):
     )
     var["Length Additions|Electricity|Transmission|DC"] = (
         dc_links.eval("p_nom_opt - p_nom_min")
-        .floordiv(995).div(2)
+        .floordiv(995)
+        .div(2)
         .multiply(dc_links.length)
         .sum()
     )
     var["Length Additions|Electricity|Transmission|DC|NEP"] = (
         dc_links.loc[nep_dc]
         .eval("p_nom_opt - p_nom_min")
-        .floordiv(995).div(2)
+        .floordiv(995)
+        .div(2)
         .multiply(dc_links.length)
         .sum()
     )
@@ -4461,14 +4463,18 @@ def get_grid_capacity(n, region, year):
     )
     var["Length Additions|Electricity|Transmission|AC"] = (
         ac_lines.eval("s_nom_opt - s_nom_min")
-        .floordiv(845).div(2).div(3) # Steps of half a `line_unit`, 3 lines are a Trasse
+        .floordiv(845)
+        .div(2)
+        .div(3)  # Steps of half a `line_unit`, 3 lines are a Trasse
         .multiply(ac_lines.length)
         .sum()
     )
     var["Length Additions|Electricity|Transmission|AC|NEP"] = (
         ac_lines.loc[nep_ac]
         .eval("s_nom_opt - s_nom_min")
-        .floordiv(845).div(2).div(3)
+        .floordiv(845)
+        .div(2)
+        .div(3)
         .multiply(ac_lines.length)
         .sum()
     )
@@ -4558,7 +4564,6 @@ def hack_DC_projects(n, n_start, model_year, snakemake, costs):
     n.links.loc[future_projects, "p_nom"] = 0
     n.links.loc[future_projects, "p_nom_min"] = 0
 
-    
     if snakemake.params.NEP_year == 2021:
         logger.warning("Switching DC projects to NEP23 costs post-optimization")
         n.links.loc[current_projects, "overnight_cost"] = (
@@ -4592,7 +4597,7 @@ def hack_DC_projects(n, n_start, model_year, snakemake, costs):
             current_projects, "p_nom_min"
         ]
 
-    #Past projects should have their p_nom_opt bigger or equal to p_nom
+    # Past projects should have their p_nom_opt bigger or equal to p_nom
     if model_year <= 2035:
         assert (
             n.links.loc[past_projects, "p_nom_opt"] + 0.1  # numerical error tolerance
@@ -4607,13 +4612,15 @@ def hack_AC_projects(n, n_start, model_year, snakemake):
 
     # All transmission projects have build_year > 0, this is implicit in the query
     ac_projs = n.lines.query("build_year > 0").index
-    current_projects = n.lines.query("@model_year - 5 < build_year <= @model_year").index
+    current_projects = n.lines.query(
+        "@model_year - 5 < build_year <= @model_year"
+    ).index
 
     logger.info("Post-Discretizing AC projects")
 
     for attr in ["s_nom_opt", "s_nom", "s_nom_min"]:
-    # The values  in s_nom_opt may already be discretized, here we make sure that
-    # the same logic is applied to s_nom and s_nom_min
+        # The values  in s_nom_opt may already be discretized, here we make sure that
+        # the same logic is applied to s_nom and s_nom_min
         n.lines.loc[ac_projs, attr] = n.lines.loc[ac_projs, attr].apply(
             lambda x: get_discretized_value(
                 x,
@@ -4621,7 +4628,6 @@ def hack_AC_projects(n, n_start, model_year, snakemake):
                 snakemake.params.post_discretization["line_threshold"],
             )
         )
-
 
     s_nom_start = n_start.lines.loc[current_projects, "s_nom"].apply(
         lambda x: get_discretized_value(
