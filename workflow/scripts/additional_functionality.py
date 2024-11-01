@@ -707,15 +707,16 @@ def FT_production_limit(n, investment_year, config):
         )
 
 
-def remove_production_limits(n):
+def remove_production_limits(n, investment_year, limits_volume_max):
     """"
     Remove any restrictions on the production volumes of FT and H2.
+    Adding steel, hbi and ammonia to the the import restrictions for H2 derivatives.
     """
 
-    logger.info("Removing any EU import limit constraints.")
+    logger.info("Removing any EU production limit constraints.")
 
     cnames = [
-        # "H2_derivate_import_limit-DE",
+        "H2_derivate_import_limit-DE",
         "FT_production_volume_limit-DE",
         "H2_production_limit_upper-DE",
         "H2_production_limit_lower-DE",
@@ -728,6 +729,48 @@ def remove_production_limits(n):
             logger.info(f"Removing constraint {cname}")
             n.global_constraints.drop(cname, inplace=True)
             n.model.constraints.remove("GlobalConstraint-" + cname)
+
+    if investment_year not in limits_volume_max["h2_derivate_import"]["DE"].keys():
+            return
+    logger.info("Adding European H2 derivative import limit.")
+
+    limit = limits_volume_max["h2_derivate_import"]["DE"][investment_year] * 1e6
+
+    logger.info(f"limiting H2 derivate imports in DE to {limit/1e6} TWh/a")
+
+    incoming = n.links.loc[
+        [
+            "EU renewable oil -> DE oil",
+            "EU methanol -> DE methanol",
+            "EU renewable gas -> DE gas",
+            "EU NH3 -> DE NH3",
+            "EU steel -> DE steel",
+            "EU hbi -> DE hbi",
+        ]
+    ].index
+
+    lhs = (
+        n.model["Link-p"].loc[:, incoming] * n.snapshot_weightings.generators
+    ).sum()
+
+    cname = "H2_derivate_import_limit-DE"
+
+    n.model.add_constraints(lhs <= limit, name=f"GlobalConstraint-{cname}")
+
+    if cname in n.global_constraints.index:
+        logger.warning(
+            f"Global constraint {cname} already exists. Dropping and adding it again."
+        )
+        n.global_constraints.drop(cname, inplace=True)
+
+    n.add(
+        "GlobalConstraint",
+        cname,
+        constant=limit,
+        sense="<=",
+        type="",
+        carrier_attribute="",
+    )
 
 
 def import_limit_eu(n, sns, limit_eu_de, investment_year):
@@ -789,6 +832,10 @@ def import_limit_non_eu(n, sns, limit_non_eu_de, investment_year):
         (n.links.bus1.str[:2] == "DE") &
         (n.links.carrier.str.contains("import"))
         ].index
+
+    if non_eu_links.empty:
+        logger.warning("No non-European import links found but limit_non_eu_de is set. Please check config[solving][constraints][limit_non_eu_de] and config[import][enable].")
+        return
 
     weightings = n.snapshot_weightings.loc[sns, "generators"]
 
@@ -958,8 +1005,8 @@ def additional_functionality(n, snapshots, snakemake):
     limit_eu_de = constraints["limit_eu_de"]
     limit_non_eu_de = constraints["limit_non_eu_de"]
 
-    # Remove any production volume constraints
-    remove_production_limits(n)
+    # Remove any production volume constraints - change derivative import constraint
+    remove_production_limits(n, investment_year, constraints["limits_volume_max"])
 
     if limit_eu_de:
         logger.info("Adding import limit for European imports to Germany.")

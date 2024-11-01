@@ -12,7 +12,7 @@ no_import_me:
 
   solving:
     constraints:
-      limit_non_eu_de: true # true equals 0, number or false
+      limit_non_eu_de: false # true equals 0, number or false
       limit_eu_de: true # true equals 0 or false
       limits_capacity_min:
         Link:
@@ -38,7 +38,7 @@ eu_import_me_all:
 
   solving:
     constraints:
-      limit_non_eu_de: true # true equals 0, number or false
+      limit_non_eu_de: false # true equals 0, number or false
       limit_eu_de: false # true equals 0 or false
       limits_capacity_min:
         Link:

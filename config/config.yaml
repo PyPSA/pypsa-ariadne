@@ -476,7 +476,7 @@ sector:
   ammonia: true
   steel:
     endogenous: true
-    relocation: false
+    relocation: true
     flexibility: false
   hvc: 
     endogenous: true
