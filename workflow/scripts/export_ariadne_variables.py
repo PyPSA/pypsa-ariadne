@@ -3683,19 +3683,7 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
     nep_dc = dc_links.query(
         "index.str.startswith('DC') or index=='TYNDP2020_1' or index=='TYNDP2020_2' or index=='TYNDP2020_23'"
     ).index
-    dc_expansion = dc_links.p_nom_opt.apply(
-        lambda x: get_discretized_value(
-            x,
-            post_discretization["link_unit_size"]["DC"],
-            post_discretization["link_threshold"]["DC"],
-        )
-    ) - dc_links.p_nom_min.apply(
-        lambda x: get_discretized_value(
-            x,
-            post_discretization["link_unit_size"]["DC"],
-            post_discretization["link_threshold"]["DC"],
-        )
-    )
+    dc_expansion = dc_links.p_nom_opt - dc_links.p_nom_min
 
     dc_investments = dc_expansion * dc_links.overnight_cost * 1e-9
     # International dc_projects are only accounted with half the costs
@@ -3705,19 +3693,9 @@ def get_grid_investments(n, costs, region, length_factor=1.0):
 
     ac_lines = n.lines[(n.lines.bus0 + n.lines.bus1).str.contains(region)]
     nep_ac = ac_lines.query("build_year > 2000").index
-    ac_expansion = ac_lines.s_nom_opt.apply(
-        lambda x: get_discretized_value(
-            x,
-            post_discretization["line_unit_size"],
-            post_discretization["line_threshold"],
-        )
-    ) - n.lines.loc[ac_lines.index].s_nom_min.apply(
-        lambda x: get_discretized_value(
-            x,
-            post_discretization["line_unit_size"],
-            post_discretization["line_threshold"],
-        )
-    )
+    # Assuming the lines are already post-discretized
+    ac_expansion = ac_lines.s_nom_opt - ac_lines.s_nom_min
+
     ac_investments = ac_expansion * ac_lines.overnight_cost * 1e-9
     # International ac_projects are only accounted with half the costs
     ac_investments[
@@ -4567,7 +4545,7 @@ def hack_DC_projects(n, n_start, model_year, snakemake, costs):
     for proj in tprojs:
         if not isclose(n.links.loc[proj, "p_nom"], n_start.links.loc[proj, "p_nom"]):
             logger.warning(
-                f"post-discretization changed p_nom of DC project {proj} from {n_start.links.loc[proj, 'p_nom']} to {n.links.loc[proj, 'p_nom']}"
+                f"Changed p_nom of {proj} from {n_start.links.loc[proj, 'p_nom']} to {n.links.loc[proj, 'p_nom']}"
             )
 
     # Future projects should not have any capacity
@@ -4654,7 +4632,7 @@ def hack_AC_projects(n, n_start, model_year, snakemake):
     )
 
     if snakemake.params.NEP_year == 2021:
-        logger.info("Switching AC projects to NEP23 costs post-optimization")
+        logger.warning("Switching AC projects to NEP23 costs post-optimization")
         n.lines.loc[current_projects, "overnight_cost"] *= 772 / 472
 
     # Eventhough the lines are available to the model from the start,
