@@ -4458,14 +4458,14 @@ def get_grid_capacity(n, region, year):
     )
     var["Length Additions|Electricity|Transmission|DC"] = (
         dc_links.eval("p_nom_opt - p_nom_min")
-        .floordiv(1995)
+        .floordiv(995).div(2)
         .multiply(dc_links.length)
         .sum()
     )
     var["Length Additions|Electricity|Transmission|DC|NEP"] = (
         dc_links.loc[nep_dc]
         .eval("p_nom_opt - p_nom_min")
-        .floordiv(1995)
+        .floordiv(995).div(2)
         .multiply(dc_links.length)
         .sum()
     )
@@ -4483,14 +4483,14 @@ def get_grid_capacity(n, region, year):
     )
     var["Length Additions|Electricity|Transmission|AC"] = (
         ac_lines.eval("s_nom_opt - s_nom_min")
-        .floordiv(1695)
+        .floordiv(845).div(2).div(3) # Steps of half a `line_unit`, 3 lines are a Trasse
         .multiply(ac_lines.length)
         .sum()
     )
     var["Length Additions|Electricity|Transmission|AC|NEP"] = (
         ac_lines.loc[nep_ac]
         .eval("s_nom_opt - s_nom_min")
-        .floordiv(1695)
+        .floordiv(845).div(2).div(3)
         .multiply(ac_lines.length)
         .sum()
     )
