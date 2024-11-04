@@ -1695,9 +1695,9 @@ def get_secondary_energy(n, region, _industry_demand):
         "Sabatier", 0
     )
 
-    var["Secondary Energy Input|Hydrogen|Liquids"] = hydrogen_withdrawal.get(
-        "Fischer-Tropsch", 0
-    )
+    var["Secondary Energy Input|Hydrogen|Liquids"] = hydrogen_withdrawal.reindex(
+        ["Fischer-Tropsch", "methanolisation"]
+    ).sum()
 
     var["Secondary Energy"] = (
         var["Secondary Energy|Electricity"]
@@ -2214,6 +2214,10 @@ def get_final_energy(
     # var["Final Energy|Bunkers|Navigation|Hydrogen"] = \
     # ! Not used
 
+    var["Final Energy|Bunkers|Liquids"] = (
+        var["Final Energy|Bunkers|Navigation|Liquids"]
+        + var["Final Energy|Bunkers|Aviation|Liquids"]
+    )
     var["Final Energy|Bunkers"] = (
         var["Final Energy|Bunkers|Navigation"] + var["Final Energy|Bunkers|Aviation"]
     )
@@ -4538,6 +4542,15 @@ def hack_DC_projects(n, n_start, model_year, snakemake, costs):
     past_projects = tprojs[n.links.loc[tprojs, "build_year"] <= (model_year - 5)]
 
     logger.info("Post-Discretizing DC projects")
+
+    p_nom_start = n_start.links.loc[current_projects, "p_nom"].apply(
+        lambda x: get_discretized_value(
+            x,
+            snakemake.params.post_discretization["link_unit_size"]["DC"],
+            snakemake.params.post_discretization["link_threshold"]["DC"],
+        )
+    )
+
     # The values  in p_nom_opt may already be discretized, here we make sure that
     # the same logic is applied to p_nom and p_nom_min
     for attr in ["p_nom_opt", "p_nom", "p_nom_min"]:
@@ -4564,7 +4577,7 @@ def hack_DC_projects(n, n_start, model_year, snakemake, costs):
     n.links.loc[future_projects, "p_nom"] = 0
     n.links.loc[future_projects, "p_nom_min"] = 0
 
-    if snakemake.params.NEP_year == 2021:
+    if (snakemake.params.NEP_year == 2021) or (snakemake.params.NEP_transmission == "overhead"):
         logger.warning("Switching DC projects to NEP23 costs post-optimization")
         n.links.loc[current_projects, "overnight_cost"] = (
             n.links.loc[current_projects, "length"]
@@ -4585,12 +4598,8 @@ def hack_DC_projects(n, n_start, model_year, snakemake, costs):
             >= n.links.loc[current_projects, "p_nom"]
         ).all()
 
-        n.links.loc[current_projects, "p_nom"] -= n_start.links.loc[
-            current_projects, "p_nom"
-        ]
-        n.links.loc[current_projects, "p_nom_min"] -= n_start.links.loc[
-            current_projects, "p_nom"
-        ]
+        n.links.loc[current_projects, "p_nom"] -= p_nom_start
+        n.links.loc[current_projects, "p_nom_min"] -= p_nom_start
 
     else:
         n.links.loc[current_projects, "p_nom"] = n.links.loc[
@@ -4871,6 +4880,8 @@ if __name__ == "__main__":
         c = costs[idx]
         _industry_demand = industry_demands[idx]
         industry_demand = industry_demands[idx]
+        _industry_production = industry_production[idx]
+        _sector_ratios = sector_ratios[idx]
         _energy_totals = energy_totals.copy()
         region = "DE"
         cap_func = n.statistics.optimal_capacity

@@ -482,6 +482,7 @@ rule export_ariadne_variables:
         co2_sequestration_cost=config_provider("sector", "co2_sequestration_cost"),
         post_discretization=config_provider("solving", "options", "post_discretization"),
         NEP_year=config_provider("costs", "NEP"),
+        NEP_transmission=config_provider("costs", "transmission"),
     input:
         template=resources("template_ariadne_database.xlsx"),
         industry_demands=expand(
@@ -644,6 +645,7 @@ rule plot_ariadne_report:
         post_discretization=config_provider("solving", "options", "post_discretization"),
         NEP_year=config_provider("costs", "NEP"),
         hours=config_provider("clustering", "temporal", "resolution_sector"),
+        NEP_transmission=config_provider("costs", "transmission"),
     input:
         networks=expand(
             RESULTS
