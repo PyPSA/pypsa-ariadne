@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241030_limit_FT
+  prefix: 20241105_FT_MeOH_cap_limit
 
   name:
   # - CurrentPolicies
@@ -485,6 +485,20 @@ solving:
             2035: 101
             2040: 101
             2045: 101
+      Link:
+        methanolisation:
+          DE:
+            2030: 5
+            2035: 5
+            2040: 5
+            2045: 5
+        Fischer-Tropsch:
+          DE:
+            2030: 2
+            2035: 2
+            2040: 2
+            2045: 2
+
   # For reference, this are the values specified in the laws
   # limits_capacity_min:
   #     Generator:
@@ -549,14 +563,6 @@ solving:
           2035: 115
           2040: 220
           2045: 325
-      FT_production:
-        DE:
-          2020: 15
-          2025: 15
-          2030: 15
-          2035: 15
-          2040: 15
-          2045: 15
     limits_volume_min:
       electrolysis:
         DE:
