@@ -4928,11 +4928,11 @@ if __name__ == "__main__":
     # In this hacky part of the code we assure that the investments for the AC projects, match those of the NEP-AC-Startnetz
     # Thus the variable 'Investment|Energy Supply|Electricity|Transmission|AC' is equal to the sum of exogeneous AC projects, endogenous AC expansion and Übernahme of NEP costs (mainly Systemdienstleistungen (Reactive Power Compensation) and lines that are below our spatial resolution)
     ac_startnetz = 14.5 / 5  # billion EUR
-    
+
     ac_projects_invest = df.query(
         "Variable == 'Investment|Energy Supply|Electricity|Transmission|AC|NEP|Onshore'"
-        )[planning_horizons].values.sum()
-    
+    )[planning_horizons].values.sum()
+
     df.loc[
         df.query(
             "Variable == 'Investment|Energy Supply|Electricity|Transmission|AC|Übernahme|Startnetz Delta'"
