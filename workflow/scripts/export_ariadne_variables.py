@@ -3695,7 +3695,9 @@ def get_grid_investments(n, costs, region):
     ] *= 0.5
 
     ac_lines = n.lines[(n.lines.bus0 + n.lines.bus1).str.contains(region)]
-    nep_ac = ac_lines.query("(build_year > 2025) and (@current_year - 5 < build_year <= @current_year)").index
+    nep_ac = ac_lines.query(
+        "(build_year > 2025) and (@current_year - 5 < build_year <= @current_year)"
+    ).index
     # Assuming the lines are already post-discretized
     ac_expansion = ac_lines.s_nom_opt - ac_lines.s_nom_min
 
@@ -4442,7 +4444,7 @@ def get_grid_capacity(n, region, year):
         dc_links.eval("p_nom_opt - p_nom_min")
         .floordiv(
             snakemake.params.post_discretization["link_unit_size"]["DC"]
-            - 5 # To account for numerical errors subtract a small capacity
+            - 5  # To account for numerical errors subtract a small capacity
         )
         .multiply(snakemake.params.post_discretization["link_unit_size"]["DC"] / 2000)
         .multiply(dc_links.length)
@@ -4471,7 +4473,9 @@ def get_grid_capacity(n, region, year):
     var["Length Additions|Electricity|Transmission|AC"] = (
         ac_lines.eval("s_nom_opt - s_nom_min")
         .floordiv(snakemake.params.post_discretization["line_unit_size"] - 5)
-        .mul(snakemake.params.post_discretization["line_unit_size"] / (2*2633)) # Trassen size is 2 * 2633, we allow "fractional Trassen" to account for different line types
+        .mul(
+            snakemake.params.post_discretization["line_unit_size"] / (2 * 2633)
+        )  # Trassen size is 2 * 2633, we allow "fractional Trassen" to account for different line types
         .multiply(ac_lines.length)
         .sum()
     )
@@ -4479,7 +4483,7 @@ def get_grid_capacity(n, region, year):
         ac_lines.loc[nep_ac]
         .eval("s_nom_opt - s_nom_min")
         .floordiv(snakemake.params.post_discretization["line_unit_size"] - 5)
-        .mul(snakemake.params.post_discretization["line_unit_size"] / (2*2633))
+        .mul(snakemake.params.post_discretization["line_unit_size"] / (2 * 2633))
         .multiply(ac_lines.length)
         .sum()
     )
@@ -4578,7 +4582,9 @@ def hack_DC_projects(n, n_start, model_year, snakemake, costs):
     n.links.loc[future_projects, "p_nom"] = 0
     n.links.loc[future_projects, "p_nom_min"] = 0
 
-    if (snakemake.params.NEP_year == 2021) or (snakemake.params.NEP_transmission == "overhead"):
+    if (snakemake.params.NEP_year == 2021) or (
+        snakemake.params.NEP_transmission == "overhead"
+    ):
         logger.warning("Switching DC projects to NEP23 costs post-optimization")
         n.links.loc[current_projects, "overnight_cost"] = (
             n.links.loc[current_projects, "length"]
@@ -4922,26 +4928,34 @@ if __name__ == "__main__":
     # In this hacky part of the code we assure that the investments for the AC projects, match those of the NEP-AC-Startnetz
     # Thus the variable 'Investment|Energy Supply|Electricity|Transmission|AC' is equal to the sum of exogeneous AC projects, endogenous AC expansion and Übernahme of NEP costs (mainly Systemdienstleistungen (Reactive Power Compensation) and lines that are below our spatial resolution)
     # TODO Treat endogeneous expansion of AC projects separately??
-    ac_startnetz = 14.5 / 5 # billion EUR
+    ac_startnetz = 14.5 / 5  # billion EUR
     ac_projects_invest = (
         df.query(
-            "Variable == 'Investment|Energy Supply|Electricity|Transmission|AC|NEP'")[planning_horizons].values.sum()
-        - df.query(
-            "Variable.str.endswith('Reactive Power Compensation')")[planning_horizons].values.sum()
+            "Variable == 'Investment|Energy Supply|Electricity|Transmission|AC|NEP'"
+        )[planning_horizons].values.sum()
+        - df.query("Variable.str.endswith('Reactive Power Compensation')")[
+            planning_horizons
+        ].values.sum()
     )
     df.loc[
-        df.query("Variable == 'Investment|Energy Supply|Electricity|Transmission|AC|Übernahme|Startnetz Delta'").index,
-        [2025, 2030, 2035, 2040]
+        df.query(
+            "Variable == 'Investment|Energy Supply|Electricity|Transmission|AC|Übernahme|Startnetz Delta'"
+        ).index,
+        [2025, 2030, 2035, 2040],
     ] += (ac_startnetz - ac_projects_invest) / 4
 
     df.loc[
-        df.query("Variable == 'Investment|Energy Supply|Electricity|Transmission|AC|NEP'").index,
-        [2025, 2030, 2035, 2040]
+        df.query(
+            "Variable == 'Investment|Energy Supply|Electricity|Transmission|AC|NEP'"
+        ).index,
+        [2025, 2030, 2035, 2040],
     ] += (ac_startnetz - ac_projects_invest) / 4
 
     df.loc[
-        df.query("Variable == 'Investment|Energy Supply|Electricity|Transmission|AC'").index,
-        [2025, 2030, 2035, 2040]
+        df.query(
+            "Variable == 'Investment|Energy Supply|Electricity|Transmission|AC'"
+        ).index,
+        [2025, 2030, 2035, 2040],
     ] += (ac_startnetz - ac_projects_invest) / 4
 
     print("Assigning mean investments of year and year + 5 to year.")

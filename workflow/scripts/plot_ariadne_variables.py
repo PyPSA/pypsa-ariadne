@@ -50,7 +50,6 @@ def plot_NEP_Trassen(df, savepath=None, gleichschaltung=True):
             NEP_Trassen["PyPSA-DC"]["endogen"],
             NEP_Trassen["PyPSA-AC"]["endogen"],
         ],
-
     }
 
     plotframe = pd.DataFrame(data)
@@ -102,8 +101,11 @@ def plot_NEP_Trassen(df, savepath=None, gleichschaltung=True):
         plt.show()
 
     plotframe["NEP-Total"] = plotframe["Startnetz"] + plotframe["Zubaunetz"]
-    plotframe["PyPSA-Total"] = plotframe["exogen"] + plotframe["endogen"] + plotframe["Übernahme"]
+    plotframe["PyPSA-Total"] = (
+        plotframe["exogen"] + plotframe["endogen"] + plotframe["Übernahme"]
+    )
     plotframe.to_csv(snakemake.output.trassenlaenge_csv)
+
 
 def plot_NEP(df, savepath=None, gleichschaltung=True):
     key = "Investment|Energy Supply|Electricity|Transmission|"
@@ -127,7 +129,7 @@ def plot_NEP(df, savepath=None, gleichschaltung=True):
         "exogen": [
             df.loc[key + "DC|NEP|Onshore"].values.sum() * 5,
             df.loc[key + "AC|NEP|Onshore"].values.sum() * 5,
-            0, # see "Übernahme"
+            0,  # see "Übernahme"
             None,
             df.loc[key + "NEP|Offshore"].values.sum() * 5,
         ],
@@ -135,17 +137,19 @@ def plot_NEP(df, savepath=None, gleichschaltung=True):
             (
                 df.loc[key + "DC|Onshore"].values
                 - df.loc[key + "DC|NEP|Onshore"].values
-            ).sum() * 5,
+            ).sum()
+            * 5,
             (
                 df.loc[key + "AC|Onshore"].values
                 - df.loc[key + "AC|NEP|Onshore"].values
-            ).sum() * 5,
+            ).sum()
+            * 5,
             0,
             None,
             (
-                df.loc[key + "Offshore"].values 
-                - df.loc[key + "NEP|Offshore"].values
-            ).sum() * 5,
+                df.loc[key + "Offshore"].values - df.loc[key + "NEP|Offshore"].values
+            ).sum()
+            * 5,
         ],
         "Übernahme": [
             0,
@@ -158,7 +162,9 @@ def plot_NEP(df, savepath=None, gleichschaltung=True):
 
     plotframe = pd.DataFrame(data)
     plotframe.set_index("Kategorie", inplace=True)
-    plotframe.loc["Onshore"] = plotframe.loc[["AC", "DC", "System-\ndienstleistungen"]].sum()
+    plotframe.loc["Onshore"] = plotframe.loc[
+        ["AC", "DC", "System-\ndienstleistungen"]
+    ].sum()
     # Define the width of the bars
     bar_width = 0.35
     indices = np.arange(len(plotframe))  # Bar positions
@@ -201,26 +207,36 @@ def plot_NEP(df, savepath=None, gleichschaltung=True):
     plt.xticks(indices + bar_width / 2, plotframe.index)
     plt.legend()
 
-
-
-
     # Rename the category to remove the format string again
-    plotframe.rename(index={"System-\ndienstleistungen": "Systemdienstleistungen"}, inplace=True)
+    plotframe.rename(
+        index={"System-\ndienstleistungen": "Systemdienstleistungen"}, inplace=True
+    )
     plotframe["NEP-Total"] = plotframe["Startnetz"] + plotframe["Zubaunetz"]
-    plotframe["PyPSA-Total"] = plotframe["exogen"] + plotframe["endogen"] + plotframe["Übernahme"]
+    plotframe["PyPSA-Total"] = (
+        plotframe["exogen"] + plotframe["endogen"] + plotframe["Übernahme"]
+    )
 
     # Add total costs annotations
 
     plt.text(
-        1.05, 0.95, f"NEP: {round(plotframe.loc["Onshore","NEP-Total"] + plotframe.loc["Offshore","NEP-Total"],1)}", transform=plt.gca().transAxes,
-        fontsize=12, verticalalignment='top', bbox=dict(facecolor='white', alpha=0.5)
+        1.05,
+        0.95,
+        f"NEP: {round(plotframe.loc["Onshore","NEP-Total"] + plotframe.loc["Offshore","NEP-Total"],1)}",
+        transform=plt.gca().transAxes,
+        fontsize=12,
+        verticalalignment="top",
+        bbox=dict(facecolor="white", alpha=0.5),
     )
     plt.text(
-        1.05, 0.85, f"PyPSA: {round(plotframe.loc["Onshore","PyPSA-Total"] + plotframe.loc["Offshore","PyPSA-Total"],1)}", transform=plt.gca().transAxes,
-        fontsize=12, verticalalignment='top', bbox=dict(facecolor='white', alpha=0.5)
+        1.05,
+        0.85,
+        f"PyPSA: {round(plotframe.loc["Onshore","PyPSA-Total"] + plotframe.loc["Offshore","PyPSA-Total"],1)}",
+        transform=plt.gca().transAxes,
+        fontsize=12,
+        verticalalignment="top",
+        bbox=dict(facecolor="white", alpha=0.5),
     )
 
-    
     if savepath:
         plt.savefig(savepath, bbox_inches="tight")
     else:
