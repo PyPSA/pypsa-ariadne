@@ -682,9 +682,6 @@ KN2045minus_SupplyFocus:
               2030: 5
       limits_capacity_max:
         Generator:
-          onwind:
-            DE:
-              2030: 94.5 # uba Projektionsbericht
           solar:
             DE:
               2030: 215 # uba Projektionsbericht
