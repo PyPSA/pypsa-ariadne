@@ -583,7 +583,7 @@ def get_industrial_demand():
     sector_ratios = pd.read_csv(fn, header=[0, 1], index_col=0)
 
     # material demand per node and industry [kt/a]
-    fn = snakemake.input.industrial_production_per_node
+    fn = snakemake.input.industrial_production
     nodal_production = pd.read_csv(fn, index_col=0) / 1e3 # kt/a -> Mt/a
 
     nodal_sector_ratios = pd.concat(
@@ -920,8 +920,8 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts="none",
-            planning_horizons="2030",
-            run="all_import_me_all",
+            planning_horizons="2045",
+            run="no_import_me",
         )
 
     configure_logging(snakemake)
