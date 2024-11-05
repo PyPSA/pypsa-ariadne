@@ -41,9 +41,15 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
                 extendable_index = c.df.index[
                     valid_components & c.df[attr + "_nom_extendable"]
                 ]
-                efficiency = c.df.loc[existing_index, "efficiency"].mean() if (c.name == "Link") and (carrier is not "Electrolysis") else 1
+                efficiency = (
+                    c.df.loc[existing_index, "efficiency"].mean()
+                    if (c.name == "Link") and (carrier is not "Electrolysis")
+                    else 1
+                )
 
-                existing_capacity = c.df.loc[existing_index, attr + "_nom"].sum() / efficiency
+                existing_capacity = (
+                    c.df.loc[existing_index, attr + "_nom"].sum() / efficiency
+                )
 
                 logger.info(
                     f"Existing {c.name} {carrier} capacity in {ct}: {existing_capacity} {units}"

@@ -4577,7 +4577,9 @@ def hack_DC_projects(n, n_start, model_year, snakemake, costs):
     n.links.loc[future_projects, "p_nom"] = 0
     n.links.loc[future_projects, "p_nom_min"] = 0
 
-    if (snakemake.params.NEP_year == 2021) or (snakemake.params.NEP_transmission == "overhead"):
+    if (snakemake.params.NEP_year == 2021) or (
+        snakemake.params.NEP_transmission == "overhead"
+    ):
         logger.warning("Switching DC projects to NEP23 costs post-optimization")
         n.links.loc[current_projects, "overnight_cost"] = (
             n.links.loc[current_projects, "length"]
