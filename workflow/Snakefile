@@ -473,7 +473,6 @@ rule download_ariadne_template:
 
 rule export_ariadne_variables:
     params:
-        length_factor=config_provider("lines", "length_factor"),
         planning_horizons=config_provider("scenario", "planning_horizons"),
         hours=config_provider("clustering", "temporal", "resolution_sector"),
         costs=config_provider("costs"),
@@ -565,6 +564,8 @@ rule plot_ariadne_variables:
         trade=RESULTS + "ariadne/trade.png",
         NEP_plot=RESULTS + "ariadne/NEP_plot.png",
         NEP_Trassen_plot=RESULTS + "ariadne/NEP_Trassen_plot.png",
+        transmission_investment_csv=RESULTS + "ariadne/transmission_investment.csv",
+        trassenlaenge_csv=RESULTS + "ariadne/trassenlaenge.csv",
     log:
         RESULTS + "logs/plot_ariadne_variables.log",
     script:
