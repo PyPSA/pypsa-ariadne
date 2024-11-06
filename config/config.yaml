@@ -462,6 +462,19 @@ solving:
             2035: 20000
             2040: 50000
             2045: 80000
+      Link:
+        methanolisation:
+          DE:
+            2030: 5
+            2035: 5
+            2040: 5
+            2045: 5
+        Fischer-Tropsch:
+          DE:
+            2030: 2
+            2035: 2
+            2040: 2
+            2045: 2
     limits_capacity_min:
       Generator:
         onwind:
@@ -485,19 +498,6 @@ solving:
             2035: 101
             2040: 101
             2045: 101
-      Link:
-        methanolisation:
-          DE:
-            2030: 5
-            2035: 5
-            2040: 5
-            2045: 5
-        Fischer-Tropsch:
-          DE:
-            2030: 2
-            2035: 2
-            2040: 2
-            2045: 2
 
   # For reference, this are the values specified in the laws
   # limits_capacity_min:
