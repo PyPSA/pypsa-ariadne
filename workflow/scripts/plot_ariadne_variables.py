@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 
-def plot_NEP_Trassen(df, savepath=None):
+def plot_NEP_Trassen(df, savepath=None, gleichschaltung=True):
 
     NEP_Trassen = {
         "NEP-DC": {
@@ -29,7 +29,7 @@ def plot_NEP_Trassen(df, savepath=None):
     }
 
     data = {
-        "Category": ["DC", "AC"],
+        "Kategorie": ["DC", "AC"],
         "Startnetz": [
             NEP_Trassen["NEP-DC"]["Startnetz"],
             NEP_Trassen["NEP-AC"]["Startnetz"],
@@ -41,6 +41,10 @@ def plot_NEP_Trassen(df, savepath=None):
         "exogen": [
             NEP_Trassen["PyPSA-DC"]["exogen"],
             NEP_Trassen["PyPSA-AC"]["exogen"],
+        ],
+        "Übernahme": [
+            0,
+            NEP_Trassen["NEP-AC"]["Startnetz"] - NEP_Trassen["PyPSA-AC"]["exogen"],
         ],
         "endogen": [
             NEP_Trassen["PyPSA-DC"]["endogen"],
@@ -65,118 +69,102 @@ def plot_NEP_Trassen(df, savepath=None):
         label="Zubaunetz",
     )
     plt.bar(indices + bar_width, plotframe["exogen"], bar_width, label="exogen")
+    bottom = plotframe["exogen"].copy()
+    if gleichschaltung:
+        plt.bar(
+            indices + bar_width,
+            plotframe["Übernahme"],
+            bar_width,
+            bottom=plotframe["exogen"],
+            label="Übernahme",
+            color="darkgreen",
+        )
+        bottom += plotframe["Übernahme"]
     plt.bar(
         indices + bar_width,
         plotframe["endogen"],
         bar_width,
-        bottom=plotframe["exogen"],
+        bottom=bottom,
         label="endogen",
     )
 
-    plt.xlabel("Category")
+    plt.xlabel("Kategorie")
     plt.ylabel("km")
-    plt.title("Trassenlänge Onshore Transmission Grid")
+    plt.title("Trassenlänge Übertragungsnetz Onshore")
 
     # Adjust the x-ticks to be between the two bars
-    plt.xticks(indices + bar_width / 2, plotframe["Category"])
+    plt.xticks(indices + bar_width / 2, plotframe["Kategorie"])
     plt.legend()
     if savepath:
         plt.savefig(savepath, bbox_inches="tight")
     else:
         plt.show()
 
+    plotframe["NEP-Total"] = plotframe["Startnetz"] + plotframe["Zubaunetz"]
+    plotframe["PyPSA-Total"] = (
+        plotframe["exogen"] + plotframe["endogen"] + plotframe["Übernahme"]
+    )
+    plotframe.to_csv(snakemake.output.trassenlaenge_csv)
 
-def plot_NEP(df, savepath=None):
+
+def plot_NEP(df, savepath=None, gleichschaltung=True):
     key = "Investment|Energy Supply|Electricity|Transmission|"
 
-    NEP_investment = {
-        "NEP-Offshore": {"Startnetz": 12.4, "Zubaunetz": 145.1},
-        "PyPSA-Offshore": {
-            "exogen": df.loc[key + "Offshore|NEP"].values.sum() * 5,
-            "endogen": (
-                df.loc[key + "Offshore"].values - df.loc[key + "Offshore|NEP"].values
-            ).sum()
-            * 5,
-        },
-        "NEP-DC": {"Startnetz": 26, "Zubaunetz": 46.2},
-        "PyPSA-DC": {
-            "exogen": df.loc[key + "DC|Onshore|NEP"].values.sum() * 5,
-            "endogen": (
-                df.loc[key + "DC|Onshore"].values
-                - df.loc[key + "DC|Onshore|NEP"].values
-            ).sum()
-            * 5,
-        },
-        "NEP-AC": {"Startnetz": 14.5, "Zubaunetz": 30.5},
-        "PyPSA-AC": {
-            "exogen": df.loc[key + "AC|Onshore|NEP"].values.sum() * 5,
-            "endogen": (
-                df.loc[key + "AC|Onshore"].values
-                - df.loc[key + "AC|Onshore|NEP"].values
-            ).sum()
-            * 5,
-        },
-        "NEP-Q": {"Startnetz": 9.4, "Zubaunetz": 29.5},
-        "PyPSA-Q": {
-            "exogen": df.loc[key + "AC|Reactive Power Compensation"].values.sum() * 5,
-        },
-    }
-    NEP_investment = pd.DataFrame(NEP_investment).T
-    NEP_investment.loc["NEP-Onshore", "Startnetz"] = (
-        NEP_investment.loc["NEP-DC", "Startnetz"]
-        + NEP_investment.loc["NEP-AC", "Startnetz"]
-        + NEP_investment.loc["NEP-Q", "Startnetz"]
-    )
-    NEP_investment.loc["NEP-Onshore", "Zubaunetz"] = (
-        NEP_investment.loc["NEP-DC", "Zubaunetz"]
-        + NEP_investment.loc["NEP-AC", "Zubaunetz"]
-        + NEP_investment.loc["NEP-Q", "Zubaunetz"]
-    )
-    NEP_investment.loc["PyPSA-Onshore", "exogen"] = (
-        NEP_investment.loc["PyPSA-DC", "exogen"]
-        + NEP_investment.loc["PyPSA-AC", "exogen"]
-        + NEP_investment.loc["PyPSA-Q", "exogen"]
-    )
-    NEP_investment.loc["PyPSA-Onshore", "endogen"] = (
-        NEP_investment.loc["PyPSA-DC", "endogen"]
-        + NEP_investment.loc["PyPSA-AC", "endogen"]
-    )
-
-    # Create a DataFrame in the format ChatGPT suggested
     data = {
-        "Category": ["DC", "AC", "Q", "Onshore", "Offshore"],
+        "Kategorie": ["DC", "AC", "System-\ndienstleistungen", "Onshore", "Offshore"],
         "Startnetz": [
-            NEP_investment.loc["NEP-DC", "Startnetz"],
-            NEP_investment.loc["NEP-AC", "Startnetz"],
-            NEP_investment.loc["NEP-Q", "Startnetz"],
-            NEP_investment.loc["NEP-Onshore", "Startnetz"],
-            NEP_investment.loc["NEP-Offshore", "Startnetz"],
+            26,
+            14.5,
+            9.4,
+            None,
+            12.4,
         ],
         "Zubaunetz": [
-            NEP_investment.loc["NEP-DC", "Zubaunetz"],
-            NEP_investment.loc["NEP-AC", "Zubaunetz"],
-            NEP_investment.loc["NEP-Q", "Zubaunetz"],
-            NEP_investment.loc["NEP-Onshore", "Zubaunetz"],
-            NEP_investment.loc["NEP-Offshore", "Zubaunetz"],
+            46.2,
+            30.5,
+            29.5,
+            None,
+            145.1,
         ],
         "exogen": [
-            NEP_investment.loc["PyPSA-DC", "exogen"],
-            NEP_investment.loc["PyPSA-AC", "exogen"],
-            NEP_investment.loc["PyPSA-Q", "exogen"],
-            NEP_investment.loc["PyPSA-Onshore", "exogen"],
-            NEP_investment.loc["PyPSA-Offshore", "exogen"],
+            df.loc[key + "DC|NEP|Onshore"].values.sum() * 5,
+            df.loc[key + "AC|NEP|Onshore"].values.sum() * 5,
+            0,  # see "Übernahme"
+            None,
+            df.loc[key + "NEP|Offshore"].values.sum() * 5,
         ],
         "endogen": [
-            NEP_investment.loc["PyPSA-DC", "endogen"],
-            NEP_investment.loc["PyPSA-AC", "endogen"],
+            (
+                df.loc[key + "DC|Onshore"].values
+                - df.loc[key + "DC|NEP|Onshore"].values
+            ).sum()
+            * 5,
+            (
+                df.loc[key + "AC|Onshore"].values
+                - df.loc[key + "AC|NEP|Onshore"].values
+            ).sum()
+            * 5,
             0,
-            NEP_investment.loc["PyPSA-Onshore", "endogen"],
-            NEP_investment.loc["PyPSA-Offshore", "endogen"],
+            None,
+            (
+                df.loc[key + "Offshore"].values - df.loc[key + "NEP|Offshore"].values
+            ).sum()
+            * 5,
+        ],
+        "Übernahme": [
+            0,
+            df.loc[key + "AC|Übernahme|Startnetz Delta"].values.sum() * 5,
+            df.loc[key + "AC|Übernahme|Reactive Power Compensation"].values.sum() * 5,
+            None,
+            0,
         ],
     }
 
     plotframe = pd.DataFrame(data)
-
+    plotframe.set_index("Kategorie", inplace=True)
+    plotframe.loc["Onshore"] = plotframe.loc[
+        ["AC", "DC", "System-\ndienstleistungen"]
+    ].sum()
     # Define the width of the bars
     bar_width = 0.35
     indices = np.arange(len(plotframe))  # Bar positions
@@ -192,23 +180,69 @@ def plot_NEP(df, savepath=None):
         label="Zubaunetz",
     )
     plt.bar(indices + bar_width, plotframe["exogen"], bar_width, label="exogen")
+    bottom = plotframe["exogen"].copy()
+    if gleichschaltung:
+        plt.bar(
+            indices + bar_width,
+            plotframe["Übernahme"],
+            bar_width,
+            bottom=plotframe["exogen"],
+            label="Übernahme",
+            color="darkgreen",
+        )
+        bottom += plotframe["Übernahme"]
     plt.bar(
         indices + bar_width,
         plotframe["endogen"],
         bar_width,
-        bottom=plotframe["exogen"],
+        bottom=bottom,
         label="endogen",
     )
 
-    plt.xlabel("Category")
-    plt.ylabel("billion EUR")
-    plt.title("Investment in Transmission Grid")
+    plt.xlabel("Kategorie")
+    plt.ylabel("Billionen EUR")
+    plt.title("Investitionen ins Übertragungsnetz")
 
     # Adjust the x-ticks to be between the two bars
-    plt.xticks(indices + bar_width / 2, plotframe["Category"])
+    plt.xticks(indices + bar_width / 2, plotframe.index)
     plt.legend()
 
-    plt.savefig(savepath, bbox_inches="tight")
+    # Rename the category to remove the format string again
+    plotframe.rename(
+        index={"System-\ndienstleistungen": "Systemdienstleistungen"}, inplace=True
+    )
+    plotframe["NEP-Total"] = plotframe["Startnetz"] + plotframe["Zubaunetz"]
+    plotframe["PyPSA-Total"] = (
+        plotframe["exogen"] + plotframe["endogen"] + plotframe["Übernahme"]
+    )
+
+    # Add total costs annotations
+
+    plt.text(
+        1.05,
+        0.95,
+        f"NEP: {round(plotframe.loc["Onshore","NEP-Total"] + plotframe.loc["Offshore","NEP-Total"],1)}",
+        transform=plt.gca().transAxes,
+        fontsize=12,
+        verticalalignment="top",
+        bbox=dict(facecolor="white", alpha=0.5),
+    )
+    plt.text(
+        1.05,
+        0.85,
+        f"PyPSA: {round(plotframe.loc["Onshore","PyPSA-Total"] + plotframe.loc["Offshore","PyPSA-Total"],1)}",
+        transform=plt.gca().transAxes,
+        fontsize=12,
+        verticalalignment="top",
+        bbox=dict(facecolor="white", alpha=0.5),
+    )
+
+    if savepath:
+        plt.savefig(savepath, bbox_inches="tight")
+    else:
+        plt.show()
+
+    plotframe.to_csv(snakemake.output.transmission_investment_csv)
 
 
 def secondary_energy_plot(ddf, name="Secondary Energy"):
@@ -769,7 +803,7 @@ if __name__ == "__main__":
         dfremind,
         title="Investment in Energy Supply",
         savepath=snakemake.output.investment_energy_supply,
-        unit="billion EUR",
+        unit="Billionen EUR",
         write_sum=True,
     )
 
