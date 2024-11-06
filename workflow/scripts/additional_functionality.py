@@ -238,10 +238,11 @@ def h2_production_limits(n, investment_year, limits_volume_min, limits_volume_ma
         production = n.links[
             (n.links.carrier == "H2 Electrolysis") & (n.links.bus0.str.contains(ct))
         ].index
+        efficiency = n.links.loc[production, "efficiency"].mean()
 
         lhs = (
             n.model["Link-p"].loc[:, production] * n.snapshot_weightings.generators
-        ).sum()
+        ).sum() / efficiency
 
         cname_upper = f"H2_production_limit_upper-{ct}"
         cname_lower = f"H2_production_limit_lower-{ct}"
