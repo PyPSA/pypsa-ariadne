@@ -41,14 +41,20 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
                 extendable_index = c.df.index[
                     valid_components & c.df[attr + "_nom_extendable"]
                 ]
-                efficiency = (
+                # TODO: I need two efficiency factors here:
+                existing_efficiency = (
                     c.df.loc[existing_index, "efficiency"]
+                    if (c.name == "Link") and (carrier != "H2 Electrolysis")
+                    else 1
+                )
+                extendable_efficiency = (
+                    c.df.loc[extendable_index, "efficiency"]
                     if (c.name == "Link") and (carrier != "H2 Electrolysis")
                     else 1
                 )
 
                 existing_capacity = (
-                    c.df.loc[existing_index, attr + "_nom"] * efficiency
+                    c.df.loc[existing_index, attr + "_nom"] * existing_efficiency
                 ).sum()
 
                 logger.info(
@@ -57,7 +63,7 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
 
                 nom = n.model[c.name + "-" + attr + "_nom"].loc[extendable_index]
 
-                lhs = (nom * efficiency).sum()
+                lhs = (nom * extendable_efficiency).sum()
 
                 cname = f"capacity_{sense}-{ct}-{c.name}-{carrier.replace(' ','-')}"
 
