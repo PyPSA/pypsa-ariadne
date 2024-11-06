@@ -42,14 +42,14 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
                     valid_components & c.df[attr + "_nom_extendable"]
                 ]
                 efficiency = (
-                    c.df.loc[existing_index, "efficiency"].mean()
-                    if (c.name == "Link") and (carrier != "electrolysis")
+                    c.df.loc[existing_index, "efficiency"]
+                    if (c.name == "Link") and (carrier != "H2 Electrolysis")
                     else 1
                 )
 
                 existing_capacity = (
-                    c.df.loc[existing_index, attr + "_nom"].sum() / efficiency
-                )
+                    c.df.loc[existing_index, attr + "_nom"] * efficiency
+                ).sum()
 
                 logger.info(
                     f"Existing {c.name} {carrier} capacity in {ct}: {existing_capacity} {units}"
@@ -57,7 +57,7 @@ def add_capacity_limits(n, investment_year, limits_capacity, sense="maximum"):
 
                 nom = n.model[c.name + "-" + attr + "_nom"].loc[extendable_index]
 
-                lhs = nom.sum() / efficiency
+                lhs = (nom * efficiency).sum()
 
                 cname = f"capacity_{sense}-{ct}-{c.name}-{carrier.replace(' ','-')}"
 
@@ -238,11 +238,11 @@ def h2_production_limits(n, investment_year, limits_volume_min, limits_volume_ma
         production = n.links[
             (n.links.carrier == "H2 Electrolysis") & (n.links.bus0.str.contains(ct))
         ].index
-        efficiency = n.links.loc[production, "efficiency"].mean()
+        efficiency = n.links.loc[production, "efficiency"]
 
         lhs = (
-            n.model["Link-p"].loc[:, production] * n.snapshot_weightings.generators
-        ).sum() / efficiency
+            n.model["Link-p"].loc[:, production] * n.snapshot_weightings.generators * efficiency
+        ).sum()
 
         cname_upper = f"H2_production_limit_upper-{ct}"
         cname_lower = f"H2_production_limit_lower-{ct}"
