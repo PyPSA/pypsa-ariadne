@@ -813,10 +813,10 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         + var[cap_string + "Hydrogen|Gas|w/o CCS"]
     )
 
-    var[cap_string + "Hydrogen|Electricity"] = capacities_h2.get("H2 Electrolysis", 0)
+    var[cap_string + "Hydrogen|Electricity"] = abs(capacities_electricity.get("H2 Electrolysis", 0))
 
     var[cap_string + "Hydrogen"] = (
-        var[cap_string + "Hydrogen|Electricity"] + var[cap_string + "Hydrogen|Gas"]
+        capacities_h2.get("H2 Electrolysis", 0) + var[cap_string + "Hydrogen|Gas"]
     )
 
     # This check requires further changes to n.statistics
