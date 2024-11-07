@@ -988,7 +988,7 @@ def get_primary_energy(n, region):
     assert isclose(
         var["Primary Energy|Oil"],
         n.statistics.withdrawal(bus_carrier="oil primary", **kwargs)
-        .get(("Link", "DE oil refining"))
+        .get(("Link", "DE oil refining"), pd.Series(0))
         .multiply(MWh2PJ)
         .item(),
     )
@@ -1041,7 +1041,7 @@ def get_primary_energy(n, region):
     assert isclose(
         var["Primary Energy|Gas"],
         n.statistics.withdrawal(bus_carrier="gas primary", **kwargs)
-        .get(("Link", "DE gas compressing"))
+        .get(("Link", "DE gas compressing"), pd.Series(0))
         .multiply(MWh2PJ)
         .item(),
     )
