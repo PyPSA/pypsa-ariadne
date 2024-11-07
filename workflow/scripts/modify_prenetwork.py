@@ -705,9 +705,7 @@ def unravel_gasbus(n, costs):
         )
 
 
-def transmission_costs_from_modified_cost_data(
-    n, costs, transmission
-):
+def transmission_costs_from_modified_cost_data(n, costs, transmission):
     # copying the the function update_transmission_costs from add_electricity
     # slight change to the function so it works in modify_prenetwork
 
