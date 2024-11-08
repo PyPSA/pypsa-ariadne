@@ -4,6 +4,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+from datetime import datetime
 from itertools import compress
 from multiprocessing import Pool
 
@@ -81,6 +82,8 @@ markers = [
 ]
 
 date_format = "%Y-%m-%d %H:%M:%S"
+reduced_date_format = "%Y-%m-%d"
+
 
 resistive_heater = [
     "urban central resistive heater",
@@ -318,13 +321,13 @@ def plot_nodal_balance(
         ncol=1,
         loc="upper center",
         bbox_to_anchor=(1.22 if plot_lmps else 1.13, 1.01),
-        title="Legend for left y-axis",
+        title="Legend for left y-axis" if plot_lmps else "Legend",
     )
 
     ax.set_ylabel(ylabel)
     ax.set_xlabel("")
     ax.set_title(
-        f"{title} (model: {model_run}, period: {start_date} - {end_date})",
+        f"{title} ({model_run}; {datetime.strptime(start_date, date_format).strftime(reduced_date_format)} - {datetime.strptime(end_date, date_format).strftime(reduced_date_format)})",
         fontsize=16,
         pad=15,
     )
@@ -594,6 +597,7 @@ def plot_price_duration_curve(
     model_run="Model run",
     regions=["DE"],
     y_lim_values=[-50, 300],
+    languange="english",
 ):
 
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(8, 6))
@@ -619,9 +623,22 @@ def plot_price_duration_curve(
         # ax.hlines(df["lmp"].loc[df["lmp"][df["gen_cumsum_norm"] > 0.125].index[0]], 0, 1, color=year_colors[i], ls="--", lw=1)
         # ax.hlines(df["lmp"].loc[df["lmp"][df["gen_cumsum_norm"] > 0.875].index[0]], 0, 1,  color=year_colors[i], ls="--", lw =1)
 
-        ax.set_ylabel("Electricity Price [$€/MWh_{el}$")
-        ax.set_xlabel("Fraction of time [%]")
-        ax.set_title(f"Electricity price duration curves {model_run}", fontsize=16)
+        ax.set_ylabel(
+            "Strompreis [$€/MWh_{el}$]"
+            if languange == "german"
+            else "Electricity Price [$€/MWh_{el}$]"
+        )
+        ax.set_xlabel(
+            "Zeitanteil [%]" if languange == "german" else "Fraction of time [%]"
+        )
+        ax.set_title(
+            (
+                f"Strompreisdauerlinien (Modell: {model_run})"
+                if languange == "german"
+                else f"Electricity price duration curves {model_run}"
+            ),
+            fontsize=16,
+        )
         ax.legend()
         ax.grid(True)
 
@@ -1564,6 +1581,7 @@ if __name__ == "__main__":
             threshold=1e2,  # in GWh as sum over period
             condense_groups=c_g,
             condense_names=c_n,
+            title="Strombilanz",
         )
 
         plot_nodal_balance(
@@ -1578,6 +1596,7 @@ if __name__ == "__main__":
             threshold=1e2,
             condense_groups=[electricity_load, electricity_imports],
             condense_names=["Electricity load", "Electricity trade"],
+            title="Strombilanz",
         )
 
         plot_nodal_balance(
@@ -1592,6 +1611,7 @@ if __name__ == "__main__":
             threshold=1e2,
             condense_groups=[electricity_load, electricity_imports],
             condense_names=["Electricity load", "Electricity trade"],
+            title="Strombilanz",
         )
 
         # heat supply and demand
@@ -1668,6 +1688,7 @@ if __name__ == "__main__":
         savepath=snakemake.output.elec_price_duration_curve,
         model_run=snakemake.wildcards.run,
         years=planning_horizons,
+        languange="german",
     )
 
     plot_price_duration_hist(
