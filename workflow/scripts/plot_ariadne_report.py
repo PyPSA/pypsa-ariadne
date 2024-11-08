@@ -4,6 +4,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+from datetime import datetime
 from itertools import compress
 from multiprocessing import Pool
 
@@ -16,7 +17,6 @@ import pandas as pd
 import pypsa
 from matplotlib.lines import Line2D
 from pypsa.plot import add_legend_lines
-from datetime import datetime
 
 path = "../submodules/pypsa-eur/scripts"
 sys.path.insert(1, os.path.abspath(path))
@@ -597,7 +597,7 @@ def plot_price_duration_curve(
     model_run="Model run",
     regions=["DE"],
     y_lim_values=[-50, 300],
-    languange="english"
+    languange="english",
 ):
 
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(8, 6))
@@ -623,9 +623,22 @@ def plot_price_duration_curve(
         # ax.hlines(df["lmp"].loc[df["lmp"][df["gen_cumsum_norm"] > 0.125].index[0]], 0, 1, color=year_colors[i], ls="--", lw=1)
         # ax.hlines(df["lmp"].loc[df["lmp"][df["gen_cumsum_norm"] > 0.875].index[0]], 0, 1,  color=year_colors[i], ls="--", lw =1)
 
-        ax.set_ylabel("Strompreis [$€/MWh_{el}$]" if languange == "german" else "Electricity Price [$€/MWh_{el}$]")
-        ax.set_xlabel("Zeitanteil [%]" if languange == "german" else "Fraction of time [%]")
-        ax.set_title(f"Strompreisdauerlinien (Modell: {model_run})" if languange == "german" else f"Electricity price duration curves {model_run}", fontsize=16)
+        ax.set_ylabel(
+            "Strompreis [$€/MWh_{el}$]"
+            if languange == "german"
+            else "Electricity Price [$€/MWh_{el}$]"
+        )
+        ax.set_xlabel(
+            "Zeitanteil [%]" if languange == "german" else "Fraction of time [%]"
+        )
+        ax.set_title(
+            (
+                f"Strompreisdauerlinien (Modell: {model_run})"
+                if languange == "german"
+                else f"Electricity price duration curves {model_run}"
+            ),
+            fontsize=16,
+        )
         ax.legend()
         ax.grid(True)
 
@@ -1568,7 +1581,7 @@ if __name__ == "__main__":
             threshold=1e2,  # in GWh as sum over period
             condense_groups=c_g,
             condense_names=c_n,
-            title="Strombilanz"
+            title="Strombilanz",
         )
 
         plot_nodal_balance(
