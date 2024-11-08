@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241106_bugfix_unsustainable_bioliquids
+  prefix: 20241108-limit-ft-meoh
 
   name:
   # - CurrentPolicies
@@ -462,6 +462,19 @@ solving:
             2035: 20000
             2040: 50000
             2045: 80000
+      Link:
+        methanolisation:
+          DE:
+            2030: 5.7
+            2035: 5.7
+            2040: 5.7
+            2045: 5.7
+        Fischer-Tropsch:
+          DE:
+            2030: 2.5
+            2035: 2.5
+            2040: 2.5
+            2045: 2.5
     limits_capacity_min:
       Generator:
         onwind:
