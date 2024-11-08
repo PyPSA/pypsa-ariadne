@@ -675,6 +675,7 @@ def adapt_nuclear_output(n):
         carrier_attribute="",
     )
 
+
 def additional_functionality(n, snapshots, snakemake):
 
     logger.info("Adding Ariadne-specific functionality")
