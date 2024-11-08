@@ -21,7 +21,7 @@ from pypsa.plot import add_legend_lines
 path = "../submodules/pypsa-eur/scripts"
 sys.path.insert(1, os.path.abspath(path))
 from _helpers import configure_logging, set_scenario_config
-from export_ariadne_variables import get_discretized_value, hack_transmission_projects
+from export_ariadne_variables import get_discretized_value, process_postnetworks
 from plot_power_network import load_projection
 from plot_summary import preferred_order, rename_techs
 from prepare_sector_network import prepare_costs
@@ -1501,7 +1501,7 @@ if __name__ == "__main__":
 
     # Hack the transmission projects
     networks = [
-        hack_transmission_projects(n.copy(), _networks[0], int(my), snakemake, costs)
+        process_postnetworks(n.copy(), _networks[0], int(my), snakemake, costs)
         for n, my in zip(_networks, modelyears)
     ]
 
