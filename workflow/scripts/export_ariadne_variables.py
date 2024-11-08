@@ -4479,7 +4479,7 @@ def get_grid_capacity(n, region, year):
         .floordiv(
             snakemake.params.post_discretization["line_unit_size"] - 5
         )  # To account for numerical errors subtract a small capacity
-        .div(5265 // (snakemake.params.post_discretization["line_unit_size"] - 5))  
+        .div(5265 // (snakemake.params.post_discretization["line_unit_size"] - 5))
         .multiply(ac_lines.length)
         .sum()
     )

@@ -234,7 +234,7 @@ def h2_production_limits(n, investment_year, limits_volume_min, limits_volume_ma
         efficiency = n.links.loc[production, "efficiency"]
 
         lhs = (
-            n.model["Link-p"].loc[:, production] 
+            n.model["Link-p"].loc[:, production]
             * n.snapshot_weightings.generators
             * efficiency
         ).sum()
@@ -661,6 +661,7 @@ def adapt_nuclear_output(n):
         type="",
         carrier_attribute="",
     )
+
 
 def additional_functionality(n, snapshots, snakemake):
 
