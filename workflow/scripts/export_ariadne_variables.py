@@ -4449,8 +4449,7 @@ def get_grid_capacity(n, region, year):
             - 5  # To account for numerical errors subtract a small capacity
         )
         .multiply(
-            2000 // 
-            (snakemake.params.post_discretization["link_unit_size"]["DC"] - 5)
+            2000 // (snakemake.params.post_discretization["link_unit_size"]["DC"] - 5)
         )
         .multiply(dc_links.length)
         .sum()
@@ -4460,8 +4459,8 @@ def get_grid_capacity(n, region, year):
         .eval("p_nom_opt - p_nom_min")
         .floordiv(snakemake.params.post_discretization["link_unit_size"]["DC"] - 5)
         .multiply(
-            2000 // 
-            (snakemake.params.post_discretization["link_unit_size"]["DC"] - 5))
+            2000 // (snakemake.params.post_discretization["link_unit_size"]["DC"] - 5)
+        )
         .multiply(dc_links.length)
         .sum()
     )
@@ -4483,8 +4482,7 @@ def get_grid_capacity(n, region, year):
             snakemake.params.post_discretization["line_unit_size"] - 5
         )  # To account for numerical errors subtract a small capacity
         .mul(
-            5265 
-            // (snakemake.params.post_discretization["line_unit_size"] - 5)
+            5265 // (snakemake.params.post_discretization["line_unit_size"] - 5)
         )  # Trassen size is 2 * 2633, we allow "fractional Trassen" to account for different line types
         .multiply(ac_lines.length)
         .sum()
