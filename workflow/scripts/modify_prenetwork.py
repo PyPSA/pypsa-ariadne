@@ -393,9 +393,6 @@ def unravel_carbonaceous_fuels(n):
         marginal_cost=0.01,
     )
 
-        marginal_cost=0.01,
-    )
-
     n.madd(
         "Link",
         [
@@ -1175,9 +1172,9 @@ if __name__ == "__main__":
 
     new_boiler_ban(n)
 
-    fix_new_boiler_profiles(n)
+    # fix_new_boiler_profiles(n)
 
-    remove_old_boiler_profiles(n)
+    # remove_old_boiler_profiles(n)
 
     coal_generation_ban(n)
 

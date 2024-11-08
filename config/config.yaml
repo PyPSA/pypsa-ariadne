@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241011PlotReport
+  prefix: 20241023-UpstreamEmissions-100H
 
   name:
   # - CurrentPolicies
@@ -233,7 +233,7 @@ clustering:
     # 'ES': 0.0408
     # 'IT': 0.0612
   temporal:
-    resolution_sector: 780H
+    resolution_sector: 100H
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#co2-budget
 co2_budget:
@@ -298,8 +298,8 @@ sector:
   regional_coal_demand: true  #set to true if regional CO2 constraints needed
   gas_network: false
   biogas_upgrading_cc: true
-  biomass_to_liquid: true
-  biomass_to_liquid_cc: true
+  biomass_to_liquid: false
+  biomass_to_liquid_cc: false
   cluster_heat_buses: true
   # calculated based on ariadne "Stock|Space Heating"
   # and then 2% of buildings renovated per year to reduce their demand by 80%
@@ -399,7 +399,7 @@ solving:
   mem_mb: 70000 #30000 is OK for 22 nodes, 365H; 140000 for 22 nodes 3H; 400000 for 44 nodes 3H
   options:
     assign_all_duals: true
-    load_shedding: true
+    load_shedding: false
     skip_iterations: true # settings for post-discretization: false
     min_iterations: 1 # settings for post-discretization: 1
     max_iterations: 1 # settings for post-discretization: 1
