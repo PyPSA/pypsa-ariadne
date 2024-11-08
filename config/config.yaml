@@ -409,7 +409,7 @@ solving:
     max_iterations: 1 # settings for post-discretization: 1
     post_discretization:
       enable: false
-      line_unit_size: 1700
+      line_unit_size: 1698
       line_threshold: 0.3
       link_unit_size:
         DC: 1000
