@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241108-plot-report-german
+  prefix: 20241106_bugfix_unsustainable_bioliquids
 
   name:
   # - CurrentPolicies
