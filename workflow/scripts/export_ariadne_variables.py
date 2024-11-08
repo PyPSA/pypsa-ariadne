@@ -4480,8 +4480,8 @@ def get_grid_capacity(n, region, year):
     var["Length Additions|Electricity|Transmission|AC"] = (
         ac_lines.eval("s_nom_opt - s_nom_min")
         .floordiv(
-            snakemake.params.post_discretization["line_unit_size"] 
-            - 5) # To account for numerical errors subtract a small capacity
+            snakemake.params.post_discretization["line_unit_size"] - 5
+        )  # To account for numerical errors subtract a small capacity
         .mul(
             5265 
             // (snakemake.params.post_discretization["line_unit_size"] - 5)
@@ -4648,9 +4648,8 @@ def process_postnetworks(n, n_start, model_year, snakemake, costs):
         # the same logic is applied to p_nom and p_nom_min
         n.links[attr] = n.links[attr].apply(_dc_lambda)
 
-    p_nom_planned = n_start.links["p_nom"]    
+    p_nom_planned = n_start.links["p_nom"]
     p_nom_start = n_start.links["p_nom"].apply(_dc_lambda)
-
 
     logger.info("Post-Discretizing AC lines")
     _ac_lambda = lambda x: get_discretized_value(
