@@ -4,7 +4,9 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
+
   prefix: 20241105_FT_MeOH_cap_limit
+
 
   name:
   # - CurrentPolicies
@@ -475,6 +477,7 @@ solving:
             2035: 2
             2040: 2
             2045: 2
+
     limits_capacity_min:
       Generator:
         onwind:
