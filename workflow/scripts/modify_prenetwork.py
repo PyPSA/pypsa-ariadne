@@ -705,17 +705,15 @@ def unravel_gasbus(n, costs):
         )
 
 
-def transmission_costs_from_modified_cost_data(
-    n, costs, transmission, length_factor=1.0
-):
+def transmission_costs_from_modified_cost_data(n, costs, transmission):
     # copying the the function update_transmission_costs from add_electricity
     # slight change to the function so it works in modify_prenetwork
 
     n.lines["capital_cost"] = (
-        n.lines["length"] * length_factor * costs.at["HVAC overhead", "capital_cost"]
+        n.lines["length"] * costs.at["HVAC overhead", "capital_cost"]
     )
     n.lines["overnight_cost"] = (
-        n.lines["length"] * length_factor * costs.at["HVAC overhead", "investment"]
+        n.lines["length"] * costs.at["HVAC overhead", "investment"]
     )
 
     if n.links.empty:
@@ -735,7 +733,6 @@ def transmission_costs_from_modified_cost_data(
 
     capital_cost = (
         n.links.loc[dc_b, "length"]
-        * length_factor
         * (
             (1.0 - n.links.loc[dc_b, "underwater_fraction"])
             * costs.at[links_costs, "capital_cost"]
@@ -747,7 +744,6 @@ def transmission_costs_from_modified_cost_data(
 
     overnight_cost = (
         n.links.loc[dc_b, "length"]
-        * length_factor
         * (
             (1.0 - n.links.loc[dc_b, "underwater_fraction"])
             * costs.at[links_costs, "investment"]
@@ -1231,7 +1227,6 @@ if __name__ == "__main__":
         n,
         costs_loaded,
         snakemake.params.transmission_costs,
-        snakemake.params.length_factor,
     )
 
     if snakemake.params.biogas_must_run["enable"]:
