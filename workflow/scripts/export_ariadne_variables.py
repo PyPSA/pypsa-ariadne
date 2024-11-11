@@ -37,6 +37,9 @@ MWh2PJ = 3.6e-6
 toe_to_MWh = 11.630  # GWh/ktoe OR MWh/toe
 
 
+EUR20TOEUR23 = 1.1076
+
+
 def _get_fuel_fractions(n, region, fuel):
     kwargs = {
         "groupby": n.statistics.groupers.get_name_bus_and_carrier,
@@ -3713,14 +3716,14 @@ def get_grid_investments(n, costs, region):
     # https://www.netzentwicklungsplan.de/sites/default/files/2023-07/NEP_2037_2045_V2023_2_Entwurf_Teil1_1.pdf
     # Tabelle 30, Abbildung 70, Kostenannahmen NEP + eigene Berechnungen, gerundet
     year = n.generators.build_year.max()
-    reactive_power_compensation = {
+    reactive_power_compensation = pd.Series({
         2020: 0,
         2025: 4.4,
         2030: 8,
         2035: 15,
         2040: 10,
         2045: 1.5,
-    }
+    }) / EUR20TOEUR23
     var[var_name + "AC|Übernahme|Reactive Power Compensation"] = (
         reactive_power_compensation.get(year, 0) / 5
     )
@@ -4917,7 +4920,7 @@ if __name__ == "__main__":
     print("Gleichschaltung of AC-Startnetz with investments for AC projects")
     # In this hacky part of the code we assure that the investments for the AC projects, match those of the NEP-AC-Startnetz
     # Thus the variable 'Investment|Energy Supply|Electricity|Transmission|AC' is equal to the sum of exogeneous AC projects, endogenous AC expansion and Übernahme of NEP costs (mainly Systemdienstleistungen (Reactive Power Compensation) and lines that are below our spatial resolution)
-    ac_startnetz = 14.5 / 5  # billion EUR
+    ac_startnetz = 14.5 / 5 / EUR20TOEUR23 # billion EUR
 
     ac_projects_invest = df.query(
         "Variable == 'Investment|Energy Supply|Electricity|Transmission|AC|NEP|Onshore'"
@@ -4930,19 +4933,14 @@ if __name__ == "__main__":
         [2025, 2030, 2035, 2040],
     ] += (ac_startnetz - ac_projects_invest) / 4
 
-    df.loc[
-        df.query(
-            "Variable == 'Investment|Energy Supply|Electricity|Transmission|AC|NEP'"
-        ).index,
-        [2025, 2030, 2035, 2040],
-    ] += (ac_startnetz - ac_projects_invest) / 4
+    for suffix in ["|AC|NEP", "|AC", "", " and Distribution"]:
+        df.loc[
+            df.query(
+                f"Variable == 'Investment|Energy Supply|Electricity|Transmission{suffix}'"
+            ).index,
+            [2025, 2030, 2035, 2040],
+        ] += (ac_startnetz - ac_projects_invest) / 4
 
-    df.loc[
-        df.query(
-            "Variable == 'Investment|Energy Supply|Electricity|Transmission|AC'"
-        ).index,
-        [2025, 2030, 2035, 2040],
-    ] += (ac_startnetz - ac_projects_invest) / 4
 
     print("Assigning mean investments of year and year + 5 to year.")
     investment_rows = df.loc[df["Variable"].str.contains("Investment")]

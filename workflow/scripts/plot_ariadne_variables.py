@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+EUR20TOEUR23 = 1.1076
+
 
 def plot_NEP_Trassen(df, savepath=None, gleichschaltung=True):
 
@@ -127,34 +129,34 @@ def plot_NEP(df, savepath=None, gleichschaltung=True):
             145.1,
         ],
         "exogen": [
-            df.loc[key + "DC|NEP|Onshore"].values.sum() * 5,
-            df.loc[key + "AC|NEP|Onshore"].values.sum() * 5,
+            EUR20TOEUR23 * df.loc[key + "DC|NEP|Onshore"].values.sum() * 5,
+            EUR20TOEUR23 * df.loc[key + "AC|NEP|Onshore"].values.sum() * 5,
             0,  # see "Übernahme"
             None,
-            df.loc[key + "NEP|Offshore"].values.sum() * 5,
+            EUR20TOEUR23 * df.loc[key + "NEP|Offshore"].values.sum() * 5,
         ],
         "endogen": [
-            (
+            EUR20TOEUR23 * (
                 df.loc[key + "DC|Onshore"].values
                 - df.loc[key + "DC|NEP|Onshore"].values
             ).sum()
             * 5,
-            (
+            EUR20TOEUR23 * (
                 df.loc[key + "AC|Onshore"].values
                 - df.loc[key + "AC|NEP|Onshore"].values
             ).sum()
             * 5,
             0,
             None,
-            (
+            EUR20TOEUR23 * (
                 df.loc[key + "Offshore"].values - df.loc[key + "NEP|Offshore"].values
             ).sum()
             * 5,
         ],
         "Übernahme": [
             0,
-            df.loc[key + "AC|Übernahme|Startnetz Delta"].values.sum() * 5,
-            df.loc[key + "AC|Übernahme|Reactive Power Compensation"].values.sum() * 5,
+            EUR20TOEUR23 * df.loc[key + "AC|Übernahme|Startnetz Delta"].values.sum() * 5,
+            EUR20TOEUR23 * df.loc[key + "AC|Übernahme|Reactive Power Compensation"].values.sum() * 5,
             None,
             0,
         ],
