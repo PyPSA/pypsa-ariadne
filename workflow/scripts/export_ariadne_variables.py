@@ -1582,7 +1582,7 @@ def get_secondary_energy(n, region, _industry_demand):
         .sum()
         .drop(["renewable oil", "methanol"], errors="ignore")  # Drop trade links
     )
-
+    var["Secondary Energy|Liquids|Fossil"] =\
     var["Secondary Energy|Liquids|Oil"] = liquids_production.get("oil refining", 0)
     var["Secondary Energy|Methanol"] = liquids_production.get("methanolisation", 0)
     var["Secondary Energy|Liquids|Hydrogen"] = liquids_production.get(
@@ -1970,14 +1970,18 @@ def get_final_energy(
         .multiply(MWh2PJ)
     )
 
+    rescom_electricity = low_voltage_electricity[
+        # carrier does not contain one of the following substrings
+        ~low_voltage_electricity.index.str.contains(
+            "urban central|industry|agriculture|charger|distribution"
+            # Excluding chargers (battery and EV)
+        )
+    ]
+    var["Final Energy|Residential and Commercial|Electricity|Heat Pumps"] = (
+        rescom_electricity.filter(like="heat pump").sum()
+    )
     var["Final Energy|Residential and Commercial|Electricity"] = (
-        low_voltage_electricity[
-            # carrier does not contain one of the following substrings
-            ~low_voltage_electricity.index.str.contains(
-                "urban central|industry|agriculture|charger|distribution"
-                # Excluding chargers (battery and EV)
-            )
-        ].sum()
+        rescom_electricity.sum()
     )
     # urban decentral heat and rural heat are delivered as different forms of energy
     # (gas, oil, biomass, ...)
@@ -2333,12 +2337,40 @@ def get_final_energy(
 
     var["Final Energy|Waste"] = waste_withdrawal.filter(like="waste CHP").sum()
 
+    var["Final Energy|Carbon Dioxide Removal|Heat"] = (
+        decentral_heat_withdrawal.get("DAC", 0)
+    )
+
+    electricity = (
+        n.statistics.withdrawal(
+            bus_carrier="AC",
+            **kwargs,
+        )
+        .filter(
+            like=region,
+        )
+        .groupby("carrier")
+        .sum()
+        .multiply(MWh2PJ)
+    )
+
+    var["Final Energy|Carbon Dioxide Removal|Electricity"] = (
+        electricity.get("DAC", 0)
+    )
+
+    var["Final Energy|Carbon Dioxide Removal"] = (
+        var["Final Energy|Carbon Dioxide Removal|Electricity"]
+        + var["Final Energy|Carbon Dioxide Removal|Heat"]
+    )
+
     var["Final Energy incl Non-Energy Use incl Bunkers"] = (
         var["Final Energy|Industry"]
         + var["Final Energy|Residential and Commercial"]
         + var["Final Energy|Agriculture"]
         + var["Final Energy|Transportation"]
         + var["Final Energy|Bunkers"]
+        + var["Final Energy|Waste"]
+        + var["Final Energy|Carbon Dioxide Removal"]
     )
 
     var["Final Energy"] = (
@@ -2346,6 +2378,8 @@ def get_final_energy(
         + var["Final Energy|Residential and Commercial"]
         + var["Final Energy|Agriculture"]
         + var["Final Energy|Transportation"]
+        + var["Final Energy|Waste"]
+        + var["Final Energy|Carbon Dioxide Removal"]
     )
 
     return var
