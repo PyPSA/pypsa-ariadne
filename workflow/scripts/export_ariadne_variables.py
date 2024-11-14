@@ -1394,35 +1394,20 @@ def get_secondary_energy(n, region, _industry_demand):
         .values.sum()
     )
 
+    electricity_balance = n.statistics.energy_balance(
+        bus_carrier=["AC", "low voltage"], **kwargs
+        ).filter(like=region).groupby(["carrier"]).sum()
+
+    if "V2G" in electricity_balance.index:
+        logger.error("The exporter requires changes to correctly account vehicle to grid technology.")
     var["Secondary Energy|Electricity|Storage Losses"] = (
-        n.statistics.withdrawal(bus_carrier=["AC", "low voltage"], **kwargs)
-        .filter(like=region)
-        .groupby(["carrier"])
-        .sum()
-        .reindex(
-            [
-                "BEV charger",
-                "battery charger",
-                "home battery charger",
-                "PHS",
-            ]
-        )
-        .subtract(
-            n.statistics.supply(bus_carrier=["AC", "low voltage"], **kwargs)
-            .filter(like=region)
-            .groupby(["carrier"])
-            .sum()
-            .reindex(
-                [
-                    "V2G",
-                    "battery discharger",
-                    "home battery discharger",
-                    "PHS",
-                ]
-            )
-        )
-        .multiply(MWh2PJ)
-        .sum()
+        -1 * electricity_balance.reindex([   
+            "battery charger",
+            "battery discharger",
+            "home battery charger",
+            "home battery discharger",
+            "PHS",
+        ]).multiply(MWh2PJ).sum()
     )
 
     # TODO Compute transmission losses via links_t
@@ -1670,6 +1655,10 @@ def get_secondary_energy(n, region, _industry_demand):
         like="urban central"
     ).sum()
 
+    var["Secondary Energy Input|Electricity|Liquids"] = (
+        electricity_withdrawal.get("methanolisation", 0)
+    )
+
     hydrogen_withdrawal = (
         n.statistics.withdrawal(bus_carrier="H2", **kwargs)
         .filter(like=region)
@@ -1699,7 +1688,7 @@ def get_secondary_energy(n, region, _industry_demand):
         "Sabatier", 0
     )
 
-    var["Secondary Energy Input|Hydrogen|Liquids"] = hydrogen_withdrawal.reindex(
+    var["Secondary Energy Input|Hydrogen|Efuel"] = hydrogen_withdrawal.reindex(
         ["Fischer-Tropsch", "methanolisation"]
     ).sum()
 
@@ -2120,8 +2109,8 @@ def get_final_energy(
 
     # var["Final Energy|Transportation|Other"] = \
 
-    var["Final Energy|Transportation|Electricity"] = sum_load(
-        n, "land transport EV", region
+    var["Final Energy|Transportation|Electricity"] = (
+        low_voltage_electricity.get("BEV charger", 0)
     )
 
     # var["Final Energy|Transportation|Gases"] = \
