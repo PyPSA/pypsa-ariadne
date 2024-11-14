@@ -62,18 +62,18 @@ from pathlib import Path
 data_dir = Path("workflow/submodules/pypsa-eur/data")
 
 
-# rule get_data:
-#     output:
-#         [
-#             str(Path("data") / p.relative_to(data_dir))
-#             for p in data_dir.rglob("*")
-#             if p.is_file()
-#         ],
-#     shell:
-#         """
-#         mkdir -p data
-#         cp -nR {data_dir}/. data/
-#         """
+rule get_data:
+    output:
+        [
+            str(Path("data") / p.relative_to(data_dir))
+            for p in data_dir.rglob("*")
+            if p.is_file()
+        ],
+    shell:
+        """
+        mkdir -p data
+        cp -nR {data_dir}/. data/
+        """
 
 
 rule clean:
