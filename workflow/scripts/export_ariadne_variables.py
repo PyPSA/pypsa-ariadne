@@ -4,6 +4,7 @@ import math
 import os
 import re
 import sys
+import ast
 from functools import reduce
 
 import numpy as np
@@ -3788,13 +3789,14 @@ def get_grid_investments(n, costs, region):
     new_h2_links = h2_links[
         ((year - 5) < h2_links.build_year) & (h2_links.build_year <= year)
     ]
-    h2_expansion = new_h2_links.p_nom_opt.apply(
-        lambda x: get_discretized_value(
-            x,
-            post_discretization["link_unit_size"]["H2 pipeline"],
-            post_discretization["link_threshold"]["H2 pipeline"],
-        )
-    )
+    h2_expansion = new_h2_links.p_nom_opt
+    # h2_expansion = new_h2_links.p_nom_opt.apply(
+    #     lambda x: get_discretized_value(
+    #         x,
+    #         post_discretization["link_unit_size"]["H2 pipeline"],
+    #         post_discretization["link_threshold"]["H2 pipeline"],
+    #     )
+    # )
     h2_investments = h2_expansion * new_h2_links.overnight_cost * 1e-9
     # International h2_projects are only accounted with half the costs
     h2_investments[
@@ -3802,11 +3804,96 @@ def get_grid_investments(n, costs, region):
             new_h2_links.bus0.str.contains(region)
             & new_h2_links.bus1.str.contains(region)
         )
-    ] *= 0.5
+    ] *= 0.5 # rather 0.4
 
     var["Investment|Energy Supply|Hydrogen|Transmission and Distribution"] = var[
         "Investment|Energy Supply|Hydrogen|Transmission"
     ] = (h2_investments.sum() / 5)
+
+    new_h2_links_kernnetz_i = new_h2_links[
+            (new_h2_links.index.str.contains("kernnetz"))
+        ].index
+
+    new_h2_links_endogen_i = new_h2_links[
+        ~(new_h2_links.index.str.contains("kernnetz"))
+    ].index
+
+    var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Endogen"] = \
+        (h2_investments[new_h2_links_endogen_i].sum() / 5)
+    var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz"]= \
+        (h2_investments[new_h2_links_kernnetz_i].sum() / 5)
+
+    assert isclose(var["Investment|Energy Supply|Hydrogen|Transmission and Distribution"], 
+                var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Endogen"] + \
+                var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz"]) 
+
+    if "retrofitted" in new_h2_links.columns:
+        new_h2_links_retrofitted_i = new_h2_links[
+            (new_h2_links.retrofitted == 1.) 
+            | (new_h2_links.index.str.contains("retrofitted")
+            )].index
+    else:
+        new_h2_links_retrofitted_i = new_h2_links[
+            (new_h2_links.index.str.contains("retrofitted")
+            )].index
+    
+    new_h2_links_newbuild_i = new_h2_links.index.difference(new_h2_links_retrofitted_i)
+
+    var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|New-build"] = \
+        (h2_investments[new_h2_links_newbuild_i].sum() / 5)
+    var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Retrofitted"]= \
+        (h2_investments[new_h2_links_retrofitted_i].sum() / 5)
+
+    assert isclose(var["Investment|Energy Supply|Hydrogen|Transmission and Distribution"], 
+                var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|New-build"] + \
+                var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Retrofitted"])  
+
+    var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Endogen|New-build"] = \
+        (h2_investments[new_h2_links_newbuild_i.intersection(new_h2_links_endogen_i)].sum() / 5)
+    var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Endogen|Retrofitted"]= \
+        (h2_investments[new_h2_links_retrofitted_i.intersection(new_h2_links_endogen_i)].sum() / 5)
+    var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|New-build"]= \
+        (h2_investments[new_h2_links_newbuild_i.intersection(new_h2_links_kernnetz_i)].sum() / 5)
+    var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|Retrofitted"]= \
+        (h2_investments[new_h2_links_retrofitted_i.intersection(new_h2_links_kernnetz_i)].sum() / 5)
+    
+    assert isclose(var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Endogen"], 
+                var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Endogen|New-build"] + \
+                var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Endogen|Retrofitted"])
+    
+    assert isclose(var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz"],
+                    var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|New-build"] + \
+                    var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|Retrofitted"])
+    
+    if "tags" in new_h2_links.columns:
+        # extract infos from tags
+        tags = new_h2_links.loc[new_h2_links_kernnetz_i].tags.values
+        df = pd.DataFrame(tags, columns=['info'])
+        df['info'] = df['info'].apply(ast.literal_eval)
+        df['pci'] = df['info'].apply(lambda x: x['pci'])
+        df['ipcei'] = df['info'].apply(lambda x: x['ipcei'])
+        df['investment_costs (Mio. Euro)'] = df['info'].apply(lambda x: x['investment_costs (Mio. Euro)'])
+        df.index = new_h2_links_kernnetz_i
+        
+        pci_i = df[df['pci'] != "no"].index
+        ipcei_i = df[df['ipcei'] != "no"].index
+    else:
+        pci_i =  []
+        ipcei_i = []
+    
+    var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|PCI"] = \
+            (h2_investments[pci_i].sum() / 5)
+    var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|IPCEI"] = \
+            (h2_investments[ipcei_i].sum() / 5)
+    var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|PCI+IPCEI"] = \
+            (h2_investments[pci_i.union(ipcei_i)].sum() / 5)
+    var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|NOT-PCI+IPCEI"] = \
+            (h2_investments[new_h2_links_kernnetz_i.difference(pci_i.union(ipcei_i))].sum() / 5)
+
+    assert isclose(var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz"],
+                        var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|PCI+IPCEI"] + \
+                        var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|NOT-PCI+IPCEI"])
+     
 
     # TODO add retrofitted costs!!
 
@@ -4875,7 +4962,7 @@ if __name__ == "__main__":
 
     if "debug" == "debug":  # For debugging
         var = pd.Series()
-        idx = -1
+        idx = 2
         n = networks[idx]
         c = costs[idx]
         _industry_demand = industry_demands[idx]

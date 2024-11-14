@@ -569,6 +569,7 @@ if __name__ == "__main__":
         snakemake.input.wasserstoff_kernnetz_3,
     )
     logger.info("Data retrievel successful. Preparing dataset ...")
+    
     wasserstoff_kernnetz = prepare_dataset(wasserstoff_kernnetz)
 
     if kernnetz_cf["reload_locations"]:
