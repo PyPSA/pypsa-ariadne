@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 
 
-
 def plot_NEP_Trassen(df, savepath=None, gleichschaltung=True):
 
     NEP_Trassen = {
@@ -109,7 +108,7 @@ def plot_NEP_Trassen(df, savepath=None, gleichschaltung=True):
 
 
 def plot_NEP(df, savepath=None, gleichschaltung=True, currency_year=2020):
-        
+
     key = "Investment|Energy Supply|Electricity|Transmission|"
 
     data = {

@@ -948,6 +948,7 @@ def plot_h2_map(n, regions, savepath, only_de=False):
     fig.savefig(savepath, bbox_inches="tight")
     plt.close()
 
+
 def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
 
     assign_location(n)
@@ -1736,8 +1737,6 @@ if __name__ == "__main__":
                 savepath=f"{snakemake.output.h2_transmission}/h2_transmission_DE_{sb}_{year}.png",
             )
             del network
-            
-        
 
     ## electricity transmission
     logger.info("Plotting electricity transmission")

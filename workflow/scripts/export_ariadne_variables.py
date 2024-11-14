@@ -1394,20 +1394,30 @@ def get_secondary_energy(n, region, _industry_demand):
         .values.sum()
     )
 
-    electricity_balance = n.statistics.energy_balance(
-        bus_carrier=["AC", "low voltage"], **kwargs
-        ).filter(like=region).groupby(["carrier"]).sum()
+    electricity_balance = (
+        n.statistics.energy_balance(bus_carrier=["AC", "low voltage"], **kwargs)
+        .filter(like=region)
+        .groupby(["carrier"])
+        .sum()
+    )
 
     if "V2G" in electricity_balance.index:
-        logger.error("The exporter requires changes to correctly account vehicle to grid technology.")
+        logger.error(
+            "The exporter requires changes to correctly account vehicle to grid technology."
+        )
     var["Secondary Energy|Electricity|Storage Losses"] = (
-        -1 * electricity_balance.reindex([   
-            "battery charger",
-            "battery discharger",
-            "home battery charger",
-            "home battery discharger",
-            "PHS",
-        ]).multiply(MWh2PJ).sum()
+        -1
+        * electricity_balance.reindex(
+            [
+                "battery charger",
+                "battery discharger",
+                "home battery charger",
+                "home battery discharger",
+                "PHS",
+            ]
+        )
+        .multiply(MWh2PJ)
+        .sum()
     )
 
     # TODO Compute transmission losses via links_t
@@ -1567,8 +1577,9 @@ def get_secondary_energy(n, region, _industry_demand):
         .sum()
         .drop(["renewable oil", "methanol"], errors="ignore")  # Drop trade links
     )
-    var["Secondary Energy|Liquids|Fossil"] =\
-    var["Secondary Energy|Liquids|Oil"] = liquids_production.get("oil refining", 0)
+    var["Secondary Energy|Liquids|Fossil"] = var["Secondary Energy|Liquids|Oil"] = (
+        liquids_production.get("oil refining", 0)
+    )
     var["Secondary Energy|Methanol"] = liquids_production.get("methanolisation", 0)
     var["Secondary Energy|Liquids|Hydrogen"] = liquids_production.get(
         "Fischer-Tropsch", 0
@@ -1655,8 +1666,8 @@ def get_secondary_energy(n, region, _industry_demand):
         like="urban central"
     ).sum()
 
-    var["Secondary Energy Input|Electricity|Liquids"] = (
-        electricity_withdrawal.get("methanolisation", 0)
+    var["Secondary Energy Input|Electricity|Liquids"] = electricity_withdrawal.get(
+        "methanolisation", 0
     )
 
     hydrogen_withdrawal = (
@@ -2109,8 +2120,8 @@ def get_final_energy(
 
     # var["Final Energy|Transportation|Other"] = \
 
-    var["Final Energy|Transportation|Electricity"] = (
-        low_voltage_electricity.get("BEV charger", 0)
+    var["Final Energy|Transportation|Electricity"] = low_voltage_electricity.get(
+        "BEV charger", 0
     )
 
     # var["Final Energy|Transportation|Gases"] = \
@@ -2326,8 +2337,8 @@ def get_final_energy(
 
     var["Final Energy|Waste"] = waste_withdrawal.filter(like="waste CHP").sum()
 
-    var["Final Energy|Carbon Dioxide Removal|Heat"] = (
-        decentral_heat_withdrawal.get("DAC", 0)
+    var["Final Energy|Carbon Dioxide Removal|Heat"] = decentral_heat_withdrawal.get(
+        "DAC", 0
     )
 
     electricity = (
@@ -2343,9 +2354,7 @@ def get_final_energy(
         .multiply(MWh2PJ)
     )
 
-    var["Final Energy|Carbon Dioxide Removal|Electricity"] = (
-        electricity.get("DAC", 0)
-    )
+    var["Final Energy|Carbon Dioxide Removal|Electricity"] = electricity.get("DAC", 0)
 
     var["Final Energy|Carbon Dioxide Removal"] = (
         var["Final Energy|Carbon Dioxide Removal|Electricity"]
@@ -3739,14 +3748,19 @@ def get_grid_investments(n, costs, region):
     # https://www.netzentwicklungsplan.de/sites/default/files/2023-07/NEP_2037_2045_V2023_2_Entwurf_Teil1_1.pdf
     # Tabelle 30, Abbildung 70, Kostenannahmen NEP + eigene Berechnungen, gerundet
     year = n.generators.build_year.max()
-    reactive_power_compensation = pd.Series({
-        2020: 0,
-        2025: 4.4,
-        2030: 8,
-        2035: 15,
-        2040: 10,
-        2045: 1.5,
-    }) / EUR20TOEUR23
+    reactive_power_compensation = (
+        pd.Series(
+            {
+                2020: 0,
+                2025: 4.4,
+                2030: 8,
+                2035: 15,
+                2040: 10,
+                2045: 1.5,
+            }
+        )
+        / EUR20TOEUR23
+    )
     var[var_name + "AC|Übernahme|Reactive Power Compensation"] = (
         reactive_power_compensation.get(year, 0) / 5
     )
@@ -4943,7 +4957,7 @@ if __name__ == "__main__":
     print("Gleichschaltung of AC-Startnetz with investments for AC projects")
     # In this hacky part of the code we assure that the investments for the AC projects, match those of the NEP-AC-Startnetz
     # Thus the variable 'Investment|Energy Supply|Electricity|Transmission|AC' is equal to the sum of exogeneous AC projects, endogenous AC expansion and Übernahme of NEP costs (mainly Systemdienstleistungen (Reactive Power Compensation) and lines that are below our spatial resolution)
-    ac_startnetz = 14.5 / 5 / EUR20TOEUR23 # billion EUR
+    ac_startnetz = 14.5 / 5 / EUR20TOEUR23  # billion EUR
 
     ac_projects_invest = df.query(
         "Variable == 'Investment|Energy Supply|Electricity|Transmission|AC|NEP|Onshore'"
@@ -4963,7 +4977,6 @@ if __name__ == "__main__":
             ).index,
             [2025, 2030, 2035, 2040],
         ] += (ac_startnetz - ac_projects_invest) / 4
-
 
     print("Assigning mean investments of year and year + 5 to year.")
     investment_rows = df.loc[df["Variable"].str.contains("Investment")]
