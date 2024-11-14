@@ -218,7 +218,7 @@ if config["sector"]["district_heating"]["add_subnodes"] and config["sector"][
             ),
             fernwaermeatlas="data/fernwaermeatlas/fernwaermeatlas.xlsx",
             cities="data/fernwaermeatlas/cities_geolocations.geojson",
-            cop_profiles=resources("cop_profiles_base_s_{clusters}.nc"),
+            cop_profiles=resources("cop_profiles_base_s_{clusters}_{planning_horizons}.nc"),
             existing_heating_distribution=resources(
                 f"existing_heating_distribution_base_s_{{clusters}}_{baseyear_value}.csv"
             ),
@@ -233,11 +233,11 @@ if config["sector"]["district_heating"]["add_subnodes"] and config["sector"][
                 "district_heating_subnodes_base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.geojson"
             ),
             cop_profiles_extended=resources(
-                "cop_profiles_base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}-extended.nc"
+                "cop_profiles_base-extended_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc"
             ),
             existing_heating_distribution_extended=(
                 resources(
-                    "existing_heating_distribution_base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}-extended.csv"
+                    "existing_heating_distribution_base-extended_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.csv"
                 )
                 if baseyear_value != "{planning_horizons}"
                 else []
@@ -449,17 +449,17 @@ use rule add_existing_baseyear from pypsaeur with:
         ),
         cop_profiles=(
             resources(
-                "cop_profiles_base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}-extended.nc"
+                "cop_profiles_base-extended_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc"
             )
             if config["sector"]["district_heating"].get("add_subnodes", True)
-            else resources("cop_profiles_base_s_{clusters}.nc")
+            else resources("cop_profiles_base_s_{clusters}_{planning_horizons}.nc")
         ),
         custom_powerplants=resources(
             "german_chp_base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.csv"
         ),
         existing_heating_distribution=(
             resources(
-                "existing_heating_distribution_base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}-extended.csv"
+                "existing_heating_distribution_base-extended_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.csv"
             )
             if config["sector"]["district_heating"].get("add_subnodes", True)
             else resources(
