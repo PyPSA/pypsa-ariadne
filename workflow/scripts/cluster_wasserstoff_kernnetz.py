@@ -25,7 +25,6 @@ paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scrip
 for path in paths:
     sys.path.insert(0, os.path.abspath(path))
 from cluster_gas_network import (
-    build_clustered_gas_network,
     load_bus_regions,
     reindex_pipes,
 )
@@ -152,6 +151,7 @@ def build_clustered_h2_network(df, bus_regions, recalculate_length=True, length_
         return df
 
     if recalculate_length:
+        logger.info("Recalculating pipe lengths as center to center * length factor")
         # recalculate lengths as center to center * length factor
         df["length"] = df.apply(
             lambda p: length_factor
@@ -231,6 +231,7 @@ if __name__ == "__main__":
 
     if kernnetz_cf["divide_pipes"] & (not kernnetz_cf["aggregate_parallel_pipes"]):
         # Set length to 0 for duplicates from the 2nd occurrence onwards and make name unique
+        logger.info(f"Setting length to 0 for splitted pipes as Kernnetz pipes are segmented (divide pipes: {kernnetz_cf["divide_pipes"]}) and paralle pipes not aggregated (aggregate_parallel_pipes: {kernnetz_cf["aggregate_parallel_pipes"]}).")
         wasserstoff_kernnetz['occurrence'] = wasserstoff_kernnetz.groupby('name').cumcount() + 1
         wasserstoff_kernnetz.loc[wasserstoff_kernnetz['occurrence'] > 1, 'length'] = 0
         wasserstoff_kernnetz['name'] = wasserstoff_kernnetz.apply(lambda row: f"{row['name']}-split{row['occurrence']}" if row['occurrence'] > 1 else row['name'], axis=1)

@@ -30,6 +30,7 @@ from prepare_sector_network import prepare_costs
 TWh2PJ = 3.6
 MWh2TJ = 3.6e-3
 MW2GW = 1e-3
+MW2TW = 1e-6
 t2Mt = 1e-6
 
 MWh2GJ = 3.6
@@ -39,6 +40,68 @@ toe_to_MWh = 11.630  # GWh/ktoe OR MWh/toe
 
 
 EUR20TOEUR23 = 1.1076
+
+def domestic_length_factor(n, carriers, region="DE"):
+    """
+    Calculate the length factor for specified carriers within a PyPSA network.
+
+    Parameters:
+    n (pypsa.Network): The PyPSA network object.
+    carriers (list or str): List of carrier types to filter, or a single carrier as a string.
+    region (str): The region code to match in the buses (e.g., "DE").
+
+    Returns:
+    float or dict: A single length factor if one carrier is provided; otherwise, a dictionary
+                   of length factors for each carrier and component type.
+    """
+    # If a single carrier is provided as a string, wrap it in a list
+    if isinstance(carriers, str):
+        carriers = [carriers]
+
+    length_factors = {}
+
+    # Check if carriers exist in network components
+    for carrier in carriers:
+        if carrier not in (n.links.carrier.unique().tolist() + n.lines.carrier.unique().tolist()):
+            print(f"Carrier '{carrier}' is neither in lines nor links.")
+            continue  # Skip this carrier if not found in both links and lines
+
+        # Loop through relevant components
+        for c in n.iterate_components():
+            if c.name in ["Link", "Line"] and carrier in c.df['carrier'].unique():
+                # Filter based on carrier and region, excluding reversed links
+                all_i = c.df[
+                    (c.df['carrier'] == carrier) &
+                    (c.df.bus0+c.df.bus1).str.contains(region) &
+                    ~c.df.index.str.contains("reversed")
+                ].index
+
+                # Separate domestic and cross-border links
+                domestic_i = all_i[
+                    c.df.loc[all_i, 'bus0'].str.contains(region) &
+                    c.df.loc[all_i, 'bus1'].str.contains(region)
+                ]
+                cross_border_i = all_i.difference(domestic_i)
+
+                # Ensure indices match expected totals
+                assert len(all_i) == len(domestic_i) + len(cross_border_i)
+
+                # Calculate length factor if both sets are non-empty
+                if len(domestic_i) > 0 and len(cross_border_i) > 0:
+                    length_factor = (
+                        c.df.loc[domestic_i, 'length'].mean() /
+                        c.df.loc[cross_border_i, 'length'].mean()
+                    )
+                    length_factors[(carrier, c.name)] = length_factor
+                else:
+                    print(f"No domestic or cross-border links found for {carrier} in {c.name}.")
+
+    # Return single length factor if only one carrier was provided and has a length factor
+    if len(carriers) == 1 and len(length_factors) == 1:
+        return next(iter(length_factors.values()))
+    
+    return length_factors
+
 
 
 def _get_fuel_fractions(n, region, fuel):
@@ -3798,13 +3861,18 @@ def get_grid_investments(n, costs, region):
     #     )
     # )
     h2_investments = h2_expansion * new_h2_links.overnight_cost * 1e-9
-    # International h2_projects are only accounted with half the costs
+    # International h2_projects are only accounted with domestic_length_factor * costs
+    if len(h2_links.carrier.unique()) == 1:
+        dlf = domestic_length_factor(n, h2_links.carrier.unique().tolist(), region)
+    else:
+        dlf = np.array(list(domestic_length_factor(n, h2_links.carrier.unique().tolist(), region).values())).mean()
+
     h2_investments[
         ~(
             new_h2_links.bus0.str.contains(region)
             & new_h2_links.bus1.str.contains(region)
         )
-    ] *= 0.5 # rather 0.4
+    ] *= dlf
 
     var["Investment|Energy Supply|Hydrogen|Transmission and Distribution"] = var[
         "Investment|Energy Supply|Hydrogen|Transmission"
@@ -4619,6 +4687,70 @@ def get_grid_capacity(n, region, year):
         distr_grid.eval("(p_nom_opt - p_nom_min)").sum() * MW2GW
     )
 
+    # Hydrogen : TW*km 
+    # TODO: add missing variables and make nice plot
+
+    h2_links = n.links[
+        n.links.carrier.str.contains("H2 pipeline")
+        & ~n.links.reversed
+        & (n.links.bus0 + n.links.bus1).str.contains(region)
+    ]
+
+    # Count length of internationl links according to domestic length factor
+    h2_links.loc[
+        ~(h2_links.bus0.str.contains(region) & h2_links.bus1.str.contains(region)),
+        "length",
+    ] *= 0.5 # domestic_length_factor(n, "H2 pipeline (Kernnetz)", region) 
+
+    # Kernnetz
+    h2_links_kern = h2_links[h2_links.index.str.contains("kernnetz")]
+
+    # Endogeneous
+    endo_carriers = ["H2 pipeline", "H2 pipeline retrofitted"]
+    h2_links_endo = h2_links[h2_links.carrier.isin(endo_carriers)]
+
+    var["Capacity|Hydrogen|Transmission"] = (
+        h2_links.eval("p_nom_opt * length").sum() * MW2TW
+    )
+    var["Capacity|Hydrogen|Transmission|Kernnetz"] = (
+        h2_links_kern.eval("p_nom_opt * length").sum() * MW2TW
+    )
+    # var["Capacity|Hydrogen|Transmission|Kernnetz|Newbuild"] = 
+    # var["Capacity|Hydrogen|Transmission|Kernnetz|Retrofitted"] = 
+    var["Capacity|Hydrogen|Transmission|Endogenous"] = (
+        h2_links_endo.eval("p_nom_opt * length").sum() * MW2TW
+    )
+    # var["Capacity|Hydrogen|Transmission|Endogenous|Newbuild"] = 
+    # var["Capacity|Hydrogen|Transmission|Endogenous|Retrofitted"] = 
+
+    assert isclose(var["Capacity|Hydrogen|Transmission"], var["Capacity|Hydrogen|Transmission|Kernnetz"] + var["Capacity|Hydrogen|Transmission|Endogenous"]), "Hydrogen transmission capacity is not correctly split into Kernnetz and Endogenous"
+
+    year = h2_links.build_year.max()
+    new_h2_links = h2_links[
+        ((year - 5) < h2_links.build_year) & (h2_links.build_year <= year)
+    ]
+    new_h2_links_kern = new_h2_links[new_h2_links.index.str.contains("kernnetz")]
+    new_h2_links_endo = new_h2_links[new_h2_links.carrier.isin(endo_carriers)]
+
+    
+    var["Capacity Additions|Hydrogen|Transmission"] = (
+        new_h2_links.eval("(p_nom_opt - p_nom_min) * length").sum() * MW2TW
+    )
+    var["Capacity Additions|Hydrogen|Transmission|Kernnetz"] = (
+        new_h2_links_kern.eval("(p_nom_opt - p_nom_min) * length").sum() * MW2TW
+    )
+    # var["Capacity Additions|Hydrogen|Transmission|Kernnetz|Newbuild"] = 
+    # var["Capacity Additions|Hydrogen|Transmission|Kernnetz|Retrofitted"] = 
+    var["Capacity Additions|Hydrogen|Transmission|Endogenous"] = (
+        new_h2_links_endo.eval("(p_nom_opt - p_nom_min) * length").sum() * MW2TW
+    )
+    # var["Capacity Additions|Hydrogen|Transmission|Endogenous|Newbuild"] = 
+    # var["Capacity Additions|Hydrogen|Transmission|Endogenous|Retrofitted"] = 
+
+    assert isclose(var["Capacity Additions|Hydrogen|Transmission"], var["Capacity Additions|Hydrogen|Transmission|Kernnetz"] + var["Capacity Additions|Hydrogen|Transmission|Endogenous"]), "Hydrogen transmission capacity additions are not correctly split into Kernnetz and Endogenous"
+
+    # TODO: add length additions
+
     return var
 
 
@@ -5071,3 +5203,4 @@ if __name__ == "__main__":
     with pd.ExcelWriter(snakemake.output.exported_variables) as writer:
         ariadne_df.round(5).to_excel(writer, sheet_name="data", index=False)
         meta.to_frame().T.to_excel(writer, sheet_name="meta", index=False)
+
