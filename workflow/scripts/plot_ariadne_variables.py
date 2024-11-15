@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-EUR20TOEUR23 = 1.1076
 
 def plot_Kernnetz(df, savepath=None):
     key = "Investment|Energy Supply|Hydrogen|Transmission and Distribution|"
@@ -178,7 +177,8 @@ def plot_NEP_Trassen(df, savepath=None, gleichschaltung=True):
     plotframe.to_csv(snakemake.output.trassenlaenge_csv)
 
 
-def plot_NEP(df, savepath=None, gleichschaltung=True):
+def plot_NEP(df, savepath=None, gleichschaltung=True, currency_year=2020):
+        
     key = "Investment|Energy Supply|Electricity|Transmission|"
 
     data = {
@@ -198,40 +198,52 @@ def plot_NEP(df, savepath=None, gleichschaltung=True):
             145.1,
         ],
         "exogen": [
-            EUR20TOEUR23 * df.loc[key + "DC|NEP|Onshore"].values.sum() * 5,
-            EUR20TOEUR23 * df.loc[key + "AC|NEP|Onshore"].values.sum() * 5,
+            df.loc[key + "DC|NEP|Onshore"].values.sum() * 5,
+            df.loc[key + "AC|NEP|Onshore"].values.sum() * 5,
             0,  # see "Übernahme"
             None,
-            EUR20TOEUR23 * df.loc[key + "NEP|Offshore"].values.sum() * 5,
+            df.loc[key + "NEP|Offshore"].values.sum() * 5,
         ],
         "endogen": [
-            EUR20TOEUR23 * (
+            (
                 df.loc[key + "DC|Onshore"].values
                 - df.loc[key + "DC|NEP|Onshore"].values
             ).sum()
             * 5,
-            EUR20TOEUR23 * (
+            (
                 df.loc[key + "AC|Onshore"].values
                 - df.loc[key + "AC|NEP|Onshore"].values
             ).sum()
             * 5,
             0,
             None,
-            EUR20TOEUR23 * (
+            (
                 df.loc[key + "Offshore"].values - df.loc[key + "NEP|Offshore"].values
             ).sum()
             * 5,
         ],
         "Übernahme": [
             0,
-            EUR20TOEUR23 * df.loc[key + "AC|Übernahme|Startnetz Delta"].values.sum() * 5,
-            EUR20TOEUR23 * df.loc[key + "AC|Übernahme|Reactive Power Compensation"].values.sum() * 5,
+            df.loc[key + "AC|Übernahme|Startnetz Delta"].values.sum() * 5,
+            df.loc[key + "AC|Übernahme|Reactive Power Compensation"].values.sum() * 5,
             None,
             0,
         ],
     }
 
     plotframe = pd.DataFrame(data)
+
+    if currency_year == 2023:
+        plotframe["exogen"] *= 1.1076
+        plotframe["endogen"] *= 1.1076
+        plotframe["Übernahme"] *= 1.1076
+
+    elif currency_year == 2020:
+        plotframe["Startnetz"] /= 1.1076
+        plotframe["Zubaunetz"] /= 1.1076
+    else:
+        raise ValueError("Currency year not supported")
+
     plotframe.set_index("Kategorie", inplace=True)
     plotframe.loc["Onshore"] = plotframe.loc[
         ["AC", "DC", "System-\ndienstleistungen"]
@@ -271,8 +283,8 @@ def plot_NEP(df, savepath=None, gleichschaltung=True):
     )
 
     plt.xlabel("Kategorie")
-    plt.ylabel("Billionen EUR")
-    plt.title("Investitionen ins Übertragungsnetz")
+    plt.ylabel("Milliarden EUR{currency_year}")
+    plt.title("Investitionen ins Übertragungsnetz in EUR{currency_year}")
 
     # Adjust the x-ticks to be between the two bars
     plt.xticks(indices + bar_width / 2, plotframe.index)

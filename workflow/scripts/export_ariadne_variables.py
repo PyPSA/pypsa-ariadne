@@ -1458,35 +1458,20 @@ def get_secondary_energy(n, region, _industry_demand):
         .values.sum()
     )
 
+    electricity_balance = n.statistics.energy_balance(
+        bus_carrier=["AC", "low voltage"], **kwargs
+        ).filter(like=region).groupby(["carrier"]).sum()
+
+    if "V2G" in electricity_balance.index:
+        logger.error("The exporter requires changes to correctly account vehicle to grid technology.")
     var["Secondary Energy|Electricity|Storage Losses"] = (
-        n.statistics.withdrawal(bus_carrier=["AC", "low voltage"], **kwargs)
-        .filter(like=region)
-        .groupby(["carrier"])
-        .sum()
-        .reindex(
-            [
-                "BEV charger",
-                "battery charger",
-                "home battery charger",
-                "PHS",
-            ]
-        )
-        .subtract(
-            n.statistics.supply(bus_carrier=["AC", "low voltage"], **kwargs)
-            .filter(like=region)
-            .groupby(["carrier"])
-            .sum()
-            .reindex(
-                [
-                    "V2G",
-                    "battery discharger",
-                    "home battery discharger",
-                    "PHS",
-                ]
-            )
-        )
-        .multiply(MWh2PJ)
-        .sum()
+        -1 * electricity_balance.reindex([   
+            "battery charger",
+            "battery discharger",
+            "home battery charger",
+            "home battery discharger",
+            "PHS",
+        ]).multiply(MWh2PJ).sum()
     )
 
     # TODO Compute transmission losses via links_t
@@ -1646,7 +1631,7 @@ def get_secondary_energy(n, region, _industry_demand):
         .sum()
         .drop(["renewable oil", "methanol"], errors="ignore")  # Drop trade links
     )
-
+    var["Secondary Energy|Liquids|Fossil"] =\
     var["Secondary Energy|Liquids|Oil"] = liquids_production.get("oil refining", 0)
     var["Secondary Energy|Methanol"] = liquids_production.get("methanolisation", 0)
     var["Secondary Energy|Liquids|Hydrogen"] = liquids_production.get(
@@ -1733,6 +1718,10 @@ def get_secondary_energy(n, region, _industry_demand):
     var["Secondary Energy Input|Electricity|Heat"] = electricity_withdrawal.filter(
         like="urban central"
     ).sum()
+
+    var["Secondary Energy Input|Electricity|Liquids"] = (
+        electricity_withdrawal.get("methanolisation", 0)
+    )
 
     hydrogen_withdrawal = (
         n.statistics.withdrawal(bus_carrier="H2", **kwargs)
@@ -2034,14 +2023,18 @@ def get_final_energy(
         .multiply(MWh2PJ)
     )
 
+    rescom_electricity = low_voltage_electricity[
+        # carrier does not contain one of the following substrings
+        ~low_voltage_electricity.index.str.contains(
+            "urban central|industry|agriculture|charger|distribution"
+            # Excluding chargers (battery and EV)
+        )
+    ]
+    var["Final Energy|Residential and Commercial|Electricity|Heat Pumps"] = (
+        rescom_electricity.filter(like="heat pump").sum()
+    )
     var["Final Energy|Residential and Commercial|Electricity"] = (
-        low_voltage_electricity[
-            # carrier does not contain one of the following substrings
-            ~low_voltage_electricity.index.str.contains(
-                "urban central|industry|agriculture|charger|distribution"
-                # Excluding chargers (battery and EV)
-            )
-        ].sum()
+        rescom_electricity.sum()
     )
     # urban decentral heat and rural heat are delivered as different forms of energy
     # (gas, oil, biomass, ...)
@@ -2180,8 +2173,8 @@ def get_final_energy(
 
     # var["Final Energy|Transportation|Other"] = \
 
-    var["Final Energy|Transportation|Electricity"] = sum_load(
-        n, "land transport EV", region
+    var["Final Energy|Transportation|Electricity"] = (
+        low_voltage_electricity.get("BEV charger", 0)
     )
 
     # var["Final Energy|Transportation|Gases"] = \
@@ -2397,12 +2390,40 @@ def get_final_energy(
 
     var["Final Energy|Waste"] = waste_withdrawal.filter(like="waste CHP").sum()
 
+    var["Final Energy|Carbon Dioxide Removal|Heat"] = (
+        decentral_heat_withdrawal.get("DAC", 0)
+    )
+
+    electricity = (
+        n.statistics.withdrawal(
+            bus_carrier="AC",
+            **kwargs,
+        )
+        .filter(
+            like=region,
+        )
+        .groupby("carrier")
+        .sum()
+        .multiply(MWh2PJ)
+    )
+
+    var["Final Energy|Carbon Dioxide Removal|Electricity"] = (
+        electricity.get("DAC", 0)
+    )
+
+    var["Final Energy|Carbon Dioxide Removal"] = (
+        var["Final Energy|Carbon Dioxide Removal|Electricity"]
+        + var["Final Energy|Carbon Dioxide Removal|Heat"]
+    )
+
     var["Final Energy incl Non-Energy Use incl Bunkers"] = (
         var["Final Energy|Industry"]
         + var["Final Energy|Residential and Commercial"]
         + var["Final Energy|Agriculture"]
         + var["Final Energy|Transportation"]
         + var["Final Energy|Bunkers"]
+        + var["Final Energy|Waste"]
+        + var["Final Energy|Carbon Dioxide Removal"]
     )
 
     var["Final Energy"] = (
@@ -2410,6 +2431,8 @@ def get_final_energy(
         + var["Final Energy|Residential and Commercial"]
         + var["Final Energy|Agriculture"]
         + var["Final Energy|Transportation"]
+        + var["Final Energy|Waste"]
+        + var["Final Energy|Carbon Dioxide Removal"]
     )
 
     return var
@@ -4788,22 +4811,7 @@ def hack_DC_projects(n, p_nom_start, p_nom_planned, model_year, snakemake, costs
     n.links.loc[future_projects, "p_nom"] = 0
     n.links.loc[future_projects, "p_nom_min"] = 0
 
-    if (snakemake.params.NEP_year == 2021) or (
-        snakemake.params.NEP_transmission == "overhead"
-    ):
-        logger.warning("Switching DC projects to NEP23 and underground costs.")
-        n.links.loc[current_projects, "overnight_cost"] = (
-            n.links.loc[current_projects, "length"]
-            * (
-                (1.0 - n.links.loc[current_projects, "underwater_fraction"])
-                * costs[0].at["HVDC underground", "investment"]
-                / 1e-9
-                + n.links.loc[current_projects, "underwater_fraction"]
-                * costs[0].at["HVDC submarine", "investment"]
-                / 1e-9
-            )
-            + costs[0].at["HVDC inverter pair", "investment"] / 1e-9
-        )
+
     # Current projects should have their p_nom_opt bigger or equal to p_nom until the year 2030 (Startnetz that we force in)
     # TODO 2030 is hard coded but should be read from snakemake config
     if model_year <= 2030:
@@ -4814,7 +4822,22 @@ def hack_DC_projects(n, p_nom_start, p_nom_planned, model_year, snakemake, costs
 
         n.links.loc[current_projects, "p_nom"] -= p_nom_start[current_projects]
         n.links.loc[current_projects, "p_nom_min"] -= p_nom_start[current_projects]
-
+        if (snakemake.params.NEP_year == 2021) or (
+            snakemake.params.NEP_transmission == "overhead"
+        ):
+            logger.warning("Switching DC projects to NEP23 and underground costs.")
+            n.links.loc[current_projects, "overnight_cost"] = (
+                n.links.loc[current_projects, "length"]
+                * (
+                    (1.0 - n.links.loc[current_projects, "underwater_fraction"])
+                    * costs[0].at["HVDC underground", "investment"]
+                    / 1e-9
+                    + n.links.loc[current_projects, "underwater_fraction"]
+                    * costs[0].at["HVDC submarine", "investment"]
+                    / 1e-9
+                )
+                + costs[0].at["HVDC inverter pair", "investment"] / 1e-9
+            )
     else:
         n.links.loc[current_projects, "p_nom"] = n.links.loc[
             current_projects, "p_nom_min"
@@ -4859,13 +4882,14 @@ def process_postnetworks(n, n_start, model_year, snakemake, costs):
         snakemake.params.post_discretization["link_unit_size"]["DC"],
         snakemake.params.post_discretization["link_threshold"]["DC"],
     )
+    dc_links = n.links.query("carrier == 'DC'").index
     for attr in ["p_nom_opt", "p_nom", "p_nom_min"]:
         # The values  in p_nom_opt may already be discretized, here we make sure that
         # the same logic is applied to p_nom and p_nom_min
-        n.links[attr] = n.links[attr].apply(_dc_lambda)
+        n.links.loc[dc_links, attr] = n.links.loc[dc_links, attr].apply(_dc_lambda)
 
-    p_nom_planned = n_start.links["p_nom"]
-    p_nom_start = n_start.links["p_nom"].apply(_dc_lambda)
+    p_nom_planned = n_start.links.loc[dc_links, "p_nom"]
+    p_nom_start = n_start.links.loc[dc_links, "p_nom"].apply(_dc_lambda)
 
     logger.info("Post-Discretizing AC lines")
     _ac_lambda = lambda x: get_discretized_value(
