@@ -4967,12 +4967,29 @@ def hack_AC_projects(n, s_nom_start, model_year, snakemake):
 
 
 def process_postnetworks(n, n_start, model_year, snakemake, costs):
+    post_discretization = snakemake.params.post_discretization
+
+    # logger.info("Post-Discretizing H2 pipeline")
+
+    # assert post_discretization["link_unit_size"]["H2 pipeline"] == post_discretization["link_unit_size"]["H2 pipeline retrofitted"]
+    # assert post_discretization["link_threshold"]["H2 pipeline"] == post_discretization["link_threshold"]["H2 pipeline retrofitted"]
+
+    # _h2_lambda = lambda x: get_discretized_value(
+    #     x,
+    #     post_discretization["link_unit_size"]["H2 pipeline"],
+    #     post_discretization["link_threshold"]["H2 pipeline"],
+    # )
+    # h2_links = n.links.query("carrier == 'H2 pipeline' or carrier == 'H2 pipeline retrofitted'").index
+    # for attr in ["p_nom_opt", "p_nom", "p_nom_min"]:
+    #     # The values  in p_nom_opt may already be discretized, here we make sure that
+    #     # the same logic is applied to p_nom and p_nom_min
+    #     n.links.loc[h2_links, attr] = n.links.loc[h2_links, attr].apply(_h2_lambda)
 
     logger.info("Post-Discretizing DC links")
     _dc_lambda = lambda x: get_discretized_value(
         x,
-        snakemake.params.post_discretization["link_unit_size"]["DC"],
-        snakemake.params.post_discretization["link_threshold"]["DC"],
+        post_discretization["link_unit_size"]["DC"],
+        post_discretization["link_threshold"]["DC"],
     )
     dc_links = n.links.query("carrier == 'DC'").index
     for attr in ["p_nom_opt", "p_nom", "p_nom_min"]:
@@ -4986,8 +5003,8 @@ def process_postnetworks(n, n_start, model_year, snakemake, costs):
     logger.info("Post-Discretizing AC lines")
     _ac_lambda = lambda x: get_discretized_value(
         x,
-        snakemake.params.post_discretization["line_unit_size"],
-        snakemake.params.post_discretization["line_threshold"],
+        post_discretization["line_unit_size"],
+        post_discretization["line_threshold"],
     )
     for attr in ["s_nom_opt", "s_nom", "s_nom_min"]:
         # The values  in s_nom_opt may already be discretized, here we make sure that
