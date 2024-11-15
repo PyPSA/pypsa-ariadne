@@ -4663,13 +4663,14 @@ def process_postnetworks(n, n_start, model_year, snakemake, costs):
         snakemake.params.post_discretization["link_unit_size"]["DC"],
         snakemake.params.post_discretization["link_threshold"]["DC"],
     )
+    dc_links = n.links.query("carrier == 'DC'").index
     for attr in ["p_nom_opt", "p_nom", "p_nom_min"]:
         # The values  in p_nom_opt may already be discretized, here we make sure that
         # the same logic is applied to p_nom and p_nom_min
-        n.links[attr] = n.links[attr].apply(_dc_lambda)
+        n.links.loc[dc_links, attr] = n.links.loc[dc_links, attr].apply(_dc_lambda)
 
-    p_nom_planned = n_start.links["p_nom"]
-    p_nom_start = n_start.links["p_nom"].apply(_dc_lambda)
+    p_nom_planned = n_start.links.loc[dc_links, "p_nom"]
+    p_nom_start = n_start.links.loc[dc_links, "p_nom"].apply(_dc_lambda)
 
     logger.info("Post-Discretizing AC lines")
     _ac_lambda = lambda x: get_discretized_value(
