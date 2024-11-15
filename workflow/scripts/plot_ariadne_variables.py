@@ -928,4 +928,6 @@ if __name__ == "__main__":
     plot_NEP(df, savepath=snakemake.output.NEP_plot)
     plot_NEP_Trassen(df, savepath=snakemake.output.NEP_Trassen_plot)
 
-    plot_Kernnetz(df, savepath=snakemake.output.Kernnetz_Investment_plot, currency_year=2020)
+    plot_Kernnetz(
+        df, savepath=snakemake.output.Kernnetz_Investment_plot, currency_year=2020
+    )
