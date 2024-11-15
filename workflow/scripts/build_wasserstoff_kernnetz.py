@@ -67,8 +67,8 @@ def diameter_to_capacity_h2(pipe_diameter_mm):
     Calculate pipe capacity in MW based on diameter in mm. Linear
     interpolation.
 
-    20 inch (500 mm) 50 bar -> 1.2   GW H2 pipe capacity (LHV) 
-    36 inch (900 mm) 50 bar -> 4.7   GW H2 pipe capacity (LHV) 
+    20 inch (500 mm) 50 bar -> 1.2   GW H2 pipe capacity (LHV)
+    36 inch (900 mm) 50 bar -> 4.7   GW H2 pipe capacity (LHV)
     48 inch (1200mm) 80 bar -> 13.0  GW H2 pipe capacity (LHV)
 
     old source: table 4 of
@@ -570,7 +570,7 @@ if __name__ == "__main__":
         snakemake.input.wasserstoff_kernnetz_3,
     )
     logger.info("Data retrievel successful. Preparing dataset ...")
-    
+
     wasserstoff_kernnetz = prepare_dataset(wasserstoff_kernnetz)
 
     if kernnetz_cf["reload_locations"]:

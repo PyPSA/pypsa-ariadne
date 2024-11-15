@@ -12,7 +12,7 @@ def plot_Kernnetz(df, savepath=None):
     data = {
         "Kategorie": ["FNB", "PyPSA"],
         "Kernnetz-Zubau": [
-            12.3+0.6,
+            12.3 + 0.6,
             df.loc[key + "Kernnetz|New-build"].values.sum() * 5,
         ],
         "Kernnetz-Umstellung": [
@@ -28,7 +28,7 @@ def plot_Kernnetz(df, savepath=None):
             df.loc[key + "Endogen|Retrofitted"].values.sum() * 5,
         ],
         "PCI+IPCEI": [
-            7.8, 
+            7.8,
             df.loc[key + "Kernnetz|PCI+IPCEI"].values.sum() * 5,
         ],
         "Not PCI+IPCEI": [
@@ -41,30 +41,47 @@ def plot_Kernnetz(df, savepath=None):
     plotframe.set_index("Kategorie", inplace=True)
 
     # Set up the plot
-    fig, ax = plt.subplots(1,2,figsize=(10, 6))
+    fig, ax = plt.subplots(1, 2, figsize=(10, 6))
 
     # Create bars
     bar_width = 0.35
     x = np.arange(2)  # Three groups
 
-    group1 = ['Kernnetz-Zubau', 'Kernnetz-Umstellung', 'Endogen-Zubau', 'Endogen-Umstellung']
-    group2 = ['PCI+IPCEI', 'Not PCI+IPCEI']
+    group1 = [
+        "Kernnetz-Zubau",
+        "Kernnetz-Umstellung",
+        "Endogen-Zubau",
+        "Endogen-Umstellung",
+    ]
+    group2 = ["PCI+IPCEI", "Not PCI+IPCEI"]
 
     colors_dict = {
         # Group 1 - Using turquoise to pink spectrum
-        'Kernnetz-Zubau': '#00A4B4',      # Turquoise
-        'Kernnetz-Umstellung': '#20CFB4',  # Bright turquoise-mint
-        'Endogen-Zubau': '#FF69B4',        # Hot pink
-        'Endogen-Umstellung': '#BA55D3',   # Medium orchid (purple-pink)
-        
+        "Kernnetz-Zubau": "#00A4B4",  # Turquoise
+        "Kernnetz-Umstellung": "#20CFB4",  # Bright turquoise-mint
+        "Endogen-Zubau": "#FF69B4",  # Hot pink
+        "Endogen-Umstellung": "#BA55D3",  # Medium orchid (purple-pink)
         # Group 2 - Keeping warm colors
-        'PCI+IPCEI': '#D95F02',           # Orange
-        'Not PCI+IPCEI': '#E7B031'        # Golden yellow
+        "PCI+IPCEI": "#D95F02",  # Orange
+        "Not PCI+IPCEI": "#E7B031",  # Golden yellow
     }
     # Create grouped bars
     y_limit = plotframe[group1].sum(axis=1).max() + 3
-    plotframe[group1].plot(kind="bar", stacked=True, ax=ax[0], ylim=(0,y_limit), ylabel="Investment (Mrd. €)", color=[colors_dict.get(x, '#333333') for x in group1])
-    plotframe[group2].plot(kind="bar", stacked=True, ax=ax[1], ylim=(0,y_limit), color=[colors_dict.get(x, '#333333') for x in group2])
+    plotframe[group1].plot(
+        kind="bar",
+        stacked=True,
+        ax=ax[0],
+        ylim=(0, y_limit),
+        ylabel="Investment (Mrd. €)",
+        color=[colors_dict.get(x, "#333333") for x in group1],
+    )
+    plotframe[group2].plot(
+        kind="bar",
+        stacked=True,
+        ax=ax[1],
+        ylim=(0, y_limit),
+        color=[colors_dict.get(x, "#333333") for x in group2],
+    )
 
     plt.suptitle("Investitionen ins Wasserstoffnetz")
 
@@ -75,6 +92,7 @@ def plot_Kernnetz(df, savepath=None):
         plt.savefig(savepath, bbox_inches="tight")
     else:
         plt.show()
+
 
 def plot_NEP_Trassen(df, savepath=None, gleichschaltung=True):
 
@@ -178,7 +196,7 @@ def plot_NEP_Trassen(df, savepath=None, gleichschaltung=True):
 
 
 def plot_NEP(df, savepath=None, gleichschaltung=True, currency_year=2020):
-        
+
     key = "Investment|Energy Supply|Electricity|Transmission|"
 
     data = {
@@ -904,4 +922,3 @@ if __name__ == "__main__":
     plot_NEP_Trassen(df, savepath=snakemake.output.NEP_Trassen_plot)
 
     plot_Kernnetz(df, savepath=snakemake.output.Kernnetz_Investment_plot)
-

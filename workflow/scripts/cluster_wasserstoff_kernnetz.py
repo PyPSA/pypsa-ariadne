@@ -13,22 +13,19 @@ logger = logging.getLogger(__name__)
 import os
 import sys
 
-import pandas as pd
 import geopandas as gpd
+import pandas as pd
 import pyproj
+from pypsa.geo import haversine_pts
 from shapely import wkt
 from shapely.geometry import LineString, Point
 from shapely.ops import transform
-from pypsa.geo import haversine_pts
 
 paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
 for path in paths:
     sys.path.insert(0, os.path.abspath(path))
-from cluster_gas_network import (
-    load_bus_regions,
-    reindex_pipes,
-)
 from _helpers import configure_logging
+from cluster_gas_network import load_bus_regions, reindex_pipes
 
 # Define a function for projecting points to meters
 project_to_meters = pyproj.Transformer.from_proj(
@@ -126,7 +123,9 @@ def divide_pipes(df, segment_length=10):
     return result
 
 
-def build_clustered_h2_network(df, bus_regions, recalculate_length=True, length_factor=1.25):
+def build_clustered_h2_network(
+    df, bus_regions, recalculate_length=True, length_factor=1.25
+):
     for i in [0, 1]:
         gdf = gpd.GeoDataFrame(geometry=df[f"point{i}"], crs="EPSG:4326")
 
@@ -165,6 +164,7 @@ def build_clustered_h2_network(df, bus_regions, recalculate_length=True, length_
 
     return df
 
+
 def aggregate_parallel_pipes(df, aggregate_build_years="mean"):
     strategies = {
         "bus0": "first",
@@ -177,7 +177,7 @@ def aggregate_parallel_pipes(df, aggregate_build_years="mean"):
         "length": "mean",
         "name": " ".join,
         "p_min_pu": "min",
-        'investment_costs (Mio. Euro)': "sum",
+        "investment_costs (Mio. Euro)": "sum",
         "removed_gas_cap": "sum",
         "ipcei": " ".join,
         "pci": " ".join,
@@ -224,18 +224,31 @@ if __name__ == "__main__":
         segment_length = kernnetz_cf["pipes_segment_length"]
         df = divide_pipes(df, segment_length=segment_length)
 
-    wasserstoff_kernnetz = build_clustered_h2_network(df, 
-                                                        bus_regions, 
-                                                        recalculate_length=kernnetz_cf["recalculate_length"], 
-                                                        length_factor=1.25)
+    wasserstoff_kernnetz = build_clustered_h2_network(
+        df,
+        bus_regions,
+        recalculate_length=kernnetz_cf["recalculate_length"],
+        length_factor=1.25,
+    )
 
     if kernnetz_cf["divide_pipes"] & (not kernnetz_cf["aggregate_parallel_pipes"]):
         # Set length to 0 for duplicates from the 2nd occurrence onwards and make name unique
-        logger.info(f"Setting length to 0 for splitted pipes as Kernnetz pipes are segmented (divide pipes: {kernnetz_cf["divide_pipes"]}) and paralle pipes not aggregated (aggregate_parallel_pipes: {kernnetz_cf["aggregate_parallel_pipes"]}).")
-        wasserstoff_kernnetz['occurrence'] = wasserstoff_kernnetz.groupby('name').cumcount() + 1
-        wasserstoff_kernnetz.loc[wasserstoff_kernnetz['occurrence'] > 1, 'length'] = 0
-        wasserstoff_kernnetz['name'] = wasserstoff_kernnetz.apply(lambda row: f"{row['name']}-split{row['occurrence']}" if row['occurrence'] > 1 else row['name'], axis=1)
-        wasserstoff_kernnetz = wasserstoff_kernnetz.drop(columns='occurrence')
+        logger.info(
+            f"Setting length to 0 for splitted pipes as Kernnetz pipes are segmented (divide pipes: {kernnetz_cf["divide_pipes"]}) and paralle pipes not aggregated (aggregate_parallel_pipes: {kernnetz_cf["aggregate_parallel_pipes"]})."
+        )
+        wasserstoff_kernnetz["occurrence"] = (
+            wasserstoff_kernnetz.groupby("name").cumcount() + 1
+        )
+        wasserstoff_kernnetz.loc[wasserstoff_kernnetz["occurrence"] > 1, "length"] = 0
+        wasserstoff_kernnetz["name"] = wasserstoff_kernnetz.apply(
+            lambda row: (
+                f"{row['name']}-split{row['occurrence']}"
+                if row["occurrence"] > 1
+                else row["name"]
+            ),
+            axis=1,
+        )
+        wasserstoff_kernnetz = wasserstoff_kernnetz.drop(columns="occurrence")
 
     if not wasserstoff_kernnetz.empty:
         wasserstoff_kernnetz[["bus0", "bus1"]] = (
@@ -253,9 +266,8 @@ if __name__ == "__main__":
             wasserstoff_kernnetz = aggregate_parallel_pipes(
                 wasserstoff_kernnetz, kernnetz_cf["aggregate_build_years"]
             )
-        
+
         else:
             wasserstoff_kernnetz.index = wasserstoff_kernnetz.name.astype(str)
-
 
     wasserstoff_kernnetz.to_csv(snakemake.output.clustered_h2_network)

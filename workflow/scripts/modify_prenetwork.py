@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
 for path in paths:
     sys.path.insert(0, os.path.abspath(path))
+from _helpers import configure_logging
 from add_electricity import load_costs
 from prepare_sector_network import lossy_bidirectional_links, prepare_costs
-from _helpers import configure_logging
 
 
 def first_technology_occurrence(n):
@@ -245,13 +245,13 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
 
         # add tags
         tags = wkn_new.apply(
-                    lambda row: {
-                        "pci": row["pci"],
-                        "ipcei": row["ipcei"],
-                        "investment_costs (Mio. Euro)": row["investment_costs (Mio. Euro)"]
-                    },
-                    axis=1
-                )
+            lambda row: {
+                "pci": row["pci"],
+                "ipcei": row["ipcei"],
+                "investment_costs (Mio. Euro)": row["investment_costs (Mio. Euro)"],
+            },
+            axis=1,
+        )
         n.links.loc[names, "tags"] = tags.values.astype(str)
 
         # add reversed pipes and losses
