@@ -1688,7 +1688,7 @@ def get_secondary_energy(n, region, _industry_demand):
         "Sabatier", 0
     )
 
-    var["Secondary Energy Input|Hydrogen|Efuel"] = hydrogen_withdrawal.reindex(
+    var["Secondary Energy Input|Hydrogen|Liquids"] = hydrogen_withdrawal.reindex(
         ["Fischer-Tropsch", "methanolisation"]
     ).sum()
 
@@ -4592,22 +4592,7 @@ def hack_DC_projects(n, p_nom_start, p_nom_planned, model_year, snakemake, costs
     n.links.loc[future_projects, "p_nom"] = 0
     n.links.loc[future_projects, "p_nom_min"] = 0
 
-    if (snakemake.params.NEP_year == 2021) or (
-        snakemake.params.NEP_transmission == "overhead"
-    ):
-        logger.warning("Switching DC projects to NEP23 and underground costs.")
-        n.links.loc[current_projects, "overnight_cost"] = (
-            n.links.loc[current_projects, "length"]
-            * (
-                (1.0 - n.links.loc[current_projects, "underwater_fraction"])
-                * costs[0].at["HVDC underground", "investment"]
-                / 1e-9
-                + n.links.loc[current_projects, "underwater_fraction"]
-                * costs[0].at["HVDC submarine", "investment"]
-                / 1e-9
-            )
-            + costs[0].at["HVDC inverter pair", "investment"] / 1e-9
-        )
+
     # Current projects should have their p_nom_opt bigger or equal to p_nom until the year 2030 (Startnetz that we force in)
     # TODO 2030 is hard coded but should be read from snakemake config
     if model_year <= 2030:
@@ -4618,7 +4603,22 @@ def hack_DC_projects(n, p_nom_start, p_nom_planned, model_year, snakemake, costs
 
         n.links.loc[current_projects, "p_nom"] -= p_nom_start[current_projects]
         n.links.loc[current_projects, "p_nom_min"] -= p_nom_start[current_projects]
-
+        if (snakemake.params.NEP_year == 2021) or (
+            snakemake.params.NEP_transmission == "overhead"
+        ):
+            logger.warning("Switching DC projects to NEP23 and underground costs.")
+            n.links.loc[current_projects, "overnight_cost"] = (
+                n.links.loc[current_projects, "length"]
+                * (
+                    (1.0 - n.links.loc[current_projects, "underwater_fraction"])
+                    * costs[0].at["HVDC underground", "investment"]
+                    / 1e-9
+                    + n.links.loc[current_projects, "underwater_fraction"]
+                    * costs[0].at["HVDC submarine", "investment"]
+                    / 1e-9
+                )
+                + costs[0].at["HVDC inverter pair", "investment"] / 1e-9
+            )
     else:
         n.links.loc[current_projects, "p_nom"] = n.links.loc[
             current_projects, "p_nom_min"
