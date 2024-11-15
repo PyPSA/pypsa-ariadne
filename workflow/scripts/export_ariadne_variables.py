@@ -4806,10 +4806,20 @@ def get_grid_capacity(n, region, year):
     ]
 
     # Count length of internationl links according to domestic length factor
+    if len(h2_links.carrier.unique()) == 1:
+        dlf = domestic_length_factor(n, h2_links.carrier.unique().tolist(), region)
+    else:
+        dlf = np.array(
+            list(
+                domestic_length_factor(
+                    n, h2_links.carrier.unique().tolist(), region
+                ).values()
+            )
+        ).mean()
     h2_links.loc[
         ~(h2_links.bus0.str.contains(region) & h2_links.bus1.str.contains(region)),
         "length",
-    ] *= 0.5  # domestic_length_factor(n, "H2 pipeline (Kernnetz)", region)
+    ] *= dlf
 
     # Kernnetz
     h2_links_kern = h2_links[h2_links.index.str.contains("kernnetz")]

@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 
-def plot_Kernnetz(df, savepath=None):
+def plot_Kernnetz(df, savepath=None, currency_year=2020):
     key = "Investment|Energy Supply|Hydrogen|Transmission and Distribution|"
 
     data = {
@@ -39,6 +39,13 @@ def plot_Kernnetz(df, savepath=None):
 
     plotframe = pd.DataFrame(data)
     plotframe.set_index("Kategorie", inplace=True)
+
+    if currency_year == 2023:
+        plotframe.loc["PyPSA"] *= 1.1076
+    elif currency_year == 2020:
+        plotframe.loc["FNB"] /= 1.1076
+    else:
+        raise ValueError("Currency year not supported")
 
     # Set up the plot
     fig, ax = plt.subplots(1, 2, figsize=(10, 6))
@@ -921,4 +928,4 @@ if __name__ == "__main__":
     plot_NEP(df, savepath=snakemake.output.NEP_plot)
     plot_NEP_Trassen(df, savepath=snakemake.output.NEP_Trassen_plot)
 
-    plot_Kernnetz(df, savepath=snakemake.output.Kernnetz_Investment_plot)
+    plot_Kernnetz(df, savepath=snakemake.output.Kernnetz_Investment_plot, currency_year=2020)
