@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import ast
 import logging
 import math
 import os
@@ -29,6 +30,7 @@ from prepare_sector_network import prepare_costs
 TWh2PJ = 3.6
 MWh2TJ = 3.6e-3
 MW2GW = 1e-3
+MW2TW = 1e-6
 t2Mt = 1e-6
 
 MWh2GJ = 3.6
@@ -38,6 +40,72 @@ toe_to_MWh = 11.630  # GWh/ktoe OR MWh/toe
 
 
 EUR20TOEUR23 = 1.1076
+
+
+def domestic_length_factor(n, carriers, region="DE"):
+    """
+    Calculate the length factor for specified carriers within a PyPSA network.
+
+    Parameters:
+    n (pypsa.Network): The PyPSA network object.
+    carriers (list or str): List of carrier types to filter, or a single carrier as a string.
+    region (str): The region code to match in the buses (e.g., "DE").
+
+    Returns:
+    float or dict: A single length factor if one carrier is provided; otherwise, a dictionary
+                   of length factors for each carrier and component type.
+    """
+    # If a single carrier is provided as a string, wrap it in a list
+    if isinstance(carriers, str):
+        carriers = [carriers]
+
+    length_factors = {}
+
+    # Check if carriers exist in network components
+    for carrier in carriers:
+        if carrier not in (
+            n.links.carrier.unique().tolist() + n.lines.carrier.unique().tolist()
+        ):
+            print(f"Carrier '{carrier}' is neither in lines nor links.")
+            continue  # Skip this carrier if not found in both links and lines
+
+        # Loop through relevant components
+        for c in n.iterate_components():
+            if c.name in ["Link", "Line"] and carrier in c.df["carrier"].unique():
+                # Filter based on carrier and region, excluding reversed links
+                all_i = c.df[
+                    (c.df["carrier"] == carrier)
+                    & (c.df.bus0 + c.df.bus1).str.contains(region)
+                    & ~c.df.index.str.contains("reversed")
+                ].index
+
+                # Separate domestic and cross-border links
+                domestic_i = all_i[
+                    c.df.loc[all_i, "bus0"].str.contains(region)
+                    & c.df.loc[all_i, "bus1"].str.contains(region)
+                ]
+                cross_border_i = all_i.difference(domestic_i)
+
+                # Ensure indices match expected totals
+                assert len(all_i) == len(domestic_i) + len(cross_border_i)
+
+                # Calculate length factor if both sets are non-empty
+                if len(domestic_i) > 0 and len(cross_border_i) > 0:
+                    length_factor = (
+                        c.df.loc[domestic_i, "length"].mean()
+                        / c.df.loc[cross_border_i, "length"].mean()
+                    )
+                    length_factors[(carrier, c.name)] = length_factor
+                else:
+                    print(
+                        f"No domestic or cross-border links found for {carrier} in {c.name}."
+                    )
+
+    # Return single length factor if only one carrier was provided and has a length factor
+    if len(carriers) == 1 and len(length_factors) == 1:
+        return next(iter(length_factors.values()))
+
+    return length_factors
 
 
 def _get_fuel_fractions(n, region, fuel):
@@ -1394,20 +1462,30 @@ def get_secondary_energy(n, region, _industry_demand):
         .values.sum()
     )
 
-    electricity_balance = n.statistics.energy_balance(
-        bus_carrier=["AC", "low voltage"], **kwargs
-        ).filter(like=region).groupby(["carrier"]).sum()
+    electricity_balance = (
+        n.statistics.energy_balance(bus_carrier=["AC", "low voltage"], **kwargs)
+        .filter(like=region)
+        .groupby(["carrier"])
+        .sum()
+    )
 
     if "V2G" in electricity_balance.index:
-        logger.error("The exporter requires changes to correctly account vehicle to grid technology.")
+        logger.error(
+            "The exporter requires changes to correctly account vehicle to grid technology."
+        )
     var["Secondary Energy|Electricity|Storage Losses"] = (
-        -1 * electricity_balance.reindex([   
-            "battery charger",
-            "battery discharger",
-            "home battery charger",
-            "home battery discharger",
-            "PHS",
-        ]).multiply(MWh2PJ).sum()
+        -1
+        * electricity_balance.reindex(
+            [
+                "battery charger",
+                "battery discharger",
+                "home battery charger",
+                "home battery discharger",
+                "PHS",
+            ]
+        )
+        .multiply(MWh2PJ)
+        .sum()
     )
 
     # TODO Compute transmission losses via links_t
@@ -1567,8 +1645,9 @@ def get_secondary_energy(n, region, _industry_demand):
         .sum()
         .drop(["renewable oil", "methanol"], errors="ignore")  # Drop trade links
     )
-    var["Secondary Energy|Liquids|Fossil"] =\
-    var["Secondary Energy|Liquids|Oil"] = liquids_production.get("oil refining", 0)
+    var["Secondary Energy|Liquids|Fossil"] = var["Secondary Energy|Liquids|Oil"] = (
+        liquids_production.get("oil refining", 0)
+    )
     var["Secondary Energy|Methanol"] = liquids_production.get("methanolisation", 0)
     var["Secondary Energy|Liquids|Hydrogen"] = liquids_production.get(
         "Fischer-Tropsch", 0
@@ -1655,8 +1734,8 @@ def get_secondary_energy(n, region, _industry_demand):
         like="urban central"
     ).sum()
 
-    var["Secondary Energy Input|Electricity|Liquids"] = (
-        electricity_withdrawal.get("methanolisation", 0)
+    var["Secondary Energy Input|Electricity|Liquids"] = electricity_withdrawal.get(
+        "methanolisation", 0
     )
 
     hydrogen_withdrawal = (
@@ -2109,8 +2188,8 @@ def get_final_energy(
 
     # var["Final Energy|Transportation|Other"] = \
 
-    var["Final Energy|Transportation|Electricity"] = (
-        low_voltage_electricity.get("BEV charger", 0)
+    var["Final Energy|Transportation|Electricity"] = low_voltage_electricity.get(
+        "BEV charger", 0
     )
 
     # var["Final Energy|Transportation|Gases"] = \
@@ -2326,8 +2405,8 @@ def get_final_energy(
 
     var["Final Energy|Waste"] = waste_withdrawal.filter(like="waste CHP").sum()
 
-    var["Final Energy|Carbon Dioxide Removal|Heat"] = (
-        decentral_heat_withdrawal.get("DAC", 0)
+    var["Final Energy|Carbon Dioxide Removal|Heat"] = decentral_heat_withdrawal.get(
+        "DAC", 0
     )
 
     electricity = (
@@ -2343,9 +2422,7 @@ def get_final_energy(
         .multiply(MWh2PJ)
     )
 
-    var["Final Energy|Carbon Dioxide Removal|Electricity"] = (
-        electricity.get("DAC", 0)
-    )
+    var["Final Energy|Carbon Dioxide Removal|Electricity"] = electricity.get("DAC", 0)
 
     var["Final Energy|Carbon Dioxide Removal"] = (
         var["Final Energy|Carbon Dioxide Removal|Electricity"]
@@ -3739,14 +3816,19 @@ def get_grid_investments(n, costs, region):
     # https://www.netzentwicklungsplan.de/sites/default/files/2023-07/NEP_2037_2045_V2023_2_Entwurf_Teil1_1.pdf
     # Tabelle 30, Abbildung 70, Kostenannahmen NEP + eigene Berechnungen, gerundet
     year = n.generators.build_year.max()
-    reactive_power_compensation = pd.Series({
-        2020: 0,
-        2025: 4.4,
-        2030: 8,
-        2035: 15,
-        2040: 10,
-        2045: 1.5,
-    }) / EUR20TOEUR23
+    reactive_power_compensation = (
+        pd.Series(
+            {
+                2020: 0,
+                2025: 4.4,
+                2030: 8,
+                2035: 15,
+                2040: 10,
+                2045: 1.5,
+            }
+        )
+        / EUR20TOEUR23
+    )
     var[var_name + "AC|Übernahme|Reactive Power Compensation"] = (
         reactive_power_compensation.get(year, 0) / 5
     )
@@ -3811,25 +3893,184 @@ def get_grid_investments(n, costs, region):
     new_h2_links = h2_links[
         ((year - 5) < h2_links.build_year) & (h2_links.build_year <= year)
     ]
-    h2_expansion = new_h2_links.p_nom_opt.apply(
-        lambda x: get_discretized_value(
-            x,
-            post_discretization["link_unit_size"]["H2 pipeline"],
-            post_discretization["link_threshold"]["H2 pipeline"],
-        )
-    )
+    h2_expansion = new_h2_links.p_nom_opt
+    # h2_expansion = new_h2_links.p_nom_opt.apply(
+    #     lambda x: get_discretized_value(
+    #         x,
+    #         post_discretization["link_unit_size"]["H2 pipeline"],
+    #         post_discretization["link_threshold"]["H2 pipeline"],
+    #     )
+    # )
     h2_investments = h2_expansion * new_h2_links.overnight_cost * 1e-9
-    # International h2_projects are only accounted with half the costs
+    # International h2_projects are only accounted with domestic_length_factor * costs
+    if len(h2_links.carrier.unique()) == 1:
+        dlf = domestic_length_factor(n, h2_links.carrier.unique().tolist(), region)
+    else:
+        dlf = np.array(
+            list(
+                domestic_length_factor(
+                    n, h2_links.carrier.unique().tolist(), region
+                ).values()
+            )
+        ).mean()
+
     h2_investments[
         ~(
             new_h2_links.bus0.str.contains(region)
             & new_h2_links.bus1.str.contains(region)
         )
-    ] *= 0.5
+    ] *= dlf
 
     var["Investment|Energy Supply|Hydrogen|Transmission and Distribution"] = var[
         "Investment|Energy Supply|Hydrogen|Transmission"
     ] = (h2_investments.sum() / 5)
+
+    new_h2_links_kernnetz_i = new_h2_links[
+        (new_h2_links.index.str.contains("kernnetz"))
+    ].index
+
+    new_h2_links_endogen_i = new_h2_links[
+        ~(new_h2_links.index.str.contains("kernnetz"))
+    ].index
+
+    var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Endogen"] = (
+        h2_investments[new_h2_links_endogen_i].sum() / 5
+    )
+    var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz"] = (
+        h2_investments[new_h2_links_kernnetz_i].sum() / 5
+    )
+
+    assert isclose(
+        var["Investment|Energy Supply|Hydrogen|Transmission and Distribution"],
+        var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Endogen"]
+        + var[
+            "Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz"
+        ],
+    )
+
+    if "retrofitted" in new_h2_links.columns:
+        new_h2_links_retrofitted_i = new_h2_links[
+            (new_h2_links.retrofitted == 1.0)
+            | (new_h2_links.index.str.contains("retrofitted"))
+        ].index
+    else:
+        new_h2_links_retrofitted_i = new_h2_links[
+            (new_h2_links.index.str.contains("retrofitted"))
+        ].index
+
+    new_h2_links_newbuild_i = new_h2_links.index.difference(new_h2_links_retrofitted_i)
+
+    var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|New-build"] = (
+        h2_investments[new_h2_links_newbuild_i].sum() / 5
+    )
+    var[
+        "Investment|Energy Supply|Hydrogen|Transmission and Distribution|Retrofitted"
+    ] = (h2_investments[new_h2_links_retrofitted_i].sum() / 5)
+
+    assert isclose(
+        var["Investment|Energy Supply|Hydrogen|Transmission and Distribution"],
+        var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|New-build"]
+        + var[
+            "Investment|Energy Supply|Hydrogen|Transmission and Distribution|Retrofitted"
+        ],
+    )
+
+    var[
+        "Investment|Energy Supply|Hydrogen|Transmission and Distribution|Endogen|New-build"
+    ] = (
+        h2_investments[
+            new_h2_links_newbuild_i.intersection(new_h2_links_endogen_i)
+        ].sum()
+        / 5
+    )
+    var[
+        "Investment|Energy Supply|Hydrogen|Transmission and Distribution|Endogen|Retrofitted"
+    ] = (
+        h2_investments[
+            new_h2_links_retrofitted_i.intersection(new_h2_links_endogen_i)
+        ].sum()
+        / 5
+    )
+    var[
+        "Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|New-build"
+    ] = (
+        h2_investments[
+            new_h2_links_newbuild_i.intersection(new_h2_links_kernnetz_i)
+        ].sum()
+        / 5
+    )
+    var[
+        "Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|Retrofitted"
+    ] = (
+        h2_investments[
+            new_h2_links_retrofitted_i.intersection(new_h2_links_kernnetz_i)
+        ].sum()
+        / 5
+    )
+
+    assert isclose(
+        var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Endogen"],
+        var[
+            "Investment|Energy Supply|Hydrogen|Transmission and Distribution|Endogen|New-build"
+        ]
+        + var[
+            "Investment|Energy Supply|Hydrogen|Transmission and Distribution|Endogen|Retrofitted"
+        ],
+    )
+
+    assert isclose(
+        var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz"],
+        var[
+            "Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|New-build"
+        ]
+        + var[
+            "Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|Retrofitted"
+        ],
+    )
+
+    if "tags" in new_h2_links.columns:
+        # extract infos from tags
+        tags = new_h2_links.loc[new_h2_links_kernnetz_i].tags.values
+        df = pd.DataFrame(tags, columns=["info"])
+        df["info"] = df["info"].apply(ast.literal_eval)
+        df["pci"] = df["info"].apply(lambda x: x["pci"])
+        df["ipcei"] = df["info"].apply(lambda x: x["ipcei"])
+        df["investment_costs (Mio. Euro)"] = df["info"].apply(
+            lambda x: x["investment_costs (Mio. Euro)"]
+        )
+        df.index = new_h2_links_kernnetz_i
+
+        pci_i = df[df["pci"] != "no"].index
+        ipcei_i = df[df["ipcei"] != "no"].index
+    else:
+        pci_i = []
+        ipcei_i = []
+
+    var[
+        "Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|PCI"
+    ] = (h2_investments[pci_i].sum() / 5)
+    var[
+        "Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|IPCEI"
+    ] = (h2_investments[ipcei_i].sum() / 5)
+    var[
+        "Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|PCI+IPCEI"
+    ] = (h2_investments[pci_i.union(ipcei_i)].sum() / 5)
+    var[
+        "Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|NOT-PCI+IPCEI"
+    ] = (
+        h2_investments[new_h2_links_kernnetz_i.difference(pci_i.union(ipcei_i))].sum()
+        / 5
+    )
+
+    assert isclose(
+        var["Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz"],
+        var[
+            "Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|PCI+IPCEI"
+        ]
+        + var[
+            "Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|NOT-PCI+IPCEI"
+        ],
+    )
 
     # TODO add retrofitted costs!!
 
@@ -4555,6 +4796,87 @@ def get_grid_capacity(n, region, year):
         distr_grid.eval("(p_nom_opt - p_nom_min)").sum() * MW2GW
     )
 
+    # Hydrogen : TW*km
+    # TODO: add missing variables and make nice plot
+
+    h2_links = n.links[
+        n.links.carrier.str.contains("H2 pipeline")
+        & ~n.links.reversed
+        & (n.links.bus0 + n.links.bus1).str.contains(region)
+    ]
+
+    # Count length of internationl links according to domestic length factor
+    if len(h2_links.carrier.unique()) == 1:
+        dlf = domestic_length_factor(n, h2_links.carrier.unique().tolist(), region)
+    else:
+        dlf = np.array(
+            list(
+                domestic_length_factor(
+                    n, h2_links.carrier.unique().tolist(), region
+                ).values()
+            )
+        ).mean()
+    h2_links.loc[
+        ~(h2_links.bus0.str.contains(region) & h2_links.bus1.str.contains(region)),
+        "length",
+    ] *= dlf
+
+    # Kernnetz
+    h2_links_kern = h2_links[h2_links.index.str.contains("kernnetz")]
+
+    # Endogeneous
+    endo_carriers = ["H2 pipeline", "H2 pipeline retrofitted"]
+    h2_links_endo = h2_links[h2_links.carrier.isin(endo_carriers)]
+
+    var["Capacity|Hydrogen|Transmission"] = (
+        h2_links.eval("p_nom_opt * length").sum() * MW2TW
+    )
+    var["Capacity|Hydrogen|Transmission|Kernnetz"] = (
+        h2_links_kern.eval("p_nom_opt * length").sum() * MW2TW
+    )
+    # var["Capacity|Hydrogen|Transmission|Kernnetz|Newbuild"] =
+    # var["Capacity|Hydrogen|Transmission|Kernnetz|Retrofitted"] =
+    var["Capacity|Hydrogen|Transmission|Endogenous"] = (
+        h2_links_endo.eval("p_nom_opt * length").sum() * MW2TW
+    )
+    # var["Capacity|Hydrogen|Transmission|Endogenous|Newbuild"] =
+    # var["Capacity|Hydrogen|Transmission|Endogenous|Retrofitted"] =
+
+    assert isclose(
+        var["Capacity|Hydrogen|Transmission"],
+        var["Capacity|Hydrogen|Transmission|Kernnetz"]
+        + var["Capacity|Hydrogen|Transmission|Endogenous"],
+    ), "Hydrogen transmission capacity is not correctly split into Kernnetz and Endogenous"
+
+    year = h2_links.build_year.max()
+    new_h2_links = h2_links[
+        ((year - 5) < h2_links.build_year) & (h2_links.build_year <= year)
+    ]
+    new_h2_links_kern = new_h2_links[new_h2_links.index.str.contains("kernnetz")]
+    new_h2_links_endo = new_h2_links[new_h2_links.carrier.isin(endo_carriers)]
+
+    var["Capacity Additions|Hydrogen|Transmission"] = (
+        new_h2_links.eval("(p_nom_opt - p_nom_min) * length").sum() * MW2TW
+    )
+    var["Capacity Additions|Hydrogen|Transmission|Kernnetz"] = (
+        new_h2_links_kern.eval("(p_nom_opt - p_nom_min) * length").sum() * MW2TW
+    )
+    # var["Capacity Additions|Hydrogen|Transmission|Kernnetz|Newbuild"] =
+    # var["Capacity Additions|Hydrogen|Transmission|Kernnetz|Retrofitted"] =
+    var["Capacity Additions|Hydrogen|Transmission|Endogenous"] = (
+        new_h2_links_endo.eval("(p_nom_opt - p_nom_min) * length").sum() * MW2TW
+    )
+    # var["Capacity Additions|Hydrogen|Transmission|Endogenous|Newbuild"] =
+    # var["Capacity Additions|Hydrogen|Transmission|Endogenous|Retrofitted"] =
+
+    assert isclose(
+        var["Capacity Additions|Hydrogen|Transmission"],
+        var["Capacity Additions|Hydrogen|Transmission|Kernnetz"]
+        + var["Capacity Additions|Hydrogen|Transmission|Endogenous"],
+    ), "Hydrogen transmission capacity additions are not correctly split into Kernnetz and Endogenous"
+
+    # TODO: add length additions
+
     return var
 
 
@@ -4591,7 +4913,6 @@ def hack_DC_projects(n, p_nom_start, p_nom_planned, model_year, snakemake, costs
     # We pretend that the model expanded the grid endogenously
     n.links.loc[future_projects, "p_nom"] = 0
     n.links.loc[future_projects, "p_nom_min"] = 0
-
 
     # Current projects should have their p_nom_opt bigger or equal to p_nom until the year 2030 (Startnetz that we force in)
     # TODO 2030 is hard coded but should be read from snakemake config
@@ -4656,12 +4977,29 @@ def hack_AC_projects(n, s_nom_start, model_year, snakemake):
 
 
 def process_postnetworks(n, n_start, model_year, snakemake, costs):
+    post_discretization = snakemake.params.post_discretization
+
+    # logger.info("Post-Discretizing H2 pipeline")
+
+    # assert post_discretization["link_unit_size"]["H2 pipeline"] == post_discretization["link_unit_size"]["H2 pipeline retrofitted"]
+    # assert post_discretization["link_threshold"]["H2 pipeline"] == post_discretization["link_threshold"]["H2 pipeline retrofitted"]
+
+    # _h2_lambda = lambda x: get_discretized_value(
+    #     x,
+    #     post_discretization["link_unit_size"]["H2 pipeline"],
+    #     post_discretization["link_threshold"]["H2 pipeline"],
+    # )
+    # h2_links = n.links.query("carrier == 'H2 pipeline' or carrier == 'H2 pipeline retrofitted'").index
+    # for attr in ["p_nom_opt", "p_nom", "p_nom_min"]:
+    #     # The values  in p_nom_opt may already be discretized, here we make sure that
+    #     # the same logic is applied to p_nom and p_nom_min
+    #     n.links.loc[h2_links, attr] = n.links.loc[h2_links, attr].apply(_h2_lambda)
 
     logger.info("Post-Discretizing DC links")
     _dc_lambda = lambda x: get_discretized_value(
         x,
-        snakemake.params.post_discretization["link_unit_size"]["DC"],
-        snakemake.params.post_discretization["link_threshold"]["DC"],
+        post_discretization["link_unit_size"]["DC"],
+        post_discretization["link_threshold"]["DC"],
     )
     dc_links = n.links.query("carrier == 'DC'").index
     for attr in ["p_nom_opt", "p_nom", "p_nom_min"]:
@@ -4675,8 +5013,8 @@ def process_postnetworks(n, n_start, model_year, snakemake, costs):
     logger.info("Post-Discretizing AC lines")
     _ac_lambda = lambda x: get_discretized_value(
         x,
-        snakemake.params.post_discretization["line_unit_size"],
-        snakemake.params.post_discretization["line_threshold"],
+        post_discretization["line_unit_size"],
+        post_discretization["line_threshold"],
     )
     for attr in ["s_nom_opt", "s_nom", "s_nom_min"]:
         # The values  in s_nom_opt may already be discretized, here we make sure that
@@ -4899,7 +5237,7 @@ if __name__ == "__main__":
 
     if "debug" == "debug":  # For debugging
         var = pd.Series()
-        idx = -1
+        idx = 2
         n = networks[idx]
         c = costs[idx]
         _industry_demand = industry_demands[idx]
@@ -4944,7 +5282,7 @@ if __name__ == "__main__":
     print("Gleichschaltung of AC-Startnetz with investments for AC projects")
     # In this hacky part of the code we assure that the investments for the AC projects, match those of the NEP-AC-Startnetz
     # Thus the variable 'Investment|Energy Supply|Electricity|Transmission|AC' is equal to the sum of exogeneous AC projects, endogenous AC expansion and Übernahme of NEP costs (mainly Systemdienstleistungen (Reactive Power Compensation) and lines that are below our spatial resolution)
-    ac_startnetz = 14.5 / 5 / EUR20TOEUR23 # billion EUR
+    ac_startnetz = 14.5 / 5 / EUR20TOEUR23  # billion EUR
 
     ac_projects_invest = df.query(
         "Variable == 'Investment|Energy Supply|Electricity|Transmission|AC|NEP|Onshore'"
@@ -4964,7 +5302,6 @@ if __name__ == "__main__":
             ).index,
             [2025, 2030, 2035, 2040],
         ] += (ac_startnetz - ac_projects_invest) / 4
-
 
     print("Assigning mean investments of year and year + 5 to year.")
     investment_rows = df.loc[df["Variable"].str.contains("Investment")]

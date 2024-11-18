@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241108-limit-ft-meoh
+  prefix: 20241113-export-kernnetz-invest
 
   name:
   # - CurrentPolicies
@@ -253,6 +253,8 @@ wasserstoff_kernnetz:
   pipes_segment_length: 10
   border_crossing: true
   aggregate_build_years: "mean"
+  recalculate_length: true
+  aggregate_parallel_pipes: true
   ipcei_pci_only: false
   cutoff_year: 2028
   force_all_ipcei_pci: true
@@ -415,15 +417,13 @@ solving:
         DC: 1000
         gas pipeline: 1500
         gas pipeline new: 1500
-        H2 pipeline: 13000
-        H2 pipeline (Kernnetz): 13000
-        H2 pipeline retrofitted: 13000
+        H2 pipeline: 4700
+        H2 pipeline retrofitted: 4700
       link_threshold:
         DC: 0.3
         gas pipeline: 0.3
         gas pipeline new: 0.3
         H2 pipeline: 0.05
-        H2 pipeline (Kernnetz): 0.05
         H2 pipeline retrofitted: 0.05
       fractional_last_unit_size: true
   constraints:
