@@ -7,7 +7,6 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pypsa
-from _helpers import configure_logging
 from shapely.geometry import Point
 
 logger = logging.getLogger(__name__)
@@ -15,6 +14,7 @@ logger = logging.getLogger(__name__)
 paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
 for path in paths:
     sys.path.insert(0, os.path.abspath(path))
+from _helpers import configure_logging
 from add_electricity import load_costs
 from prepare_sector_network import lossy_bidirectional_links, prepare_costs
 
@@ -240,7 +240,19 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
             overnight_cost=overnight_costs,
             carrier="H2 pipeline (Kernnetz)",
             lifetime=lifetime,
+            retrofitted=wkn_new.retrofitted.values,
         )
+
+        # add tags
+        tags = wkn_new.apply(
+            lambda row: {
+                "pci": row["pci"],
+                "ipcei": row["ipcei"],
+                "investment_costs (Mio. Euro)": row["investment_costs (Mio. Euro)"],
+            },
+            axis=1,
+        )
+        n.links.loc[names, "tags"] = tags.values.astype(str)
 
         # add reversed pipes and losses
         losses = snakemake.params.H2_transmission_efficiency
@@ -1172,7 +1184,7 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts="none",
-            planning_horizons="2020",
+            planning_horizons="2025",
             run="KN2045_Bal_v4",
         )
 

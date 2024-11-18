@@ -565,6 +565,7 @@ rule plot_ariadne_variables:
         NEP_Trassen_plot=RESULTS + "ariadne/NEP_Trassen_plot.png",
         transmission_investment_csv=RESULTS + "ariadne/transmission_investment.csv",
         trassenlaenge_csv=RESULTS + "ariadne/trassenlaenge.csv",
+        Kernnetz_Investment_plot=RESULTS + "ariadne/Kernnetz_Investment_plot.png",
     log:
         RESULTS + "logs/plot_ariadne_variables.log",
     script:
