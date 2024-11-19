@@ -100,6 +100,7 @@ def plot_Kernnetz(df, savepath=None, currency_year=2020):
     else:
         plt.show()
 
+
 def plot_NEP_Trassen(df, savepath=None, gleichschaltung=True):
 
     NEP_Trassen = {
