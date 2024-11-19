@@ -2,15 +2,17 @@
 import logging
 
 logger = logging.getLogger(__name__)
-from random import randint
-from time import sleep
 
 import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pypsa
 import xarray as xr
-from geopy.geocoders import Nominatim
+
+import shapely
+import rasterio
+from atlite.gis import ExclusionContainer
+from atlite.gis import shape_availability
 
 
 # Function to encode city names in UTF-8
@@ -18,21 +20,13 @@ def encode_utf8(city_name):
     return city_name.encode("utf-8")
 
 
-def prepare_subnodes(subnodes, cities, regions_onshore, lau, heat_techs, head=40):
+def prepare_subnodes(subnodes, cities, regions_onshore, lau, heat_techs):
     # TODO: Embed I&O in snakemake rule, add potentials, match CHP capacities
-    # If head is boolean set it to 40 for default behavior
-    if isinstance(head, bool):
-        head = 40
 
     subnodes["Stadt"] = subnodes["Stadt"].str.split("_").str[0]
 
     # Drop duplicates if Gelsenkirchen, Kiel, or Flensburg is included and keep the one with higher Wärmeeinspeisung in GWh/a
     subnodes = subnodes.drop_duplicates(subset="Stadt", keep="first")
-
-    # Keep only n largest district heating networks according to head parameter
-    subnodes = subnodes.sort_values(
-        by="Wärmeeinspeisung in GWh/a", ascending=False
-    ).head(head)
 
     subnodes["yearly_heat_demand_MWh"] = subnodes["Wärmeeinspeisung in GWh/a"] * 1e3
 
@@ -73,19 +67,90 @@ def prepare_subnodes(subnodes, cities, regions_onshore, lau, heat_techs, head=40
     return subnodes
 
 
-def add_subnodes(n, subnodes):
+def add_ptes_limit(subnodes, corine, ptes_potential_scalar):
+    """
+    Add PTES limit to subnodes according to land availability within city regions.
+    """
+    dh_systems = subnodes.copy()
+    dh_systems["lau_shape"] = dh_systems["lau_shape"].apply(shapely.wkt.loads)
+    dh_systems = dh_systems.set_geometry("lau_shape")
+    dh_systems.crs = "EPSG:4326"
+    dh_systems = dh_systems.to_crs(3035)
+
+    codes = snakemake.config["renewable"]["onwind"]["corine"]["grid_codes"]
+    # codes = [26, 28, 30, 32, 33]
+
+    excluder = ExclusionContainer(crs=3035, res=100)
+
+    excluder.add_raster(corine, codes=codes, invert=True, crs=3035)
+
+    band, transform = shape_availability(dh_systems.lau_shape, excluder)
+
+    masked_data = band
+    row_indices, col_indices = np.where(masked_data != corine.nodata)
+    values = masked_data[row_indices, col_indices]
+
+    x_coords, y_coords = rasterio.transform.xy(transform, row_indices, col_indices)
+    eligible_areas = pd.DataFrame({"x": x_coords, "y": y_coords, "eligible": values})
+    eligible_areas = gpd.GeoDataFrame(
+        eligible_areas,
+        geometry=gpd.points_from_xy(eligible_areas.x, eligible_areas.y),
+        crs=corine.crs,
+    )
+
+    eligible_areas["geometry"] = eligible_areas.geometry.buffer(50, cap_style="square")
+    merged_data = eligible_areas.union_all()
+    eligible_areas = (
+        gpd.GeoDataFrame(geometry=[merged_data], crs=eligible_areas.crs)
+        .explode(index_parts=False)
+        .reset_index(drop=True)
+    )
+
+    # Divide geometries with boundaries of dh_systems
+    eligible_areas = gpd.overlay(eligible_areas, dh_systems, how="intersection")
+    eligible_areas = gpd.sjoin(
+        eligible_areas, dh_systems.drop("Stadt", axis=1), how="left", rsuffix=""
+    )[["Stadt", "geometry"]].set_geometry("geometry")
+
+    # filter for eligible areas that are larger than 19204 m^2
+    eligible_areas = eligible_areas[eligible_areas.area > 19204]
+    eligible_areas = eligible_areas.dissolve("Stadt")
+    eligible_areas["area_m2"] = eligible_areas.area
+    eligible_areas["nstorages_pot"] = eligible_areas.area_m2 / 19204
+    eligible_areas["storage_pot_mwh"] = eligible_areas["nstorages_pot"] * 4500
+
+    subnodes.set_index("Stadt", inplace=True)
+    subnodes["ptes_pot_mwh"] = (
+        eligible_areas.loc[subnodes.index]["storage_pot_mwh"] * ptes_potential_scalar
+    )
+    return subnodes.reset_index()
+
+
+def add_subnodes(n, subnodes, head=40):
     """
     Add subnodes to the network and adjust loads and capacities accordingly.
     """
+
+    # If head is boolean set it to 40 for default behavior
+    if isinstance(head, bool):
+        head = 40
+
+    # Keep only n largest district heating networks according to head parameter
+    subnodes_head = subnodes.sort_values(
+        by="Wärmeeinspeisung in GWh/a", ascending=False
+    ).head(head)
+    subnodes.to_file(snakemake.output.district_heating_subnodes, driver="GeoJSON")
+
+    subnodes_rest = subnodes[~subnodes.index.isin(subnodes_head.index)]
 
     # Add subnodes to network
     for idx, row in subnodes.iterrows():
         name = f'{row["cluster"]} {row["Stadt"]} urban central heat'
 
         # Add buses
-        n.madd(
+        n.add(
             "Bus",
-            [name],
+            name,
             y=row.geometry.y,
             x=row.geometry.x,
             country="DE",
@@ -121,18 +186,13 @@ def add_subnodes(n, subnodes):
         uch_load = (
             scalar
             * (1 - lti_share)
-            * n.loads_t.p_set.filter(
-                regex=f"{row['cluster']} urban central heat"
-            ).rename(
-                {
-                    f"{row['cluster']} urban central heat": f"{row['cluster']} {row['Stadt']} urban central heat"
-                },
-                axis=1,
+            * n.loads_t.p_set[f"{row['cluster']} urban central heat"].rename(
+                f"{row['cluster']} {row['Stadt']} urban central heat"
             )
         )
-        n.madd(
+        n.add(
             "Load",
-            [name],
+            name,
             bus=name,
             p_set=uch_load,
             carrier="urban central heat",
@@ -142,18 +202,13 @@ def add_subnodes(n, subnodes):
         lti_load = (
             scalar
             * lti_share
-            * n.loads.filter(
-                regex=f"{row['cluster']} low-temperature heat for industry", axis=0
-            ).p_set.rename(
-                {
-                    f"{row['cluster']} low-temperature heat for industry": f"{row['cluster']} {row['Stadt']} low-temperature heat for industry"
-                },
-                axis=0,
-            )
+            * n.loads.loc[
+                f"{row['cluster']} low-temperature heat for industry", "p_set"
+            ]
         )
-        n.madd(
+        n.add(
             "Load",
-            [f"{row['cluster']} {row['Stadt']} low-temperature heat for industry"],
+            f"{row['cluster']} {row['Stadt']} low-temperature heat for industry",
             bus=name,
             p_set=lti_load,
             carrier="low-temperature heat for industry",
@@ -170,9 +225,9 @@ def add_subnodes(n, subnodes):
 
         # Replicate district heating stores and links of mother node for subnodes
 
-        n.madd(
+        n.add(
             "Bus",
-            [f"{row['cluster']} {row['Stadt']} urban central water tanks"],
+            f"{row['cluster']} {row['Stadt']} urban central water tanks",
             location=f"{row['cluster']} {row['Stadt']}",
             carrier="urban central water tanks",
             unit="MWh_th",
@@ -189,7 +244,9 @@ def add_subnodes(n, subnodes):
             )
             .set_index("Store")
         )
-        n.madd("Store", stores.index, **stores)
+
+        stores["e_nom_max"] = row["ptes_pot_mwh"]
+        n.add("Store", stores.index, **stores)
 
         links = (
             n.links.loc[~n.links.carrier.str.contains("heat pump")]
@@ -203,7 +260,7 @@ def add_subnodes(n, subnodes):
             )
             .set_index("Link")
         )
-        n.madd("Link", links.index, **links)
+        n.add("Link", links.index, **links)
 
         # Add heat pumps to subnode
         heat_pumps = (
@@ -224,12 +281,12 @@ def add_subnodes(n, subnodes):
             f"{row['cluster']} urban central",
             f"{row['cluster']} {row['Stadt']} urban central",
         )
-        n.madd("Link", heat_pumps.index, efficiency=heat_pumps_t, **heat_pumps)
+        n.add("Link", heat_pumps.index, efficiency=heat_pumps_t, **heat_pumps)
 
         # Add heat vent to subnode
-        n.madd(
+        n.add(
             "Generator",
-            [f"{name} heat vent"],
+            f"{name} heat vent",
             bus=name,
             location=f"{row['cluster']} {row['Stadt']}",
             carrier="urban central heat vent",
@@ -238,6 +295,13 @@ def add_subnodes(n, subnodes):
             p_max_pu=0,
             unit="MWh_th",
         )
+    # restrict PTES capacity in mother nodes
+    mother_nodes_ptes_pot = subnodes_rest.groupby("cluster").ptes_pot_mwh.sum()
+    # add " urban central water tanks" to the mother node name
+    mother_nodes_ptes_pot.index = (
+        mother_nodes_ptes_pot.index + " urban central water tanks"
+    )
+    n.stores.loc[mother_nodes_ptes_pot.index, "e_nom_max"] = mother_nodes_ptes_pot
 
     return
 
@@ -330,7 +394,7 @@ if __name__ == "__main__":
             ll="vopt",
             sector_opts="none",
             planning_horizons="2020",
-            run="KN2045_Bal_v4",
+            run="0.5LTESCAPEX",
         )
 
     logger.info("Adding SysGF-specific functionality")
@@ -340,7 +404,6 @@ if __name__ == "__main__":
         "index"
     )
     lau = gpd.read_file(
-        # "/home/cpschau/Code/dev/pypsa-ariadne/.snakemake/storage/http/gisco-services.ec.europa.eu/distribution/v2/lau/download/ref-lau-2021-01m.geojson/LAU_RG_01M_2021_3035.geojson",
         f"{snakemake.input.lau}!LAU_RG_01M_2021_3035.geojson",
         crs="EPSG:3035",
     ).to_crs("EPSG:4326")
@@ -363,11 +426,22 @@ if __name__ == "__main__":
         regions_onshore,
         lau,
         heat_techs,
-        head=snakemake.params.district_heating["add_subnodes"],
     )
     subnodes.to_file(snakemake.output.district_heating_subnodes, driver="GeoJSON")
 
-    add_subnodes(n, subnodes)
+    # Add PTEs limit to subnodes according to land availability within city regions
+    corine = rasterio.open(snakemake.input.corine)
+    subnodes = add_ptes_limit(
+        subnodes,
+        corine,
+        snakemake.params.district_heating["ptes_potential_scalar"],
+    )
+
+    add_subnodes(
+        n,
+        subnodes,
+        head=snakemake.params.district_heating["add_subnodes"],
+    )
 
     if snakemake.config["foresight"] == "myopic":
         cops = xr.open_dataarray(snakemake.input.cop_profiles)
