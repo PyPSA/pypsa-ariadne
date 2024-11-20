@@ -104,6 +104,7 @@ atlite:
 
 renewable:
   onwind:
+    capacity_per_sqkm: 2
     cutout: europe-2019-sarah3-era5
     resource:
       smooth: false  #this is false until correction to onshore wind speeds from GWA implemented
