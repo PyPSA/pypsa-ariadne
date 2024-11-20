@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241113-export-kernnetz-invest
+  prefix: 20241120-correct-wind
 
   name:
   # - CurrentPolicies
