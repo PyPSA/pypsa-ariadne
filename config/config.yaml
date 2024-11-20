@@ -441,7 +441,7 @@ solving:
           DE:
             2020: 7.8
             2025: 11.3
-            2030: 31.3 # uba Projektionsbericht
+            2030: 29.3 # uba Projektionsbericht and NEP without delayed BalWin 3
             2035: 70
             2040: 70
             2045: 70
