@@ -1796,7 +1796,7 @@ def get_final_energy(
     h2_fossil_fraction = _get_h2_fossil_fraction(n)
     oil_fractions = _get_fuel_fractions(n, region, "oil")
 
-    if config["industry"]["ammonia"]:
+    if config_industry["ammonia"]:
         # MWh/a
         Haber_Bosch_NH3 = (
             n.statistics.supply(bus_carrier="NH3", **kwargs)
@@ -1807,14 +1807,14 @@ def get_final_energy(
         CH4_for_NH3 = (
             Haber_Bosch_NH3
             * h2_fossil_fraction
-            * config["industry"]["MWh_CH4_per_tNH3_SMR"]
-            / config["industry"]["MWh_NH3_per_tNH3"]
+            * config_industry["MWh_CH4_per_tNH3_SMR"]
+            / config_industry["MWh_NH3_per_tNH3"]
             * MWh2PJ
         )
         H2_for_NH3 = (
             Haber_Bosch_NH3
             * (1 - h2_fossil_fraction)
-            / config["industry"]["MWh_H2_per_tNH3_electrolysis"]
+            / config_industry["MWh_H2_per_tNH3_electrolysis"]
             * MWh2PJ
         )
         subcategories = ["HVC", "Methanol", "Chlorine"]
@@ -4433,10 +4433,10 @@ def get_production(region, year):
         "DE", ["Electric arc", "Integrated steelworks", "DRI + Electric arc"]
     ].sum()
     var["Production|Steel|Primary"] = (
-        var["Production|Steel"] * config["industry"]["St_primary_fraction"][year]
+        var["Production|Steel"] * config_industry["St_primary_fraction"][year]
     )
     var["Production|Steel|Secondary"] = var["Production|Steel"] * (
-        1 - config["industry"]["St_primary_fraction"][year]
+        1 - config_industry["St_primary_fraction"][year]
     )
 
     # optional:
@@ -5170,6 +5170,7 @@ if __name__ == "__main__":
         )
     configure_logging(snakemake)
     config = snakemake.config
+    config_industry = snakemake.params.config_industry
     planning_horizons = snakemake.params.planning_horizons
     post_discretization = snakemake.params.post_discretization
     ariadne_template = pd.read_excel(snakemake.input.template, sheet_name=None)
