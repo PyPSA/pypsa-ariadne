@@ -730,7 +730,8 @@ def group_pipes(df, drop_direction=False):
 
 
 def plot_h2_map(n, regions, savepath, only_de=False):
-
+    logger.info("Plotting H2 map")
+    logger.info("Assigning location")
     assign_location(n)
 
     h2_storage = n.stores[n.stores.carrier.isin(["H2", "H2 Store"])]
@@ -771,6 +772,7 @@ def plot_h2_map(n, regions, savepath, only_de=False):
     h2_kern = n.links[n.links.carrier == "H2 pipeline (Kernnetz)"]
 
     # sum capacitiy for pipelines from different investment periods
+    logger.info("Grouping pipes")
     h2_new = group_pipes(h2_new)
 
     if not h2_retro.empty:
@@ -824,7 +826,7 @@ def plot_h2_map(n, regions, savepath, only_de=False):
     n.links.bus1 = n.links.bus1.str.replace(" H2", "")
 
     regions = regions.to_crs(proj.proj4_init)
-
+    logger.info("Plotting map")
     fig, ax = plt.subplots(figsize=(10, 8), subplot_kw={"projection": proj})
 
     color_h2_pipe = "#b3f3f4"
@@ -882,7 +884,7 @@ def plot_h2_map(n, regions, savepath, only_de=False):
     sizes = [50, 10]
     labels = [f"{s} GW" for s in sizes]
     sizes = [s / bus_size_factor * 1e3 for s in sizes]
-
+    logger.info("Adding legend")
     legend_kw = dict(
         loc="upper left",
         bbox_to_anchor=(0, 1),
@@ -944,6 +946,7 @@ def plot_h2_map(n, regions, savepath, only_de=False):
     ax.set_facecolor("white")
 
     fig.savefig(savepath, bbox_inches="tight")
+    plt.close()
 
 
 def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
@@ -1269,6 +1272,7 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
 
     ax.set_facecolor("white")
     fig.savefig(savepath, bbox_inches="tight")
+    plt.close()
 
 
 ### electricity transmission
@@ -1453,6 +1457,7 @@ def plot_elec_map_de(
 
     add_legend_patches(ax, colors, labels, legend_kw=legend_kw)
     fig.savefig(savepath, bbox_inches="tight")
+    plt.close()
 
 
 if __name__ == "__main__":
@@ -1504,7 +1509,7 @@ if __name__ == "__main__":
         process_postnetworks(n.copy(), _networks[0], int(my), snakemake, costs)
         for n, my in zip(_networks, modelyears)
     ]
-
+    del _networks
     ###
 
     # ensure output directory exist
@@ -1566,6 +1571,7 @@ if __name__ == "__main__":
         )
 
         # electricity supply and demand
+        logger.info("Plotting electricity supply and demand for year %s", year)
         plot_nodal_balance(
             network=network,
             nodal_balance=balance,
@@ -1615,6 +1621,7 @@ if __name__ == "__main__":
         )
 
         # heat supply and demand
+        logger.info("Plotting heat supply and demand")
         for carriers in ["urban central heat", "urban decentral heat", "rural heat"]:
             plot_nodal_balance(
                 network=network,
@@ -1671,6 +1678,7 @@ if __name__ == "__main__":
             )
 
         # storage
+        logger.info("Plotting storage")
         plot_storage(
             network=network,
             tech_colors=tech_colors,
@@ -1681,6 +1689,7 @@ if __name__ == "__main__":
         )
 
     ## price duration
+    logger.info("Plotting price duration curve")
     networks_dict = {int(my): n for n, my in zip(networks, modelyears)}
     plot_price_duration_curve(
         networks=networks_dict,
@@ -1700,6 +1709,7 @@ if __name__ == "__main__":
     )
 
     ## hydrogen transmission
+    logger.info("Plotting hydrogen transmission")
     map_opts = snakemake.params.plotting["map"]
     snakemake.params.plotting["projection"] = {"name": "EqualEarth"}
     proj = load_projection(snakemake.params.plotting)
@@ -1707,6 +1717,7 @@ if __name__ == "__main__":
 
     for year in planning_horizons:
         network = networks[planning_horizons.index(year)].copy()
+        logger.info(f"Plotting hydrogen transmission for {year}")
         plot_h2_map(
             network,
             regions,
@@ -1714,6 +1725,8 @@ if __name__ == "__main__":
         )
 
         regions_de = regions[regions.index.str.startswith("DE")]
+        logger.info(f"Plotting hydrogen transmission for {year} in DE")
+        del network
         for sb in ["production", "consumption"]:
             network = networks[planning_horizons.index(year)].copy()
             plot_h2_map_de(
@@ -1723,15 +1736,16 @@ if __name__ == "__main__":
                 specify_buses=sb,
                 savepath=f"{snakemake.output.h2_transmission}/h2_transmission_DE_{sb}_{year}.png",
             )
+            del network
 
     ## electricity transmission
+    logger.info("Plotting electricity transmission")
     for year in planning_horizons:
-        network = networks[planning_horizons.index(year)].copy()
         scenarios = ["total-expansion", "startnetz", "pypsa"]
         for s in scenarios:
             plot_elec_map_de(
-                network,
-                networks[planning_horizons.index(2020)].copy(),
+                networks[planning_horizons.index(year)],
+                networks[planning_horizons.index(2020)],
                 tech_colors,
                 regions_de,
                 savepath=f"{snakemake.output.elec_transmission}/elec-transmission-DE-{s}-{year}.png",
@@ -1739,6 +1753,7 @@ if __name__ == "__main__":
             )
 
     ## nodal balances general (might not be very robust)
+    logger.info("Plotting nodal balances")
     plt.style.use(["bmh", snakemake.input.rc])
 
     year = 2045

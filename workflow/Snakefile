@@ -678,7 +678,7 @@ rule plot_ariadne_report:
         heat_balances=directory(RESULTS + "ariadne/report/heat_balance_timeseries"),
         nodal_balances=directory(RESULTS + "ariadne/report/balance_timeseries_2045"),
     resources:
-        mem_mb=10000,
+        mem_mb=30000,
     log:
         RESULTS + "logs/plot_ariadne_report.log",
     script:
