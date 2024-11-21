@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241113-export-kernnetz-invest
+  prefix: 20241120-correct-wind
 
   name:
   # - CurrentPolicies
@@ -104,7 +104,9 @@ atlite:
 
 renewable:
   onwind:
+    capacity_per_sqkm: 2
     cutout: europe-2019-sarah3-era5
+    correction_factor: 0.95
     resource:
       smooth: false  #this is false until correction to onshore wind speeds from GWA implemented
       #based on Vestas_V112_3MW, but changing hub_height from 80m with time
@@ -128,6 +130,7 @@ renewable:
     capacity_per_sqkm: 6
     landfall_length: 30
     cutout: europe-2019-sarah3-era5
+    correction_factor: 0.95
     resource:
       smooth: true
       #based on NREL_ReferenceTurbine_2020ATB_5.5MW, but changing hub_height from 80m with time
@@ -151,6 +154,7 @@ renewable:
     capacity_per_sqkm: 6
     landfall_length: 30
     cutout: europe-2019-sarah3-era5
+    correction_factor: 0.95
     resource:
       smooth: true
       #based on NREL_ReferenceTurbine_2020ATB_5.5MW, but changing hub_height from 80m with time
@@ -174,12 +178,13 @@ renewable:
     landfall_length: 30
     capacity_per_sqkm: 6
     cutout: europe-2019-sarah3-era5
+    correction_factor: 0.95
   solar:
     cutout: europe-2019-sarah3-era5
-    correction_factor: 0.918 # scaling to Abbildung 36 of https://www.ise.fraunhofer.de/de/veroeffentlichungen/studien/aktuelle-fakten-zur-photovoltaik-in-deutschland.html
+    correction_factor: 0.9 # scaling to Abbildung 36 of https://www.ise.fraunhofer.de/de/veroeffentlichungen/studien/aktuelle-fakten-zur-photovoltaik-in-deutschland.html
   solar-hsat:
     cutout: europe-2019-sarah3-era5
-    correction_factor: 0.918 # scaling to Abbildung 36 of https://www.ise.fraunhofer.de/de/veroeffentlichungen/studien/aktuelle-fakten-zur-photovoltaik-in-deutschland.html
+    correction_factor: 0.9 # scaling to Abbildung 36 of https://www.ise.fraunhofer.de/de/veroeffentlichungen/studien/aktuelle-fakten-zur-photovoltaik-in-deutschland.html
   hydro:
     cutout: europe-2019-sarah3-era5
 
@@ -441,7 +446,7 @@ solving:
           DE:
             2020: 7.8
             2025: 11.3
-            2030: 31.3 # uba Projektionsbericht
+            2030: 29.3 # uba Projektionsbericht and NEP without delayed BalWin 3
             2035: 70
             2040: 70
             2045: 70

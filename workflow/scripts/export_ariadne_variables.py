@@ -494,9 +494,9 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
     # var[cap_string + "Electricity|Gas|CC|w/o CCS"] =
     # ! Not implemented, rarely used
 
-    var[cap_string + "Electricity|Gas|CC"] = capacities_electricity.get("CCGT")
+    var[cap_string + "Electricity|Gas|CC"] = capacities_electricity.get("CCGT", 0)
 
-    var[cap_string + "Electricity|Gas|OC"] = capacities_electricity.get("OCGT")
+    var[cap_string + "Electricity|Gas|OC"] = capacities_electricity.get("OCGT", 0)
 
     var[cap_string + "Electricity|Gas|w/ CCS"] = capacities_electricity.get(
         "urban central gas CHP CC", 0

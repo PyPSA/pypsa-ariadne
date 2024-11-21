@@ -17,8 +17,8 @@ NOR-3-3,,DC-ONAS NOR-3-3 (DolWin6),Emden / Ost (TenneT),90.0,900,2023.0,NEP2023 
 NOR-6-3,,DC-ONAS NOR-6-3 (BorWin4),Hanekenfähr (Amprion),264.0,900,2028.0,NEP2023 Startnetz,52.475798,7.307034
 NOR-7-1,,DC-ONAS NOR-7-1 (BorWin5),Garrel / Ost (TenneT),225.0,900,2025.0,NEP2023 Startnetz,52.945885,8.075682
 NOR-7-2,,DC-ONAS NOR-7-2 (BorWin6),Büttel (TenneT),235.0,980,2027.0,NEP2023 Startnetz,53.917758,9.234576
-NOR-9-1,M243,HGÜ-Verbindung NOR-9-1 (BalWin1),Wehrendorf (Amprion),363.0,2000,2029.0,Szenario B/C 2045,52.347253,8.307983
-NOR-9-2,M236,HGÜ-Verbindung NOR-9-2 (BalWin3),Wilhelmshaven 2 (TenneT),250.0,2000,2029.0,Szenario B/C 2045,53.56214,8.12915
+NOR-9-1,M243,HGÜ-Verbindung NOR-9-1 (BalWin1),Wehrendorf (Amprion),363.0,2000,2030.0,Szenario B/C 2045,52.347253,8.307983
+NOR-9-2,M236,HGÜ-Verbindung NOR-9-2 (BalWin3),Wilhelmshaven 2 (TenneT),250.0,2000,2031.0,Szenario B/C 2045,53.56214,8.12915
 NOR-9-3,M234,HGÜ-Verbindung NOR-9-3 (BalWin4),Unterweser (TenneT),265.0,2000,2029.0,Szenario B/C 2045,53.428708,8.472726
 NOR-10-1,M39,HGÜ-Verbindung NOR-10-1 (BalWin2),Westerkappeln (Amprion),371.0,2000,2030.0,Szenario B/C 2045,52.275966,7.887789
 NOR-11-1,M233,HGÜ-Verbindung NOR-11-1 (LanWin3),Suchraum Heide (50Hertz),215.0,2000,2030.0,Szenario B/C 2045,54.16277,9.05231
