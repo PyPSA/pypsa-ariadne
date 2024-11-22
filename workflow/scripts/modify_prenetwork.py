@@ -768,17 +768,23 @@ def transmission_costs_from_modified_cost_data(n, costs, transmission):
     n.links.loc[dc_b, "overnight_cost"] = overnight_cost
 
 
-def must_run_biogas(n, p_min_pu, regions):
+def must_run(n, params):
     """
-    Set p_min_pu for biogas generators to the specified value.
+    Set p_min_pu for links to the specified value.
     """
-    logger.info(
-        f"Must-run condition enabled: Setting p_min_pu = {p_min_pu} for biogas generators."
-    )
-    links_i = n.links[
-        (n.links.carrier == "biogas") & (n.links.bus0.str.startswith(tuple(regions)))
-    ].index
-    n.links.loc[links_i, "p_min_pu"] = p_min_pu
+    investment_year = int(snakemake.wildcards.planning_horizons)
+    if investment_year in params.keys():
+        for region in params[investment_year].keys():
+            for carrier in params[investment_year][region].keys():
+                p_min_pu = params[investment_year][region][carrier]
+                logger.info(
+                    f"Must-run condition enabled: Setting p_min_pu = {p_min_pu} for {carrier} in year {investment_year} and region {region}."
+                )
+                
+                links_i = n.links[
+                    (n.links.carrier == carrier) & n.links.index.str.contains(region)
+                ].index
+                n.links.loc[links_i, "p_min_pu"] = p_min_pu
 
 
 def aladin_mobility_demand(n):
@@ -1298,12 +1304,8 @@ if __name__ == "__main__":
         snakemake.params.transmission_costs,
     )
 
-    if snakemake.params.biogas_must_run["enable"]:
-        must_run_biogas(
-            n,
-            snakemake.params.biogas_must_run["p_min_pu"],
-            snakemake.params.biogas_must_run["regions"],
-        )
+    if snakemake.params.must_run is not None:
+        must_run(n, snakemake.params.must_run)
 
     if snakemake.params.H2_plants["enable"]:
         if snakemake.params.H2_plants["start"] <= int(
