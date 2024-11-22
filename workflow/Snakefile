@@ -281,7 +281,7 @@ rule modify_prenetwork:
         network=RESULTS
         + "prenetworks-final/base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
     resources:
-        mem_mb=2000,
+        mem_mb=4000,
     log:
         RESULTS
         + "logs/modify_prenetwork_base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.log",
@@ -476,6 +476,7 @@ rule export_ariadne_variables:
         planning_horizons=config_provider("scenario", "planning_horizons"),
         hours=config_provider("clustering", "temporal", "resolution_sector"),
         costs=config_provider("costs"),
+        config_industry=config_provider("industry"),
         energy_totals_year=config_provider("energy", "energy_totals_year"),
         co2_price_add_on_fossils=config_provider("co2_price_add_on_fossils"),
         co2_sequestration_cost=config_provider("sector", "co2_sequestration_cost"),
@@ -521,7 +522,7 @@ rule export_ariadne_variables:
         exported_variables_full=RESULTS + "ariadne/exported_variables_full.xlsx",
     resources:
         # A heuristic to assign more memory for larger networks. Should probably be quadratic??
-        mem_mb=(lambda w: 320 * int(config_provider("scenario", "clusters")(w)[0])),
+        mem_mb=(lambda w: 400 * int(config_provider("scenario", "clusters")(w)[0])),
     log:
         RESULTS + "logs/export_ariadne_variables.log",
     script:
@@ -678,7 +679,7 @@ rule plot_ariadne_report:
         heat_balances=directory(RESULTS + "ariadne/report/heat_balance_timeseries"),
         nodal_balances=directory(RESULTS + "ariadne/report/balance_timeseries_2045"),
     resources:
-        mem_mb=10000,
+        mem_mb=30000,
     log:
         RESULTS + "logs/plot_ariadne_report.log",
     script:
