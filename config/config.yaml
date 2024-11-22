@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241120-correct-wind
+  prefix: 20241121-fix-missing-gas-capa
 
   name:
   # - CurrentPolicies
@@ -655,10 +655,11 @@ co2_price_add_on_fossils:
   2020: 25
   2025: 60
 
-must_run_biogas:
-  enable: false
-  p_min_pu: 0.6
-  regions: ['DE']
+must_run:
+  2020:
+    DE:
+      lignite: 0.4
+      # biogas: 0.6
 
 transmission_projects:
   new_link_capacity: keep #keep or zero
@@ -672,3 +673,9 @@ onshore_nep_force:
 offshore_nep_force:
   cutin_year: 2025
   cutout_year: 2030
+
+scale_capacity:
+  2020:
+    DE:
+      CCGT: 10000
+      "urban central gas CHP": 22000

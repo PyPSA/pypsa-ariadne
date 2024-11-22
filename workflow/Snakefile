@@ -235,7 +235,7 @@ rule modify_prenetwork:
             "sector", "H2_retrofit_capacity_per_CH4"
         ),
         transmission_costs=config_provider("costs", "transmission"),
-        biogas_must_run=config_provider("must_run_biogas"),
+        must_run=config_provider("must_run"),
         clustering=config_provider("clustering", "temporal", "resolution_sector"),
         H2_plants=config_provider("electricity", "H2_plants_DE"),
         land_transport_electric_share=config_provider(
@@ -249,6 +249,7 @@ rule modify_prenetwork:
         shipping_oil_efficiency=config_provider("sector", "shipping_oil_efficiency"),
         shipping_methanol_share=config_provider("sector", "shipping_methanol_share"),
         mwh_meoh_per_tco2=config_provider("sector", "MWh_MeOH_per_tCO2"),
+        scale_capacity=config_provider("scale_capacity"),
     input:
         costs_modifications="ariadne-data/costs_{planning_horizons}-modifications.csv",
         network=RESULTS
