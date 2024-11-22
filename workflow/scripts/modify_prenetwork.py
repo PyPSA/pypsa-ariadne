@@ -780,7 +780,7 @@ def must_run(n, params):
                 logger.info(
                     f"Must-run condition enabled: Setting p_min_pu = {p_min_pu} for {carrier} in year {investment_year} and region {region}."
                 )
-                
+
                 links_i = n.links[
                     (n.links.carrier == carrier) & n.links.index.str.contains(region)
                 ].index
