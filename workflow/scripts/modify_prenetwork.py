@@ -1217,7 +1217,7 @@ def scale_capacity(n, scaling):
                 n.links.loc[links_i, "p_nom"] += scaling_factors * diff_cap_0
 
                 links_i_current = n.links.loc[links_i][
-                    n.links.loc[links_i].p_nom_min != 0
+                    (n.links.loc[links_i].p_nom_min != 0) & n.links.loc[links_i].p_nom_extendable
                 ].index
                 n.links.loc[links_i_current, "p_nom_min"] = n.links.loc[
                     links_i_current, "p_nom"
