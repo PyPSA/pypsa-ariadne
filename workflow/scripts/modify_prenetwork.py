@@ -1167,13 +1167,14 @@ def drop_duplicate_transmission_projects(n):
 
     n.remove("Line", to_drop)
 
+
 def scale_capacity(n, scaling):
     """
     Scale the output capacity of energy system links based on predefined scaling limits.
 
     Parameters:
     - n: The network/model object representing the energy system.
-    - scaling: A dictionary with scaling limits structured as 
+    - scaling: A dictionary with scaling limits structured as
                {year: {region: {carrier: limit}}}.
     """
     investment_year = int(snakemake.wildcards.planning_horizons)
@@ -1181,7 +1182,9 @@ def scale_capacity(n, scaling):
         for region in scaling[investment_year].keys():
             for carrier in scaling[investment_year][region].keys():
                 limit = scaling[investment_year][region][carrier]
-                logger.info(f"Scaling output capacity (bus1) of {carrier} in region {region} to {limit} MW")
+                logger.info(
+                    f"Scaling output capacity (bus1) of {carrier} in region {region} to {limit} MW"
+                )
 
                 links_i = n.links[
                     (n.links.carrier == carrier) & n.links.index.str.contains(region)
@@ -1189,25 +1192,29 @@ def scale_capacity(n, scaling):
 
                 installed_cap = n.links.loc[links_i].eval("p_nom * efficiency").sum()
                 if installed_cap == 0:
-                    logger.warning(f"No installed capacity for {carrier} in region {region}. Skipping adjustment.")
+                    logger.warning(
+                        f"No installed capacity for {carrier} in region {region}. Skipping adjustment."
+                    )
                     continue
 
                 diff_cap = limit - installed_cap
                 avg_efficiency = n.links.loc[links_i, "efficiency"].mean()
                 if avg_efficiency == 0 or np.isnan(avg_efficiency):
-                    logger.warning(f"Invalid average efficiency for {carrier} in region {region}. Skipping adjustment.")
+                    logger.warning(
+                        f"Invalid average efficiency for {carrier} in region {region}. Skipping adjustment."
+                    )
                     continue
 
                 diff_cap_0 = diff_cap / avg_efficiency
                 p_nom_sum = n.links.loc[links_i, "p_nom"].sum()
                 if p_nom_sum == 0:
-                    logger.warning(f"Zero total p_nom for {carrier} in region {region}. Skipping adjustment.")
+                    logger.warning(
+                        f"Zero total p_nom for {carrier} in region {region}. Skipping adjustment."
+                    )
                     continue
 
                 scaling_factors = n.links.loc[links_i].eval("p_nom / @p_nom_sum")
                 n.links.loc[links_i, "p_nom"] += scaling_factors * diff_cap_0
-
-
 
 
 if __name__ == "__main__":

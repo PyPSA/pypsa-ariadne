@@ -147,7 +147,7 @@ if __name__ == "__main__":
     )
 
     # increase central gas CHP lifetime to 40 years
-    costs.at[("central gas CHP" , "lifetime") , "value"] = 40
+    costs.at[("central gas CHP", "lifetime"), "value"] = 40
     logger.info(
         f"Setting lifetime of central gas CHP to {costs.at[("central gas CHP" , "lifetime") , "value"]} {costs.at[("central gas CHP" , "lifetime") , "unit"]}."
     )
