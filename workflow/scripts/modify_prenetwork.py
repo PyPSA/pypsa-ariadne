@@ -768,17 +768,23 @@ def transmission_costs_from_modified_cost_data(n, costs, transmission):
     n.links.loc[dc_b, "overnight_cost"] = overnight_cost
 
 
-def must_run_biogas(n, p_min_pu, regions):
+def must_run(n, params):
     """
-    Set p_min_pu for biogas generators to the specified value.
+    Set p_min_pu for links to the specified value.
     """
-    logger.info(
-        f"Must-run condition enabled: Setting p_min_pu = {p_min_pu} for biogas generators."
-    )
-    links_i = n.links[
-        (n.links.carrier == "biogas") & (n.links.bus0.str.startswith(tuple(regions)))
-    ].index
-    n.links.loc[links_i, "p_min_pu"] = p_min_pu
+    investment_year = int(snakemake.wildcards.planning_horizons)
+    if investment_year in params.keys():
+        for region in params[investment_year].keys():
+            for carrier in params[investment_year][region].keys():
+                p_min_pu = params[investment_year][region][carrier]
+                logger.info(
+                    f"Must-run condition enabled: Setting p_min_pu = {p_min_pu} for {carrier} in year {investment_year} and region {region}."
+                )
+
+                links_i = n.links[
+                    (n.links.carrier == carrier) & n.links.index.str.contains(region)
+                ].index
+                n.links.loc[links_i, "p_min_pu"] = p_min_pu
 
 
 def aladin_mobility_demand(n):
@@ -1168,6 +1174,63 @@ def drop_duplicate_transmission_projects(n):
     n.remove("Line", to_drop)
 
 
+def scale_capacity(n, scaling):
+    """
+    Scale the output capacity of energy system links based on predefined scaling limits.
+
+    Parameters:
+    - n: The network/model object representing the energy system.
+    - scaling: A dictionary with scaling limits structured as
+               {year: {region: {carrier: limit}}}.
+    """
+    investment_year = int(snakemake.wildcards.planning_horizons)
+    if investment_year in scaling.keys():
+        for region in scaling[investment_year].keys():
+            for carrier in scaling[investment_year][region].keys():
+                limit = scaling[investment_year][region][carrier]
+                logger.info(
+                    f"Scaling output capacity (bus1) of {carrier} in region {region} to {limit} MW"
+                )
+
+                links_i = n.links[
+                    (n.links.carrier == carrier) & n.links.index.str.contains(region)
+                ].index
+
+                installed_cap = n.links.loc[links_i].eval("p_nom * efficiency").sum()
+                if installed_cap == 0:
+                    logger.warning(
+                        f"No installed capacity for {carrier} in region {region}. Skipping adjustment."
+                    )
+                    continue
+
+                diff_cap = limit - installed_cap
+                avg_efficiency = n.links.loc[links_i, "efficiency"].mean()
+                if avg_efficiency == 0 or np.isnan(avg_efficiency):
+                    logger.warning(
+                        f"Invalid average efficiency for {carrier} in region {region}. Skipping adjustment."
+                    )
+                    continue
+
+                diff_cap_0 = diff_cap / avg_efficiency
+                p_nom_sum = n.links.loc[links_i, "p_nom"].sum()
+                if p_nom_sum == 0:
+                    logger.warning(
+                        f"Zero total p_nom for {carrier} in region {region}. Skipping adjustment."
+                    )
+                    continue
+
+                scaling_factors = n.links.loc[links_i].eval("p_nom / @p_nom_sum")
+                n.links.loc[links_i, "p_nom"] += scaling_factors * diff_cap_0
+
+                links_i_current = n.links.loc[links_i][
+                    (n.links.loc[links_i].p_nom_min != 0)
+                    & n.links.loc[links_i].p_nom_extendable
+                ].index
+                n.links.loc[links_i_current, "p_nom_min"] = n.links.loc[
+                    links_i_current, "p_nom"
+                ]
+
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         import os
@@ -1184,7 +1247,7 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts="none",
-            planning_horizons="2025",
+            planning_horizons="2020",
             run="KN2045_Bal_v4",
         )
 
@@ -1241,12 +1304,8 @@ if __name__ == "__main__":
         snakemake.params.transmission_costs,
     )
 
-    if snakemake.params.biogas_must_run["enable"]:
-        must_run_biogas(
-            n,
-            snakemake.params.biogas_must_run["p_min_pu"],
-            snakemake.params.biogas_must_run["regions"],
-        )
+    if snakemake.params.must_run is not None:
+        must_run(n, snakemake.params.must_run)
 
     if snakemake.params.H2_plants["enable"]:
         if snakemake.params.H2_plants["start"] <= int(
@@ -1265,5 +1324,7 @@ if __name__ == "__main__":
     drop_duplicate_transmission_projects(n)
 
     force_connection_nep_offshore(n, current_year)
+
+    scale_capacity(n, snakemake.params.scale_capacity)
 
     n.export_to_netcdf(snakemake.output.network)
