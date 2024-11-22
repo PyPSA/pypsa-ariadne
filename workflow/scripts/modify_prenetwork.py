@@ -1216,8 +1216,12 @@ def scale_capacity(n, scaling):
                 scaling_factors = n.links.loc[links_i].eval("p_nom / @p_nom_sum")
                 n.links.loc[links_i, "p_nom"] += scaling_factors * diff_cap_0
 
-                links_i_current = n.links.loc[links_i][n.links.loc[links_i].p_nom_min != 0].index
-                n.links.loc[links_i_current, "p_nom_min"] = n.links.loc[links_i_current, "p_nom"]
+                links_i_current = n.links.loc[links_i][
+                    n.links.loc[links_i].p_nom_min != 0
+                ].index
+                n.links.loc[links_i_current, "p_nom_min"] = n.links.loc[
+                    links_i_current, "p_nom"
+                ]
 
 
 if __name__ == "__main__":
