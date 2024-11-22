@@ -164,6 +164,16 @@ def write_to_scenario_yaml(input, output, scenarios, df):
             logger.warning(
                 f"For aviation demand, using {fallback_reference_scenario} as fallback reference scenario for {scenario}."
             )
+
+        planning_horizons = [
+            2020,
+            2025,
+            2030,
+            2035,
+            2040,
+            2045,
+        ]  # for 2050 we still need data
+
         aviation_demand_factor = get_transport_growth(
             df.loc[:, fallback_reference_scenario, :], planning_horizons
         )
@@ -184,16 +194,6 @@ def write_to_scenario_yaml(input, output, scenarios, df):
             ],
             co2_budget_source,
         )
-
-        planning_horizons = [
-            2020,
-            2025,
-            2030,
-            2035,
-            2040,
-            2045,
-        ]  # for 2050 we still need data
-
 
         config[scenario]["sector"] = {}
 
