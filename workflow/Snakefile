@@ -426,7 +426,9 @@ rule modify_sector_ratios:
         ),
         sector_ratios=resources("industry_sector_ratios_{planning_horizons}.csv"),
     output:
-        sector_ratios_modified=resources("industry_sector_ratios_{planning_horizons}-modified.csv"),
+        sector_ratios_modified=resources(
+            "industry_sector_ratios_{planning_horizons}-modified.csv"
+        ),
     resources:
         mem_mb=2000,
     log:
@@ -435,7 +437,8 @@ rule modify_sector_ratios:
         "scripts/modify_sector_ratios.py"
 
 
-ruleorder: modify_sector_ratios > build_industry_sector_ratios_intermediate 
+ruleorder: modify_sector_ratios > build_industry_sector_ratios_intermediate
+
 
 use rule build_industrial_energy_demand_per_node from pypsaeur with:
     input:

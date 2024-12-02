@@ -26,8 +26,9 @@ Outputs
 - ``resources/industry_sector_ratios_{planning_horizons}-modified.csv``
 
 """
-import sys
 import os
+import sys
+
 paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
 for path in paths:
     sys.path.insert(0, os.path.abspath(path))
@@ -77,19 +78,24 @@ def build_industry_sector_ratios_intermediate():
 
     intermediate_sector_ratios_DE = {}
 
-    DE_sector_ratios = today_sector_ratios.loc[:, "DE"].reindex_like(future_sector_ratios)
+    DE_sector_ratios = today_sector_ratios.loc[:, "DE"].reindex_like(
+        future_sector_ratios
+    )
     missing_mask = DE_sector_ratios.isna().all()
     DE_sector_ratios.loc[:, missing_mask] = future_sector_ratios.loc[:, missing_mask]
-    DE_sector_ratios.loc[:, ~missing_mask] = DE_sector_ratios.loc[:, ~missing_mask].fillna(future_sector_ratios)
+    DE_sector_ratios.loc[:, ~missing_mask] = DE_sector_ratios.loc[
+        :, ~missing_mask
+    ].fillna(future_sector_ratios)
     intermediate_sector_ratios_DE["DE"] = (
-        DE_sector_ratios * (1 - fraction_DE)
-        + future_sector_ratios * fraction_DE
+        DE_sector_ratios * (1 - fraction_DE) + future_sector_ratios * fraction_DE
     )
     # make dictionary to dataframe
     intermediate_sector_ratios_DE = pd.concat(intermediate_sector_ratios_DE, axis=1)
 
     # read in original sector ratios
-    intermediate_sector_ratios = pd.read_csv(snakemake.input.sector_ratios, header=[0, 1], index_col=0)
+    intermediate_sector_ratios = pd.read_csv(
+        snakemake.input.sector_ratios, header=[0, 1], index_col=0
+    )
 
     # update DE sector ratios
     intermediate_sector_ratios.loc[:, "DE"] = intermediate_sector_ratios_DE["DE"].values
