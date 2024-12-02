@@ -668,6 +668,15 @@ def add_onwind_constraint(n, investment_year, snakemake, onwind_constraint):
 
     regions_onshore = gpd.read_file(snakemake.input.regions_onshore)
     regions_onshore.set_index("name", inplace=True)
+    de_regions_onshore = regions_onshore[regions_onshore.index.str.startswith("DE")]
+    de_regions_onshore["centroid_lat"] = de_regions_onshore.geometry.centroid.y
+
+    # get index that centroid_lat is smaller < 50
+    bins = [[], [], []]
+    bins[0] = de_regions_onshore[de_regions_onshore["centroid_lat"] < 50].index.to_list()
+    bins[1] = de_regions_onshore[(de_regions_onshore["centroid_lat"] >= 50) & (de_regions_onshore["centroid_lat"] < 52)].index.to_list()
+    bins[2] = de_regions_onshore[(de_regions_onshore["centroid_lat"] >= 52)].index.to_list()
+
     regions_onshore = regions_onshore.to_crs(epsg=3035)
     # area in sqkm
     area = (
@@ -677,11 +686,14 @@ def add_onwind_constraint(n, investment_year, snakemake, onwind_constraint):
     mw_per_sqkm = 30  # source: https://www.ffe.de/wp-content/uploads/2022/02/FfE-Discussion-Paper-2-der-Landesflaeche-fuer-Windenergie-ein-geeignetes-Mass.pdf page 7
     # % into fraction
     flaechenziel = onwind_constraint[investment_year] / 100
-    limit = flaechenziel * area * mw_per_sqkm
 
-    for region in area.index:
-        valid_components = (n.generators.bus == region) & (
-            n.generators.carrier == "onwind"
+    for entry in bins:
+        area_region = area[entry]
+        limit = flaechenziel * area_region.sum() * mw_per_sqkm
+
+        valid_components = (
+                (n.generators.bus.isin(entry))
+                & (n.generators.carrier == "onwind")
         )
 
         existing_index = n.generators.index[
@@ -691,28 +703,24 @@ def add_onwind_constraint(n, investment_year, snakemake, onwind_constraint):
             valid_components & n.generators.p_nom_extendable
         ]
 
-        if n.generators.loc[extendable_index[0], "p_nom_max"] < 10:
-            logger.warning(
-                f"Skipping onwind constraint for {region} as no extendable capacity exists"
-            )
+        if n.generators.loc[extendable_index, "p_nom_max"].sum() < 10:
+            logger.warning(f"Skipping onwind constraint for region consisting of {entry} as no extendable capacity exists")
             continue
         elif existing_index.empty:
-            logger.info(f"No existing onwind capacity in {region}")
+            logger.info(f"No existing onwind capacity in region consisting of {entry}")
             existing_cap = 0
         else:
             existing_cap = n.generators.loc[existing_index, "p_nom"].sum()
-
-        lhs = n.model["Generator-p_nom"].loc[extendable_index]
-        rhs = limit[region] - existing_cap
+        
+        lhs = n.model["Generator-p_nom"].loc[extendable_index].sum()
+        rhs = limit - existing_cap
         if rhs <= 0:
-            logger.info(
-                f"Existing capacity {existing_cap/1000} GW fullfills the Flaechenziel of {limit[region]/1000} GW in {region}."
-            )
+            logger.info(f"Existing capacity {existing_cap/1000} GW fullfills the Flaechenziel of {limit/1000} GW in {entry}.")
             continue
 
-        cname = f"flaechenziel_onwind-{region}"
+        cname = f"flaechenziel_onwind-{entry}"
 
-        logger.info(f"Adding Flaechenziel for {region} of {rhs/1000} GW.")
+        logger.info(f"Adding Flaechenziel for {entry} of {rhs/1000} GW.")
         n.model.add_constraints(lhs >= rhs, name=f"GlobalConstraint-{cname}")
 
         if cname in n.global_constraints.index:
