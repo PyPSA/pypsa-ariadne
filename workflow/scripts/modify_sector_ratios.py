@@ -72,30 +72,27 @@ def build_industry_sector_ratios_intermediate():
     }
     today_sector_ratios = today_sector_ratios.rename(rename).groupby(level=0).sum()
 
+    # custom DE pathway
     fraction_DE = get(snakemake.params.future_DE, year)
-    fraction_EU = get(snakemake.params.future_EU, year)
 
-    intermediate_sector_ratios = {}
-    # TODO: ideally I would just change the data for Germany without writing the file again
-    for ct, group in today_sector_ratios.T.groupby(level=0):
-        if ct == "DE":
-            fraction_future = fraction_DE
-        else:
-            fraction_future = fraction_EU
-        today_sector_ratios_ct = group.droplevel(0).T.reindex_like(future_sector_ratios)
-        missing_mask = today_sector_ratios_ct.isna().all()
-        today_sector_ratios_ct.loc[:, missing_mask] = future_sector_ratios.loc[
-            :, missing_mask
-        ]
-        today_sector_ratios_ct.loc[:, ~missing_mask] = today_sector_ratios_ct.loc[
-            :, ~missing_mask
-        ].fillna(future_sector_ratios)
-        intermediate_sector_ratios[ct] = (
-            today_sector_ratios_ct * (1 - fraction_future)
-            + future_sector_ratios * fraction_future
-        )
+    intermediate_sector_ratios_DE = {}
 
-    intermediate_sector_ratios = pd.concat(intermediate_sector_ratios, axis=1)
+    DE_sector_ratios = today_sector_ratios.loc[:, "DE"].reindex_like(future_sector_ratios)
+    missing_mask = DE_sector_ratios.isna().all()
+    DE_sector_ratios.loc[:, missing_mask] = future_sector_ratios.loc[:, missing_mask]
+    DE_sector_ratios.loc[:, ~missing_mask] = DE_sector_ratios.loc[:, ~missing_mask].fillna(future_sector_ratios)
+    intermediate_sector_ratios_DE["DE"] = (
+        DE_sector_ratios * (1 - fraction_DE)
+        + future_sector_ratios * fraction_DE
+    )
+    # make dictionary to dataframe
+    intermediate_sector_ratios_DE = pd.concat(intermediate_sector_ratios_DE, axis=1)
+
+    # read in original sector ratios
+    intermediate_sector_ratios = pd.read_csv(snakemake.input.sector_ratios, header=[0, 1], index_col=0)
+
+    # update DE sector ratios
+    intermediate_sector_ratios.loc[:, "DE"] = intermediate_sector_ratios_DE["DE"].values
 
     intermediate_sector_ratios.to_csv(snakemake.output.sector_ratios_modified)
 
@@ -108,6 +105,7 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "modify_sector_ratios",
             planning_horizons="2045",
+            run="KN2045_Bal_v4",
         )
 
     year = int(snakemake.wildcards.planning_horizons)

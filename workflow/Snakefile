@@ -415,8 +415,7 @@ use rule build_industrial_production_per_node from pypsaeur with:
 
 rule modify_sector_ratios:
     params:
-        future_DE=config_provider("industry", "sector_ratios_fraction_future"),
-        future_EU=config_provider("industry", "sector_ratios_fraction_future"),
+        future_DE=config_provider("industry", "sector_ratios_fraction_future_DE"),
     input:
         industry_sector_ratios=resources("industry_sector_ratios.csv"),
         industrial_energy_demand_per_country_today=resources(
