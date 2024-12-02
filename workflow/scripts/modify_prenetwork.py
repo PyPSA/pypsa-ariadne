@@ -772,7 +772,7 @@ def must_run(n, params):
     """
     Set p_min_pu for links to the specified value or reset to 0 if not specified.
     """
-    
+
     investment_year = int(snakemake.wildcards.planning_horizons)
     planning_horizons = snakemake.params.planning_horizons
     i = planning_horizons.index(int(snakemake.wildcards.planning_horizons))
@@ -786,7 +786,9 @@ def must_run(n, params):
     for region in previous_params:
         for carrier in previous_params[region]:
             # Check if the carrier is not in the current period
-            if region not in current_params or carrier not in current_params.get(region, {}):
+            if region not in current_params or carrier not in current_params.get(
+                region, {}
+            ):
                 # Reset p_min_pu to 0 for this carrier in the previous region
                 logger.info(
                     f"Must-run condition disabled: Resetting p_min_pu to 0 for {carrier} "
