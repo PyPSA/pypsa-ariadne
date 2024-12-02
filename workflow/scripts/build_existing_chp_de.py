@@ -204,9 +204,16 @@ def calculate_efficiency(CHP_de):
     return CHP_de
 
 
-def assign_subnode(CHP_de, subnodes):
+def assign_subnode(CHP_de: pd.DataFrame, subnodes: gpd.GeoDataFrame) -> pd.DataFrame:
     """
     Assign subnodes to the CHP plants based on their location.
+
+    Parameters:
+    CHP_de (pd.DataFrame): DataFrame containing CHP plant data with latitude and longitude.
+    subnodes (gpd.GeoDataFrame): GeoDataFrame containing subnode data with geometries.
+
+    Returns:
+    pd.DataFrame: DataFrame with assigned subnodes.
     """
 
     # Make a geodataframe from CHP_de using the lat and lon columns
@@ -250,7 +257,6 @@ if __name__ == "__main__":
             planning_horizons="2020",
             run="KN2045_Bal_v4",
         )
-        # snakemake = mock_snakemake("build_existing_chp_de")
 
     logging.basicConfig(level=snakemake.config["logging"]["level"])
 

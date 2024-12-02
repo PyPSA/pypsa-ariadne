@@ -10,16 +10,30 @@ import numpy as np
 import pandas as pd
 import pypsa
 import xarray as xr
-from geopy.geocoders import Nominatim
+from typing import Union
 
 
-# Function to encode city names in UTF-8
-def encode_utf8(city_name):
-    return city_name.encode("utf-8")
+def prepare_subnodes(
+    subnodes: pd.DataFrame,
+    cities: gpd.GeoDataFrame,
+    regions_onshore: gpd.GeoDataFrame,
+    lau: gpd.GeoDataFrame,
+    head: Union[int, bool] = 40,
+) -> gpd.GeoDataFrame:
+    """
+    Prepare subnodes by filtering district heating systems data for largest systems and assigning the corresponding LAU and onshore region shapes.
 
+    Parameters:
+    subnodes (pd.DataFrame): DataFrame containing information about district heating systems.
+    cities (gpd.GeoDataFrame): GeoDataFrame containing city coordinates with columns 'Stadt' and 'geometry'.
+    regions_onshore (gpd.GeoDataFrame): GeoDataFrame containing onshore region geometries of clustered network.
+    lau (gpd.GeoDataFrame): GeoDataFrame containing LAU (Local Administrative Units) geometries and IDs.
+    heat_techs (gpd.GeoDataFrame): GeoDataFrame containing heat technology geometries.
+    head (Union[int, bool], optional): Number of largest district heating networks to keep. Defaults to 40. If set to True, it will be set to 40.
 
-def prepare_subnodes(subnodes, cities, regions_onshore, lau, heat_techs, head=40):
-    # TODO: Embed I&O in snakemake rule, add potentials, match CHP capacities
+    Returns:
+    gpd.GeoDataFrame: GeoDataFrame with processed subnodes, including geometries, clusters, LAU IDs, and NUTS3 shapes.
+    """
     # If head is boolean set it to 40 for default behavior
     if isinstance(head, bool):
         head = 40
@@ -45,6 +59,7 @@ def prepare_subnodes(subnodes, cities, regions_onshore, lau, heat_techs, head=40
     )
 
     subnodes = subnodes.dropna(subset=["geometry"])
+
     # Convert the DataFrame to a GeoDataFrame
     subnodes = gpd.GeoDataFrame(subnodes, crs="EPSG:4326")
 
@@ -59,27 +74,29 @@ def prepare_subnodes(subnodes, cities, regions_onshore, lau, heat_techs, head=40
         lambda x: lau.loc[lau.geometry.contains(x.geometry).idxmax(), "geometry"].wkt,
         axis=1,
     )
-    subnodes["nuts3"] = subnodes.apply(
-        lambda x: heat_techs.geometry.contains(x.geometry).idxmax(),
-        axis=1,
-    )
-    subnodes["nuts3_shape"] = subnodes.apply(
-        lambda x: heat_techs.loc[
-            heat_techs.geometry.contains(x.geometry).idxmax(), "geometry"
-        ].wkt,
-        axis=1,
-    )
 
     return subnodes
 
 
-def add_subnodes(n, subnodes):
+def add_subnodes(n: pypsa.Network, subnodes: gpd.GeoDataFrame) -> None:
     """
-    Add subnodes to the network and adjust loads and capacities accordingly.
+    Add largest district heating systems subnodes to the network. They are initialized with
+     - the total annual heat demand taken from the mother node, that is assigned to urban central heat and low-temperature heat for industry,
+     - the heat demand profiles taken from the mother node,
+     - and the district heating investment options (stores, links) from the mother node,
+     - and heat vents as generator components
+    The district heating loads in the mother nodes are recuded accordingly.
+
+    Parameters:
+    n (pypsa.Network): The PyPSA network object to which subnodes will be added.
+    subnodes (gpd.GeoDataFrame): GeoDataFrame containing information about district heating subnodes.
+
+    Returns:
+    None
     """
 
     # Add subnodes to network
-    for idx, row in subnodes.iterrows():
+    for _, row in subnodes.iterrows():
         name = f'{row["cluster"]} {row["Stadt"]} urban central heat'
 
         # Add buses
@@ -94,8 +111,7 @@ def add_subnodes(n, subnodes):
             unit="MWh_th",
         )
 
-        # Add heat loads
-
+        # Add heat loads for urban central heat and low-temperature heat for industry
         uch_load_cluster = (
             n.snapshot_weightings.generators
             @ n.loads_t.p_set[f"{row['cluster']} urban central heat"]
@@ -107,19 +123,19 @@ def add_subnodes(n, subnodes):
         dh_load_cluster = uch_load_cluster + lti_load_cluster
         lti_share = lti_load_cluster / dh_load_cluster
 
-        scalar = min(
+        demand_ratio = min(
             1,
             (row["yearly_heat_demand_MWh"] / dh_load_cluster),
         )
 
         lost_load = row["yearly_heat_demand_MWh"] - dh_load_cluster
 
-        if scalar == 1:
+        if demand_ratio == 1:
             logger.info(
                 f"District heating load of {row['Stadt']} exceeds load of its assigned cluster {row['cluster']}. {lost_load} MWh/a are disregarded."
             )
         uch_load = (
-            scalar
+            demand_ratio
             * (1 - lti_share)
             * n.loads_t.p_set.filter(
                 regex=f"{row['cluster']} urban central heat"
@@ -140,7 +156,7 @@ def add_subnodes(n, subnodes):
         )
 
         lti_load = (
-            scalar
+            demand_ratio
             * lti_share
             * n.loads.filter(
                 regex=f"{row['cluster']} low-temperature heat for industry", axis=0
@@ -161,15 +177,14 @@ def add_subnodes(n, subnodes):
         )
 
         # Adjust loads of cluster buses
-        n.loads_t.p_set.loc[:, f'{row["cluster"]} urban central heat'] *= 1 - scalar * (
-            1 - lti_share
-        )
+        n.loads_t.p_set.loc[
+            :, f'{row["cluster"]} urban central heat'
+        ] *= 1 - demand_ratio * (1 - lti_share)
         n.loads.loc[f'{row["cluster"]} low-temperature heat for industry', "p_set"] *= (
-            1 - scalar * lti_share
+            1 - demand_ratio * lti_share
         )
 
         # Replicate district heating stores and links of mother node for subnodes
-
         n.madd(
             "Bus",
             [f"{row['cluster']} {row['Stadt']} urban central water tanks"],
@@ -242,10 +257,17 @@ def add_subnodes(n, subnodes):
     return
 
 
-def extend_cops(cops, subnodes):
+def extend_cops(cops: xr.DataArray, subnodes: gpd.GeoDataFrame) -> xr.DataArray:
     """
-    Extend COPs by subnodes mirroring the timeseries of the corresponding
+    Extend COPs (Coefficient of Performance) by subnodes mirroring the timeseries of the corresponding
     mother node.
+
+    Parameters:
+    cops (xr.DataArray): DataArray containing COP timeseries data.
+    subnodes (gpd.GeoDataFrame): GeoDataFrame containing information about district heating subnodes.
+
+    Returns:
+    xr.DataArray: Extended DataArray with COP timeseries for subnodes.
     """
     cops_extended = cops.copy()
 
@@ -269,10 +291,19 @@ def extend_cops(cops, subnodes):
     return cops_extended
 
 
-def extend_heating_distribution(existing_heating_distribution, subnodes):
+def extend_heating_distribution(
+    existing_heating_distribution: pd.DataFrame, subnodes: gpd.GeoDataFrame
+) -> pd.DataFrame:
     """
     Extend heating distribution by subnodes mirroring the distribution of the
     corresponding mother node.
+
+    Parameters:
+    existing_heating_distribution (pd.DataFrame): DataFrame containing the existing heating distribution.
+    subnodes (gpd.GeoDataFrame): GeoDataFrame containing information about district heating subnodes.
+
+    Returns:
+    pd.DataFrame: Extended DataFrame with heating distribution for subnodes.
     """
     # Merge the existing heating distribution with subnodes on the cluster name
     mother_nodes = (
@@ -336,11 +367,8 @@ if __name__ == "__main__":
     logger.info("Adding SysGF-specific functionality")
 
     n = pypsa.Network(snakemake.input.network)
-    heat_techs = gpd.read_file(snakemake.input.heating_technologies_nuts3).set_index(
-        "index"
-    )
+
     lau = gpd.read_file(
-        # "/home/cpschau/Code/dev/pypsa-ariadne/.snakemake/storage/http/gisco-services.ec.europa.eu/distribution/v2/lau/download/ref-lau-2021-01m.geojson/LAU_RG_01M_2021_3035.geojson",
         f"{snakemake.input.lau}!LAU_RG_01M_2021_3035.geojson",
         crs="EPSG:3035",
     ).to_crs("EPSG:4326")
@@ -351,18 +379,12 @@ if __name__ == "__main__":
     )
     cities = gpd.read_file(snakemake.input.cities)
     regions_onshore = gpd.read_file(snakemake.input.regions_onshore).set_index("name")
-    # Assign onshore region to heat techs based on geometry
-    heat_techs["cluster"] = heat_techs.apply(
-        lambda x: regions_onshore.geometry.contains(x.geometry).idxmax(),
-        axis=1,
-    )
 
     subnodes = prepare_subnodes(
         fernwaermeatlas,
         cities,
         regions_onshore,
         lau,
-        heat_techs,
         head=snakemake.params.district_heating["add_subnodes"],
     )
     subnodes.to_file(snakemake.output.district_heating_subnodes, driver="GeoJSON")
