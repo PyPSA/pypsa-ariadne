@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241121-fix-missing-gas-capa
+  prefix: 20241202-adjust-onwind
 
   name:
   # - CurrentPolicies
@@ -432,6 +432,12 @@ solving:
         H2 pipeline retrofitted: 0.05
       fractional_last_unit_size: true
   constraints:
+    onwind_flaechenziel:
+      enable: true
+      percentage: # % of total land area
+        2035: 0.5
+        2040: 0.75
+        2045: 1.0
     limits_capacity_max:
       Generator:
         onwind:

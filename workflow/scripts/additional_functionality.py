@@ -3,6 +3,7 @@
 import logging
 
 import pandas as pd
+import geopandas as gpd
 from prepare_sector_network import determine_emission_sectors
 from xarray import DataArray
 
@@ -663,6 +664,68 @@ def adapt_nuclear_output(n):
     )
 
 
+def add_onwind_constraint(n, investment_year, snakemake, onwind_constraint):
+
+    regions_onshore = gpd.read_file(snakemake.input.regions_onshore)
+    regions_onshore.set_index("name", inplace=True)
+    regions_onshore = regions_onshore.to_crs(epsg=3035)
+    # area in sqkm
+    area = regions_onshore[regions_onshore.index.str.startswith("DE")].geometry.area / 1e6
+
+    mw_per_sqkm = 30 # source: https://www.ffe.de/wp-content/uploads/2022/02/FfE-Discussion-Paper-2-der-Landesflaeche-fuer-Windenergie-ein-geeignetes-Mass.pdf page 7
+    # % into fraction
+    flaechenziel = onwind_constraint[investment_year] / 100
+    limit = flaechenziel * area * mw_per_sqkm
+
+    for region in area.index:
+        valid_components = (
+                (n.generators.bus == region)
+                & (n.generators.carrier == "onwind")
+        )
+
+        existing_index = n.generators.index[
+            valid_components & ~n.generators.p_nom_extendable
+        ]
+        extendable_index = n.generators.index[
+            valid_components & n.generators.p_nom_extendable
+        ]
+
+        if n.generators.loc[extendable_index[0], "p_nom_max"] < 10:
+            logger.warning(f"Skipping onwind constraint for {region} as no extendable capacity exists")
+            continue
+        elif existing_index.empty:
+            logger.info(f"No existing onwind capacity in {region}")
+            existing_cap = 0
+        else:
+            existing_cap = n.generators.loc[existing_index, "p_nom"].sum()
+        
+        lhs = n.model["Generator-p_nom"].loc[extendable_index]
+        rhs = limit[region] - existing_cap
+        if rhs <= 0:
+            logger.info(f"Existing capacity {existing_cap/1000} GW fullfills the Flaechenziel of {limit[region]/1000} GW in {region}.")
+            continue
+
+        cname = f"flaechenziel_onwind-{region}"
+
+        logger.info(f"Adding Flaechenziel for {region} of {rhs/1000} GW.")
+        n.model.add_constraints(lhs >= rhs, name=f"GlobalConstraint-{cname}")
+
+        if cname in n.global_constraints.index:
+            logger.warning(
+                f"Global constraint {cname} already exists. Dropping and adding it again."
+            )
+            n.global_constraints.drop(cname, inplace=True)
+        
+        n.add(
+            "GlobalConstraint",
+            cname,
+            constant=rhs,
+            sense=">=",
+            type="",
+            carrier_attribute="",
+        )
+
+
 def additional_functionality(n, snapshots, snakemake):
 
     logger.info("Adding Ariadne-specific functionality")
@@ -712,3 +775,6 @@ def additional_functionality(n, snapshots, snakemake):
 
     if investment_year == 2020:
         adapt_nuclear_output(n)
+
+    if constraints["onwind_flaechenziel"]["enable"] and investment_year in constraints["onwind_flaechenziel"]["percentage"].keys():
+        add_onwind_constraint(n, investment_year, snakemake, constraints["onwind_flaechenziel"]["percentage"])

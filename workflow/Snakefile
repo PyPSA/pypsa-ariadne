@@ -311,6 +311,7 @@ use rule solve_sector_network_myopic from pypsaeur with:
         network=RESULTS
         + "prenetworks-final/base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
         co2_totals_name=resources("co2_totals.csv"),
+        regions_onshore=resources("regions_onshore_base_s_{clusters}.geojson"),
 
 
 rule modify_existing_heating:
