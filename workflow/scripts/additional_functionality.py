@@ -673,9 +673,16 @@ def add_onwind_constraint(n, investment_year, snakemake, onwind_constraint):
 
     # get index that centroid_lat is smaller < 50
     bins = [[], [], []]
-    bins[0] = de_regions_onshore[de_regions_onshore["centroid_lat"] < 50].index.to_list()
-    bins[1] = de_regions_onshore[(de_regions_onshore["centroid_lat"] >= 50) & (de_regions_onshore["centroid_lat"] < 52)].index.to_list()
-    bins[2] = de_regions_onshore[(de_regions_onshore["centroid_lat"] >= 52)].index.to_list()
+    bins[0] = de_regions_onshore[
+        de_regions_onshore["centroid_lat"] < 50
+    ].index.to_list()
+    bins[1] = de_regions_onshore[
+        (de_regions_onshore["centroid_lat"] >= 50)
+        & (de_regions_onshore["centroid_lat"] < 52)
+    ].index.to_list()
+    bins[2] = de_regions_onshore[
+        (de_regions_onshore["centroid_lat"] >= 52)
+    ].index.to_list()
 
     regions_onshore = regions_onshore.to_crs(epsg=3035)
     # area in sqkm
@@ -691,9 +698,8 @@ def add_onwind_constraint(n, investment_year, snakemake, onwind_constraint):
         area_region = area[entry]
         limit = flaechenziel * area_region.sum() * mw_per_sqkm
 
-        valid_components = (
-                (n.generators.bus.isin(entry))
-                & (n.generators.carrier == "onwind")
+        valid_components = (n.generators.bus.isin(entry)) & (
+            n.generators.carrier == "onwind"
         )
 
         existing_index = n.generators.index[
@@ -704,18 +710,22 @@ def add_onwind_constraint(n, investment_year, snakemake, onwind_constraint):
         ]
 
         if n.generators.loc[extendable_index, "p_nom_max"].sum() < 10:
-            logger.warning(f"Skipping onwind constraint for region consisting of {entry} as no extendable capacity exists")
+            logger.warning(
+                f"Skipping onwind constraint for region consisting of {entry} as no extendable capacity exists"
+            )
             continue
         elif existing_index.empty:
             logger.info(f"No existing onwind capacity in region consisting of {entry}")
             existing_cap = 0
         else:
             existing_cap = n.generators.loc[existing_index, "p_nom"].sum()
-        
+
         lhs = n.model["Generator-p_nom"].loc[extendable_index].sum()
         rhs = limit - existing_cap
         if rhs <= 0:
-            logger.info(f"Existing capacity {existing_cap/1000} GW fullfills the Flaechenziel of {limit/1000} GW in {entry}.")
+            logger.info(
+                f"Existing capacity {existing_cap/1000} GW fullfills the Flaechenziel of {limit/1000} GW in {entry}."
+            )
             continue
 
         cname = f"flaechenziel_onwind-{entry}"
