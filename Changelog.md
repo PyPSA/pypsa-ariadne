@@ -1,4 +1,5 @@
 # Changelog
+- Modify industry sector ratios for Germany to reach climate neutrality by 2045 in the industrial sector.
 - Restricting the maximum capacity of CurrentPolicies and minus scenarios to the 'uba Projektionsbericht'
 - Restricting Fischer Tropsch capacity addition with config[solving][limit_DE_FT_cap]
 - Except for Current Policies force a minimum of 5 GW of electrolysis capacity in Germany

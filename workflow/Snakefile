@@ -413,6 +413,45 @@ use rule build_industrial_production_per_node from pypsaeur with:
         ),
 
 
+rule modify_sector_ratios:
+    params:
+        future_DE=config_provider("industry", "sector_ratios_fraction_future_DE"),
+    input:
+        industry_sector_ratios=resources("industry_sector_ratios.csv"),
+        industrial_energy_demand_per_country_today=resources(
+            "industrial_energy_demand_per_country_today.csv"
+        ),
+        industrial_production_per_country=resources(
+            "industrial_production_per_country.csv"
+        ),
+        sector_ratios=resources("industry_sector_ratios_{planning_horizons}.csv"),
+    output:
+        sector_ratios_modified=resources(
+            "industry_sector_ratios_{planning_horizons}-modified.csv"
+        ),
+    resources:
+        mem_mb=2000,
+    log:
+        logs("modify_industry_sector_ratios_{planning_horizons}}.log"),
+    script:
+        "scripts/modify_sector_ratios.py"
+
+
+ruleorder: modify_sector_ratios > build_industry_sector_ratios_intermediate
+
+
+use rule build_industrial_energy_demand_per_node from pypsaeur with:
+    input:
+        **{
+            k: v
+            for k, v in rules.build_industrial_energy_demand_per_node.input.items()
+            if k != "industry_sector_ratios"
+        },
+        industry_sector_ratios=resources(
+            "industry_sector_ratios_{planning_horizons}-modified.csv"
+        ),
+
+
 rule build_wasserstoff_kernnetz:
     params:
         kernnetz=config_provider("wasserstoff_kernnetz"),
