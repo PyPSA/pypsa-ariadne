@@ -670,19 +670,19 @@ def add_onwind_constraint(n, investment_year, snakemake, onwind_constraint):
     regions_onshore.set_index("name", inplace=True)
     de_regions_onshore = regions_onshore[regions_onshore.index.str.startswith("DE")]
     de_regions_onshore["centroid_lat"] = de_regions_onshore.geometry.centroid.y
+    de_regions_onshore["centroid_lon"] = de_regions_onshore.geometry.centroid.x
 
     # get index that centroid_lat is smaller < 50
-    bins = [[], [], []]
-    bins[0] = de_regions_onshore[
-        de_regions_onshore["centroid_lat"] < 50
-    ].index.to_list()
-    bins[1] = de_regions_onshore[
-        (de_regions_onshore["centroid_lat"] >= 50)
-        & (de_regions_onshore["centroid_lat"] < 52)
-    ].index.to_list()
-    bins[2] = de_regions_onshore[
-        (de_regions_onshore["centroid_lat"] >= 52)
-    ].index.to_list()
+    bins = [[], [], [], [], []]
+    # south by
+    bins[0] = de_regions_onshore[(de_regions_onshore["centroid_lat"] < 50) & (de_regions_onshore["centroid_lon"] > 10)].index.to_list()
+    # bw
+    bins[1] = de_regions_onshore[(de_regions_onshore["centroid_lat"] < 49) & (de_regions_onshore["centroid_lon"] <= 10)].index.to_list()
+    # sl, he, rp, nrw
+    bins[2] = de_regions_onshore[(de_regions_onshore["centroid_lat"] >= 49) & (de_regions_onshore["centroid_lat"] < 52) & (de_regions_onshore["centroid_lon"] <= 10)].index.to_list()
+    # north by, th, sa
+    bins[3] = de_regions_onshore[(de_regions_onshore["centroid_lat"] >= 50) & (de_regions_onshore["centroid_lat"] < 52) & (de_regions_onshore["centroid_lon"] > 10)].index.to_list()
+    bins[4] = de_regions_onshore[(de_regions_onshore["centroid_lat"] >= 52)].index.to_list()
 
     regions_onshore = regions_onshore.to_crs(epsg=3035)
     # area in sqkm
@@ -695,6 +695,8 @@ def add_onwind_constraint(n, investment_year, snakemake, onwind_constraint):
     flaechenziel = onwind_constraint[investment_year] / 100
 
     for entry in bins:
+        if not entry:
+            continue
         area_region = area[entry]
         limit = flaechenziel * area_region.sum() * mw_per_sqkm
 
