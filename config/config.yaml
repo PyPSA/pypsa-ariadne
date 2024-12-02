@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241121-fix-missing-gas-capa
+  prefix: 20241202-more-waste-CHP
 
   name:
   # - CurrentPolicies
@@ -480,6 +480,14 @@ solving:
             2035: 2.5
             2040: 2.5
             2045: 2.5
+        HVC to air:
+          DE:
+            2020: 9
+            2025: 8
+            2030: 7
+            2035: 6
+            2040: 5
+            2045: 4
     limits_capacity_min:
       Generator:
         onwind:
