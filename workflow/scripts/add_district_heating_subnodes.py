@@ -96,17 +96,17 @@ def add_subnodes(n: pypsa.Network, subnodes: gpd.GeoDataFrame) -> None:
     """
 
     # Add subnodes to network
-    for _, row in subnodes.iterrows():
-        name = f'{row["cluster"]} {row["Stadt"]} urban central heat'
+    for _, subnode in subnodes.iterrows():
+        name = f'{subnode["cluster"]} {subnode["Stadt"]} urban central heat'
 
         # Add buses
         n.madd(
             "Bus",
             [name],
-            y=row.geometry.y,
-            x=row.geometry.x,
+            y=subnode.geometry.y,
+            x=subnode.geometry.x,
             country="DE",
-            location=f"{row['cluster']} {row['Stadt']}",
+            location=f"{subnode['cluster']} {subnode['Stadt']}",
             carrier="urban central heat",
             unit="MWh_th",
         )
@@ -114,10 +114,12 @@ def add_subnodes(n: pypsa.Network, subnodes: gpd.GeoDataFrame) -> None:
         # Add heat loads for urban central heat and low-temperature heat for industry
         uch_load_cluster = (
             n.snapshot_weightings.generators
-            @ n.loads_t.p_set[f"{row['cluster']} urban central heat"]
+            @ n.loads_t.p_set[f"{subnode['cluster']} urban central heat"]
         )
         lti_load_cluster = (
-            n.loads.loc[f"{row['cluster']} low-temperature heat for industry", "p_set"]
+            n.loads.loc[
+                f"{subnode['cluster']} low-temperature heat for industry", "p_set"
+            ]
             * 8760
         )
         dh_load_cluster = uch_load_cluster + lti_load_cluster
@@ -125,23 +127,23 @@ def add_subnodes(n: pypsa.Network, subnodes: gpd.GeoDataFrame) -> None:
 
         demand_ratio = min(
             1,
-            (row["yearly_heat_demand_MWh"] / dh_load_cluster),
+            (subnode["yearly_heat_demand_MWh"] / dh_load_cluster),
         )
 
-        lost_load = row["yearly_heat_demand_MWh"] - dh_load_cluster
+        lost_load = subnode["yearly_heat_demand_MWh"] - dh_load_cluster
 
         if demand_ratio == 1:
             logger.info(
-                f"District heating load of {row['Stadt']} exceeds load of its assigned cluster {row['cluster']}. {lost_load} MWh/a are disregarded."
+                f"District heating load of {subnode['Stadt']} exceeds load of its assigned cluster {subnode['cluster']}. {lost_load} MWh/a are disregarded."
             )
         uch_load = (
             demand_ratio
             * (1 - lti_share)
             * n.loads_t.p_set.filter(
-                regex=f"{row['cluster']} urban central heat"
+                regex=f"{subnode['cluster']} urban central heat"
             ).rename(
                 {
-                    f"{row['cluster']} urban central heat": f"{row['cluster']} {row['Stadt']} urban central heat"
+                    f"{subnode['cluster']} urban central heat": f"{subnode['cluster']} {subnode['Stadt']} urban central heat"
                 },
                 axis=1,
             )
@@ -152,53 +154,55 @@ def add_subnodes(n: pypsa.Network, subnodes: gpd.GeoDataFrame) -> None:
             bus=name,
             p_set=uch_load,
             carrier="urban central heat",
-            location=f"{row['cluster']} {row['Stadt']}",
+            location=f"{subnode['cluster']} {subnode['Stadt']}",
         )
 
         lti_load = (
             demand_ratio
             * lti_share
             * n.loads.filter(
-                regex=f"{row['cluster']} low-temperature heat for industry", axis=0
+                regex=f"{subnode['cluster']} low-temperature heat for industry", axis=0
             ).p_set.rename(
                 {
-                    f"{row['cluster']} low-temperature heat for industry": f"{row['cluster']} {row['Stadt']} low-temperature heat for industry"
+                    f"{subnode['cluster']} low-temperature heat for industry": f"{subnode['cluster']} {subnode['Stadt']} low-temperature heat for industry"
                 },
                 axis=0,
             )
         )
         n.madd(
             "Load",
-            [f"{row['cluster']} {row['Stadt']} low-temperature heat for industry"],
+            [
+                f"{subnode['cluster']} {subnode['Stadt']} low-temperature heat for industry"
+            ],
             bus=name,
             p_set=lti_load,
             carrier="low-temperature heat for industry",
-            location=f"{row['cluster']} {row['Stadt']}",
+            location=f"{subnode['cluster']} {subnode['Stadt']}",
         )
 
         # Adjust loads of cluster buses
         n.loads_t.p_set.loc[
-            :, f'{row["cluster"]} urban central heat'
+            :, f'{subnode["cluster"]} urban central heat'
         ] *= 1 - demand_ratio * (1 - lti_share)
-        n.loads.loc[f'{row["cluster"]} low-temperature heat for industry', "p_set"] *= (
-            1 - demand_ratio * lti_share
-        )
+        n.loads.loc[
+            f'{subnode["cluster"]} low-temperature heat for industry', "p_set"
+        ] *= (1 - demand_ratio * lti_share)
 
         # Replicate district heating stores and links of mother node for subnodes
         n.madd(
             "Bus",
-            [f"{row['cluster']} {row['Stadt']} urban central water tanks"],
-            location=f"{row['cluster']} {row['Stadt']}",
+            [f"{subnode['cluster']} {subnode['Stadt']} urban central water tanks"],
+            location=f"{subnode['cluster']} {subnode['Stadt']}",
             carrier="urban central water tanks",
             unit="MWh_th",
         )
 
         stores = (
-            n.stores.filter(like=f"{row['cluster']} urban central", axis=0)
+            n.stores.filter(like=f"{subnode['cluster']} urban central", axis=0)
             .reset_index()
             .replace(
                 {
-                    f"{row['cluster']} urban central": f"{row['cluster']} {row['Stadt']} urban central"
+                    f"{subnode['cluster']} urban central": f"{subnode['cluster']} {subnode['Stadt']} urban central"
                 },
                 regex=True,
             )
@@ -208,11 +212,11 @@ def add_subnodes(n: pypsa.Network, subnodes: gpd.GeoDataFrame) -> None:
 
         links = (
             n.links.loc[~n.links.carrier.str.contains("heat pump")]
-            .filter(like=f"{row['cluster']} urban central", axis=0)
+            .filter(like=f"{subnode['cluster']} urban central", axis=0)
             .reset_index()
             .replace(
                 {
-                    f"{row['cluster']} urban central": f"{row['cluster']} {row['Stadt']} urban central"
+                    f"{subnode['cluster']} urban central": f"{subnode['cluster']} {subnode['Stadt']} urban central"
                 },
                 regex=True,
             )
@@ -222,22 +226,24 @@ def add_subnodes(n: pypsa.Network, subnodes: gpd.GeoDataFrame) -> None:
 
         # Add heat pumps to subnode
         heat_pumps = (
-            n.links.filter(regex=f"{row['cluster']} urban central.*heat pump", axis=0)
+            n.links.filter(
+                regex=f"{subnode['cluster']} urban central.*heat pump", axis=0
+            )
             .reset_index()
             .replace(
                 {
-                    f"{row['cluster']} urban central": f"{row['cluster']} {row['Stadt']} urban central"
+                    f"{subnode['cluster']} urban central": f"{subnode['cluster']} {subnode['Stadt']} urban central"
                 },
                 regex=True,
             )
             .set_index("Link")
         ).drop("efficiency", axis=1)
         heat_pumps_t = n.links_t.efficiency.filter(
-            regex=f"{row['cluster']} urban central.*heat pump"
+            regex=f"{subnode['cluster']} urban central.*heat pump"
         )
         heat_pumps_t.columns = heat_pumps_t.columns.str.replace(
-            f"{row['cluster']} urban central",
-            f"{row['cluster']} {row['Stadt']} urban central",
+            f"{subnode['cluster']} urban central",
+            f"{subnode['cluster']} {subnode['Stadt']} urban central",
         )
         n.madd("Link", heat_pumps.index, efficiency=heat_pumps_t, **heat_pumps)
 
@@ -246,7 +252,7 @@ def add_subnodes(n: pypsa.Network, subnodes: gpd.GeoDataFrame) -> None:
             "Generator",
             [f"{name} heat vent"],
             bus=name,
-            location=f"{row['cluster']} {row['Stadt']}",
+            location=f"{subnode['cluster']} {subnode['Stadt']}",
             carrier="urban central heat vent",
             p_nom_extendable=True,
             p_min_pu=-1,
@@ -272,9 +278,9 @@ def extend_cops(cops: xr.DataArray, subnodes: gpd.GeoDataFrame) -> xr.DataArray:
     cops_extended = cops.copy()
 
     # Iterate over the DataFrame rows
-    for _, row in subnodes.iterrows():
-        cluster_name = row["cluster"]
-        city_name = row["Stadt"]
+    for _, subnode in subnodes.iterrows():
+        cluster_name = subnode["cluster"]
+        city_name = subnode["Stadt"]
 
         # Select the xarray entry where name matches the cluster
         selected_entry = cops.sel(name=cluster_name)
