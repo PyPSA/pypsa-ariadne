@@ -675,14 +675,30 @@ def add_onwind_constraint(n, investment_year, snakemake, onwind_constraint):
     # get index that centroid_lat is smaller < 50
     bins = [[], [], [], [], []]
     # south by
-    bins[0] = de_regions_onshore[(de_regions_onshore["centroid_lat"] < 50) & (de_regions_onshore["centroid_lon"] > 10)].index.to_list()
+    bins[0] = de_regions_onshore[
+        (de_regions_onshore["centroid_lat"] < 50)
+        & (de_regions_onshore["centroid_lon"] > 10)
+    ].index.to_list()
     # bw
-    bins[1] = de_regions_onshore[(de_regions_onshore["centroid_lat"] < 49) & (de_regions_onshore["centroid_lon"] <= 10)].index.to_list()
+    bins[1] = de_regions_onshore[
+        (de_regions_onshore["centroid_lat"] < 49)
+        & (de_regions_onshore["centroid_lon"] <= 10)
+    ].index.to_list()
     # sl, he, rp, nrw
-    bins[2] = de_regions_onshore[(de_regions_onshore["centroid_lat"] >= 49) & (de_regions_onshore["centroid_lat"] < 52) & (de_regions_onshore["centroid_lon"] <= 10)].index.to_list()
+    bins[2] = de_regions_onshore[
+        (de_regions_onshore["centroid_lat"] >= 49)
+        & (de_regions_onshore["centroid_lat"] < 52)
+        & (de_regions_onshore["centroid_lon"] <= 10)
+    ].index.to_list()
     # north by, th, sa
-    bins[3] = de_regions_onshore[(de_regions_onshore["centroid_lat"] >= 50) & (de_regions_onshore["centroid_lat"] < 52) & (de_regions_onshore["centroid_lon"] > 10)].index.to_list()
-    bins[4] = de_regions_onshore[(de_regions_onshore["centroid_lat"] >= 52)].index.to_list()
+    bins[3] = de_regions_onshore[
+        (de_regions_onshore["centroid_lat"] >= 50)
+        & (de_regions_onshore["centroid_lat"] < 52)
+        & (de_regions_onshore["centroid_lon"] > 10)
+    ].index.to_list()
+    bins[4] = de_regions_onshore[
+        (de_regions_onshore["centroid_lat"] >= 52)
+    ].index.to_list()
 
     regions_onshore = regions_onshore.to_crs(epsg=3035)
     # area in sqkm
