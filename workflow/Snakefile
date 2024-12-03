@@ -218,6 +218,12 @@ if config["sector"]["district_heating"]["add_subnodes"] and config["sector"][
             ),
             fernwaermeatlas="data/fernwaermeatlas/fernwaermeatlas.xlsx",
             cities="data/fernwaermeatlas/cities_geolocations.geojson",
+            corine=ancient("data/bundle/corine/g100_06.tif"),
+            natura=ancient("data/bundle/natura/natura.tiff"),
+            groundwater_depth=storage(
+                "http://thredds-gfnl.usc.es/thredds/fileServer/GLOBALWTDFTP/annualmeans/EURASIA_WTD_annualmean.nc",
+                keep_local=True
+                ),
             cop_profiles=resources("cop_profiles_base_s_{clusters}_{planning_horizons}.nc"),
             existing_heating_distribution=resources(
                 f"existing_heating_distribution_base_s_{{clusters}}_{baseyear_value}.csv"
@@ -243,7 +249,7 @@ if config["sector"]["district_heating"]["add_subnodes"] and config["sector"][
                 else []
             ),
         resources:
-            mem_mb=1000,
+            mem_mb=10000,
         script:
             "scripts/add_district_heating_subnodes.py"
 

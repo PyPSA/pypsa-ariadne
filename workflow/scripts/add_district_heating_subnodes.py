@@ -67,7 +67,15 @@ def prepare_subnodes(subnodes, cities, regions_onshore, lau, heat_techs):
     return subnodes
 
 
-def add_ptes_limit(subnodes, corine, ptes_potential_scalar):
+def add_ptes_limit(
+    subnodes,
+    corine,
+    natura,
+    groundwater,
+    codes,
+    max_groundwater_depth,
+    ptes_potential_scalar,
+):
     """
     Add PTES limit to subnodes according to land availability within city regions.
     """
@@ -77,15 +85,16 @@ def add_ptes_limit(subnodes, corine, ptes_potential_scalar):
     dh_systems.crs = "EPSG:4326"
     dh_systems = dh_systems.to_crs(3035)
 
-    codes = snakemake.config["renewable"]["onwind"]["corine"]["grid_codes"]
-    # codes = [26, 28, 30, 32, 33]
-
     excluder = ExclusionContainer(crs=3035, res=100)
 
+    # Exclusion of unsuitable areas
     excluder.add_raster(corine, codes=codes, invert=True, crs=3035)
 
-    band, transform = shape_availability(dh_systems.lau_shape, excluder)
+    # Exclusion of NATURA protected areas
+    excluder.add_raster(natura, codes=[1], invert=True, crs=3035)
 
+    # Calculation of shape availability and transformation of raster data to geodataframe
+    band, transform = shape_availability(dh_systems.lau_shape, excluder)
     masked_data = band
     row_indices, col_indices = np.where(masked_data != corine.nodata)
     values = masked_data[row_indices, col_indices]
@@ -98,6 +107,7 @@ def add_ptes_limit(subnodes, corine, ptes_potential_scalar):
         crs=corine.crs,
     )
 
+    # Area calculation with buffer to match raster resolution of 100mx100m
     eligible_areas["geometry"] = eligible_areas.geometry.buffer(50, cap_style="square")
     merged_data = eligible_areas.union_all()
     eligible_areas = (
@@ -114,16 +124,37 @@ def add_ptes_limit(subnodes, corine, ptes_potential_scalar):
 
     # filter for eligible areas that are larger than 19204 m^2
     eligible_areas = eligible_areas[eligible_areas.area > 19204]
+
+    # Find closest value in groundwater dataset and kick out areas with groundwater level > threshold
+    eligible_areas["groundwater_level"] = eligible_areas.to_crs("EPSG:4326").apply(
+        lambda a: groundwater.sel(
+            lon=a.geometry.centroid.x, lat=a.geometry.centroid.y, method="nearest"
+        )["WTD"].values[0],
+        axis=1,
+    )
+    eligible_areas = eligible_areas[
+        eligible_areas.groundwater_level < max_groundwater_depth
+    ]
+
+    # Combine eligible areas by city
     eligible_areas = eligible_areas.dissolve("Stadt")
+
+    # Calculate PTES potential according to Toftlund parameters
     eligible_areas["area_m2"] = eligible_areas.area
     eligible_areas["nstorages_pot"] = eligible_areas.area_m2 / 19204
     eligible_areas["storage_pot_mwh"] = eligible_areas["nstorages_pot"] * 4500
 
     subnodes.set_index("Stadt", inplace=True)
     subnodes["ptes_pot_mwh"] = (
-        eligible_areas.loc[subnodes.index]["storage_pot_mwh"] * ptes_potential_scalar
+        eligible_areas.loc[subnodes.index.intersection(eligible_areas.index)][
+            "storage_pot_mwh"
+        ]
+        * ptes_potential_scalar
     )
-    return subnodes.reset_index()
+    subnodes["ptes_pot_mwh"] = subnodes["ptes_pot_mwh"].fillna(0)
+    subnodes.reset_index(inplace=True)
+
+    return subnodes
 
 
 def add_subnodes(n, subnodes, head=40):
@@ -144,7 +175,7 @@ def add_subnodes(n, subnodes, head=40):
     subnodes_rest = subnodes[~subnodes.index.isin(subnodes_head.index)]
 
     # Add subnodes to network
-    for idx, row in subnodes.iterrows():
+    for idx, row in subnodes_head.iterrows():
         name = f'{row["cluster"]} {row["Stadt"]} urban central heat'
 
         # Add buses
@@ -429,11 +460,20 @@ if __name__ == "__main__":
     )
     subnodes.to_file(snakemake.output.district_heating_subnodes, driver="GeoJSON")
 
-    # Add PTEs limit to subnodes according to land availability within city regions
+    # Add PTES limit to subnodes according to land availability within city regions
     corine = rasterio.open(snakemake.input.corine)
+    natura = rasterio.open(snakemake.input.natura)
+    groundwater = xr.open_dataset(snakemake.input.groundwater_depth).sel(
+        lon=slice(subnodes["geometry"].x.min(), subnodes["geometry"].x.max()),
+        lat=slice(subnodes["geometry"].y.min(), subnodes["geometry"].y.max()),
+    )
     subnodes = add_ptes_limit(
         subnodes,
         corine,
+        natura,
+        groundwater,
+        snakemake.params.district_heating["ptes_codes_corine"],
+        snakemake.params.district_heating["max_groundwater_depth"],
         snakemake.params.district_heating["ptes_potential_scalar"],
     )
 
