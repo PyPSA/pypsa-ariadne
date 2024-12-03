@@ -178,8 +178,9 @@ def write_to_scenario_yaml(input, output, scenarios, df):
             df.loc[:, fallback_reference_scenario, :], planning_horizons
         )
 
-
-        if reference_scenario.startswith("KN2045plus"): # Still waiting for REMIND uploads
+        if reference_scenario.startswith(
+            "KN2045plus"
+        ):  # Still waiting for REMIND uploads
             fallback_reference_scenario = reference_scenario
 
         co2_budget_source = config[scenario]["co2_budget_DE_source"]
