@@ -394,13 +394,13 @@ industry:
     2045: 0.16
     2050: 0.20
   HVC_environment_sequestration_fraction:
-    2020: 0.1
-    2025: 0.1
-    2030: 0.12
-    2035: 0.15
-    2040: 0.18
-    2045: 0.20
-    2050: 0.20
+    2020: 0.6
+    2025: 0.6
+    2030: 0.6
+    2035: 0.6
+    2040: 0.6
+    2045: 0.6
+    2050: 0.6
   waste_to_energy: true
   waste_to_energy_cc: true
 
@@ -482,12 +482,12 @@ solving:
             2045: 2.5
         HVC to air:
           DE:
-            2020: 9
-            2025: 8
-            2030: 7
-            2035: 6
-            2040: 5
-            2045: 4
+            2020: 0
+            2025: 0
+            2030: 0
+            2035: 0
+            2040: 0
+            2045: 0
     limits_capacity_min:
       Generator:
         onwind:
