@@ -770,21 +770,47 @@ def transmission_costs_from_modified_cost_data(n, costs, transmission):
 
 def must_run(n, params):
     """
-    Set p_min_pu for links to the specified value.
+    Set p_min_pu for links to the specified value or reset to 0 if not specified.
     """
-    investment_year = int(snakemake.wildcards.planning_horizons)
-    if investment_year in params.keys():
-        for region in params[investment_year].keys():
-            for carrier in params[investment_year][region].keys():
-                p_min_pu = params[investment_year][region][carrier]
-                logger.info(
-                    f"Must-run condition enabled: Setting p_min_pu = {p_min_pu} for {carrier} in year {investment_year} and region {region}."
-                )
 
+    investment_year = int(snakemake.wildcards.planning_horizons)
+    planning_horizons = snakemake.params.planning_horizons
+    i = planning_horizons.index(int(snakemake.wildcards.planning_horizons))
+    previous_investment_year = int(planning_horizons[i - 1]) if i != 0 else np.nan
+
+    # Get params for the current and previous years
+    current_params = params.get(investment_year, {})
+    previous_params = params.get(previous_investment_year, {})
+
+    # Collect all carriers and regions from the previous period
+    for region in previous_params:
+        for carrier in previous_params[region]:
+            # Check if the carrier is not in the current period
+            if region not in current_params or carrier not in current_params.get(
+                region, {}
+            ):
+                # Reset p_min_pu to 0 for this carrier in the previous region
+                logger.info(
+                    f"Must-run condition disabled: Resetting p_min_pu to 0 for {carrier} "
+                    f"in region {region} (was specified in {previous_investment_year}, but not in {investment_year})."
+                )
                 links_i = n.links[
                     (n.links.carrier == carrier) & n.links.index.str.contains(region)
                 ].index
-                n.links.loc[links_i, "p_min_pu"] = p_min_pu
+                n.links.loc[links_i, "p_min_pu"] = 0
+
+    # Set p_min_pu for carriers specified in the current investment period
+    for region in current_params:
+        for carrier in current_params[region]:
+            p_min_pu = current_params[region][carrier]
+            logger.info(
+                f"Must-run condition enabled: Setting p_min_pu = {p_min_pu} for {carrier} "
+                f"in year {investment_year} and region {region}."
+            )
+            links_i = n.links[
+                (n.links.carrier == carrier) & n.links.index.str.contains(region)
+            ].index
+            n.links.loc[links_i, "p_min_pu"] = p_min_pu
 
 
 def aladin_mobility_demand(n):
@@ -1247,7 +1273,7 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts="none",
-            planning_horizons="2020",
+            planning_horizons="2025",
             run="KN2045_Bal_v4",
         )
 
