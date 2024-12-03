@@ -2871,9 +2871,7 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         "biogas to gas CC", 0
     ) + var["Emissions|Gross Fossil CO2|Energy|Supply|Gases"]
 
-    var["Emissions|CO2|Supply|Non-Renewable Waste"] = (
-        co2_emissions.get("HVC to air", 0)
-    )
+    var["Emissions|CO2|Supply|Non-Renewable Waste"] = co2_emissions.get("HVC to air", 0)
 
     var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"] = co2_emissions.get(
         "oil refining", 0
