@@ -706,7 +706,6 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         ]
     ].sum()
 
-
     capacities_central_heat = (
         cap_func(
             bus_carrier=[
@@ -725,16 +724,20 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
     )
     if cap_string.startswith("Investment"):
         secondary_heat_techs = [
-            "DAC", "Fischer-Tropsch", "H2 Electrolysis", 
-            "H2 Fuel Cell", "methanolisation", "Sabatier",
-            "CHP" # We follow REMIND convention and account all CHPs only in electricity
+            "DAC",
+            "Fischer-Tropsch",
+            "H2 Electrolysis",
+            "H2 Fuel Cell",
+            "methanolisation",
+            "Sabatier",
+            "CHP",  # We follow REMIND convention and account all CHPs only in electricity
         ]
         secondary_heat_idxs = [
-            idx for idx in capacities_central_heat.index if any(
-            [tech in idx for tech in secondary_heat_techs]
-        )]
+            idx
+            for idx in capacities_central_heat.index
+            if any([tech in idx for tech in secondary_heat_techs])
+        ]
         capacities_central_heat[secondary_heat_idxs] = 0
-
 
     var[cap_string + "Heat|Solar thermal"] = capacities_central_heat.filter(
         like="solar thermal"
@@ -820,12 +823,12 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         + var[cap_string + "Heat|Oil"]
         + var[cap_string + "Heat|Gas"]
         + var[cap_string + "Heat|Processes"]
-        + var[cap_string + "Heat|Hydrogen"] 
+        + var[cap_string + "Heat|Hydrogen"]
         + var[cap_string + "Heat|Heat pump"]
         + var[cap_string + "Heat|Non-Renewable Waste"]
     )
 
-    var[cap_string + "Heat|Renewable"] =(
+    var[cap_string + "Heat|Renewable"] = (
         var[cap_string + "Heat|Solar thermal"]
         + var[cap_string + "Heat|Biomass"]
         + var[cap_string + "Heat|Hydrogen"]
