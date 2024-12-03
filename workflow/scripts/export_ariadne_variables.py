@@ -825,6 +825,14 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         + var[cap_string + "Heat|Non-Renewable Waste"]
     )
 
+    var[cap_string + "Heat|Renewable"] =(
+        var[cap_string + "Heat|Solar thermal"]
+        + var[cap_string + "Heat|Biomass"]
+        + var[cap_string + "Heat|Hydrogen"]
+        + var[cap_string + "Heat|Heat pump"]
+        + var[cap_string + "Heat|Resistive heater"]
+    )
+
     capacities_decentral_heat = (
         cap_func(
             bus_carrier=[
