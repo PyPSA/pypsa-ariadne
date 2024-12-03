@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241121-fix-missing-gas-capa
+  prefix: 20241203-fix-aviation
 
   name:
   # - CurrentPolicies
@@ -284,6 +284,8 @@ costs:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
+  domestic_aviation_factor:
+    DE: 0.07 # eurostat 2019
   v2g: false
   solar_thermal: false
   district_heating:

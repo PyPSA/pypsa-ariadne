@@ -19,7 +19,7 @@ import ruamel.yaml
 
 def get_transport_growth(df, planning_horizons):
     # Aviation growth factor - using REMIND-EU v1.1 since Aladin v1 does not include bunkers
-    aviation_model = snakemake.params.leitmodelle["general"]
+    aviation_model = snakemake.params.leitmodelle["transport"]
     try:
         aviation = df.loc[aviation_model, "Final Energy|Bunkers|Aviation", "PJ/yr"]
     except KeyError:
