@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241121-fix-missing-gas-capa
+  prefix: 20241202-fix-must-run-bug
 
   name:
   # - CurrentPolicies
@@ -652,8 +652,8 @@ pypsa_eur:
 
 
 co2_price_add_on_fossils:
-  2020: 25
-  2025: 60
+  # 2020: 25
+  # 2025: 60
 
 must_run:
   2020:

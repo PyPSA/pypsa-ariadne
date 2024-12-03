@@ -4130,7 +4130,9 @@ def get_policy(n, investment_year):
     var = pd.Series()
 
     # add carbon component to fossil fuels if specified
-    if investment_year in snakemake.params.co2_price_add_on_fossils.keys():
+    if (snakemake.params.co2_price_add_on_fossils is not None) and (
+        investment_year in snakemake.params.co2_price_add_on_fossils.keys()
+    ):
         co2_price_add_on = snakemake.params.co2_price_add_on_fossils[investment_year]
     else:
         co2_price_add_on = 0.0
