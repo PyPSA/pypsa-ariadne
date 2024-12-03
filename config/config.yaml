@@ -393,7 +393,7 @@ industry:
     2040: 0.12
     2045: 0.16
     2050: 0.20
-  # 15 Mt HVC production (from IDEES) -> 6 Mt Plastikabfälle, 
+  # 15 Mt HVC production (from IDEES) -> 6 Mt Plastikabfälle,
   # To substitute for other waste, assume all Plastikabfall is used energetically whereas in reality ~40% is recycled
   # see https://github.com/PyPSA/pypsa-ariadne/pull/292
   HVC_environment_sequestration_fraction:
