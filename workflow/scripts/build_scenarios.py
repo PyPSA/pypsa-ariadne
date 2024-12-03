@@ -139,10 +139,7 @@ def get_co2_budget(df, source):
 
     ## PyPSA disregards nonco2 GHG emissions, but includes bunkers
 
-    targets_pypsa = (
-        targets_co2
-        - nonco2
-    )
+    targets_pypsa = targets_co2 - nonco2
 
     target_fractions_pypsa = targets_pypsa.loc[targets_co2.index] / baseline_pypsa
 
