@@ -142,7 +142,6 @@ def get_co2_budget(df, source):
     targets_pypsa = (
         targets_co2
         - nonco2
-        + df.loc["Emissions|CO2|Energy|Demand|Bunkers", "Mt CO2/yr"]
     )
 
     target_fractions_pypsa = targets_pypsa.loc[targets_co2.index] / baseline_pypsa
