@@ -2876,7 +2876,7 @@ def get_emissions(n, region, _energy_totals, industry_demand):
     ) + var["Emissions|Gross Fossil CO2|Energy|Supply|Gases"]
 
     var["Emissions|CO2|Supply|Non-Renewable Waste"] = (
-        co2_emissions.get("HVC to air").sum() + waste_CHP_emissions.sum()
+        co2_emissions.get("HVC to air", 0) + waste_CHP_emissions.sum()
     )
 
     var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"] = co2_emissions.get(
