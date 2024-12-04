@@ -663,12 +663,6 @@ KN2045minus_SupplyFocus:
               2035: 115 # not forcing more EE
               2040: 115
               2045: 115
-          offwind:
-            DE:
-              2030: 30 # Wind-auf-See Law
-              2035: 30 # not forcing more EE
-              2040: 30
-              2045: 30
           solar:
             DE:
               2025: 101
