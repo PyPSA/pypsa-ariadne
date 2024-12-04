@@ -706,23 +706,6 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         ]
     ].sum()
 
-    # Test if we forgot something
-    #
-    # Unconvenient at the moment, requires further changes to n.statistics
-    #
-    # _drop_idx = [
-    #     col for col in [
-    #         "PHS",
-    #         "battery discharger",
-    #         "home battery discharger",
-    #         "V2G",
-    #     ] if col in capacities_electricity.index
-    # ]
-    # assert isclose(
-    #     var[cap_string + "Electricity"],
-    #     capacities_electricity.drop(_drop_idx).sum(),
-    # )
-
     capacities_central_heat = (
         cap_func(
             bus_carrier=[
@@ -739,6 +722,22 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         )
         .multiply(MW2GW)
     )
+    if cap_string.startswith("Investment"):
+        secondary_heat_techs = [
+            "DAC",
+            "Fischer-Tropsch",
+            "H2 Electrolysis",
+            "H2 Fuel Cell",
+            "methanolisation",
+            "Sabatier",
+            "CHP",  # We follow REMIND convention and account all CHPs only in electricity
+        ]
+        secondary_heat_idxs = [
+            idx
+            for idx in capacities_central_heat.index
+            if any([tech in idx for tech in secondary_heat_techs])
+        ]
+        capacities_central_heat[secondary_heat_idxs] = 0
 
     var[cap_string + "Heat|Solar thermal"] = capacities_central_heat.filter(
         like="solar thermal"
@@ -824,20 +823,18 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         + var[cap_string + "Heat|Oil"]
         + var[cap_string + "Heat|Gas"]
         + var[cap_string + "Heat|Processes"]
-        +
-        # var[cap_string + "Heat|Hydrogen"] +
-        var[cap_string + "Heat|Heat pump"]
+        + var[cap_string + "Heat|Hydrogen"]
+        + var[cap_string + "Heat|Heat pump"]
         + var[cap_string + "Heat|Non-Renewable Waste"]
     )
 
-    # This check requires further changes to n.statistics
-    # assert isclose(
-    #     var[cap_string + "Heat"],
-    #     capacities_central_heat[
-    #         # exclude storage converters (i.e., dischargers)
-    #         ~capacities_central_heat.index.str.contains("discharger|DAC")
-    #     ].sum()
-    # )
+    var[cap_string + "Heat|Renewable"] = (
+        var[cap_string + "Heat|Solar thermal"]
+        + var[cap_string + "Heat|Biomass"]
+        + var[cap_string + "Heat|Hydrogen"]
+        + var[cap_string + "Heat|Heat pump"]
+        + var[cap_string + "Heat|Resistive heater"]
+    )
 
     capacities_decentral_heat = (
         cap_func(
@@ -891,17 +888,6 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
     var[cap_string + "Hydrogen"] = (
         capacities_h2.get("H2 Electrolysis", 0) + var[cap_string + "Hydrogen|Gas"]
     )
-
-    # This check requires further changes to n.statistics
-    #
-    # assert isclose(
-    #     var[cap_string + "Hydrogen"],
-    #     capacities_h2.reindex([
-    #         "H2 Electrolysis",
-    #         "SMR",
-    #         "SMR CC",
-    #     ]).sum(), # if technology not build, reindex returns NaN
-    # )
 
     var[cap_string + "Hydrogen|Reservoir"] = storage_capacities.get("H2", 0)
 
@@ -5107,6 +5093,10 @@ def get_data(
 
     var["Investment|Energy Supply|Heat|Heatpump"] = var[
         "Investment|Energy Supply|Heat|Heat pump"
+    ]
+
+    var["Investment|Energy Supply|Heat|Solar thermal"] = var[
+        "Investment|Energy Supply|Heat|Solarthermal"
     ]
 
     var["Investment|Energy Supply|Hydrogen|Storage"] = var[
