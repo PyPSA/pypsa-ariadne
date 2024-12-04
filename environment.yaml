@@ -8,7 +8,7 @@ dependencies:
 - pip
 
 - atlite>=0.2.9
-- linopy
+- linopy<0.4.0
 - dask
 
   # Dependencies of the workflow itself (see pypsa-eur)
@@ -16,7 +16,7 @@ dependencies:
 - openpyxl!=3.1.1
 - pycountry
 - seaborn
-- snakemake-minimal>=8.19.1
+- snakemake-minimal<8.25 # See https://github.com/snakemake/snakemake/issues/3202
 - memory_profiler
 - yaml
 - pytables
