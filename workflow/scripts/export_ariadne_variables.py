@@ -414,6 +414,34 @@ def get_capacity_additions_nstat(n, region):
     return _get_capacities(n, region, _f, cap_string="Capacity Additions Nstat|")
 
 
+def get_system_cost_capex(n, region):
+    def _f(**kwargs):
+        return n.statistics.capex(**kwargs)
+
+    var = _get_capacities(
+        n,
+        region,
+        _f,
+        cap_string="System Cost|Capex|",
+    )
+
+    return var
+
+
+def get_system_cost_opex(n, region):
+    def _f(**kwargs):
+        return n.statistics.opex(**kwargs)
+
+    var = _get_capacities(
+        n,
+        region,
+        _f,
+        cap_string="System Cost|OPEX|",
+    )
+
+    return var
+
+
 def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
 
     kwargs = {
@@ -642,7 +670,7 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         ]
     ].sum()
 
-    if cap_string.startswith("Investment"):
+    if cap_string.startswith("Investment") or cap_string.startswith("System Cost"):
         storage_capacities = (
             cap_func(
                 **kwargs,
@@ -4137,6 +4165,23 @@ def get_policy(n, investment_year):
     return var
 
 
+def get_economy(n, region):
+
+    var = pd.Series()
+
+    s = n.statistics
+    g = s.groupers
+    grouper = g.get_country_and_carrier
+    system_cost = s.capex(groupby=grouper).add(s.opex(groupby=grouper))
+
+    # Cost|Total Energy System Cost in billion EUR2020/yr
+    var["Cost|Total Energy System Cost"] = round(
+        system_cost.groupby("country").sum()[region] / 1e9, 4
+    )
+
+    return var
+
+
 def get_trade(n, region):
     var = pd.Series()
 
@@ -5046,6 +5091,9 @@ def get_ariadne_var(
             get_policy(n, year),
             get_trade(n, region),
             # get_operational_and_capital_costs(year),
+            get_economy(n, region),
+            get_system_cost_capex(n, region),
+            get_system_cost_opex(n, region),
         ]
     )
 
