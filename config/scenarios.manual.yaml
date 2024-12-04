@@ -113,7 +113,7 @@ CurrentPolicies:
   sector:
     district_heating:
       potential: 0.1
-  
+
   offshore_nep_force:
     cutin_year: 2025
     cutout_year: 2030
