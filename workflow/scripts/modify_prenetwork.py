@@ -1063,6 +1063,12 @@ def force_connection_nep_offshore(n, current_year):
         logger.info(
             f"Delaying NEP offshore connection points by {snakemake.params.offshore_nep_force['delay_years']} years."
         )
+        # This is a hack s.t. for CurPol and WorstCase the 2030 projects are delayed to the 2035 period, but the later projects are ignored
+        offshore.loc[
+            offshore["Inbetriebnahmejahr"] > 2031, "Inbetriebnahmejahr"
+        ] += 5
+        logger.info("Delaying NEP offshore connection points after 2031 by another 5 years.")
+
 
     goffshore = gpd.GeoDataFrame(
         offshore,
