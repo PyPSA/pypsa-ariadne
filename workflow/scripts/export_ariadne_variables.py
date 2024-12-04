@@ -4154,6 +4154,22 @@ def get_policy(n, investment_year):
 
     return var
 
+def get_economy(n, region):
+    
+    var = pd.Series()
+
+    s = n.statistics
+    g = s.groupers
+    grouper = g.get_country_and_carrier 
+    system_cost = s.capex(groupby=grouper).add(s.opex(groupby=grouper))
+
+    # Cost|Total Energy System Cost in billion EUR2020/yr
+    var["Cost|Total Energy System Cost"] = (
+        round(system_cost.groupby("country").sum()[region] / 1e9 , 4)
+    )
+
+    return var
+
 
 def get_trade(n, region):
     var = pd.Series()
@@ -5064,6 +5080,7 @@ def get_ariadne_var(
             get_policy(n, year),
             get_trade(n, region),
             # get_operational_and_capital_costs(year),
+            get_economy(n, region),
         ]
     )
 
