@@ -113,7 +113,11 @@ CurrentPolicies:
   sector:
     district_heating:
       potential: 0.1
-
+  
+  offshore_nep_force:
+    cutin_year: 2025
+    cutout_year: 2030
+    delay_years: 0
 
 
 KN2045_Bal_v4:
@@ -689,3 +693,8 @@ KN2045minus_SupplyFocus:
     steam_biomass_fraction: 0.4
     steam_hydrogen_fraction: 0.3
     steam_electricity_fraction: 0.3
+
+  offshore_nep_force:
+    cutin_year: 2025
+    cutout_year: 2030
+    delay_years: 0

@@ -1055,6 +1055,11 @@ def force_connection_nep_offshore(n, current_year):
     # Load shapes and projects
     offshore = pd.read_csv(snakemake.input.offshore_connection_points, index_col=0)
 
+    if int(snakemake.params.offshore_nep_force["delay_years"]) != 0:
+        # Modify 'Inbetriebnahmejahr' by adding the delay years for rows where 'Inbetriebnahmejahr' > 2025
+        offshore.loc[offshore["Inbetriebnahmejahr"] > 2025, "Inbetriebnahmejahr"] += int(snakemake.params.offshore_nep_force["delay_years"])
+        logger.info(f"Delaying NEP offshore connection points by {snakemake.params.offshore_nep_force['delay_years']} years.")
+
     goffshore = gpd.GeoDataFrame(
         offshore,
         geometry=gpd.points_from_xy(offshore.lon, offshore.lat),
