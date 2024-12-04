@@ -398,7 +398,10 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
             )
 
         # Aviation demand
-        domestic_factor = snakemake.config["sector"]["domestic_aviation_factor"]["DE"]
+        energy_totals = pd.read_csv(snakemake.input.energy_totals, index_col=[0, 1])
+        domestic_aviation = energy_totals.loc[("DE", snakemake.params.energy_year), "total domestic aviation"]
+        international_aviation = energy_totals.loc[("DE", snakemake.params.energy_year), "total international aviation"]
+        domestic_factor = domestic_aviation / (domestic_aviation + international_aviation)
         aviation_links = n.links[
             (n.links.index.str[:2] == ct) & (n.links.carrier == "kerosene for aviation")
         ]

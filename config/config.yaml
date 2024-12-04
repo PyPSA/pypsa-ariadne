@@ -284,8 +284,6 @@ costs:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#sector
 sector:
-  domestic_aviation_factor:
-    DE: 0.07 # eurostat 2019
   v2g: false
   solar_thermal: false
   district_heating:
