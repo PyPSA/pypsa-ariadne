@@ -1,5 +1,7 @@
 # Changelog
 - add option for Offhsore NEP to delay projects by x years (CurPol and KN2045minus_WorstCase are delayed by one year)
+- Increase HVC_environment_sequestration_fraction from 0.1 to 0.6
+- Disallow HVC to air in DE
 - Restricting the maximum capacity of CurrentPolicies and minus scenarios to the 'uba Projektionsbericht'
 - Restricting Fischer Tropsch capacity addition with config[solving][limit_DE_FT_cap]
 - Except for Current Policies force a minimum of 5 GW of electrolysis capacity in Germany

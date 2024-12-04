@@ -706,23 +706,6 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         ]
     ].sum()
 
-    # Test if we forgot something
-    #
-    # Unconvenient at the moment, requires further changes to n.statistics
-    #
-    # _drop_idx = [
-    #     col for col in [
-    #         "PHS",
-    #         "battery discharger",
-    #         "home battery discharger",
-    #         "V2G",
-    #     ] if col in capacities_electricity.index
-    # ]
-    # assert isclose(
-    #     var[cap_string + "Electricity"],
-    #     capacities_electricity.drop(_drop_idx).sum(),
-    # )
-
     capacities_central_heat = (
         cap_func(
             bus_carrier=[
@@ -739,6 +722,22 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         )
         .multiply(MW2GW)
     )
+    if cap_string.startswith("Investment"):
+        secondary_heat_techs = [
+            "DAC",
+            "Fischer-Tropsch",
+            "H2 Electrolysis",
+            "H2 Fuel Cell",
+            "methanolisation",
+            "Sabatier",
+            "CHP",  # We follow REMIND convention and account all CHPs only in electricity
+        ]
+        secondary_heat_idxs = [
+            idx
+            for idx in capacities_central_heat.index
+            if any([tech in idx for tech in secondary_heat_techs])
+        ]
+        capacities_central_heat[secondary_heat_idxs] = 0
 
     var[cap_string + "Heat|Solar thermal"] = capacities_central_heat.filter(
         like="solar thermal"
@@ -824,20 +823,18 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         + var[cap_string + "Heat|Oil"]
         + var[cap_string + "Heat|Gas"]
         + var[cap_string + "Heat|Processes"]
-        +
-        # var[cap_string + "Heat|Hydrogen"] +
-        var[cap_string + "Heat|Heat pump"]
+        + var[cap_string + "Heat|Hydrogen"]
+        + var[cap_string + "Heat|Heat pump"]
         + var[cap_string + "Heat|Non-Renewable Waste"]
     )
 
-    # This check requires further changes to n.statistics
-    # assert isclose(
-    #     var[cap_string + "Heat"],
-    #     capacities_central_heat[
-    #         # exclude storage converters (i.e., dischargers)
-    #         ~capacities_central_heat.index.str.contains("discharger|DAC")
-    #     ].sum()
-    # )
+    var[cap_string + "Heat|Renewable"] = (
+        var[cap_string + "Heat|Solar thermal"]
+        + var[cap_string + "Heat|Biomass"]
+        + var[cap_string + "Heat|Hydrogen"]
+        + var[cap_string + "Heat|Heat pump"]
+        + var[cap_string + "Heat|Resistive heater"]
+    )
 
     capacities_decentral_heat = (
         cap_func(
@@ -891,17 +888,6 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
     var[cap_string + "Hydrogen"] = (
         capacities_h2.get("H2 Electrolysis", 0) + var[cap_string + "Hydrogen|Gas"]
     )
-
-    # This check requires further changes to n.statistics
-    #
-    # assert isclose(
-    #     var[cap_string + "Hydrogen"],
-    #     capacities_h2.reindex([
-    #         "H2 Electrolysis",
-    #         "SMR",
-    #         "SMR CC",
-    #     ]).sum(), # if technology not build, reindex returns NaN
-    # )
 
     var[cap_string + "Hydrogen|Reservoir"] = storage_capacities.get("H2", 0)
 
@@ -2403,7 +2389,7 @@ def get_final_energy(
         .multiply(MWh2PJ)
     )
 
-    var["Final Energy|Waste"] = waste_withdrawal.filter(like="waste CHP").sum()
+    var["Final Energy|Waste"] = waste_withdrawal.get("HVC to air", 0)
 
     var["Final Energy|Carbon Dioxide Removal|Heat"] = decentral_heat_withdrawal.get(
         "DAC", 0
@@ -2699,17 +2685,13 @@ def get_emissions(n, region, _energy_totals, industry_demand):
 
     negative_CHP_E_fraction = negative_CHP_E_to_H * (1 / (negative_CHP_E_to_H + 1))
 
-    # separate waste CHPs, because they are accounted differently
-    waste_CHP_emissions = CHP_emissions.filter(like="waste")
-    CHP_emissions = CHP_emissions.drop(waste_CHP_emissions.index)
-
     # It would be interesting to relate the Emissions|CO2|Model to Emissions|CO2 reported to the DB by considering imports of carbon, e.g., (exports_oil_renew - imports_oil_renew) * 0.2571 * t2Mt + (exports_gas_renew - imports_gas_renew) * 0.2571 * t2Mt + (exports_meoh - imports_meoh) / 4.0321 * t2Mt
     # Then it would be necessary to consider negative carbon from solid biomass imports as well
     # Actually we might have to include solid biomass imports in the co2 constraints as well
 
     assert isclose(
         co2_emissions.filter(like="CHP").sum(),
-        CHP_emissions.sum() + waste_CHP_emissions.sum(),
+        CHP_emissions.sum(),
     )
     assert isclose(
         co2_atmosphere_withdrawal.filter(like="CHP").sum(),
@@ -2875,9 +2857,7 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         "biogas to gas CC", 0
     ) + var["Emissions|Gross Fossil CO2|Energy|Supply|Gases"]
 
-    var["Emissions|CO2|Supply|Non-Renewable Waste"] = (
-        co2_emissions.get("HVC to air").sum() + waste_CHP_emissions.sum()
-    )
+    var["Emissions|CO2|Supply|Non-Renewable Waste"] = co2_emissions.get("HVC to air", 0)
 
     var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"] = co2_emissions.get(
         "oil refining", 0
@@ -5113,6 +5093,10 @@ def get_data(
 
     var["Investment|Energy Supply|Heat|Heatpump"] = var[
         "Investment|Energy Supply|Heat|Heat pump"
+    ]
+
+    var["Investment|Energy Supply|Heat|Solarthermal"] = var[
+        "Investment|Energy Supply|Heat|Solar thermal"
     ]
 
     var["Investment|Energy Supply|Hydrogen|Storage"] = var[
