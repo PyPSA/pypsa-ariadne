@@ -104,7 +104,7 @@ atlite:
 
 renewable:
   onwind:
-    capacity_per_sqkm: 1.5
+    capacity_per_sqkm: 1.4
     cutout: europe-2019-sarah3-era5
     correction_factor: 0.95
     resource:
