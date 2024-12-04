@@ -4,8 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241202-more-waste-CHP
-
+  prefix: 20241203-fix-aviation
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
