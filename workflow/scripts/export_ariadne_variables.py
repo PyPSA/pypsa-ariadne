@@ -5099,8 +5099,8 @@ def get_data(
         "Investment|Energy Supply|Heat|Heat pump"
     ]
 
-    var["Investment|Energy Supply|Heat|Solar thermal"] = var[
-        "Investment|Energy Supply|Heat|Solarthermal"
+    var["Investment|Energy Supply|Heat|Solarthermal"] = var[
+        "Investment|Energy Supply|Heat|Solar thermal"
     ]
 
     var["Investment|Energy Supply|Hydrogen|Storage"] = var[
