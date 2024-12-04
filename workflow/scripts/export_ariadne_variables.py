@@ -427,6 +427,7 @@ def get_system_cost_capex(n, region):
 
     return var
 
+
 def get_system_cost_opex(n, region):
     def _f(**kwargs):
         return n.statistics.opex(**kwargs)
