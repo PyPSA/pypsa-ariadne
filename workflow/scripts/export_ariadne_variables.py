@@ -2403,7 +2403,7 @@ def get_final_energy(
         .multiply(MWh2PJ)
     )
 
-    var["Final Energy|Waste"] = waste_withdrawal.filter(like="waste CHP").sum()
+    var["Final Energy|Waste"] = waste_withdrawal.get("HVC to air", 0)
 
     var["Final Energy|Carbon Dioxide Removal|Heat"] = decentral_heat_withdrawal.get(
         "DAC", 0
@@ -2699,17 +2699,13 @@ def get_emissions(n, region, _energy_totals, industry_demand):
 
     negative_CHP_E_fraction = negative_CHP_E_to_H * (1 / (negative_CHP_E_to_H + 1))
 
-    # separate waste CHPs, because they are accounted differently
-    waste_CHP_emissions = CHP_emissions.filter(like="waste")
-    CHP_emissions = CHP_emissions.drop(waste_CHP_emissions.index)
-
     # It would be interesting to relate the Emissions|CO2|Model to Emissions|CO2 reported to the DB by considering imports of carbon, e.g., (exports_oil_renew - imports_oil_renew) * 0.2571 * t2Mt + (exports_gas_renew - imports_gas_renew) * 0.2571 * t2Mt + (exports_meoh - imports_meoh) / 4.0321 * t2Mt
     # Then it would be necessary to consider negative carbon from solid biomass imports as well
     # Actually we might have to include solid biomass imports in the co2 constraints as well
 
     assert isclose(
         co2_emissions.filter(like="CHP").sum(),
-        CHP_emissions.sum() + waste_CHP_emissions.sum(),
+        CHP_emissions.sum(),
     )
     assert isclose(
         co2_atmosphere_withdrawal.filter(like="CHP").sum(),
@@ -2875,9 +2871,7 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         "biogas to gas CC", 0
     ) + var["Emissions|Gross Fossil CO2|Energy|Supply|Gases"]
 
-    var["Emissions|CO2|Supply|Non-Renewable Waste"] = (
-        co2_emissions.get("HVC to air").sum() + waste_CHP_emissions.sum()
-    )
+    var["Emissions|CO2|Supply|Non-Renewable Waste"] = co2_emissions.get("HVC to air", 0)
 
     var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"] = co2_emissions.get(
         "oil refining", 0
