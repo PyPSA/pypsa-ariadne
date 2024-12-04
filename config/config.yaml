@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20241202-fix-must-run-bug
+  prefix: 20241202-more-waste-CHP
 
   name:
   # - CurrentPolicies
@@ -393,14 +393,17 @@ industry:
     2040: 0.12
     2045: 0.16
     2050: 0.20
+  # 15 Mt HVC production (from IDEES) -> 6 Mt Plastikabfälle,
+  # To substitute for other waste, assume all Plastikabfall is used energetically whereas in reality ~40% is recycled
+  # see https://github.com/PyPSA/pypsa-ariadne/pull/292
   HVC_environment_sequestration_fraction:
-    2020: 0.1
-    2025: 0.1
-    2030: 0.12
-    2035: 0.15
-    2040: 0.18
-    2045: 0.20
-    2050: 0.20
+    2020: 0.6
+    2025: 0.6
+    2030: 0.6
+    2035: 0.6
+    2040: 0.6
+    2045: 0.6
+    2050: 0.6
   waste_to_energy: true
   waste_to_energy_cc: true
 
@@ -480,6 +483,14 @@ solving:
             2035: 2.5
             2040: 2.5
             2045: 2.5
+        HVC to air:
+          DE:
+            2020: 0 # all HVC in Germany is either burned or recycled
+            2025: 0
+            2030: 0
+            2035: 0
+            2040: 0
+            2045: 0
     limits_capacity_min:
       Generator:
         onwind:

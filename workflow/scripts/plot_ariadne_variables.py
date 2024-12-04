@@ -308,8 +308,8 @@ def plot_NEP(df, savepath=None, gleichschaltung=True, currency_year=2020):
     )
 
     plt.xlabel("Kategorie")
-    plt.ylabel("Milliarden EUR{currency_year}")
-    plt.title("Investitionen ins Übertragungsnetz in EUR{currency_year}")
+    plt.ylabel(f"Milliarden EUR{currency_year}")
+    plt.title(f"Investitionen ins Übertragungsnetz in EUR{currency_year}")
 
     # Adjust the x-ticks to be between the two bars
     plt.xticks(indices + bar_width / 2, plotframe.index)
