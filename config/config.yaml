@@ -502,8 +502,8 @@ solving:
         offwind:
           DE:
             2030: 22.5   # 75% Wind-auf-See Law
-            2035: 30
-            2040: 40
+            2035: 35
+            2040: 42
             2045: 50
         solar:
           DE:
