@@ -4,16 +4,15 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20242008_dh_subnodes_off
+  prefix: 20241204_ptes_land_eligibility
   name:
-  # - CurrentPolicies
   - KN2045_Bal_v4
-  # - KN2045_Elec_v4
-  # - KN2045_H2_v4
-  # - KN2045plus_EasyRide
-  # - KN2045plus_LowDemand
-  # - KN2045minus_WorstCase
-  # - KN2045minus_SupplyFocus
+  - KN2045_Elec_v4
+  - KN2045_H2_v4
+  - KN2045plus_EasyRide
+  - KN2045plus_LowDemand
+  - KN2045minus_WorstCase
+  - KN2045minus_SupplyFocus
   scenarios:
     enable: true
     manual_file: config/scenarios.manual.yaml
@@ -280,6 +279,9 @@ sector:
       2045: 0.8
       2050: 1.0
     add_subnodes: false
+    ptes_codes_corine: [26, 28, 30, 32, 33]
+    max_groundwater_depth: -19
+    ptes_potential_scalar: 1
   central_heat_vent: true
   co2_spatial: true
   biomass_spatial: true

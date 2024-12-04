@@ -122,8 +122,8 @@ def add_ptes_limit(
         eligible_areas, dh_systems.drop("Stadt", axis=1), how="left", rsuffix=""
     )[["Stadt", "geometry"]].set_geometry("geometry")
 
-    # filter for eligible areas that are larger than 19204 m^2
-    eligible_areas = eligible_areas[eligible_areas.area > 19204]
+    # filter for eligible areas that are larger than 10000 m^2
+    eligible_areas = eligible_areas[eligible_areas.area > 10000]
 
     # Find closest value in groundwater dataset and kick out areas with groundwater level > threshold
     eligible_areas["groundwater_level"] = eligible_areas.to_crs("EPSG:4326").apply(
@@ -139,9 +139,9 @@ def add_ptes_limit(
     # Combine eligible areas by city
     eligible_areas = eligible_areas.dissolve("Stadt")
 
-    # Calculate PTES potential according to Toftlund parameters
+    # Calculate PTES potential according to Dronninglund and DEA parameters
     eligible_areas["area_m2"] = eligible_areas.area
-    eligible_areas["nstorages_pot"] = eligible_areas.area_m2 / 19204
+    eligible_areas["nstorages_pot"] = eligible_areas.area_m2 / 10000
     eligible_areas["storage_pot_mwh"] = eligible_areas["nstorages_pot"] * 4500
 
     subnodes.set_index("Stadt", inplace=True)
