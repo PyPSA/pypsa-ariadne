@@ -716,7 +716,3 @@ KN2045minus_SupplyFocus:
     steam_hydrogen_fraction: 0.3
     steam_electricity_fraction: 0.3
 
-  offshore_nep_force:
-    cutin_year: 2025
-    cutout_year: 2030
-    delay_years: 0
