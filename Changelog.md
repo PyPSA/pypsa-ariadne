@@ -1,4 +1,5 @@
 # Changelog
+- add option for Offhsore NEP to delay projects by x years (CurPol and KN2045minus_WorstCase are delayed by one year)
 - Force onwind south by increasing minimum capacity and decreasing capacity per sqkm
 - Adjusting aviation demand (from Aladin) and emission accounting (only domestic aviation for national target)
 - Increase HVC_environment_sequestration_fraction from 0.1 to 0.6

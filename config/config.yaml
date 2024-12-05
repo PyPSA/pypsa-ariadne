@@ -683,6 +683,7 @@ onshore_nep_force:
 offshore_nep_force:
   cutin_year: 2025
   cutout_year: 2030
+  delay_years: 0
 
 scale_capacity:
   2020:

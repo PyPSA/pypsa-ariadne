@@ -39,10 +39,10 @@ CurrentPolicies:
               2045: 86.5
           offwind:
             DE:
-              2030: 22.5   # 75 % Wind-auf-See Law
-              2035: 22.5
-              2040: 22.5
-              2045: 22.5
+              2030: 17.3
+              2035: 29.3
+              2040: 29.3
+              2045: 29.3
           solar:
             DE:
               2030: 161.25   # 75 % PV strategy
@@ -52,6 +52,14 @@ CurrentPolicies:
       # boundary condition of maximum volumes
       limits_capacity_max:
         Generator:
+          offwind:
+            DE:
+              2020: 7.8
+              2025: 11.3
+              2030: 17.3 # 12 less than NEP, because of 1 year delay
+              2035: 35 # 29.3 + a little extra
+              2040: 70
+              2045: 70
           onwind:
             DE:
               2030: 94.5 # uba Projektionsbericht
@@ -114,6 +122,10 @@ CurrentPolicies:
     district_heating:
       potential: 0.1
 
+  offshore_nep_force:
+    cutin_year: 2025
+    cutout_year: 2035 # Hackily reduced to 2030 if delay_years: 1
+    delay_years: 1
 
 
 KN2045_Bal_v4:
@@ -557,10 +569,10 @@ KN2045minus_WorstCase:
               2045: 86.5
           offwind:
             DE:
-              2030: 22.5   # 75 % Wind-auf-See Law
-              2035: 22.5
-              2040: 22.5
-              2045: 22.5
+              2030: 17.3   # 75 % Wind-auf-See Law
+              2035: 29.3
+              2040: 29.3
+              2045: 29.3
           solar:
             DE:
               2030: 161.25   # 75 % PV strategy
@@ -573,6 +585,14 @@ KN2045minus_WorstCase:
               2030: 5
       limits_capacity_max:
         Generator:
+          offwind:
+            DE:
+              2020: 7.8
+              2025: 11.3
+              2030: 17.3 # 12 less than NEP, because of 1 year delay
+              2035: 35 # 29.3 + a little extra
+              2040: 70
+              2045: 70
           onwind:
             DE:
               2030: 94.5 # uba Projektionsbericht
@@ -587,6 +607,12 @@ KN2045minus_WorstCase:
   sector:
     district_heating:
       potential: 0.1
+
+  offshore_nep_force:
+    cutin_year: 2025
+    cutout_year: 2035 # Hackily reduced to 2030 if delay_years: 1
+    delay_years: 1
+
 
 KN2045minus_SupplyFocus:
 # Nachfrage genau so hoch wie in Szenario WorstCase
