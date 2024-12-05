@@ -1651,26 +1651,24 @@ if __name__ == "__main__":
         )
     )
 
-    # # Load data
-    # _networks = [pypsa.Network(fn) for fn in snakemake.input.networks]
-    # modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
-
-    # # Hack the transmission projects
-    # networks = [
-    #     process_postnetworks(n.copy(), _networks[0], int(my), snakemake, costs)
-    #     for n, my in zip(_networks, modelyears)
-    # ]
-    # del _networks
-
-    # for running with explicit networks not within repo structur (comment out load data and load regions)
-    diry = "/home/julian-geis/Documents/04_Ariadne/run_results/20241122-fix-missing-gas-capa/KN2045_Bal_v4/postnetworks"
-    file_list = os.listdir(diry)
-    file_list.sort()
-    networks = [pypsa.Network(diry + "/" + fn) for fn in file_list]
+    # Load data
+    _networks = [pypsa.Network(fn) for fn in snakemake.input.networks]
     modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
-    regions = gpd.read_file(
-        "/home/julian-geis/repos/pypsa-ariadne-2/resources/20241021-KernnetzUpdate/KN2045_Bal_v4/regions_onshore_base_s_49.geojson"
-    ).set_index("name")
+
+    # Hack the transmission projects
+    networks = [
+        process_postnetworks(n.copy(), _networks[0], int(my), snakemake, costs)
+        for n, my in zip(_networks, modelyears)
+    ]
+    del _networks
+
+    # # for running with explicit networks not within repo structur (comment out load data and load regions)
+    # diry = "postnetworks-folder"
+    # file_list = os.listdir(diry)
+    # file_list.sort()
+    # networks = [pypsa.Network(diry+"/"+fn) for fn in file_list]
+    # modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
+    # regions = gpd.read_file("path-to-file/regions_onshore_base_s_49.geojson").set_index("name")
 
     # ensure output directory exist
     for dir in snakemake.output[2:]:
@@ -1876,7 +1874,9 @@ if __name__ == "__main__":
     map_opts = snakemake.params.plotting["map"]
     snakemake.params.plotting["projection"] = {"name": "EqualEarth"}
     proj = load_projection(snakemake.params.plotting)
-    # regions = gpd.read_file(snakemake.input.regions_onshore_clustered).set_index("name")
+
+    # load regions
+    regions = gpd.read_file(snakemake.input.regions_onshore_clustered).set_index("name")
 
     for year in planning_horizons:
         network = networks[planning_horizons.index(year)].copy()
