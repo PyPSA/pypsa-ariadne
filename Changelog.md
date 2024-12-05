@@ -1,5 +1,6 @@
 # Changelog
 - Force onwind south by increasing minimum capacity and decreasing capacity per sqkm
+- Adjusting aviation demand (from Aladin) and emission accounting (only domestic aviation for national target)
 - Increase HVC_environment_sequestration_fraction from 0.1 to 0.6
 - Disallow HVC to air in DE
 - Restricting the maximum capacity of CurrentPolicies and minus scenarios to the 'uba Projektionsbericht'

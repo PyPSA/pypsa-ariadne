@@ -659,16 +659,11 @@ KN2045minus_SupplyFocus:
         Generator:
           onwind:
             DE:
-              2030: 86.5   # 75 % Wind-an-Land Law
-              2035: 86.5
-              2040: 86.5
-              2045: 86.5
-          offwind:
-            DE:
-              2030: 30 # Wind-auf-See Law
-              2035: 30 # not forcing more EE
-              2040: 30
-              2045: 30
+              2030: 86.5 # 75% Wind-an-Land Law
+              2035: 115 # Wind-an-Land 2030
+              2040: 115 # not forcing more EE
+              2045: 115
+
           solar:
             DE:
               2025: 101

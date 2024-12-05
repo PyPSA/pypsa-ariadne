@@ -373,6 +373,9 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
             links = n.links.index[
                 (n.links.index.str[:2] == ct)
                 & (n.links[f"bus{port}"] == "co2 atmosphere")
+                & (
+                    n.links.carrier != "kerosene for aviation"
+                )  # first exclude aviation to multiply it with a domestic factor later
             ]
 
             logger.info(
@@ -393,6 +396,30 @@ def add_co2limit_country(n, limit_countries, snakemake, debug=False):
                     * n.snapshot_weightings.generators
                 ).sum()
             )
+
+        # Aviation demand
+        energy_totals = pd.read_csv(snakemake.input.energy_totals, index_col=[0, 1])
+        domestic_aviation = energy_totals.loc[
+            ("DE", snakemake.params.energy_year), "total domestic aviation"
+        ]
+        international_aviation = energy_totals.loc[
+            ("DE", snakemake.params.energy_year), "total international aviation"
+        ]
+        domestic_factor = domestic_aviation / (
+            domestic_aviation + international_aviation
+        )
+        aviation_links = n.links[
+            (n.links.index.str[:2] == ct) & (n.links.carrier == "kerosene for aviation")
+        ]
+        lhs.append
+        (
+            n.model["Link-p"].loc[:, aviation_links.index]
+            * aviation_links.efficiency2
+            * n.snapshot_weightings.generators
+        ).sum() * domestic_factor
+        logger.info(
+            f"Adding domestic aviation emissions for {ct} with a factor of {domestic_factor}"
+        )
 
         # Adding Efuel imports and exports to constraint
         incoming_oil = n.links.index[n.links.index == "EU renewable oil -> DE oil"]
