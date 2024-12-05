@@ -442,7 +442,7 @@ def plot_nodal_balance(
 
     # plot loads
     if plot_loads:
-        df_loads.plot(style=":", color="black", label="Stromlast")
+        df_loads.plot(style=":", color="black", label="Elektrizitätslast")
 
     # explicitly filter out duplicate labels
     handles, labels = ax.get_legend_handles_labels()
