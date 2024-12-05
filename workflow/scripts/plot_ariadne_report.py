@@ -1077,7 +1077,7 @@ def plot_h2_map(n, regions, savepath, only_de=False):
 
     labels = carriers + [
         "H2 pipeline (new)",
-        "H2 pipeline (retrofit)",
+        "H2 pipeline (repurposed)",
         "H2 pipeline (Kernnetz)",
     ]
 
