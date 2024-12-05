@@ -21,9 +21,7 @@ def get_transport_growth(df, planning_horizons):
     try:
         aviation = df.loc["Final Energy|Bunkers|Aviation", "PJ/yr"]
     except KeyError:
-        aviation = (
-            df.loc["Final Energy|Bunkers|Aviation", "TWh/yr"] * 3.6
-        )  # TWh to PJ
+        aviation = df.loc["Final Energy|Bunkers|Aviation", "TWh/yr"] * 3.6  # TWh to PJ
 
     aviation_growth_factor = aviation / aviation[2020]
 
@@ -165,7 +163,8 @@ def write_to_scenario_yaml(input, output, scenarios, df):
         ]  # for 2050 we still need data
 
         aviation_demand_factor = get_transport_growth(
-            df.loc[snakemake.params.leitmodelle["transport"], reference_scenario, :], planning_horizons
+            df.loc[snakemake.params.leitmodelle["transport"], reference_scenario, :],
+            planning_horizons,
         )
 
         if reference_scenario.startswith(
