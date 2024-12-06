@@ -415,6 +415,45 @@ use rule build_industrial_production_per_node from pypsaeur with:
         ),
 
 
+rule modify_sector_ratios:
+    params:
+        future_DE=config_provider("industry", "sector_ratios_fraction_future_DE"),
+    input:
+        industry_sector_ratios=resources("industry_sector_ratios.csv"),
+        industrial_energy_demand_per_country_today=resources(
+            "industrial_energy_demand_per_country_today.csv"
+        ),
+        industrial_production_per_country=resources(
+            "industrial_production_per_country.csv"
+        ),
+        sector_ratios=resources("industry_sector_ratios_{planning_horizons}.csv"),
+    output:
+        sector_ratios_modified=resources(
+            "industry_sector_ratios_{planning_horizons}-modified.csv"
+        ),
+    resources:
+        mem_mb=2000,
+    log:
+        logs("modify_industry_sector_ratios_{planning_horizons}}.log"),
+    script:
+        "scripts/modify_sector_ratios.py"
+
+
+ruleorder: modify_sector_ratios > build_industry_sector_ratios_intermediate
+
+
+use rule build_industrial_energy_demand_per_node from pypsaeur with:
+    input:
+        **{
+            k: v
+            for k, v in rules.build_industrial_energy_demand_per_node.input.items()
+            if k != "industry_sector_ratios"
+        },
+        industry_sector_ratios=resources(
+            "industry_sector_ratios_{planning_horizons}-modified.csv"
+        ),
+
+
 rule build_wasserstoff_kernnetz:
     params:
         kernnetz=config_provider("wasserstoff_kernnetz"),
@@ -725,6 +764,7 @@ rule modify_final_network:
         sector_options=config_provider("sector"),
         costs=config_provider("costs"),
         non_eu_constraint=config_provider("solving", "constraints", "limit_non_eu_de"),
+        trace_scenario=config_provider("import", "trace_scenario"),
     input:
         network=RESULTS
         + "prenetworks-final/base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
@@ -732,8 +772,8 @@ rule modify_final_network:
             "gas_input_nodes_simplified_elec_s_{clusters}.csv"
         ),
         import_ports=resources("ports_s_{clusters}.csv"),
-        import_costs="import-data/imports/results-230505.csv",
-        import_p_max_pu="import-data/imports/combined_weighted_generator_timeseries.nc",
+        import_costs="import-data/imports/{planning_horizons}/results.csv",
+        hvdc_data="import-data/imports/combined_weighted_generator_timeseries.nc",
         regions_onshore=resources("regions_onshore_base_s_{clusters}.geojson"),
         country_centroids="import-data/countries_centroids.csv",
         costs=resources("costs_{planning_horizons}.csv"),
@@ -742,6 +782,7 @@ rule modify_final_network:
             "industry_sector_ratios_{planning_horizons}.csv"
         ),
         industrial_production=resources("industrial_production_base_s_{clusters}_{planning_horizons}.csv"),
+        country_shapes="data/naturalearth/ne_10m_admin_0_countries_deu.shp",
     output:
         network=RESULTS
         + "prenetworks-final-import/base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",

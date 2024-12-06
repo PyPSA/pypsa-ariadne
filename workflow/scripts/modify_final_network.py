@@ -7,6 +7,7 @@ import logging
 import warnings
 from types import SimpleNamespace
 from shapely.geometry import Point
+from pathlib import Path
 
 import sys
 import os
@@ -50,31 +51,19 @@ def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
         return
 
     regions = gpd.read_file(snakemake.input.regions_onshore).set_index("name")
+    p_max_pu = xr.open_dataset(snakemake.input.hvdc_data).p_max_pu
+    p_max_pu = p_max_pu.isel(importer=p_max_pu.notnull().argmax("importer"))
 
-    p_max_pu = xr.open_dataset(snakemake.input.import_p_max_pu).p_max_pu.sel(
-        importer="EUE"
+    p_nom_max = xr.open_dataset(snakemake.input.hvdc_data).p_nom_max
+    p_nom_max = p_nom_max.isel(
+        importer=p_nom_max.notnull().argmax("importer")
+    ).to_pandas()
+    country_shapes = gpd.read_file(snakemake.input.country_shapes)
+    exporters_iso2 = [e.split("-")[0] for e in cf["exporters"]]  # noqa
+    exporters = (
+        country_shapes.set_index("ISO_A2").loc[exporters_iso2].representative_point()
     )
-
-    p_nom_max = (
-        xr.open_dataset(snakemake.input.import_p_max_pu)
-        .p_nom_max.sel(importer="EUE")
-        .to_pandas()
-    )
-
-    def _coordinates(ct):
-        iso2 = ct.split("-")[0]
-        if iso2 in country_centroids.index:
-            return country_centroids.loc[iso2, ["longitude", "latitude"]].values
-        else:
-            query = cc.convert(iso2, to="name")
-            loc = geocode(dict(country=query), language="en")
-            return [loc.longitude, loc.latitude]
-
-    exporters = pd.DataFrame(
-        {ct: _coordinates(ct) for ct in cf["exporters"]}, index=["x", "y"]
-    ).T
-    geometry = gpd.points_from_xy(exporters.x, exporters.y)
-    exporters = gpd.GeoDataFrame(exporters, geometry=geometry, crs=4326)
+    exporters.index = cf["exporters"]
 
     import_links = {}
     a = regions.representative_point().to_crs(DISTANCE_CRS)
@@ -84,7 +73,7 @@ def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
     a = a.loc[~a.index.str[:2].isin(forbidden_hvdc_importers)]
 
     for ct in exporters.index:
-        b = exporters.to_crs(DISTANCE_CRS).loc[ct].geometry
+        b = exporters.to_crs(DISTANCE_CRS)[ct]
         d = a.distance(b)
         import_links[ct] = (
             d.where(d < d.quantile(cf["distance_threshold"])).div(1e3).dropna()
@@ -125,7 +114,6 @@ def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
     buses_i = exporters.index
 
     n.add("Bus", buses_i, x=exporters.x, y=exporters.y)
-    # n.add("Bus", buses_i + " export", x=exporters.x.values, y=exporters.y.values)
 
     efficiency = cf["efficiency_static"] * cf["efficiency_per_1000km"] ** (
         import_links.values / 1e3
@@ -141,12 +129,14 @@ def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
         length=import_links.values,
         capital_cost=hvdc_cost * cost_factor,
         efficiency=efficiency,
-        p_nom_max=cf["p_nom_max"],
+        p_nom_max=+cf["p_nom_max"],
+        bus2=import_links.index.get_level_values(0) + " export",
+        efficiency2=-efficiency,
     )
 
     hours = int(snakemake.params.temporal_clustering[:-1])
 
-    for tech in ["solar-utility", "onwind"]:
+    for tech in ["solar-utility", "onwind", "offwind"]:
         p_max_pu_tech = p_max_pu.sel(technology=tech).to_pandas().dropna().T
         # build average over every three lines but keeo index
         p_max_pu_tech = p_max_pu_tech.resample(f"{hours}h").mean()
@@ -258,8 +248,8 @@ def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
     for bus0_bus1 in cf.get("extra_connections", []):
         bus0, bus1 = bus0_bus1.split("-")
 
-        a = exporters.to_crs(DISTANCE_CRS).at[bus0, "geometry"]
-        b = exporters.to_crs(DISTANCE_CRS).at[bus1, "geometry"]
+        a = exporters.to_crs(DISTANCE_CRS).loc[bus0]
+        b = exporters.to_crs(DISTANCE_CRS).loc[bus1]
         d = a.distance(b) / 1e3  # km
 
         capital_cost = (
@@ -278,6 +268,7 @@ def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
             capital_cost=capital_cost * cost_factor,
             length=d,
         )
+
 
 def add_import_options(
     n,
@@ -338,11 +329,12 @@ def add_import_options(
         "shipping-lh2": 7018 * 1.2,  # +20% compared to LNG
     }
 
+    trace_scenario = snakemake.params.trace_scenario
     import_costs = pd.read_csv(
         snakemake.input.import_costs,
         delimiter=";",
         keep_default_na=False).query(
-            "year == @cost_year and scenario == 'default' and exporter in @exporters"
+            "year == @cost_year and scenario == @trace_scenario and exporter in @exporters"
         )
 
     cols = ["esc", "exporter", "importer", "value"]
@@ -354,6 +346,7 @@ def add_import_options(
         import_nodes[k] = import_nodes[v]
         ports[k] = ports.get(v)
 
+    # XX export countries specified in config
     export_buses = (
         import_costs.query("esc in @import_options").exporter.unique() + " export"
     )
@@ -369,6 +362,7 @@ def add_import_options(
 
     if endogenous_hvdc and "hvdc-to-elec" in import_options:
         cost_factor = import_options.pop("hvdc-to-elec")
+        # deletes hvdc-to-elec from import_options
         add_endogenous_hvdc_import_options(n, cost_factor)
 
     regionalised_options = {
@@ -920,8 +914,8 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts="none",
-            planning_horizons="2045",
-            run="no_import_me",
+            planning_horizons="2030",
+            run="all_import_me_all",
         )
 
     configure_logging(snakemake)
