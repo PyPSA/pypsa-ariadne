@@ -24,6 +24,7 @@ for path in paths:
 
 from _helpers import configure_logging, mute_print
 from prepare_sector_network import prepare_costs
+from add_electricity import calculate_annuity
 
 # Defining global varibales
 
@@ -348,6 +349,63 @@ def get_total_co2(n, region):
 def get_capacities(n, region):
     return _get_capacities(n, region, n.statistics.optimal_capacity)
 
+def get_FOM(n, region):
+
+    def fill_if_lifetime_inf(n, carrier, lifetime, component="links"):
+        df = getattr(n, component)
+        if df.loc[df.carrier == carrier, "lifetime"].sum() == np.inf:
+            df.loc[df.carrier == carrier, "lifetime"] = lifetime
+        else:
+            logger.error(f"Lifetime of {carrier} is not infinite!")
+
+    logger.info("Overwriting lifetime of components to compute annuities")
+    
+    # Lines
+    n.lines.lifetime = 40
+
+    # Generators
+    n.generators.loc[n.generators.lifetime == np.inf, "lifetime"] = 0
+    n.generators.loc[n.generators.carrier == "ror", "lifetime"] = 60 # hydro lifetime
+
+
+    # Links
+    fill_if_lifetime_inf(n, "DC", 40)
+    n.links.loc[n.links.lifetime == np.inf, "lifetime"] = 0
+    n.links.loc[n.links.lifetime == 1, "lifetime"] = 0
+
+    # Stores
+    n.stores.loc[
+        (n.stores.lifetime == np.inf) & (n.stores.carrier == "H2 Store"),
+        "lifetime"] = 30 # hydrogen storage tank type 1 including compressor 
+    fill_if_lifetime_inf(n, "co2 stored", 25, "stores")
+    n.stores.loc[n.stores.lifetime == np.inf, "lifetime"] = 0
+    n.stores.loc[n.stores.carrier == 'gas', "lifetime"] = 100
+    n.stores.loc[n.stores.carrier == 'oil', "lifetime"] = 30
+    n.stores.loc[n.stores.carrier == 'methanol', "lifetime"] = 30
+
+    # Storage Units
+    n.storage_units.lifetime = 60 # hydro lifetime
+
+    for component in ["lines", "links", "generators", "stores", "storage_units"]:
+        df = getattr(n, component)
+
+        decentral_idx = df.index[df.index.str.contains("decentral|rural|rooftop")]
+        not_decentral_idx = df.index[~df.index.str.contains("decentral|rural|rooftop")]
+
+        for idx, discount_rate in zip(
+            [decentral_idx, not_decentral_idx], [0.04, 0.07]
+        ):
+            df.loc[idx, "annuity"] = calculate_annuity(
+                df.loc[idx, "lifetime"], discount_rate
+            ) * df.loc[idx, "overnight_cost"]
+
+        df["FOM"] = df["capital_cost"] - df["annuity"]
+        assert df["FOM"].min() >= 0
+
+        marginal_cost = 0
+        if component != "lines":
+            marginal_cost = df["marginal_cost"]
+        df["OPEX"] = marginal_cost + df["FOM"] 
 
 def get_installed_capacities(n, region):
     return _get_capacities(
@@ -3769,7 +3827,10 @@ def get_discretized_value(value, disc_int, build_threshold=0.3):
     return base + discrete
 
 
-def get_grid_investments(n, costs, region):
+def get_grid_investments(
+        n, costs, region,
+        cost_key="overnight_cost", 
+        var_name = "Investment|Energy Supply|Electricity|Transmission|"):
     # TODO gap between years should be read from config
     var = pd.Series()
 
@@ -3779,7 +3840,7 @@ def get_grid_investments(n, costs, region):
     ) * 1e-9
     offwind_connection_ac = offwind_connection_overnight_cost.filter(like="ac")
     offwind_connection_dc = offwind_connection_overnight_cost.filter(regex="dc|float")
-    var_name = "Investment|Energy Supply|Electricity|Transmission|"
+    
     var[var_name + "AC|Offshore"] = offwind_connection_ac.sum() / 5
     var[var_name + "AC|NEP|Offshore"] = (
         offwind_connection_ac.filter(regex="25|30").sum() / 5
