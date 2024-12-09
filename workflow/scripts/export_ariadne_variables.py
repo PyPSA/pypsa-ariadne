@@ -510,9 +510,6 @@ def get_capacity_additions_nstat(n, region):
     return _get_capacities(n, region, _f, cap_string="Capacity Additions Nstat|")
 
 
-
-
-
 def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
 
     kwargs = {
