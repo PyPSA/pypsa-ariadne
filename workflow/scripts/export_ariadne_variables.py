@@ -350,14 +350,14 @@ def get_capacities(n, region):
     return _get_capacities(n, region, n.statistics.optimal_capacity)
 
 
-def get_FOM(n, region):
+def add_system_cost_rows(n):
 
     def fill_if_lifetime_inf(n, carrier, lifetime, component="links"):
         df = getattr(n, component)
         if df.loc[df.carrier == carrier, "lifetime"].sum() == np.inf:
             df.loc[df.carrier == carrier, "lifetime"] = lifetime
         else:
-            logger.error(f"Lifetime of {carrier} is not infinite!")
+            logger.error(f"Mean lifetime of {carrier} is not infinite!")
 
     logger.info("Overwriting lifetime of components to compute annuities")
 
@@ -372,6 +372,7 @@ def get_FOM(n, region):
     fill_if_lifetime_inf(n, "DC", 40)
     n.links.loc[n.links.lifetime == np.inf, "lifetime"] = 0
     n.links.loc[n.links.lifetime == 1, "lifetime"] = 0
+    n.links.loc[n.links.carrier == "coal", "lifetime"] = 40
 
     # Stores
     n.stores.loc[
@@ -399,12 +400,49 @@ def get_FOM(n, region):
             )
 
         df["FOM"] = df["capital_cost"] - df["annuity"]
-        assert df["FOM"].min() >= 0
+        if df["FOM"].min() < 0:
+            logger.info(df["FOM"].min())
+            logger.error(f"Capital cost is smaller than annuity for {component}")
 
         marginal_cost = 0
         if component != "lines":
             marginal_cost = df["marginal_cost"]
         df["OPEX"] = marginal_cost + df["FOM"]
+
+
+def get_system_cost_capex(n, region):
+    def _f(**kwargs):
+        return n.statistics.capex(**kwargs, cost_attribute="annuity")
+
+    var = _get_capacities(
+        n,
+        region,
+        _f,
+        cap_string="System Cost|CAPEX|",
+    )
+
+    return var / 1e9
+
+
+def get_system_cost_opex(n, region):
+    def _f(**kwargs):
+        return n.statistics.capex(**kwargs, cost_attribute="FOM")
+
+    FOM = _get_capacities(
+        n,
+        region,
+        _f,
+        cap_string="System Cost|OPEX|",
+    )
+
+    VOM = _get_capacities(
+        n,
+        region,
+        n.statistics.opex,
+        cap_string="System Cost|OPEX|",
+    )
+
+    return (FOM + VOM) / 1e9
 
 
 def get_installed_capacities(n, region):
@@ -472,32 +510,7 @@ def get_capacity_additions_nstat(n, region):
     return _get_capacities(n, region, _f, cap_string="Capacity Additions Nstat|")
 
 
-def get_system_cost_capex(n, region):
-    def _f(**kwargs):
-        return n.statistics.capex(**kwargs)
 
-    var = _get_capacities(
-        n,
-        region,
-        _f,
-        cap_string="System Cost|Capex|",
-    )
-
-    return var
-
-
-def get_system_cost_opex(n, region):
-    def _f(**kwargs):
-        return n.statistics.opex(**kwargs)
-
-    var = _get_capacities(
-        n,
-        region,
-        _f,
-        cap_string="System Cost|OPEX|",
-    )
-
-    return var
 
 
 def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
@@ -808,7 +821,7 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         )
         .multiply(MW2GW)
     )
-    if cap_string.startswith("Investment"):
+    if cap_string.startswith("Investment") or cap_string.startswith("System Cost"):
         secondary_heat_techs = [
             "DAC",
             "Fischer-Tropsch",
@@ -5156,6 +5169,7 @@ def get_ariadne_var(
             get_trade(n, region),
             # get_operational_and_capital_costs(year),
             get_economy(n, region),
+            add_system_cost_rows(n),
             get_system_cost_capex(n, region),
             get_system_cost_opex(n, region),
         ]
