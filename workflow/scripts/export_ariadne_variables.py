@@ -415,6 +415,8 @@ def add_system_cost_rows(n):
 
     Calculate total investment, CAPEX, and OPEX in the given region.
 """
+
+
 def get_system_cost(n, region):
 
     add_system_cost_rows(n)
@@ -423,7 +425,8 @@ def get_system_cost(n, region):
         n,
         region,
         lambda **kwargs: n.statistics.expanded_capex(
-            **kwargs, cost_attribute="overnight_cost"),
+            **kwargs, cost_attribute="overnight_cost"
+        ),
         cap_string="Investment|Energy Supply|",
     )
 
@@ -440,11 +443,14 @@ def get_system_cost(n, region):
 
     # Assuming 40 years lifetime, 7% discount rate
     grid_capex = pd.Series(
-        data=calculate_annuity(40, 0.07) * 5 * grid_invest.values, # yearly invest for 5 years
+        data=calculate_annuity(40, 0.07)
+        * 5
+        * grid_invest.values,  # yearly invest for 5 years
         index=grid_invest.index.str.replace(
             "Investment|Energy Supply|",
             "System Cost|CAPEX|",
-        ))
+        ),
+    )
 
     FOM = _get_capacities(
         n,
@@ -467,30 +473,26 @@ def get_system_cost(n, region):
 
     # Assuming VOM=0, FOM=2% of Investment
     grid_opex = pd.Series(
-        data=0.02 * 5 * grid_invest.values, # yearly invest for 5 years
+        data=0.02 * 5 * grid_invest.values,  # yearly invest for 5 years
         index=grid_invest.index.str.replace(
             "Investment|Energy Supply|",
             "System Cost|OPEX|",
-        ))
-    
+        ),
+    )
+
     for var, grid_var, var_name in zip(
-        [invest, capex, opex], 
-        [grid_invest, grid_capex, grid_opex], 
-        ["Investment|Energy Supply|", "System Cost|CAPEX|", "System Cost|OPEX|"]):
+        [invest, capex, opex],
+        [grid_invest, grid_capex, grid_opex],
+        ["Investment|Energy Supply|", "System Cost|CAPEX|", "System Cost|OPEX|"],
+    ):
         var[var_name + "Electricity"] += grid_var[
             var_name + "Electricity|Transmission and Distribution"
         ]
-        var[var_name + "Hydrogen"] += grid_var[
-            var_name + "Hydrogen|Transmission"
-        ]
+        var[var_name + "Hydrogen"] += grid_var[var_name + "Hydrogen|Transmission"]
         if var_name + "Gas|Transmission" in grid_var.keys():
-            var[var_name + "Gas"] += grid_var[
-                var_name + "Gas|Transmission"
-            ]
-    
-    return pd.concat([invest, grid_invest, capex, grid_capex, opex, grid_opex])
-    
+            var[var_name + "Gas"] += grid_var[var_name + "Gas|Transmission"]
 
+    return pd.concat([invest, grid_invest, capex, grid_capex, opex, grid_opex])
 
 
 def get_installed_capacities(n, region):
@@ -1079,7 +1081,7 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
         var = var.div(MW2GW).mul(1e-9).div(5).round(3)  # in bn € / year
     elif cap_string.startswith("System Cost"):
         var = var.div(MW2GW).mul(1e-9).round(3)
-    
+
     return var
 
 
@@ -3961,7 +3963,6 @@ def get_grid_investments(
         var[var_name + "AC"] + var[var_name + "DC"]
     )
     var[var_name + "NEP"] = var[var_name + "AC|NEP"] + var[var_name + "DC|NEP"]
-
 
     distribution_grid = n.links[
         (n.links.carrier == "electricity distribution grid")
