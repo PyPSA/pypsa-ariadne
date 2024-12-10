@@ -410,29 +410,47 @@ def add_system_cost_rows(n):
         df["OPEX"] = marginal_cost + df["FOM"]
 
 
-def get_system_cost_capex(n, region):
-    def _f(**kwargs):
-        return n.statistics.capex(**kwargs, cost_attribute="annuity")
+"""
+    get_system_cost(n, region)
 
-    var = _get_capacities(
+    Calculate total investment, CAPEX, and OPEX in the given region.
+"""
+def get_system_cost(n, region):
+
+    add_system_cost_rows(n)
+
+    invest = _get_capacities(
         n,
         region,
-        _f,
+        lambda **kwargs: n.statistics.expanded_capex(
+            **kwargs, cost_attribute="overnight_cost"),
+        cap_string="Investment|Energy Supply|",
+    )
+
+    grid_invest = get_grid_investments(n, region)
+    # TODO Using grid_invest for CAPEX is an underestimation, because it does not include the
+    # investment before 2020. This should be harmonized with the other sectors.
+
+    capex = _get_capacities(
+        n,
+        region,
+        lambda **kwargs: n.statistics.capex(**kwargs, cost_attribute="annuity"),
         cap_string="System Cost|CAPEX|",
     )
 
-    return var / 1e9
-
-
-def get_system_cost_opex(n, region):
-    def _f(**kwargs):
-        return n.statistics.capex(**kwargs, cost_attribute="FOM")
+    # Assuming 40 years lifetime, 7% discount rate
+    grid_capex = pd.Series(
+        data=calculate_annuity(40, 0.07) * 5 * grid_invest.values, # yearly invest for 5 years
+        index=grid_invest.index.str.replace(
+            "Investment|Energy Supply|",
+            "System Cost|CAPEX|",
+        ))
 
     FOM = _get_capacities(
         n,
         region,
-        _f,
-        cap_string="System Cost|OPEX|",
+        lambda **kwargs: n.statistics.capex(**kwargs, cost_attribute="FOM"),
+        cap_string="System Cost|FOM|",
     )
 
     VOM = _get_capacities(
@@ -442,7 +460,37 @@ def get_system_cost_opex(n, region):
         cap_string="System Cost|OPEX|",
     )
 
-    return (FOM + VOM) / 1e9
+    opex = pd.Series(
+        data=VOM.values + FOM.values,
+        index=VOM.index,
+    )
+
+    # Assuming VOM=0, FOM=2% of Investment
+    grid_opex = pd.Series(
+        data=0.02 * 5 * grid_invest.values, # yearly invest for 5 years
+        index=grid_invest.index.str.replace(
+            "Investment|Energy Supply|",
+            "System Cost|OPEX|",
+        ))
+    
+    for var, grid_var, var_name in zip(
+        [invest, capex, opex], 
+        [grid_invest, grid_capex, grid_opex], 
+        ["Investment|Energy Supply|", "System Cost|CAPEX|", "System Cost|OPEX|"]):
+        var[var_name + "Electricity"] += grid_var[
+            var_name + "Electricity|Transmission and Distribution"
+        ]
+        var[var_name + "Hydrogen"] += grid_var[
+            var_name + "Hydrogen|Transmission"
+        ]
+        if var_name + "Gas|Transmission" in grid_var.keys():
+            var[var_name + "Gas"] += grid_var[
+                var_name + "Gas|Transmission"
+            ]
+    
+    return pd.concat([invest, grid_invest, capex, grid_capex, opex, grid_opex])
+    
+
 
 
 def get_installed_capacities(n, region):
@@ -467,39 +515,6 @@ def get_capacity_additions(n, region):
         )
 
     return _get_capacities(n, region, _f, cap_string="Capacity Additions|")
-
-
-def get_investments(n, costs, region):
-    def _f(**kwargs):
-        return n.statistics.expanded_capex(**kwargs, cost_attribute="overnight_cost")
-
-    var = _get_capacities(
-        n,
-        region,
-        _f,
-        cap_string="Investment|Energy Supply|",
-    )
-
-    grid_var = get_grid_investments(
-        n,
-        costs,
-        region,
-    )
-
-    var["Investment|Energy Supply|Electricity"] += grid_var[
-        "Investment|Energy Supply|Electricity|Transmission and Distribution"
-    ]
-
-    var["Investment|Energy Supply|Hydrogen"] += grid_var[
-        "Investment|Energy Supply|Hydrogen|Transmission"
-    ]
-
-    if "Investment|Energy Supply|Gas|Transmission" in grid_var.keys():
-        var["Investment|Energy Supply|Gas"] += grid_var[
-            "Investment|Energy Supply|Gas|Transmission"
-        ]
-
-    return pd.concat([var, grid_var])
 
 
 def get_capacity_additions_nstat(n, region):
@@ -1062,6 +1077,9 @@ def _get_capacities(n, region, cap_func, cap_string="Capacity|"):
 
     if cap_string.startswith("Investment"):
         var = var.div(MW2GW).mul(1e-9).div(5).round(3)  # in bn € / year
+    elif cap_string.startswith("System Cost"):
+        var = var.div(MW2GW).mul(1e-9).round(3)
+    
     return var
 
 
@@ -3839,7 +3857,6 @@ def get_discretized_value(value, disc_int, build_threshold=0.3):
 
 def get_grid_investments(
     n,
-    costs,
     region,
     cost_key="overnight_cost",
     var_name="Investment|Energy Supply|Electricity|Transmission|",
@@ -3945,9 +3962,12 @@ def get_grid_investments(
     )
     var[var_name + "NEP"] = var[var_name + "AC|NEP"] + var[var_name + "DC|NEP"]
 
-    distribution_grid = n.links[n.links.carrier.str.contains("distribution")].filter(
-        like="DE", axis=0
-    )
+
+    distribution_grid = n.links[
+        (n.links.carrier == "electricity distribution grid")
+        & n.links.bus0.str.contains(region)
+        & ~n.links.reversed
+    ]
 
     year = distribution_grid.build_year.max()
     year_pre = (year - 5) if year > 2020 else 2020
@@ -3957,7 +3977,7 @@ def get_grid_investments(
         - distribution_grid[distribution_grid.build_year <= year_pre].p_nom_opt.sum()
     )
     dg_investment = (
-        dg_expansion * costs.at["electricity distribution grid", "investment"]
+        dg_expansion * distribution_grid.overnight_cost.unique().item() * 1e-9
     )
     var["Investment|Energy Supply|Electricity|Distribution"] = dg_investment / 5
 
@@ -4153,35 +4173,6 @@ def get_grid_investments(
             "Investment|Energy Supply|Hydrogen|Transmission and Distribution|Kernnetz|NOT-PCI+IPCEI"
         ],
     )
-
-    # TODO add retrofitted costs!!
-
-    if "gas pipeline" in n.links.carrier.unique():
-        gas_links = n.links[
-            (
-                ((n.links.carrier == "gas pipeline") & (n.links.build_year > 2020))
-                | (n.links.carrier == "gas pipeline new")
-            )
-            & ~n.links.reversed
-            & (n.links.bus0 + n.links.bus1).str.contains(region)
-        ]
-        year = n.links.build_year.max()
-        new_gas_links = gas_links[
-            ((year - 5) < gas_links.build_year) & (gas_links.build_year <= year)
-        ]
-        gas_costs = (
-            new_gas_links.length
-            * new_gas_links.p_nom_opt.apply(
-                lambda x: get_discretized_value(
-                    x,
-                    post_discretization["link_unit_size"]["gas pipeline"],
-                    post_discretization["link_threshold"]["gas pipeline"],
-                )
-            )
-            * costs.at["CH4 (g) pipeline", "investment"]
-        )
-
-        var["Investment|Energy Supply|Gas|Transmission"] = gas_costs.sum() / 5
 
     # var["Investment|Energy Supply|Electricity|Electricity Storage"] = \
     # var["Investment|Energy Supply|CO2 Transport and Storage"] =
@@ -5147,7 +5138,6 @@ def get_ariadne_var(
             # get_capacity_additions_simple(n,region),
             # get_installed_capacities(n,region),
             get_capacity_additions(n, region),
-            get_investments(n, costs, region),
             # get_capacity_additions_nstat(n, region),
             get_production(region, year),
             get_primary_energy(n, region),
@@ -5166,9 +5156,7 @@ def get_ariadne_var(
             get_trade(n, region),
             # get_operational_and_capital_costs(year),
             get_economy(n, region),
-            add_system_cost_rows(n),
-            get_system_cost_capex(n, region),
-            get_system_cost_opex(n, region),
+            get_system_cost(n, region),
         ]
     )
 
