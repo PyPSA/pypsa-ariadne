@@ -477,9 +477,10 @@ def plot_storage(
     n = network
     n.remove("Link", n.links.index[n.links.index.str[:2] != "DE"])
     n.remove("Store", n.stores.index[n.stores.index.str[:2] != "DE"])
-    n.remove("StorageUnit", n.storage_units.index[n.storage_units.index.str[:2] != "DE"])
+    n.remove(
+        "StorageUnit", n.storage_units.index[n.storage_units.index.str[:2] != "DE"]
+    )
     n.remove("Generator", n.generators.index[n.generators.index.str[:2] != "DE"])
-
 
     # storage carriers
     st_carriers = [
@@ -549,9 +550,15 @@ def plot_storage(
 
         else:
             # state of charge (sum over different stores at same location)
-            charge = n.stores_t.e.loc[:, n.stores.carrier.str.contains(c)].sum(axis=1)[period]
+            charge = n.stores_t.e.loc[:, n.stores.carrier.str.contains(c)].sum(axis=1)[
+                period
+            ]
             gen_sum = (
-                -n.links_t.p1.loc[period, n.links[n.links.carrier.str.contains(carriers[i])].index].sum().sum()
+                -n.links_t.p1.loc[
+                    period, n.links[n.links.carrier.str.contains(carriers[i])].index
+                ]
+                .sum()
+                .sum()
             )
             max_stor_cap = n.stores.e_nom_opt[
                 n.stores[n.stores.carrier.str.contains(c)].index
@@ -1483,15 +1490,39 @@ def plot_elec_trade(
     outgoing_elec = []
     for year in planning_horizons:
         n = networks[planning_horizons.index(year)]
-        incoming_lines = n.lines[(n.lines.bus0.str[:2] != "DE") & (n.lines.bus1.str[:2] == "DE")].index
-        outgoing_lines = n.lines[(n.lines.bus0.str[:2] == "DE") & (n.lines.bus1.str[:2] != "DE")].index
-        incoming_links = n.links[(n.links.carrier == "DC") & (n.links.bus0.str[:2] != "DE") & (n.links.bus1.str[:2] == "DE")].index
-        outgoing_links = n.links[(n.links.carrier == "DC") & (n.links.bus0.str[:2] == "DE") & (n.links.bus1.str[:2] != "DE")].index
+        incoming_lines = n.lines[
+            (n.lines.bus0.str[:2] != "DE") & (n.lines.bus1.str[:2] == "DE")
+        ].index
+        outgoing_lines = n.lines[
+            (n.lines.bus0.str[:2] == "DE") & (n.lines.bus1.str[:2] != "DE")
+        ].index
+        incoming_links = n.links[
+            (n.links.carrier == "DC")
+            & (n.links.bus0.str[:2] != "DE")
+            & (n.links.bus1.str[:2] == "DE")
+        ].index
+        outgoing_links = n.links[
+            (n.links.carrier == "DC")
+            & (n.links.bus0.str[:2] == "DE")
+            & (n.links.bus1.str[:2] != "DE")
+        ].index
         # positive when withdrawing power from bus0/bus1
-        incoming = n.lines_t.p1[incoming_lines].sum(axis=1).mul(n.snapshot_weightings.generators, axis=0) + n.links_t.p1[incoming_links].sum(axis=1).mul(n.snapshot_weightings.generators, axis=0)
-        outgoing = n.lines_t.p0[outgoing_lines].sum(axis=1).mul(n.snapshot_weightings.generators, axis=0) + n.links_t.p0[outgoing_links].sum(axis=1).mul(n.snapshot_weightings.generators, axis=0)
-        incoming_elec.append(incoming[incoming < 0].abs().sum() + outgoing[outgoing > 0].sum())
-        outgoing_elec.append(incoming[incoming > 0].sum() + outgoing[outgoing < 0].abs().sum())
+        incoming = n.lines_t.p1[incoming_lines].sum(axis=1).mul(
+            n.snapshot_weightings.generators, axis=0
+        ) + n.links_t.p1[incoming_links].sum(axis=1).mul(
+            n.snapshot_weightings.generators, axis=0
+        )
+        outgoing = n.lines_t.p0[outgoing_lines].sum(axis=1).mul(
+            n.snapshot_weightings.generators, axis=0
+        ) + n.links_t.p0[outgoing_links].sum(axis=1).mul(
+            n.snapshot_weightings.generators, axis=0
+        )
+        incoming_elec.append(
+            incoming[incoming < 0].abs().sum() + outgoing[outgoing > 0].sum()
+        )
+        outgoing_elec.append(
+            incoming[incoming > 0].sum() + outgoing[outgoing < 0].abs().sum()
+        )
     elec_import = np.array(incoming_elec) / 1e6
     elec_export = -np.array(outgoing_elec) / 1e6
     net = elec_import + elec_export
@@ -1509,7 +1540,6 @@ def plot_elec_trade(
     ax.set_title("Strom Import/Export Deutschland")
     ax.legend()
 
-
     plt.tight_layout()
     fig.savefig(savepath, bbox_inches="tight")
 
@@ -1524,13 +1554,33 @@ def plot_h2_trade(
     outgoing_h2 = []
     for year in planning_horizons:
         n = networks[planning_horizons.index(year)]
-        incoming_links = n.links[(n.links.carrier.str.contains("H2 pipeline")) & (n.links.bus0.str[:2] != "DE") & (n.links.bus1.str[:2] == "DE")].index
-        outgoing_links = n.links[(n.links.carrier.str.contains("H2 pipeline")) & (n.links.bus0.str[:2] == "DE") & (n.links.bus1.str[:2] != "DE")].index
+        incoming_links = n.links[
+            (n.links.carrier.str.contains("H2 pipeline"))
+            & (n.links.bus0.str[:2] != "DE")
+            & (n.links.bus1.str[:2] == "DE")
+        ].index
+        outgoing_links = n.links[
+            (n.links.carrier.str.contains("H2 pipeline"))
+            & (n.links.bus0.str[:2] == "DE")
+            & (n.links.bus1.str[:2] != "DE")
+        ].index
         # positive when withdrawing power from bus0/bus1
-        incoming = n.links_t.p1[incoming_links].sum(axis=1).mul(n.snapshot_weightings.generators, axis=0)
-        outgoing = n.links_t.p0[outgoing_links].sum(axis=1).mul(n.snapshot_weightings.generators, axis=0)
-        incoming_h2.append(incoming[incoming < 0].abs().sum() + outgoing[outgoing > 0].sum())
-        outgoing_h2.append(incoming[incoming > 0].sum() + outgoing[outgoing < 0].abs().sum())
+        incoming = (
+            n.links_t.p1[incoming_links]
+            .sum(axis=1)
+            .mul(n.snapshot_weightings.generators, axis=0)
+        )
+        outgoing = (
+            n.links_t.p0[outgoing_links]
+            .sum(axis=1)
+            .mul(n.snapshot_weightings.generators, axis=0)
+        )
+        incoming_h2.append(
+            incoming[incoming < 0].abs().sum() + outgoing[outgoing > 0].sum()
+        )
+        outgoing_h2.append(
+            incoming[incoming > 0].sum() + outgoing[outgoing < 0].abs().sum()
+        )
     h2_import = np.array(incoming_h2) / 1e6
     h2_export = -np.array(outgoing_h2) / 1e6
     net = h2_import + h2_export
@@ -1547,7 +1597,6 @@ def plot_h2_trade(
     ax.set_ylabel("H2 [TWh]")
     ax.set_title("Wasserstoff Import/Export Deutschland")
     ax.legend()
-
 
     plt.tight_layout()
     fig.savefig(savepath, bbox_inches="tight")
@@ -1580,7 +1629,19 @@ def plot_cap_map_de(
     # buses
     bus_size_factor = 0.5e6
     carriers = ["onwind", "offwind-ac", "offwind-dc", "solar", "solar-hsat"]
-    carriers_links = ["H2 Fuel Cell", "urban central H2 CHP", "H2 OCGT", "urban central solid biomass CHP", "urban central solid biomass CHP CC", "waste CHP", "waste CHP CC", "CCGT", "urban central gas CHP", "urban central gas CHP CC", "OCGT", ]
+    carriers_links = [
+        "H2 Fuel Cell",
+        "urban central H2 CHP",
+        "H2 OCGT",
+        "urban central solid biomass CHP",
+        "urban central solid biomass CHP CC",
+        "waste CHP",
+        "waste CHP CC",
+        "CCGT",
+        "urban central gas CHP",
+        "urban central gas CHP CC",
+        "OCGT",
+    ]
     elec = m.generators[
         (m.generators.carrier.isin(carriers)) & (m.generators.bus.str.contains("DE"))
     ].index
@@ -1698,7 +1759,6 @@ def plot_cap_map_de(
     add_legend_patches(ax, colors, labels, legend_kw=legend_kw)
     fig.savefig(savepath, bbox_inches="tight")
     plt.close()
-
 
 
 if __name__ == "__main__":
@@ -2005,7 +2065,7 @@ if __name__ == "__main__":
             regions_de,
             savepath=f"{snakemake.output.elec_transmission}/elec-cap-DE-{year}.png",
         )
-    
+
     plot_elec_trade(
         networks,
         planning_horizons,
