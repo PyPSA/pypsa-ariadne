@@ -41,6 +41,15 @@ carriers_all = ["pipeline-h2",
 x = 10.5
 y = 51.2
 
+lng_dictionary = {
+    "T0557": "GBMLF",  # South Hook LNG terminal, UK
+    "T0492": "BEZEE",  # Gate LNG terminal, Netherlands
+    "T0498": "PLSWI",  # Swinoujscie LNG terminal, Poland
+    "T0462": "GREEV",  # Revithoussa LNG terminal, Greece
+    "T0466": "ITVCE",  # Adriatic LNG terminal, Italy
+    "T0522": "ESLCG",  # Barcelona LNG terminal, Spain
+    "T0500": "ESLCG",  # Sines LNG terminal, Portugal
+}
 
 def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
     logger.info("Add import options: endogenous hvdc-to-elec")
@@ -293,7 +302,7 @@ def add_import_options(
     import_nodes["hvdc-to-elec"] = 15000
 
     import_config = snakemake.params.import_options
-    cost_year = snakemake.params.costs["year"]  # noqa: F841
+    cost_year = int(snakemake.wildcards.planning_horizons)
     exporters = import_config["exporters"]  # noqa: F841
 
     ports = pd.read_csv(snakemake.input.import_ports, index_col=0)
@@ -336,6 +345,7 @@ def add_import_options(
         keep_default_na=False).query(
             "year == @cost_year and scenario == @trace_scenario and exporter in @exporters"
         )
+    import_costs["importer"] = import_costs["importer"].replace(lng_dictionary)
 
     cols = ["esc", "exporter", "importer", "value"]
     fields = ["Cost per MWh delivered", "Cost per t delivered"]  # noqa: F841
@@ -616,7 +626,7 @@ def endogenise_steel(n, costs, sector_options):
         logger.error("H2 network with regional demand must be activated. Please set config['sector']['H2_network'] to True.")
     if not sector_options["regional_methanol_demand"] or not sector_options["regional_oil_demand"] or not sector_options["regional_coal_demand"]:
         logger.error("Regional methanol, oil and coal demand must be activated. Please set config['sector']['regional_methanol_demand'], config['sector']['regional_oil_demand'] and config['sector']['regional_coal_demand'] to True.")
-    
+
 
     logger.info("Adding endogenous primary steel demand in tonnes.")
 
@@ -830,8 +840,6 @@ def endogenise_steel(n, costs, sector_options):
 
 def adjust_industry_loads(n, nodes, industrial_demand, endogenous_sectors):
 
-    #TODO: check coal demand comes from modifying the industry energy demand not the production! Do I have to backwards calculate the coal demand from the energy demand?
-    # readjust the loads from industry without steel and potentially hvc
     remaining_sectors = ~industrial_demand.index.get_level_values(1).isin(endogenous_sectors)
     
     remaining_demand = (
@@ -914,8 +922,8 @@ if __name__ == "__main__":
             opts="",
             ll="vopt",
             sector_opts="none",
-            planning_horizons="2030",
-            run="all_import_me_all",
+            planning_horizons="2045",
+            run="all_import_me_all_relocation",
         )
 
     configure_logging(snakemake)
@@ -932,8 +940,8 @@ if __name__ == "__main__":
     sector_options = snakemake.params.sector_options
 
     endogenise_steel(n, costs, sector_options)
-
-    unravel_ammonia(n, costs, sector_options)
+    if sector_options["ammonia"] != "regional":
+        unravel_ammonia(n, costs, sector_options)
 
     if import_options["enable"]:
         # all import vectors or only h2 + elec
@@ -957,10 +965,11 @@ if __name__ == "__main__":
                 "DE renewable oil -> EU oil",
                 "DE methanol -> EU methanol",
                 "DE renewable gas -> EU gas",
-                "DE NH3 -> EU NH3",
                 "DE steel -> EU steel",
                 "DE hbi -> EU hbi",
         ]
+        if sector_options["ammonia"] != "regional":
+            links_to_drop.append("DE NH3 -> EU NH3")
         n.links.drop(links_to_drop, inplace=True)
 
     n.export_to_netcdf(snakemake.output.network)

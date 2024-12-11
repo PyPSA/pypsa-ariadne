@@ -707,7 +707,9 @@ def remove_production_limits(n, investment_year, limits_volume_max):
 
     cnames = [
         "H2_derivate_import_limit-DE",
-        "FT_production_volume_limit-DE",
+        # "FT_production_volume_limit-DE",
+        "capacity_maximum-DE-Link-Fischer-Tropsch",
+        "capacity_maximum-DE-Link-methanolisation",
         "H2_production_limit_upper-DE",
         "H2_production_limit_lower-DE",
         # "H2_import_limit-DE",
@@ -733,11 +735,13 @@ def remove_production_limits(n, investment_year, limits_volume_max):
             "EU renewable oil -> DE oil",
             "EU methanol -> DE methanol",
             "EU renewable gas -> DE gas",
-            "EU NH3 -> DE NH3",
             "EU steel -> DE steel",
             "EU hbi -> DE hbi",
         ]
     ].index
+    
+    if "EU NH3 -> DE NH3" in n.links.index:
+        incoming = incoming.append("EU NH3 -> DE NH3")
 
     lhs = (
         n.model["Link-p"].loc[:, incoming] * n.snapshot_weightings.generators
