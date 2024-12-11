@@ -449,7 +449,7 @@ def get_system_cost(n, region):
         ),
         cap_string="System Cost|CAPEX|",
     )
-    
+
     # Subtracting all capex of assets built before 2020
     capex -= capex2020
 
@@ -3877,7 +3877,7 @@ def get_discretized_value(value, disc_int, build_threshold=0.3):
 def get_grid_investments(
     n,
     region,
-    scope="all", # all, baseyear, expanded
+    scope="all",  # all, baseyear, expanded
     var_name="Investment|Energy Supply|Electricity|Transmission|",
 ):
     assert scope in ["all", "baseyear", "expanded"]
@@ -3885,14 +3885,19 @@ def get_grid_investments(
     var = pd.Series()
 
     offwind = n.generators.filter(like="offwind", axis=0).filter(like="DE", axis=0)
-    
+
     offwind_capacity = offwind.p_nom_opt
     if scope == "expanded":
         offwind_capacity -= offwind.p_nom
     elif scope == "baseyear":
         # WARNING USING GLOBAL VARIABLE `networks[0]`!!!
         # Subtracting 2020 capacity
-        offwind2020 = networks[0].generators.filter(like="offwind", axis=0).filter(like="DE", axis=0).p_nom
+        offwind2020 = (
+            networks[0]
+            .generators.filter(like="offwind", axis=0)
+            .filter(like="DE", axis=0)
+            .p_nom
+        )
         common_index = offwind.index.intersection(offwind2020.index)
         offwind_capacity[common_index] -= offwind2020[common_index]
     offwind_connection_overnight_cost = (
@@ -4016,9 +4021,13 @@ def get_grid_investments(
 
     dg_capacity = distribution_grid.p_nom_opt.sum()
     if scope == "expanded":
-        dg_capacity -= - distribution_grid[distribution_grid.build_year <= year_pre].p_nom_opt.sum()
+        dg_capacity -= -distribution_grid[
+            distribution_grid.build_year <= year_pre
+        ].p_nom_opt.sum()
     elif scope == "baseyear":
-        dg_capacity -= - distribution_grid[distribution_grid.build_year <= 2020].p_nom_opt.sum()
+        dg_capacity -= -distribution_grid[
+            distribution_grid.build_year <= 2020
+        ].p_nom_opt.sum()
 
     dg_investment = (
         dg_capacity * distribution_grid.overnight_cost.unique().item() * 1e-9
@@ -4041,9 +4050,9 @@ def get_grid_investments(
         new_h2_links = h2_links[
             ((year - 5) < h2_links.build_year) & (h2_links.build_year <= year)
         ]
-    else: # scope is all or baseyear
+    else:  # scope is all or baseyear
         new_h2_links = h2_links.copy()
-        
+
     h2_expansion = new_h2_links.p_nom_opt
     h2_investments = h2_expansion * new_h2_links.overnight_cost * 1e-9
     # International h2_projects are only accounted with domestic_length_factor * costs
