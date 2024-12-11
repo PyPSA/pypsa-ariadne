@@ -223,9 +223,15 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
         # do not use own cost data for retrofitted and new build pipes as this would underestimate the investment cost
         # reconstruct average Kernnetz invest (250€/MW*km) from our costs data
 
-        capital_costs = (0.7 * costs.at["H2 (g) pipeline", "fixed"] + 0.3 * costs.at["H2 (g) pipeline repurposed", "fixed"]) * wkn_new.length.values
-        overnight_costs = (0.7 * costs.at["H2 (g) pipeline", "investment"] + 0.3 * costs.at["H2 (g) pipeline repurposed", "investment"]) * wkn_new.length.values
-        
+        capital_costs = (
+            0.7 * costs.at["H2 (g) pipeline", "fixed"]
+            + 0.3 * costs.at["H2 (g) pipeline repurposed", "fixed"]
+        ) * wkn_new.length.values
+        overnight_costs = (
+            0.7 * costs.at["H2 (g) pipeline", "investment"]
+            + 0.3 * costs.at["H2 (g) pipeline repurposed", "investment"]
+        ) * wkn_new.length.values
+
         lifetime = np.where(
             wkn_new.retrofitted == False,
             costs.at["H2 (g) pipeline", "lifetime"],

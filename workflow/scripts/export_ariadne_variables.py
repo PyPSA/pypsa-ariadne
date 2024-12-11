@@ -5022,15 +5022,19 @@ def process_postnetworks(n, n_start, model_year, snakemake, costs, modelyears):
     #     # the same logic is applied to p_nom and p_nom_min
     #     n.links.loc[h2_links, attr] = n.links.loc[h2_links, attr].apply(_h2_lambda)
 
-
     logger.info("Assing average Kernnetz cost to carrier H2 pipeline (Kernnetz)")
-    current_costs = costs[modelyears.index(str(model_year))] 
+    current_costs = costs[modelyears.index(str(model_year))]
     h2_links_kern = n.links.query("carrier == 'H2 pipeline (Kernnetz))'").index
-    capital_costs = (0.7 * current_costs.at["H2 (g) pipeline", "fixed"] + 0.3 * current_costs.at["H2 (g) pipeline repurposed", "fixed"]) * n.links.loc[h2_links_kern, "length"]
-    overnight_costs = (0.7 * current_costs.at["H2 (g) pipeline", "investment"] + 0.3 * current_costs.at["H2 (g) pipeline repurposed", "investment"]) * n.links.loc[h2_links_kern, "length"]
+    capital_costs = (
+        0.7 * current_costs.at["H2 (g) pipeline", "fixed"]
+        + 0.3 * current_costs.at["H2 (g) pipeline repurposed", "fixed"]
+    ) * n.links.loc[h2_links_kern, "length"]
+    overnight_costs = (
+        0.7 * current_costs.at["H2 (g) pipeline", "investment"]
+        + 0.3 * current_costs.at["H2 (g) pipeline repurposed", "investment"]
+    ) * n.links.loc[h2_links_kern, "length"]
     n.links.loc[h2_links_kern, "capital_cost"] = capital_costs
-    n.links.loc[h2_links_kern, "overnight_cost"] = overnight_costs 
-
+    n.links.loc[h2_links_kern, "overnight_cost"] = overnight_costs
 
     logger.info("Post-Discretizing DC links")
     _dc_lambda = lambda x: get_discretized_value(
@@ -5276,7 +5280,9 @@ if __name__ == "__main__":
     modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
     # Hack the transmission projects
     networks = [
-        process_postnetworks(n.copy(), _networks[0], int(my), snakemake, costs, modelyears)
+        process_postnetworks(
+            n.copy(), _networks[0], int(my), snakemake, costs, modelyears
+        )
         for n, my in zip(_networks, modelyears)
     ]
 
