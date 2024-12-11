@@ -1347,7 +1347,7 @@ def plot_elec_map_de(
     ].index
     tprojs_all = m.links.loc[
         (m.links.index.str.startswith("DC") | m.links.index.str.startswith("TYNDP"))
-    ].index 
+    ].index
     links_i = m.links.index[m.links.carrier == "DC"]
     total_exp_linkw = (m.links.p_nom_opt - m_base.links.p_nom_min).loc[links_i]
     total_exp_linkw[tprojs] = m.links.p_nom_opt[tprojs]
