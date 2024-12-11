@@ -1,42 +1,41 @@
-import pypsa
-import pandas as pd
-import numpy as np
-import xarray as xr
-import geopandas as gpd
+# -*- coding: utf-8 -*-
 import logging
-import warnings
-from types import SimpleNamespace
-from shapely.geometry import Point
-from pathlib import Path
-
-import sys
 import os
+import sys
+import warnings
+from pathlib import Path
+from types import SimpleNamespace
+
+import geopandas as gpd
+import numpy as np
+import pandas as pd
+import pypsa
+import xarray as xr
+from shapely.geometry import Point
+
 paths = ["workflow/submodules/pypsa-eur/scripts", "../submodules/pypsa-eur/scripts"]
 for path in paths:
     sys.path.insert(0, os.path.abspath(path))
+from _helpers import configure_logging, get
 from prepare_sector_network import prepare_costs
-from _helpers import(
-    configure_logging,
-    get,
-)
 
 logger = logging.getLogger(__name__)
 
 
 DISTANCE_CRS = 3857
-carriers_eleh2 = ["pipeline-h2",
-                "shipping-lh2",
-                "hvdc-to-elec"]
+carriers_eleh2 = ["pipeline-h2", "shipping-lh2", "hvdc-to-elec"]
 
-carriers_all = ["pipeline-h2",
-                "shipping-lh2",
-                "shipping-lch4",
-                "shipping-lnh3",
-                "shipping-ftfuel",
-                "shipping-meoh",
-                "hvdc-to-elec",
-                "shipping-hbi",
-                "shipping-steel"]
+carriers_all = [
+    "pipeline-h2",
+    "shipping-lh2",
+    "shipping-lch4",
+    "shipping-lnh3",
+    "shipping-ftfuel",
+    "shipping-meoh",
+    "hvdc-to-elec",
+    "shipping-hbi",
+    "shipping-steel",
+]
 
 x = 10.5
 y = 51.2
@@ -50,6 +49,7 @@ lng_dictionary = {
     "T0522": "ESLCG",  # Barcelona LNG terminal, Spain
     "T0500": "ESLCG",  # Sines LNG terminal, Portugal
 }
+
 
 def add_endogenous_hvdc_import_options(n, cost_factor=1.0):
     logger.info("Add import options: endogenous hvdc-to-elec")
@@ -340,11 +340,10 @@ def add_import_options(
 
     trace_scenario = snakemake.params.trace_scenario
     import_costs = pd.read_csv(
-        snakemake.input.import_costs,
-        delimiter=";",
-        keep_default_na=False).query(
-            "year == @cost_year and scenario == @trace_scenario and exporter in @exporters"
-        )
+        snakemake.input.import_costs, delimiter=";", keep_default_na=False
+    ).query(
+        "year == @cost_year and scenario == @trace_scenario and exporter in @exporters"
+    )
     import_costs["importer"] = import_costs["importer"].replace(lng_dictionary)
 
     cols = ["esc", "exporter", "importer", "value"]
@@ -414,7 +413,9 @@ def add_import_options(
         import_buses = df.importer.unique() + " import " + tech
         if tech == "shipping-lch4":
             data = import_buses.astype(str)
-            domestic_buses = np.where(np.char.find(data, "DE") != -1, "DE renewable gas", "EU renewable gas")
+            domestic_buses = np.where(
+                np.char.find(data, "DE") != -1, "DE renewable gas", "EU renewable gas"
+            )
         else:
             domestic_buses = df.importer.unique() + suffix
 
@@ -532,10 +533,12 @@ def add_import_options(
 
 
 def unravel_ammonia(n, costs, sector_options):
-    
+
     # unravel ammonia
     if not sector_options["ammonia"]:
-        logger.error("Ammonia sector must be activated. Please set config['sector']['ammonia'] to True.")
+        logger.error(
+            "Ammonia sector must be activated. Please set config['sector']['ammonia'] to True."
+        )
 
     logger.info("Unraveling ammonia")
     n.add("Bus", "DE NH3", carrier="NH3", x=x, y=y)
@@ -556,9 +559,13 @@ def unravel_ammonia(n, costs, sector_options):
     )
 
     # ammonia links
-    HB_links = n.links[(n.links.carrier=="Haber-Bosch") & (n.links.index.str.contains("DE"))].index
+    HB_links = n.links[
+        (n.links.carrier == "Haber-Bosch") & (n.links.index.str.contains("DE"))
+    ].index
     n.links.loc[HB_links, "bus1"] = "DE NH3"
-    crack_links = n.links[(n.links.carrier=="ammonia cracker") & (n.links.index.str.contains("DE"))].index
+    crack_links = n.links[
+        (n.links.carrier == "ammonia cracker") & (n.links.index.str.contains("DE"))
+    ].index
     n.links.loc[crack_links, "bus0"] = "DE NH3"
 
     # transport links
@@ -573,8 +580,10 @@ def unravel_ammonia(n, costs, sector_options):
         p_min_pu=0,
     )
     # adjust loads
-    industrial_demand = get_industrial_demand() * 1e6 # TWh/a -> MWh/a
-    industrial_demand_DE = industrial_demand[industrial_demand.index.get_level_values(0).str.contains("DE")]
+    industrial_demand = get_industrial_demand() * 1e6  # TWh/a -> MWh/a
+    industrial_demand_DE = industrial_demand[
+        industrial_demand.index.get_level_values(0).str.contains("DE")
+    ]
     DE_ammonia = industrial_demand_DE.loc[:, "ammonia"].sum() / 8760
 
     n.add("Load", "DE NH3 load", bus="DE NH3", carrier="NH3", p_set=DE_ammonia)
@@ -588,7 +597,7 @@ def get_industrial_demand():
 
     # material demand per node and industry [kt/a]
     fn = snakemake.input.industrial_production
-    nodal_production = pd.read_csv(fn, index_col=0) / 1e3 # kt/a -> Mt/a
+    nodal_production = pd.read_csv(fn, index_col=0) / 1e3  # kt/a -> Mt/a
 
     nodal_sector_ratios = pd.concat(
         {node: sector_ratios[node[:2]] for node in nodal_production.index}, axis=1
@@ -598,10 +607,7 @@ def get_industrial_demand():
     nodal_production_stacked.index.names = [None, None]
 
     # final energy consumption per node and industry (TWh/a)
-    nodal_df = (
-        (nodal_sector_ratios.multiply(nodal_production_stacked))
-        .T
-    )
+    nodal_df = (nodal_sector_ratios.multiply(nodal_production_stacked)).T
 
     return nodal_df
 
@@ -609,9 +615,11 @@ def get_industrial_demand():
 def endogenise_steel(n, costs, sector_options):
 
     # industrial demand [TWh/a]
-    industrial_demand = get_industrial_demand() * 1e6 # TWh/a -> MWh/a
+    industrial_demand = get_industrial_demand() * 1e6  # TWh/a -> MWh/a
     # industrial production in [kt/a]
-    industrial_production = (pd.read_csv(snakemake.input.industrial_production, index_col=0) * 1e3) # kt/a -> t/a
+    industrial_production = (
+        pd.read_csv(snakemake.input.industrial_production, index_col=0) * 1e3
+    )  # kt/a -> t/a
 
     pop_layout = pd.read_csv(snakemake.input.clustered_pop_layout, index_col=0)
     DE_nodes = pop_layout[pop_layout.index.str[:2] == "DE"].index
@@ -621,12 +629,21 @@ def endogenise_steel(n, costs, sector_options):
     endogenous_sectors = []
 
     if not sector_options["steel"]["endogenous"]:
-        logger.error("Endogenous steel demand must be activated. Please set config['sector']['steel']['endogenous'] to True.")
+        logger.error(
+            "Endogenous steel demand must be activated. Please set config['sector']['steel']['endogenous'] to True."
+        )
     if not sector_options["H2_network"]:
-        logger.error("H2 network with regional demand must be activated. Please set config['sector']['H2_network'] to True.")
-    if not sector_options["regional_methanol_demand"] or not sector_options["regional_oil_demand"] or not sector_options["regional_coal_demand"]:
-        logger.error("Regional methanol, oil and coal demand must be activated. Please set config['sector']['regional_methanol_demand'], config['sector']['regional_oil_demand'] and config['sector']['regional_coal_demand'] to True.")
-
+        logger.error(
+            "H2 network with regional demand must be activated. Please set config['sector']['H2_network'] to True."
+        )
+    if (
+        not sector_options["regional_methanol_demand"]
+        or not sector_options["regional_oil_demand"]
+        or not sector_options["regional_coal_demand"]
+    ):
+        logger.error(
+            "Regional methanol, oil and coal demand must be activated. Please set config['sector']['regional_methanol_demand'], config['sector']['regional_oil_demand'] and config['sector']['regional_coal_demand'] to True."
+        )
 
     logger.info("Adding endogenous primary steel demand in tonnes.")
 
@@ -728,22 +745,22 @@ def endogenise_steel(n, costs, sector_options):
 
     # so that for each region supply matches consumption
     p_nom_EU = (
-        industrial_production[industrial_production.index.str[:2] !="DE"][sector] 
-        * costs.at["electric arc furnace", "hbi-input"] 
+        industrial_production[industrial_production.index.str[:2] != "DE"][sector]
+        * costs.at["electric arc furnace", "hbi-input"]
         * electricity_input
         / 8760
     )
     p_nom_DE = (
-        industrial_production[industrial_production.index.str[:2] =="DE"][sector]
+        industrial_production[industrial_production.index.str[:2] == "DE"][sector]
         * costs.at["electric arc furnace", "hbi-input"]
         * electricity_input
         / 8760
     )
     marginal_cost = (
-            costs.at["iron ore DRI-ready", "commodity"]
-            * costs.at["direct iron reduction furnace", "ore-input"]
-            / electricity_input
-        )
+        costs.at["iron ore DRI-ready", "commodity"]
+        * costs.at["direct iron reduction furnace", "ore-input"]
+        / electricity_input
+    )
 
     n.add(
         "Link",
@@ -782,12 +799,12 @@ def endogenise_steel(n, costs, sector_options):
     electricity_input = costs.at["electric arc furnace", "electricity-input"]
 
     p_nom_EU = (
-        industrial_production[industrial_production.index.str[:2] !="DE"][sector]
+        industrial_production[industrial_production.index.str[:2] != "DE"][sector]
         * electricity_input
         / 8760
     )
     p_nom_DE = (
-        industrial_production[industrial_production.index.str[:2] =="DE"][sector]
+        industrial_production[industrial_production.index.str[:2] == "DE"][sector]
         * electricity_input
         / 8760
     )
@@ -804,8 +821,7 @@ def endogenise_steel(n, costs, sector_options):
         bus1="EU steel",
         bus2="EU hbi",
         efficiency=1 / electricity_input,
-        efficiency2=-costs.at["electric arc furnace", "hbi-input"]
-        / electricity_input,
+        efficiency2=-costs.at["electric arc furnace", "hbi-input"] / electricity_input,
     )
     n.add(
         "Link",
@@ -819,14 +835,18 @@ def endogenise_steel(n, costs, sector_options):
         bus1="DE steel",
         bus2="DE hbi",
         efficiency=1 / electricity_input,
-        efficiency2=-costs.at["electric arc furnace", "hbi-input"]
-        / electricity_input,
+        efficiency2=-costs.at["electric arc furnace", "hbi-input"] / electricity_input,
     )
 
     # allow transport of steel between EU and DE
     n.add(
         "Link",
-        ["EU steel -> DE steel", "DE steel -> EU steel", "EU hbi -> DE hbi", "DE hbi -> EU hbi"],
+        [
+            "EU steel -> DE steel",
+            "DE steel -> EU steel",
+            "EU hbi -> DE hbi",
+            "DE hbi -> EU hbi",
+        ],
         bus0=["EU steel", "DE steel", "EU hbi", "DE hbi"],
         bus1=["DE steel", "EU steel", "DE hbi", "EU hbi"],
         carrier=["steel", "steel", "hbi", "hbi"],
@@ -840,32 +860,32 @@ def endogenise_steel(n, costs, sector_options):
 
 def adjust_industry_loads(n, nodes, industrial_demand, endogenous_sectors):
 
-    remaining_sectors = ~industrial_demand.index.get_level_values(1).isin(endogenous_sectors)
-    
+    remaining_sectors = ~industrial_demand.index.get_level_values(1).isin(
+        endogenous_sectors
+    )
+
     remaining_demand = (
-        industrial_demand.loc[(nodes, remaining_sectors), :]
-        .groupby(level=0)
-        .sum()
+        industrial_demand.loc[(nodes, remaining_sectors), :].groupby(level=0).sum()
     )
 
     # methane
     gas_demand = (
         remaining_demand.loc[:, "methane"]
-            .groupby(level=0)
-            .sum()
-            .rename(index=lambda x: x + " gas for industry")
-            / 8760
-        )
+        .groupby(level=0)
+        .sum()
+        .rename(index=lambda x: x + " gas for industry")
+        / 8760
+    )
 
     n.loads.loc[gas_demand.index, "p_set"] = gas_demand.values
 
     # hydrogen
     h2_demand = (
         remaining_demand.loc[:, "hydrogen"]
-            .groupby(level=0)
-            .sum()
-            .rename(index=lambda x: x + " H2 for industry")
-            / 8760
+        .groupby(level=0)
+        .sum()
+        .rename(index=lambda x: x + " H2 for industry")
+        / 8760
     )
 
     n.loads.loc[h2_demand.index, "p_set"] = h2_demand.values
@@ -873,38 +893,39 @@ def adjust_industry_loads(n, nodes, industrial_demand, endogenous_sectors):
     # heat
     heat_demand = (
         remaining_demand.loc[:, "heat"]
-            .groupby(level=0)
-            .sum()
-            .rename(index=lambda x: x + " low-temperature heat for industry")
-            / 8760
+        .groupby(level=0)
+        .sum()
+        .rename(index=lambda x: x + " low-temperature heat for industry")
+        / 8760
     )
     n.loads.loc[heat_demand.index, "p_set"] = heat_demand.values
 
     # elec
     elec_demand = (
         remaining_demand.loc[:, "elec"]
-            .groupby(level=0)
-            .sum()
-            .rename(index=lambda x: x + " industry electricity")
-            / 8760
+        .groupby(level=0)
+        .sum()
+        .rename(index=lambda x: x + " industry electricity")
+        / 8760
     )
     n.loads.loc[elec_demand.index, "p_set"] = elec_demand.values
 
     # process emission
     process_emissions = (
-            -remaining_demand.loc[:, "process emission"]
-            .groupby(level=0)
-            .sum()
-            .rename(index=lambda x: x + " process emissions")
-            / 8760
-        )
+        -remaining_demand.loc[:, "process emission"]
+        .groupby(level=0)
+        .sum()
+        .rename(index=lambda x: x + " process emissions")
+        / 8760
+    )
 
     n.loads.loc[process_emissions.index, "p_set"] = process_emissions.values
 
     if sector_options["co2network"]:
-        logger.error("CO2 network not working yet. Please add code to the function adjust_industry_loads().")
+        logger.error(
+            "CO2 network not working yet. Please add code to the function adjust_industry_loads()."
+        )
 
-    
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -962,11 +983,11 @@ if __name__ == "__main__":
     # if there is a limit for non European imports, remove the links from DE to EU
     if snakemake.params.non_eu_constraint and snakemake.params.import_options["enable"]:
         links_to_drop = [
-                "DE renewable oil -> EU oil",
-                "DE methanol -> EU methanol",
-                "DE renewable gas -> EU gas",
-                "DE steel -> EU steel",
-                "DE hbi -> EU hbi",
+            "DE renewable oil -> EU oil",
+            "DE methanol -> EU methanol",
+            "DE renewable gas -> EU gas",
+            "DE steel -> EU steel",
+            "DE hbi -> EU hbi",
         ]
         if sector_options["ammonia"] != "regional":
             links_to_drop.append("DE NH3 -> EU NH3")

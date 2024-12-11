@@ -490,7 +490,7 @@ sector:
     endogenous: true
     relocation: false
     flexibility: false
-  hvc: 
+  hvc:
     endogenous: true
     demand_factor: 1.0
   v2g: false

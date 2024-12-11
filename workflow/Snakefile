@@ -759,7 +759,9 @@ rule build_import_ports:
 
 rule modify_final_network:
     params:
-        temporal_clustering=config_provider("clustering", "temporal", "resolution_sector"),
+        temporal_clustering=config_provider(
+            "clustering", "temporal", "resolution_sector"
+        ),
         import_options=config_provider("import"),
         sector_options=config_provider("sector"),
         costs=config_provider("costs"),
@@ -781,13 +783,17 @@ rule modify_final_network:
         industry_sector_ratios=resources(
             "industry_sector_ratios_{planning_horizons}.csv"
         ),
-        industrial_production=resources("industrial_production_base_s_{clusters}_{planning_horizons}.csv"),
+        industrial_production=resources(
+            "industrial_production_base_s_{clusters}_{planning_horizons}.csv"
+        ),
         country_shapes="data/naturalearth/ne_10m_admin_0_countries_deu.shp",
     output:
         network=RESULTS
         + "prenetworks-final-import/base_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.nc",
     log:
-        RESULTS + 
-        logs("modify_final_network_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.log"),
+        RESULTS
+        + logs(
+            "modify_final_network_s_{clusters}_l{ll}_{opts}_{sector_opts}_{planning_horizons}.log"
+        ),
     script:
         "scripts/modify_final_network.py"

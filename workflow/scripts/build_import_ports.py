@@ -10,16 +10,15 @@ import json
 import logging
 
 import geopandas as gpd
-import pandas as pd
 import numpy as np
+import pandas as pd
+from _helpers import configure_logging, set_scenario_config
+from cluster_gas_network import load_bus_regions
 from scipy import spatial
 from scipy.sparse import csgraph
 from shapely.geometry import LineString, Point, Polygon
-from _helpers import configure_logging, set_scenario_config
-from cluster_gas_network import load_bus_regions
 
 logger = logging.getLogger(__name__)
-
 
 
 def voronoi_partition_pts(points, outline):

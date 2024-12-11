@@ -104,4 +104,4 @@ all_import_me_all_100:
   industry:
     steam_biomass_fraction: 0.4
     steam_hydrogen_fraction: 0.3
-    steam_electricity_fraction: 0.3 
+    steam_electricity_fraction: 0.3
