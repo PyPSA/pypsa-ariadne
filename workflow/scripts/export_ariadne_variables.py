@@ -403,6 +403,7 @@ def add_system_cost_rows(n):
         if df["FOM"].min() < 0:
             logger.info(df["FOM"].min())
             logger.error(f"Capital cost is smaller than annuity for {component}")
+            # n.links.query("carrier=='DC' and index.str.startswith('DC')")[["carrier","annuity","capital_cost","lifetime","FOM","build_year"]].sort_values("FOM")
 
         marginal_cost = 0
         if component != "lines":
@@ -467,14 +468,14 @@ def get_system_cost(n, region):
     )
 
     # For FOM all existing capacities are considered
-    FOM = _get_capacities(
+    fom = _get_capacities(
         n,
         region,
         lambda **kwargs: n.statistics.capex(**kwargs, cost_attribute="FOM"),
         cap_string="System Cost|FOM|",
     )
 
-    VOM = _get_capacities(
+    vom = _get_capacities(
         n,
         region,
         n.statistics.opex,
@@ -482,8 +483,8 @@ def get_system_cost(n, region):
     )
 
     opex = pd.Series(
-        data=VOM.values + FOM.values,
-        index=VOM.index,
+        data=vom.values + fom.values,
+        index=vom.index,
     )
 
     all_grid_invest = get_grid_investments(n, region, scope="all")
@@ -497,9 +498,17 @@ def get_system_cost(n, region):
         ),
     )
 
+    grid_fom = pd.Series(
+        data=grid_opex.values,
+        index=grid_opex.index.str.replace(
+            "System Cost|OPEX|",
+            "System Cost|FOM|",
+        ),
+    )
+
     for var, grid_var, var_name in zip(
-        [invest, capex, opex],
-        [grid_invest, grid_capex, grid_opex],
+        [invest, capex, opex, fom],
+        [grid_invest, grid_capex, grid_opex, grid_fom],
         ["Investment|Energy Supply|", "System Cost|CAPEX|", "System Cost|OPEX|"],
     ):
         var[var_name + "Electricity"] += grid_var[
@@ -509,7 +518,7 @@ def get_system_cost(n, region):
         if var_name + "Gas|Transmission" in grid_var.keys():
             var[var_name + "Gas"] += grid_var[var_name + "Gas|Transmission"]
 
-    return pd.concat([invest, grid_invest, capex, grid_capex, opex, grid_opex])
+    return pd.concat([invest, grid_invest, capex, fom, grid_capex, opex, grid_opex, grid_fom])
 
 
 def get_installed_capacities(n, region):
@@ -5075,13 +5084,25 @@ def hack_DC_projects(n, p_nom_start, p_nom_planned, model_year, snakemake, costs
                 n.links.loc[current_projects, "length"]
                 * (
                     (1.0 - n.links.loc[current_projects, "underwater_fraction"])
-                    * costs[0].at["HVDC underground", "investment"]
+                    * costs.at["HVDC underground", "investment"]
                     / 1e-9
                     + n.links.loc[current_projects, "underwater_fraction"]
-                    * costs[0].at["HVDC submarine", "investment"]
+                    * costs.at["HVDC submarine", "investment"]
                     / 1e-9
                 )
-                + costs[0].at["HVDC inverter pair", "investment"] / 1e-9
+                + costs.at["HVDC inverter pair", "investment"] / 1e-9
+            )
+            n.links.loc[current_projects, "capital_cost"] = (
+                n.links.loc[current_projects, "length"]
+                * (
+                    (1.0 - n.links.loc[current_projects, "underwater_fraction"])
+                    * costs.at["HVDC underground", "fixed"]
+                    / 1e-9
+                    + n.links.loc[current_projects, "underwater_fraction"]
+                    * costs.at["HVDC submarine", "fixed"]
+                    / 1e-9
+                )
+                + costs.at["HVDC inverter pair", "fixed"] / 1e-9
             )
     else:
         n.links.loc[current_projects, "p_nom"] = n.links.loc[
@@ -5360,7 +5381,11 @@ if __name__ == "__main__":
         for in_ind_prod in snakemake.input.industrial_production_per_country_tomorrow
     ]
 
-    nhours = int(snakemake.params.hours[:-1])
+
+    # Load data
+    _networks = [pypsa.Network(fn) for fn in snakemake.input.networks]
+
+    nhours = _networks[0].snapshot_weightings.generators.sum()
     nyears = nhours / 8760
 
     costs = list(
@@ -5375,13 +5400,11 @@ if __name__ == "__main__":
             snakemake.input.costs,
         )
     )
-    # Load data
-    _networks = [pypsa.Network(fn) for fn in snakemake.input.networks]
     modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
     # Hack the transmission projects
     networks = [
-        process_postnetworks(n.copy(), _networks[0], int(my), snakemake, costs)
-        for n, my in zip(_networks, modelyears)
+        process_postnetworks(n.copy(), _networks[0], int(my), snakemake, c)
+        for n, my, c in zip(_networks, modelyears, costs)
     ]
 
     if "debug" == "debug":  # For debugging
