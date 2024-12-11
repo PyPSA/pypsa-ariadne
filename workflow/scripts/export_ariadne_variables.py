@@ -518,7 +518,9 @@ def get_system_cost(n, region):
         if var_name + "Gas|Transmission" in grid_var.keys():
             var[var_name + "Gas"] += grid_var[var_name + "Gas|Transmission"]
 
-    return pd.concat([invest, grid_invest, capex, fom, grid_capex, opex, grid_opex, grid_fom])
+    return pd.concat(
+        [invest, grid_invest, capex, fom, grid_capex, opex, grid_opex, grid_fom]
+    )
 
 
 def get_installed_capacities(n, region):
@@ -5380,7 +5382,6 @@ if __name__ == "__main__":
         ).rename_axis("country")
         for in_ind_prod in snakemake.input.industrial_production_per_country_tomorrow
     ]
-
 
     # Load data
     _networks = [pypsa.Network(fn) for fn in snakemake.input.networks]
