@@ -400,15 +400,19 @@ def add_system_cost_rows(n):
             )
 
         df["FOM"] = df["capital_cost"] - df["annuity"]
+        # Special case offwind, because it includes the connection
+        if component == "generators":
+            df.loc[
+                df.carrier.str.contains("offwind"),
+                "FOM",
+            ] = 0.023185 * df.loc[
+                df.carrier.str.contains("offwind"),
+                "overnight_cost",
+            ]
         if df["FOM"].min() < 0:
             logger.info(df["FOM"].min())
             logger.error(f"Capital cost is smaller than annuity for {component}")
             # n.links.query("carrier=='DC' and index.str.startswith('DC')")[["carrier","annuity","capital_cost","lifetime","FOM","build_year"]].sort_values("FOM")
-
-        marginal_cost = 0
-        if component != "lines":
-            marginal_cost = df["marginal_cost"]
-        df["OPEX"] = marginal_cost + df["FOM"]
 
 
 """
