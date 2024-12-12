@@ -405,10 +405,13 @@ def add_system_cost_rows(n):
             df.loc[
                 df.carrier.str.contains("offwind"),
                 "FOM",
-            ] = 0.023185 * df.loc[
-                df.carrier.str.contains("offwind"),
-                "overnight_cost",
-            ]
+            ] = (
+                0.023185
+                * df.loc[
+                    df.carrier.str.contains("offwind"),
+                    "overnight_cost",
+                ]
+            )
         if df["FOM"].min() < 0:
             logger.info(df["FOM"].min())
             logger.error(f"Capital cost is smaller than annuity for {component}")
