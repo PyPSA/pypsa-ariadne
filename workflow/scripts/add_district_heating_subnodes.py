@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -23,16 +25,23 @@ def prepare_subnodes(
     """
     Prepare subnodes by filtering district heating systems data for largest systems and assigning the corresponding LAU and onshore region shapes.
 
-    Parameters:
-    subnodes (pd.DataFrame): DataFrame containing information about district heating systems.
-    cities (gpd.GeoDataFrame): GeoDataFrame containing city coordinates with columns 'Stadt' and 'geometry'.
-    regions_onshore (gpd.GeoDataFrame): GeoDataFrame containing onshore region geometries of clustered network.
-    lau (gpd.GeoDataFrame): GeoDataFrame containing LAU (Local Administrative Units) geometries and IDs.
-    heat_techs (gpd.GeoDataFrame): GeoDataFrame containing heat technology geometries.
-    head (Union[int, bool], optional): Number of largest district heating networks to keep. Defaults to 40. If set to True, it will be set to 40.
+    Parameters
+    ----------
+    subnodes : pd.DataFrame
+        DataFrame containing information about district heating systems.
+    cities : gpd.GeoDataFrame
+        GeoDataFrame containing city coordinates with columns 'Stadt' and 'geometry'.
+    regions_onshore : gpd.GeoDataFrame
+        GeoDataFrame containing onshore region geometries of clustered network.
+    lau : gpd.GeoDataFrame
+        GeoDataFrame containing LAU (Local Administrative Units) geometries and IDs.
+    head : Union[int, bool], optional
+        Number of largest district heating networks to keep. Defaults to 40. If set to True, it will be set to 40.
 
-    Returns:
-    gpd.GeoDataFrame: GeoDataFrame with processed subnodes, including geometries, clusters, LAU IDs, and NUTS3 shapes.
+    Returns
+    -------
+    gpd.GeoDataFrame
+        GeoDataFrame with processed subnodes, including geometries, clusters, LAU IDs, and NUTS3 shapes.
     """
     # If head is boolean set it to 40 for default behavior
     if isinstance(head, bool):
@@ -80,18 +89,24 @@ def prepare_subnodes(
 
 def add_subnodes(n: pypsa.Network, subnodes: gpd.GeoDataFrame) -> None:
     """
-    Add largest district heating systems subnodes to the network. They are initialized with
+    Add largest district heating systems subnodes to the network.
+
+    They are initialized with:
      - the total annual heat demand taken from the mother node, that is assigned to urban central heat and low-temperature heat for industry,
      - the heat demand profiles taken from the mother node,
-     - and the district heating investment options (stores, links) from the mother node,
-     - and heat vents as generator components
-    The district heating loads in the mother nodes are recuded accordingly.
+     - the district heating investment options (stores, links) from the mother node,
+     - and heat vents as generator components.
+    The district heating loads in the mother nodes are reduced accordingly.
 
-    Parameters:
-    n (pypsa.Network): The PyPSA network object to which subnodes will be added.
-    subnodes (gpd.GeoDataFrame): GeoDataFrame containing information about district heating subnodes.
+    Parameters
+    ----------
+    n : pypsa.Network
+        The PyPSA network object to which subnodes will be added.
+    subnodes : gpd.GeoDataFrame
+        GeoDataFrame containing information about district heating subnodes.
 
-    Returns:
+    Returns
+    -------
     None
     """
 
@@ -304,12 +319,17 @@ def extend_heating_distribution(
     Extend heating distribution by subnodes mirroring the distribution of the
     corresponding mother node.
 
-    Parameters:
-    existing_heating_distribution (pd.DataFrame): DataFrame containing the existing heating distribution.
-    subnodes (gpd.GeoDataFrame): GeoDataFrame containing information about district heating subnodes.
+    Parameters
+    ----------
+    existing_heating_distribution : pd.DataFrame
+        DataFrame containing the existing heating distribution.
+    subnodes : gpd.GeoDataFrame
+        GeoDataFrame containing information about district heating subnodes.
 
-    Returns:
-    pd.DataFrame: Extended DataFrame with heating distribution for subnodes.
+    Returns
+    -------
+    pd.DataFrame
+        Extended DataFrame with heating distribution for subnodes.
     """
     # Merge the existing heating distribution with subnodes on the cluster name
     mother_nodes = (
