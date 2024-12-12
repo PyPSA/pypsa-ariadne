@@ -126,7 +126,7 @@ def add_subnodes(n: pypsa.Network, subnodes: gpd.GeoDataFrame) -> None:
             unit="MWh_th",
         )
 
-        # Add heat loads for urban central heat and low-temperature heat for industry
+        # Get heat loads for urban central heat and low-temperature heat for industry
         uch_load_cluster = (
             n.snapshot_weightings.generators
             @ n.loads_t.p_set[f"{subnode['cluster']} urban central heat"]
@@ -137,9 +137,12 @@ def add_subnodes(n: pypsa.Network, subnodes: gpd.GeoDataFrame) -> None:
             ]
             * 8760
         )
+
+        # Calculate share of low-temperature heat for industry in total district heating load of cluster
         dh_load_cluster = uch_load_cluster + lti_load_cluster
         lti_share = lti_load_cluster / dh_load_cluster
 
+        # Calculate demand ratio between load of subnode according to Fernwärmeatlas and remaining load of assigned cluster
         demand_ratio = min(
             1,
             (subnode["yearly_heat_demand_MWh"] / dh_load_cluster),
@@ -147,10 +150,13 @@ def add_subnodes(n: pypsa.Network, subnodes: gpd.GeoDataFrame) -> None:
 
         lost_load = subnode["yearly_heat_demand_MWh"] - dh_load_cluster
 
+        # District heating demand exceeding the original cluster load is disregarded
         if demand_ratio == 1:
             logger.info(
                 f"District heating load of {subnode['Stadt']} exceeds load of its assigned cluster {subnode['cluster']}. {lost_load} MWh/a are disregarded."
             )
+
+        # Add load components to subnode preserving the share of low-temperature heat for industry of the cluster
         uch_load = (
             demand_ratio
             * (1 - lti_share)
