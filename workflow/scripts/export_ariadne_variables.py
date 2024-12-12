@@ -5167,6 +5167,18 @@ def process_postnetworks(n, n_start, model_year, snakemake, costs):
     #     # The values  in p_nom_opt may already be discretized, here we make sure that
     #     # the same logic is applied to p_nom and p_nom_min
     #     n.links.loc[h2_links, attr] = n.links.loc[h2_links, attr].apply(_h2_lambda)
+    logger.info("Assing average Kernnetz cost to carrier H2 pipeline (Kernnetz)")
+    h2_links_kern = n.links.query("carrier == 'H2 pipeline (Kernnetz))'").index
+    capital_costs = (
+        0.7 * costs.at["H2 (g) pipeline", "fixed"]
+        + 0.3 * costs.at["H2 (g) pipeline repurposed", "fixed"]
+    ) * n.links.loc[h2_links_kern, "length"]
+    overnight_costs = (
+        0.7 * costs.at["H2 (g) pipeline", "investment"]
+        + 0.3 * costs.at["H2 (g) pipeline repurposed", "investment"]
+    ) * n.links.loc[h2_links_kern, "length"]
+    n.links.loc[h2_links_kern, "capital_cost"] = capital_costs
+    n.links.loc[h2_links_kern, "overnight_cost"] = overnight_costs
 
     logger.info("Post-Discretizing DC links")
     _dc_lambda = lambda x: get_discretized_value(
