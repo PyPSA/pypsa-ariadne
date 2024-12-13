@@ -208,12 +208,17 @@ def assign_subnode(CHP_de: pd.DataFrame, subnodes: gpd.GeoDataFrame) -> pd.DataF
     """
     Assign subnodes to the CHP plants based on their location.
 
-    Parameters:
-    CHP_de (pd.DataFrame): DataFrame containing CHP plant data with latitude and longitude.
-    subnodes (gpd.GeoDataFrame): GeoDataFrame containing subnode data with geometries.
+    Parameters
+    ----------
+    CHP_de : pd.DataFrame
+        DataFrame containing CHP plant data with latitude and longitude.
+    subnodes : gpd.GeoDataFrame
+        GeoDataFrame containing subnode data with geometries.
 
-    Returns:
-    pd.DataFrame: DataFrame with assigned subnodes.
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with assigned subnodes.
     """
 
     # Make a geodataframe from CHP_de using the lat and lon columns
