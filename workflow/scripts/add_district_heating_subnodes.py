@@ -289,12 +289,17 @@ def extend_cops(cops: xr.DataArray, subnodes: gpd.GeoDataFrame) -> xr.DataArray:
     Extend COPs (Coefficient of Performance) by subnodes mirroring the timeseries of the corresponding
     mother node.
 
-    Parameters:
-    cops (xr.DataArray): DataArray containing COP timeseries data.
-    subnodes (gpd.GeoDataFrame): GeoDataFrame containing information about district heating subnodes.
+    Parameters
+    ----------
+    cops : xr.DataArray
+        DataArray containing COP timeseries data.
+    subnodes : gpd.GeoDataFrame
+        GeoDataFrame containing information about district heating subnodes.
 
-    Returns:
-    xr.DataArray: Extended DataArray with COP timeseries for subnodes.
+    Returns
+    -------
+    xr.DataArray
+        Extended DataArray with COP timeseries for subnodes.
     """
     cops_extended = cops.copy()
 
