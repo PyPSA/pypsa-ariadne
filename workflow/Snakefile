@@ -673,6 +673,9 @@ rule plot_ariadne_report:
         elec_price_duration_curve=RESULTS
         + "ariadne/report/elec_price_duration_curve.png",
         elec_price_duration_hist=RESULTS + "ariadne/report/elec_price_duration_hist.png",
+        backup_capacity=RESULTS + "ariadne/report/backup_capacity.png",
+        backup_generation=RESULTS + "ariadne/report/backup_generation.png",
+        elec_prices_spatial_de=RESULTS + "ariadne/report/elec_prices_spatial_de.png",
         results=directory(RESULTS + "ariadne/report"),
         elec_transmission=directory(RESULTS + "ariadne/report/elec_transmission"),
         h2_transmission=directory(RESULTS + "ariadne/report/h2_transmission"),
