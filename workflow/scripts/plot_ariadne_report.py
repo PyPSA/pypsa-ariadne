@@ -8,8 +8,8 @@ from datetime import datetime
 from itertools import compress
 from multiprocessing import Pool
 
-import cartopy.crs as ccrs
 import cartopy
+import cartopy.crs as ccrs
 import geopandas as gpd
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -55,17 +55,40 @@ CARRIER_GROUPS = {
 }
 
 backup_techs = {
-    "Gas": ["OCGT", "CCGT", "biogas", "urban central gas CHP", "urban central gas CHP CC"],
+    "Gas": [
+        "OCGT",
+        "CCGT",
+        "biogas",
+        "urban central gas CHP",
+        "urban central gas CHP CC",
+    ],
     "Öl": ["oil", "urban central oil CHP"],
     "Kohle": ["lignite", "coal", "urban central coal CHP", "urban central lignite CHP"],
     "Wasserkraft": ["PHS", "hydro"],
     "Batterie": ["battery discharger", "home battery discharger"],
-    "Wasserstoff": ["H2 OCGT", "H2 retrofit OCGT", "urban central H2 CHP", "urban central H2 retrofit CHP"],  
+    "Wasserstoff": [
+        "H2 OCGT",
+        "H2 retrofit OCGT",
+        "urban central H2 CHP",
+        "urban central H2 retrofit CHP",
+    ],
     "Müllverbrennung": ["waste CHP", "waste CHP CC"],
-    "Biomasse": ["solid biomass", "urban central solid biomass CHP", "urban central solid biomass CHP CC"],
+    "Biomasse": [
+        "solid biomass",
+        "urban central solid biomass CHP",
+        "urban central solid biomass CHP CC",
+    ],
 }
 
-vre_gens=["onwind", "offwind-ac", "offwind-dc", "solar", "solar-hsat","solar rooftop", "ror"]
+vre_gens = [
+    "onwind",
+    "offwind-ac",
+    "offwind-dc",
+    "solar",
+    "solar-hsat",
+    "solar rooftop",
+    "ror",
+]
 
 year_colors = [
     "dimgrey",
@@ -313,11 +336,11 @@ carriers_in_german = {
     "H2 pipeline (repurposed)": "H2 Pipeline (Umstellung)",
     "H2 pipeline (Kernnetz)": "H2 Pipeline (Kernnetz)",
     "heat pump": "Wärmepumpe",
-    "urban central H2 CHP" : "Wasserstoff-KWK",
-    "urban central H2 retrofit CHP" : "Wasserstoff-KWK (Umrüstung)",
-    "urban central oil CHP" : "Öl-KWK",
-    "urban central lignite CHP" : "Braunkohle-KWK",
-    "H2 retrofit OCGT" : "Wasserstoff (OCGT;Umrüstung)",
+    "urban central H2 CHP": "Wasserstoff-KWK",
+    "urban central H2 retrofit CHP": "Wasserstoff-KWK (Umrüstung)",
+    "urban central oil CHP": "Öl-KWK",
+    "urban central lignite CHP": "Braunkohle-KWK",
+    "H2 retrofit OCGT": "Wasserstoff (OCGT;Umrüstung)",
 }
 
 
@@ -861,8 +884,9 @@ def plot_price_duration_hist(
     return fig
 
 
-def plot_backup_capacity(networks, tech_colors, savepath, backup_techs, vre_gens, region="DE"):
-
+def plot_backup_capacity(
+    networks, tech_colors, savepath, backup_techs, vre_gens, region="DE"
+):
 
     kwargs = {
         "groupby": networks[2020].statistics.groupers.get_name_bus_and_carrier,
@@ -892,7 +916,7 @@ def plot_backup_capacity(networks, tech_colors, savepath, backup_techs, vre_gens
         df = df[df > 1e-3]
 
         df_all = pd.concat([df_all, df], axis=1)
-        
+
     df_all.columns = np.arange(2020, 2050, 5)
 
     tech_colors["coal"] = "black"
@@ -911,56 +935,77 @@ def plot_backup_capacity(networks, tech_colors, savepath, backup_techs, vre_gens
     for group, techs_in_group in backup_techs.items():
         # Find matching techs in the dataframe
         matching_techs = [tech for tech in techs_in_group if tech in df.index]
-        
+
         # Prepare data for this group
         group_data = df.loc[matching_techs]
-        
+
         # Prepare bottom for stacking
         bottom = np.zeros(len(group_data.columns))
-        
+
         # Plot each technology in the group
         for j, tech in enumerate(matching_techs):
             values = group_data.loc[tech].fillna(0)
-            plt.bar(np.arange(len(group_data.columns)) + x_offset, values, 1, 
-                    bottom=bottom, label=tech, color=tech_colors[tech])
+            plt.bar(
+                np.arange(len(group_data.columns)) + x_offset,
+                values,
+                1,
+                bottom=bottom,
+                label=tech,
+                color=tech_colors[tech],
+            )
             bottom += values
-        
+
         # Store x-axis positions for this group
-        x_positions.append(x_offset + len(group_data.columns)/2)
+        x_positions.append(x_offset + len(group_data.columns) / 2)
         x_labels.append(group)
-        
+
         # Update x offset with extra spacing
         x_offset += len(group_data.columns) + 1  # Add extra space between groups
 
     plt.ylim(0, 100)
 
     # Customize the plot
-    plt.title('Kapazität Backup-Kraftwerke (Strom)', fontsize=16)
-    plt.ylabel('MW', fontsize=12)
+    plt.title("Kapazität Backup-Kraftwerke (Strom)", fontsize=16)
+    plt.ylabel("MW", fontsize=12)
 
     # Create custom x-tick labels with group names below years
-    x_ticks = np.concatenate([np.arange(len(df.columns)) + i for i in range(0, x_offset, len(df.columns)+1)])
+    x_ticks = np.concatenate(
+        [
+            np.arange(len(df.columns)) + i
+            for i in range(0, x_offset, len(df.columns) + 1)
+        ]
+    )
     x_tick_labels = np.tile(df.columns, len(backup_techs))
 
     plt.xticks(x_ticks, x_tick_labels, rotation=45)
 
     # Add group labels below x-axis ticks
     for pos, label in zip(x_positions, x_labels):
-        plt.text(pos, plt.gca().get_ylim()[0] - plt.gca().get_ylim()[1]*0.15, label, 
-                horizontalalignment='center', verticalalignment='top', fontweight='bold')
+        plt.text(
+            pos,
+            plt.gca().get_ylim()[0] - plt.gca().get_ylim()[1] * 0.15,
+            label,
+            horizontalalignment="center",
+            verticalalignment="top",
+            fontweight="bold",
+        )
 
-    plt.grid(axis='y')
+    plt.grid(axis="y")
 
     # Replace legend labels with German names from carriers_in_german
     handles, labels = plt.gca().get_legend_handles_labels()
-    new_labels = [carriers_in_german.get(label, label) for label in labels]  # Replace labels if in dict
-    plt.legend(handles, new_labels, loc='upper center', ncol=7)
+    new_labels = [
+        carriers_in_german.get(label, label) for label in labels
+    ]  # Replace labels if in dict
+    plt.legend(handles, new_labels, loc="upper center", ncol=7)
 
     plt.tight_layout()
     plt.savefig(savepath, bbox_inches="tight")
 
 
-def plot_backup_generation(networks, tech_colors, savepath, backup_techs, vre_gens, region="DE"):
+def plot_backup_generation(
+    networks, tech_colors, savepath, backup_techs, vre_gens, region="DE"
+):
 
     tech_colors["coal"] = "black"
 
@@ -973,7 +1018,6 @@ def plot_backup_generation(networks, tech_colors, savepath, backup_techs, vre_ge
 
     for year in np.arange(2020, 2050, 5):
         n = networks[year]
-
 
         electricity_supply_de = (
             n.statistics.supply(bus_carrier=["low voltage", "AC"], **kwargs)
@@ -991,7 +1035,7 @@ def plot_backup_generation(networks, tech_colors, savepath, backup_techs, vre_ge
         df = df.loc[non_vre_gens]
         df = df[df > 0.01]
         df_all = pd.concat([df_all, df], axis=1)
-    
+
     df_all.columns = np.arange(2020, 2050, 5)
 
     # Create figure
@@ -1008,57 +1052,78 @@ def plot_backup_generation(networks, tech_colors, savepath, backup_techs, vre_ge
     for group, techs_in_group in backup_techs.items():
         # Find matching techs in the dataframe
         matching_techs = [tech for tech in techs_in_group if tech in df.index]
-        
+
         # Prepare data for this group
         group_data = df.loc[matching_techs]
-        
+
         # Prepare bottom for stacking
         bottom = np.zeros(len(group_data.columns))
-        
+
         # Plot each technology in the group
         for j, tech in enumerate(matching_techs):
             values = group_data.loc[tech].fillna(0)
-            plt.bar(np.arange(len(group_data.columns)) + x_offset, values, 1, 
-                    bottom=bottom, label=tech, color=tech_colors[tech])
+            plt.bar(
+                np.arange(len(group_data.columns)) + x_offset,
+                values,
+                1,
+                bottom=bottom,
+                label=tech,
+                color=tech_colors[tech],
+            )
             bottom += values
-        
+
         # Store x-axis positions for this group
-        x_positions.append(x_offset + len(group_data.columns)/2)
+        x_positions.append(x_offset + len(group_data.columns) / 2)
         x_labels.append(group)
-        
+
         # Update x offset with extra spacing
         x_offset += len(group_data.columns) + 1  # Add extra space between groups
 
     plt.ylim(0, 200)
 
     # Customize the plot
-    plt.title('Versorgung Backup-Kraftwerke (Strom)', fontsize=16)
-    plt.ylabel('TWh', fontsize=12)
+    plt.title("Versorgung Backup-Kraftwerke (Strom)", fontsize=16)
+    plt.ylabel("TWh", fontsize=12)
 
     # Create custom x-tick labels with group names below years
-    x_ticks = np.concatenate([np.arange(len(df.columns)) + i for i in range(0, x_offset, len(df.columns)+1)])
+    x_ticks = np.concatenate(
+        [
+            np.arange(len(df.columns)) + i
+            for i in range(0, x_offset, len(df.columns) + 1)
+        ]
+    )
     x_tick_labels = np.tile(df.columns, len(backup_techs))
 
     plt.xticks(x_ticks, x_tick_labels, rotation=45)
 
     # Add group labels below x-axis ticks
     for pos, label in zip(x_positions, x_labels):
-        plt.text(pos, plt.gca().get_ylim()[0] - plt.gca().get_ylim()[1]*0.15, label, 
-                horizontalalignment='center', verticalalignment='top', fontweight='bold')
+        plt.text(
+            pos,
+            plt.gca().get_ylim()[0] - plt.gca().get_ylim()[1] * 0.15,
+            label,
+            horizontalalignment="center",
+            verticalalignment="top",
+            fontweight="bold",
+        )
 
-    plt.grid(axis='y')
+    plt.grid(axis="y")
 
     # Replace legend labels with German names from carriers_in_german
     handles, labels = plt.gca().get_legend_handles_labels()
-    new_labels = [carriers_in_german.get(label, label) for label in labels]  # Replace labels if in dict
-    plt.legend(handles, new_labels, loc='upper center', ncol=7)
+    new_labels = [
+        carriers_in_german.get(label, label) for label in labels
+    ]  # Replace labels if in dict
+    plt.legend(handles, new_labels, loc="upper center", ncol=7)
 
     plt.tight_layout()
     plt.savefig(savepath, bbox_inches="tight")
 
 
-def plot_elec_prices_spatial(network, tech_colors, savepath, onshore_regions, year="2045", region="DE"):
-    
+def plot_elec_prices_spatial(
+    network, tech_colors, savepath, onshore_regions, year="2045", region="DE"
+):
+
     # onshore_regions = gpd.read_file("/home/julian-geis/repos/pypsa-ariadne-1/resources/20241203-force-onwind-south-49cl-disc/KN2045_Bal_v4/regions_onshore_base_s_49.geojson")
     # onshore_regions = onshore_regions.set_index('name')
 
@@ -1069,28 +1134,35 @@ def plot_elec_prices_spatial(network, tech_colors, savepath, onshore_regions, ye
     df["elec_price"] = n.buses_t.marginal_price[buses].mean()
 
     # Create figure
-    fig, ax = plt.subplots(1, 1, subplot_kw={'projection': ccrs.PlateCarree()}, figsize=(9,6))
-    crs=ccrs.PlateCarree()
+    fig, ax = plt.subplots(
+        1, 1, subplot_kw={"projection": ccrs.PlateCarree()}, figsize=(9, 6)
+    )
+    crs = ccrs.PlateCarree()
 
     mvs = df["elec_price"][df.index.str.contains("DE")]
     vmin = np.nanmin(mvs)
     vmax = np.nanmax(mvs)
 
-    ax.add_feature(cartopy.feature.BORDERS, edgecolor='black', linewidth=0.5)
-    ax.coastlines(edgecolor='black', linewidth=0.5)
-    ax.set_facecolor('white')
-    ax.add_feature(cartopy.feature.OCEAN, color='azure')
+    ax.add_feature(cartopy.feature.BORDERS, edgecolor="black", linewidth=0.5)
+    ax.coastlines(edgecolor="black", linewidth=0.5)
+    ax.set_facecolor("white")
+    ax.add_feature(cartopy.feature.OCEAN, color="azure")
 
-    df[df.index.str.contains("DE")].to_crs(crs.proj4_init).plot(column=f"elec_price",
-                                    ax=ax,
-                                    cmap=plt.get_cmap("magma_r"),
-                                    linewidth=0.05,
-                                    edgecolor = 'grey',
-                                    legend=True,
-                                    vmin=vmin,
-                                    vmax=vmax,
-                                    legend_kwds={'label':"Strompreise ($€/MWh$)",'orientation': "vertical",'shrink' : 0.9}
-                                    )
+    df[df.index.str.contains("DE")].to_crs(crs.proj4_init).plot(
+        column=f"elec_price",
+        ax=ax,
+        cmap=plt.get_cmap("magma_r"),
+        linewidth=0.05,
+        edgecolor="grey",
+        legend=True,
+        vmin=vmin,
+        vmax=vmax,
+        legend_kwds={
+            "label": "Strompreise ($€/MWh$)",
+            "orientation": "vertical",
+            "shrink": 0.9,
+        },
+    )
 
     # max_size = df[f"{carriers[i]}_gen"].max()
     # df.to_crs(crs.proj4_init).centroid.plot(ax=ax, sizes=df[f"{carriers[i]}_gen"] / max_size *300,  color="black", edgecolor="white")
@@ -1103,7 +1175,7 @@ def plot_elec_prices_spatial(network, tech_colors, savepath, onshore_regions, ye
     # fig.suptitle(f"Spatial Differences in the electricity generation of the VRE technologies ({model})", fontsize=16, **font1)
     fig.tight_layout()
 
-    #plt.close()
+    # plt.close()
     plt.show()
 
     fig.savefig(savepath, bbox_inches="tight")
@@ -2138,16 +2210,16 @@ if __name__ == "__main__":
     )
 
     plot_backup_capacity(
-        networks=networks_dict, 
+        networks=networks_dict,
         tech_colors=tech_colors,
         savepath=snakemake.output.backup_capacity,
         backup_techs=backup_techs,
         vre_gens=vre_gens,
         region="DE",
     )
-   
+
     plot_backup_generation(
-        networks=networks_dict, 
+        networks=networks_dict,
         tech_colors=tech_colors,
         savepath=snakemake.output.backup_generation,
         backup_techs=backup_techs,
@@ -2157,17 +2229,17 @@ if __name__ == "__main__":
 
     # load regions
     regions = gpd.read_file(snakemake.input.regions_onshore_clustered).set_index("name")
-    
+
     year = 2045
     plot_elec_prices_spatial(
-        network = networks[planning_horizons.index(year)].copy(),
-        tech_colors = tech_colors,
+        network=networks[planning_horizons.index(year)].copy(),
+        tech_colors=tech_colors,
         onshore_regions=regions,
-        savepath = snakemake.output.elec_prices_spatial_de,
-        region = "DE",
-        year = year,
+        savepath=snakemake.output.elec_prices_spatial_de,
+        region="DE",
+        year=year,
     )
-    
+
     ## hydrogen transmission
     logger.info("Plotting hydrogen transmission")
     map_opts = snakemake.params.plotting["map"]
