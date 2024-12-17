@@ -1308,7 +1308,7 @@ def plot_elec_map_de(
 ):
 
     m = network.copy()
-    m.mremove("Bus", m.buses[m.buses.x == 0].index)
+    m.remove("Bus", m.buses[m.buses.x == 0].index)
     m.buses.drop(m.buses.index[m.buses.carrier != "AC"], inplace=True)
 
     m_base = base_network.copy()
@@ -1365,11 +1365,14 @@ def plot_elec_map_de(
         (m.links.index.str.startswith("DC") | m.links.index.str.startswith("TYNDP"))
         & ~m.links.reversed
     ].index
+    tprojs_all = m.links.loc[
+        (m.links.index.str.startswith("DC") | m.links.index.str.startswith("TYNDP"))
+    ].index
     links_i = m.links.index[m.links.carrier == "DC"]
-    total_exp_linkw = (m.links.p_nom_opt - m_base.links.p_nom).loc[links_i]
+    total_exp_linkw = (m.links.p_nom_opt - m_base.links.p_nom_min).loc[links_i]
     total_exp_linkw[tprojs] = m.links.p_nom_opt[tprojs]
     total_exp_noStart_linkw = total_exp_linkw.copy()
-    total_exp_noStart_linkw.loc[tprojs] = 0
+    total_exp_noStart_linkw.loc[tprojs_all] = 0
     startnetz_linkw = m.links.p_nom_opt[tprojs]
 
     if expansion_case == "total-expansion":
@@ -1395,7 +1398,7 @@ def plot_elec_map_de(
         bus_colors=tech_colors,
         line_widths=line_widths,
         line_colors=tech_colors["AC"],
-        link_widths=link_widths,
+        link_widths=link_widths.clip(0),
         link_colors=tech_colors["DC"],
     )
 
@@ -1807,8 +1810,8 @@ if __name__ == "__main__":
 
     # Hack the transmission projects
     networks = [
-        process_postnetworks(n.copy(), _networks[0], int(my), snakemake, costs)
-        for n, my in zip(_networks, modelyears)
+        process_postnetworks(n.copy(), _networks[0], int(my), snakemake, c)
+        for n, my, c in zip(_networks, modelyears, costs)
     ]
     del _networks
     ###
