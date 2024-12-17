@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from datetime import datetime
-from itertools import compress
+from itertools import compress, islice
 from multiprocessing import Pool
 
 import cartopy
@@ -17,7 +17,6 @@ import numpy as np
 import pandas as pd
 import pypsa
 from matplotlib.lines import Line2D
-from itertools import islice
 from pypsa.plot import add_legend_lines
 
 path = "../submodules/pypsa-eur/scripts"
@@ -794,7 +793,7 @@ def plot_price_duration_curve(
     years = years[2:]
     networks = dict(islice(networks.items(), 2, None))
     year_colors = year_colors[2:]
-    
+
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(8, 6))
 
     for i, n in enumerate(networks.values()):
