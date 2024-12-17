@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 import pypsa
 from matplotlib.lines import Line2D
+from itertools import islice
 from pypsa.plot import add_legend_lines
 
 path = "../submodules/pypsa-eur/scripts"
@@ -516,7 +517,7 @@ def plot_nodal_balance(
     ax.set_ylabel(ylabel)
     ax.set_xlabel("")
     ax.set_title(
-        f"{title} ({model_run}; {datetime.strptime(start_date, date_format).strftime(reduced_date_format)} - {datetime.strptime(end_date, date_format).strftime(reduced_date_format)})",
+        f"{title} ({model_run})",
         fontsize=16,
         pad=15,
     )
@@ -789,6 +790,11 @@ def plot_price_duration_curve(
     languange="english",
 ):
 
+    # only plot 2030 onwards
+    years = years[2:]
+    networks = dict(islice(networks.items(), 2, None))
+    year_colors = year_colors[2:]
+    
     fig, ax = plt.subplots(ncols=1, nrows=1, figsize=(8, 6))
 
     for i, n in enumerate(networks.values()):
