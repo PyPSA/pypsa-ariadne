@@ -1158,6 +1158,9 @@ def plot_elec_prices_spatial(
     df = onshore_regions
     df["elec_price"] = n.buses_t.marginal_price[buses].mean()
 
+    # Netzentgelte, Annuität NEP 2045 - Annuität PyPSA 2045 / Stromverbrauch Pypsa 2045
+    # (19.38 - 12.56 ) / 1.234
+
     # Create figure
     fig, ax = plt.subplots(
         1, 1, subplot_kw={"projection": ccrs.PlateCarree()}, figsize=(9, 6)
@@ -1176,7 +1179,7 @@ def plot_elec_prices_spatial(
     df[df.index.str.contains("DE")].to_crs(crs.proj4_init).plot(
         column=f"elec_price",
         ax=ax,
-        cmap=plt.get_cmap("magma_r"),
+        cmap=plt.get_cmap("cividis_r"),
         linewidth=0.05,
         edgecolor="grey",
         legend=True,
