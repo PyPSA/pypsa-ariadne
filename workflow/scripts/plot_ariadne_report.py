@@ -1161,7 +1161,9 @@ def plot_elec_prices_spatial(
     # Netzentgelte, Annuität NEP 2045 - Annuität PyPSA 2045 / Stromverbrauch Pypsa 2045
     average_netzentgelt = (15.82 - 6.52) / 1.234
 
-    mean_with_netzentgelt = df["elec_price"][df.index.str.contains("DE")].mean() + average_netzentgelt
+    mean_with_netzentgelt = (
+        df["elec_price"][df.index.str.contains("DE")].mean() + average_netzentgelt
+    )
     # Calculate the difference from the mean_with_netzentgelt
     df["elec_price_diff"] = mean_with_netzentgelt - df["elec_price"]
 
@@ -1202,7 +1204,6 @@ def plot_elec_prices_spatial(
 
     # Second subplot: elec_price_diff
     mvs_diff = df["elec_price_diff"][df.index.str.contains("DE")]
-
 
     ax2.add_feature(cartopy.feature.BORDERS, edgecolor="black", linewidth=0.5)
     ax2.coastlines(edgecolor="black", linewidth=0.5)
