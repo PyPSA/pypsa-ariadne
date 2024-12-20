@@ -1159,26 +1159,31 @@ def plot_elec_prices_spatial(
     df["elec_price"] = n.buses_t.marginal_price[buses].mean()
 
     # Netzentgelte, Annuität NEP 2045 - Annuität PyPSA 2045 / Stromverbrauch Pypsa 2045
-    # (19.38 - 12.56 ) / 1.234
+    average_netzentgelt = (15.82 - 6.52) / 1.234
 
-    # Create figure
-    fig, ax = plt.subplots(
-        1, 1, subplot_kw={"projection": ccrs.PlateCarree()}, figsize=(9, 6)
+    mean_with_netzentgelt = df["elec_price"][df.index.str.contains("DE")].mean() + average_netzentgelt
+    # Calculate the difference from the mean_with_netzentgelt
+    df["elec_price_diff"] = mean_with_netzentgelt - df["elec_price"]
+
+    # Create figure with two subplots
+    fig, (ax1, ax2) = plt.subplots(
+        1, 2, subplot_kw={"projection": ccrs.PlateCarree()}, figsize=(18, 6)
     )
     crs = ccrs.PlateCarree()
 
+    # First subplot: elec_price
     mvs = df["elec_price"][df.index.str.contains("DE")]
     vmin = np.nanmin(mvs)
     vmax = np.nanmax(mvs)
 
-    ax.add_feature(cartopy.feature.BORDERS, edgecolor="black", linewidth=0.5)
-    ax.coastlines(edgecolor="black", linewidth=0.5)
-    ax.set_facecolor("white")
-    ax.add_feature(cartopy.feature.OCEAN, color="azure")
+    ax1.add_feature(cartopy.feature.BORDERS, edgecolor="black", linewidth=0.5)
+    ax1.coastlines(edgecolor="black", linewidth=0.5)
+    ax1.set_facecolor("white")
+    ax1.add_feature(cartopy.feature.OCEAN, color="azure")
 
     df[df.index.str.contains("DE")].to_crs(crs.proj4_init).plot(
-        column=f"elec_price",
-        ax=ax,
+        column="elec_price",
+        ax=ax1,
         cmap=plt.get_cmap("cividis_r"),
         linewidth=0.05,
         edgecolor="grey",
@@ -1192,18 +1197,40 @@ def plot_elec_prices_spatial(
         },
     )
 
-    # max_size = df[f"{carriers[i]}_gen"].max()
-    # df.to_crs(crs.proj4_init).centroid.plot(ax=ax, sizes=df[f"{carriers[i]}_gen"] / max_size *300,  color="black", edgecolor="white")
-    # pypsa.plot.add_legend_circles(ax=ax, sizes=[0.6], labels=["Generation magnitude"], patch_kw={'color': 'black', 'edgecolor': 'white'}, legend_kw={'loc': 'upper left'})
+    # Set geographic extent for Germany
+    ax1.set_extent([5, 16, 47, 56], ccrs.PlateCarree())  # Germany bounds
+
+    # Second subplot: elec_price_diff
+    mvs_diff = df["elec_price_diff"][df.index.str.contains("DE")]
+
+
+    ax2.add_feature(cartopy.feature.BORDERS, edgecolor="black", linewidth=0.5)
+    ax2.coastlines(edgecolor="black", linewidth=0.5)
+    ax2.set_facecolor("white")
+    ax2.add_feature(cartopy.feature.OCEAN, color="azure")
+
+    df[df.index.str.contains("DE")].to_crs(crs.proj4_init).plot(
+        column="elec_price_diff",
+        ax=ax2,
+        cmap=plt.get_cmap("Greens"),
+        linewidth=0.05,
+        edgecolor="grey",
+        vmin=0,
+        legend=True,
+        legend_kwds={
+            "label": "Durchschnittliche Preisreduktion für Endkunden($€/MWh$)",
+            "orientation": "vertical",
+            "shrink": 0.9,
+        },
+    )
 
     # Set geographic extent for Germany
-    ax.set_extent([5, 16, 47, 56], ccrs.PlateCarree())  # Germany bounds
-    # ax.set_title(f"{carriers[i]}", fontsize=16, **font1)
+    ax2.set_extent([5, 16, 47, 56], ccrs.PlateCarree())  # Germany bounds
 
-    # fig.suptitle(f"Spatial Differences in the electricity generation of the VRE technologies ({model})", fontsize=16, **font1)
+    # Adjust layout to place legends on the right
     fig.tight_layout()
+    plt.subplots_adjust(right=0.85)
 
-    # plt.close()
     plt.show()
 
     fig.savefig(savepath, bbox_inches="tight")
