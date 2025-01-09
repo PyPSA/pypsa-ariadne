@@ -2463,11 +2463,50 @@ def get_final_energy(
     # straightforward for the other categories
     # !!! TODO this assert is temporarily disbaled because of https://github.com/PyPSA/pypsa-eur/issues/985
 
+    central_heat_withdrawal = (
+        n.statistics.withdrawal(
+            bus_carrier=["urban central heat"],
+            **kwargs,
+        )
+        .filter(
+            like=region,
+        )
+        .groupby("carrier")
+        .sum()
+        .multiply(MWh2PJ)
+    )
+
+    var["Final Energy|Carbon Dioxide Removal|Heat"] = (
+        decentral_heat_withdrawal.get("DAC", 0)
+        + central_heat_withdrawal.get("DAC", 0)
+    )
+
+    electricity = (
+        n.statistics.withdrawal(
+            bus_carrier="AC",
+            **kwargs,
+        )
+        .filter(
+            like=region,
+        )
+        .groupby("carrier")
+        .sum()
+        .multiply(MWh2PJ)
+    )
+
+    var["Final Energy|Carbon Dioxide Removal|Electricity"] = electricity.get("DAC", 0)
+
+    var["Final Energy|Carbon Dioxide Removal"] = (
+        var["Final Energy|Carbon Dioxide Removal|Electricity"]
+        + var["Final Energy|Carbon Dioxide Removal|Heat"]
+    )
+
     var["Final Energy|Electricity"] = (
         var["Final Energy|Agriculture|Electricity"]
         + var["Final Energy|Residential and Commercial|Electricity"]
         + var["Final Energy|Transportation|Electricity"]
         + var["Final Energy|Industry excl Non-Energy Use|Electricity"]
+        + var["Final Energy|Carbon Dioxide Removal|Electricity"]
     )
 
     var["Final Energy|Solids"] = (
@@ -2517,6 +2556,7 @@ def get_final_energy(
         var["Final Energy|Agriculture|Heat"]
         + var["Final Energy|Residential and Commercial|Heat"]
         + var["Final Energy|Industry excl Non-Energy Use|Heat"]
+        + var["Final Energy|Carbon Dioxide Removal|Heat"]
     )
     # var["Final Energy|Solar"] = \
     var["Final Energy|Hydrogen"] = (
@@ -2541,30 +2581,6 @@ def get_final_energy(
     )
 
     var["Final Energy|Waste"] = waste_withdrawal.get("HVC to air", 0)
-
-    var["Final Energy|Carbon Dioxide Removal|Heat"] = decentral_heat_withdrawal.get(
-        "DAC", 0
-    )
-
-    electricity = (
-        n.statistics.withdrawal(
-            bus_carrier="AC",
-            **kwargs,
-        )
-        .filter(
-            like=region,
-        )
-        .groupby("carrier")
-        .sum()
-        .multiply(MWh2PJ)
-    )
-
-    var["Final Energy|Carbon Dioxide Removal|Electricity"] = electricity.get("DAC", 0)
-
-    var["Final Energy|Carbon Dioxide Removal"] = (
-        var["Final Energy|Carbon Dioxide Removal|Electricity"]
-        + var["Final Energy|Carbon Dioxide Removal|Heat"]
-    )
 
     var["Final Energy incl Non-Energy Use incl Bunkers"] = (
         var["Final Energy|Industry"]
@@ -3029,6 +3045,7 @@ def get_emissions(n, region, _energy_totals, industry_demand):
         + var["Emissions|Gross Fossil CO2|Energy|Supply|Hydrogen"]
         + var["Emissions|Gross Fossil CO2|Energy|Supply|Liquids"]
         + var["Emissions|Gross Fossil CO2|Energy|Supply|Solids"]
+        + var["Emissions|Gross Fossil CO2|Energy|Supply|Gases"]
     )
 
     var["Emissions|Gross Fossil CO2|Energy"] = (
@@ -3057,12 +3074,6 @@ def get_emissions(n, region, _energy_totals, industry_demand):
 
     var["Emissions|CO2|Energy and Industrial Processes"] = (
         var["Emissions|CO2|Energy"] + var["Emissions|CO2|Industrial Processes"]
-    )
-
-    var["Emissions|Gross Fossil CO2|Energy|Supply"] = (
-        var["Emissions|Gross Fossil CO2|Energy|Supply|Electricity"]
-        + var["Emissions|Gross Fossil CO2|Energy|Supply|Heat"]
-        + var["Emissions|Gross Fossil CO2|Energy|Supply|Hydrogen"]
     )
 
     emission_difference = var["Emissions|CO2"] - (
@@ -5314,6 +5325,18 @@ def get_data(
     var["Investment|Energy Supply|Hydrogen|Fossil"] = var[
         "Investment|Energy Supply|Hydrogen|Gas"
     ]
+    # For internal use only and translated directly to TWh
+    var["Demand|Electricity"] = var.reindex([
+        "Secondary Energy|Electricity|Storage Losses",
+        "Secondary Energy Input|Electricity|Heat",
+        "Secondary Energy Input|Electricity|Hydrogen",
+        "Secondary Energy Input|Electricity|Liquids",
+        "Final Energy|Industry|Electricity",
+        "Final Energy|Agriculture|Electricity",
+        "Final Energy|Residential and Commercial|Electricity",
+        "Final Energy|Transportation|Electricity",
+        "Final Energy|Carbon Dioxide Removal|Electricity",
+    ]).sum() / 3.6
 
     data = []
     for v in var.index:
