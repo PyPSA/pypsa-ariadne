@@ -2476,10 +2476,9 @@ def get_final_energy(
         .multiply(MWh2PJ)
     )
 
-    var["Final Energy|Carbon Dioxide Removal|Heat"] = (
-        decentral_heat_withdrawal.get("DAC", 0)
-        + central_heat_withdrawal.get("DAC", 0)
-    )
+    var["Final Energy|Carbon Dioxide Removal|Heat"] = decentral_heat_withdrawal.get(
+        "DAC", 0
+    ) + central_heat_withdrawal.get("DAC", 0)
 
     electricity = (
         n.statistics.withdrawal(
@@ -4332,7 +4331,7 @@ def get_trade(n, region):
 
     def get_export_import_links(n, region, carriers):
         # links can only be used in one direction, so the values for p0 / p1 are either all positive or negative
-        # no clipping to seperate import and export needed here 
+        # no clipping to seperate import and export needed here
         exporting = n.links.index[
             (n.links.carrier.isin(carriers))
             & (n.links.bus0.str[:2] == region)
@@ -4354,7 +4353,8 @@ def get_trade(n, region):
         importing_p = (
             n.links_t.p1.loc[:, importing]
             .multiply(n.snapshot_weightings.generators, axis=0)
-            .values.sum() *-1
+            .values.sum()
+            * -1
         )
 
         return exporting_p, importing_p
@@ -4377,25 +4377,29 @@ def get_trade(n, region):
         n.lines_t.p0.loc[:, exporting_ac]
         .clip(lower=0)
         .multiply(n.snapshot_weightings.generators, axis=0)
-        .values.sum() +
-        # if p1 > 0 system is withdrawing from bus1 (DE) and feeding into bus0 (non-DE) -> export 
+        .values.sum()
+        +
+        # if p1 > 0 system is withdrawing from bus1 (DE) and feeding into bus0 (non-DE) -> export
         n.lines_t.p1.loc[:, importing_ac]
         .clip(lower=0)
         .multiply(n.snapshot_weightings.generators, axis=0)
         .values.sum()
     )
-    
+
     importing_p_ac = (
         # if p1 < 0 (=clip(upper=0)) system is feeding into bus1 (DE) and withdrawing from bus0 (non-DE) -> import (with negative sign here)
         n.lines_t.p1.loc[:, importing_ac]
         .clip(upper=0)
         .multiply(n.snapshot_weightings.generators, axis=0)
-        .values.sum() *-1 + 
+        .values.sum()
+        * -1
+        +
         # if p0 < 0 (=clip(upper=0)) system is feeding into bus0 (DE) and withdrawing from bus1 (non-DE) -> import (with negative sign here)
         n.lines_t.p0.loc[:, exporting_ac]
         .clip(upper=0)
         .multiply(n.snapshot_weightings.generators, axis=0)
-        .values.sum() *-1
+        .values.sum()
+        * -1
     )
 
     exports_dc, imports_dc = get_export_import_links(n, region, ["DC"])
@@ -5325,17 +5329,22 @@ def get_data(
         "Investment|Energy Supply|Hydrogen|Gas"
     ]
     # For internal use only and translated directly to TWh
-    var["Demand|Electricity"] = var.reindex([
-        "Secondary Energy|Electricity|Storage Losses",
-        "Secondary Energy Input|Electricity|Heat",
-        "Secondary Energy Input|Electricity|Hydrogen",
-        "Secondary Energy Input|Electricity|Liquids",
-        "Final Energy|Industry|Electricity",
-        "Final Energy|Agriculture|Electricity",
-        "Final Energy|Residential and Commercial|Electricity",
-        "Final Energy|Transportation|Electricity",
-        "Final Energy|Carbon Dioxide Removal|Electricity",
-    ]).sum() / 3.6
+    var["Demand|Electricity"] = (
+        var.reindex(
+            [
+                "Secondary Energy|Electricity|Storage Losses",
+                "Secondary Energy Input|Electricity|Heat",
+                "Secondary Energy Input|Electricity|Hydrogen",
+                "Secondary Energy Input|Electricity|Liquids",
+                "Final Energy|Industry|Electricity",
+                "Final Energy|Agriculture|Electricity",
+                "Final Energy|Residential and Commercial|Electricity",
+                "Final Energy|Transportation|Electricity",
+                "Final Energy|Carbon Dioxide Removal|Electricity",
+            ]
+        ).sum()
+        / 3.6
+    )
 
     data = []
     for v in var.index:
