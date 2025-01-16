@@ -1159,10 +1159,12 @@ def plot_elec_prices_spatial(
     df["elec_price"] = n.buses_t.marginal_price[buses].mean()
 
     # Netzentgelte, Annuität NEP 2045 - Annuität PyPSA 2045 / Stromverbrauch Pypsa 2045
-    average_netzentgelt = (15.82 - 6.53) / 1.237
+    pypsa_netzentgelt = (15.82 - 6.53) / 1.237
+    elec_price_de = df["elec_price"][df.index.str.contains("DE")]
+    max_above_mean = elec_price_de.max() - elec_price_de.mean()
 
     mean_with_netzentgelt = (
-        df["elec_price"][df.index.str.contains("DE")].mean() + average_netzentgelt
+        elec_price_de.mean() + pypsa_netzentgelt
     )
     # Calculate the difference from the mean_with_netzentgelt
     df["elec_price_diff"] = mean_with_netzentgelt - df["elec_price"]
@@ -1226,6 +1228,7 @@ def plot_elec_prices_spatial(
         cmap=plt.get_cmap("Greens"),
         linewidth=0.05,
         edgecolor="grey",
+        vmax=np.nanmax(mvs_diff) + np.nanmin(mvs_diff),
         vmin=0,
         legend=True,
         legend_kwds={
@@ -1254,6 +1257,118 @@ def plot_elec_prices_spatial(
 
     fig.savefig(savepath, bbox_inches="tight")
 
+
+
+def plot_elec_prices_spatial_new(
+    network, tech_colors, savepath, onshore_regions, year="2045", region="DE"
+):
+
+    # onshore_regions = gpd.read_file("/home/julian-geis/repos/pypsa-ariadne-1/resources/20241203-force-onwind-south-49cl-disc/KN2045_Bal_v4/regions_onshore_base_s_49.geojson")
+    # onshore_regions = onshore_regions.set_index('name')
+
+    n = network
+    buses = n.buses[n.buses.carrier == "AC"].index
+
+    df = onshore_regions
+    df["elec_price"] = n.buses_t.marginal_price[buses].mean()
+
+    # Netzentgelte, Annuität NEP 2045 - Annuität PyPSA 2045 / Stromverbrauch Pypsa 2045
+    pypsa_netzentgelt = (6.53 +  27.51) / 1.237
+    nep_netzentgelt = (15.82 +  27.51) / 1.237
+    elec_price_de = df["elec_price"][df.index.str.contains("DE")]
+    max_above_mean = elec_price_de.max() - elec_price_de.mean()
+
+    # Calculate the difference from the mean_with_netzentgelt
+
+
+    df["elec_price_nep"] = elec_price_de.mean() + nep_netzentgelt
+    df["elec_price_pypsa"] = df["elec_price"] + pypsa_netzentgelt
+    df["elec_price_diff"] = df["elec_price_nep"] - df["elec_price_pypsa"]
+
+    crs = ccrs.PlateCarree()
+
+    # Calculate aspect ratio based on geographic extent
+    extent = [5, 16, 47, 56]  # Germany bounds
+    aspect_ratio = (extent[1] - extent[0]) / (extent[3] - extent[2])
+
+    # Set figure size dynamically based on aspect ratio
+    fig_width = 14  # You can adjust this value
+    fig_height = fig_width / aspect_ratio
+
+    # Create figure with two subplots
+    fig, (ax1, ax2) = plt.subplots(
+        1, 2, subplot_kw={"projection": crs},  figsize=(fig_width, 0.55 * fig_height)
+    )
+
+    # First subplot: elec_price
+    mvs = df["elec_price_pypsa"][df.index.str.contains("DE")]
+    vmin = np.nanmin(mvs)
+    vmax = max(np.nanmax(mvs), df["elec_price_nep"].unique().item())
+
+    ax1.add_feature(cartopy.feature.BORDERS, edgecolor="black", linewidth=0.5)
+    ax1.coastlines(edgecolor="black", linewidth=0.5)
+    ax1.set_facecolor("white")
+    ax1.add_feature(cartopy.feature.OCEAN, color="azure")
+    ax1.set_title("Durchschnittspreis, NEP Ausbau", pad=15)
+    img1 = df[df.index.str.contains("DE")].to_crs(crs.proj4_init).plot(
+        column="elec_price_nep",
+        ax=ax1,
+        linewidth=0.05,
+        edgecolor="grey",
+        legend=False,
+        vmin=vmin,
+        vmax=vmax,
+        cmap="viridis_r",
+    )
+
+    # Set geographic extent for Germany
+    ax1.set_extent(extent, crs)  # Germany bounds
+    ax1.set_aspect(aspect_ratio)
+
+    # Second subplot: elec_price_diff
+    ax2.add_feature(cartopy.feature.BORDERS, edgecolor="black", linewidth=0.5)
+    ax2.coastlines(edgecolor="black", linewidth=0.5)
+    ax2.set_facecolor("white")
+    ax2.add_feature(cartopy.feature.OCEAN, color="azure")
+    ax2.set_title("Nodale Preise, $PyPSA$-$DE$ Ausbau", pad=15)
+
+    img2 = df[df.index.str.contains("DE")].to_crs(crs.proj4_init).plot(
+        column="elec_price_diff",
+        ax=ax2,
+        cmap="viridis",
+        linewidth=0.05,
+        edgecolor="grey",
+        vmax=vmax-vmin,
+        vmin=0,
+        legend=False,
+    )
+
+    # Set geographic extent for Germany
+    ax2.set_extent(extent, crs)  # Germany bounds
+    ax2.set_aspect(aspect_ratio)
+
+    # Create a new axis for the colorbar at the bottom
+    cax2 = fig.add_axes([0.15, 0.14, 0.6, 0.03])  # [left, bottom, width, height]
+    cax1 = fig.add_axes([0.15, 0.00, 0.6, 0.03])  # [left, bottom, width, height]
+
+    # Add colorbar to the new axis
+    cbar1 = fig.colorbar(
+        img1.get_figure().get_axes()[0].collections[0],
+        cax=cax1, 
+        orientation='horizontal',
+    )
+    cbar1.set_label("Börsenstrompreis zzgl. durchschnittlichem Netzentgelt [$€/MWh$]")
+    cbar1.set_ticklabels(np.linspace(vmax,vmin,6).round(1))
+    cbar1.ax.invert_xaxis()
+
+    cbar2 = fig.colorbar(img2.get_figure().get_axes()[0].collections[0], cax=cax2, orientation='horizontal')
+    cbar2.set_label("Durchschnittliche Preisreduktion für Endkunden [$€/MWh$]")
+    cbar2.set_ticklabels(np.linspace(0,vmax-vmin,6).round(1))
+
+    plt.subplots_adjust(right=0.75, bottom=0.22)
+    plt.show()
+
+    fig.savefig(savepath, bbox_inches="tight")
 
 def assign_location(n):
     for c in n.iterate_components(n.one_port_components | n.branch_components):
