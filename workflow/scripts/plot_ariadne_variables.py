@@ -5,6 +5,57 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+TWh2PJ = 3.6
+
+def plot_h2_trade(
+    df,
+    savepath,
+):
+    # load data and convert to TWh
+    h2_balance = df.loc["Trade|Secondary Energy|Hydrogen|Volume"] / TWh2PJ # exports-imports
+    h2_import = df.loc["Trade|Secondary Energy|Hydrogen|Gross Import|Volume"] / TWh2PJ
+    h2_export = h2_balance - h2_import
+
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.bar(h2_import.columns, h2_import.loc["PJ/yr"], color='#f081dc', label="Import")
+    ax.bar(h2_export.columns, h2_export.loc["PJ/yr"], color='#6b3161', label="Export")
+    ax.scatter(h2_balance.columns, h2_balance.loc["PJ/yr"], color="black", marker="x", label="Netto")
+
+    ax.set_xticks(h2_balance.columns)
+    ax.set_xticklabels(h2_balance.columns)
+    ax.axhline(0, color="black", linewidth=0.5)
+    ax.set_ylabel("TWh")
+    ax.set_title("Wasserstoff Import/Export Deutschland")
+    ax.legend()
+
+    plt.tight_layout()
+    fig.savefig(savepath, bbox_inches="tight")
+
+
+def plot_elec_trade(
+    df,
+    savepath,
+):
+    # load data and convert to TWh
+    elec_balance = df.loc["Trade|Secondary Energy|Electricity|Volume"] / TWh2PJ # exports-imports
+    elec_import = df.loc["Trade|Secondary Energy|Electricity|Gross Import|Volume"] / TWh2PJ
+    elec_export = elec_balance - elec_import
+
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.bar(elec_import.columns, elec_import.loc["PJ/yr"], color='#70af1d', label="Import")
+    ax.bar(elec_export.columns, elec_export.loc["PJ/yr"], color="#3f630f", label="Export")
+    ax.scatter(elec_balance.columns, elec_balance.loc["PJ/yr"], color="black", marker="x", label="Netto")
+
+    ax.set_xticks(elec_balance.columns)
+    ax.set_xticklabels(elec_balance.columns)
+    ax.axhline(0, color="black", linewidth=0.5)
+    ax.set_ylabel("Twh")
+    ax.set_title("Strom Import/Export Deutschland")
+    ax.legend(loc="lower left")
+
+    plt.tight_layout()
+    fig.savefig(savepath, bbox_inches="tight")
+
 
 def plot_Kernnetz(df, savepath=None, currency_year=2020):
     key = "Investment|Energy Supply|Hydrogen|Transmission and Distribution|"
@@ -678,7 +729,7 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "plot_ariadne_variables",
             simpl="",
-            clusters=22,
+            clusters=49,
             opts="",
             ll="v1.2",
             sector_opts="None",
@@ -930,4 +981,14 @@ if __name__ == "__main__":
 
     plot_Kernnetz(
         df, savepath=snakemake.output.Kernnetz_Investment_plot, currency_year=2020
+    )
+
+    plot_elec_trade(
+        df,
+        savepath=snakemake.output.elec_trade,
+    )
+
+    plot_h2_trade(
+        df,
+        savepath=snakemake.output.h2_trade,
     )

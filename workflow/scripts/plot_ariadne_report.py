@@ -1982,128 +1982,6 @@ def plot_elec_map_de(
     plt.close()
 
 
-def plot_elec_trade(
-    networks,
-    planning_horizons,
-    tech_colors,
-    savepath,
-):
-    incoming_elec = []
-    outgoing_elec = []
-    for year in planning_horizons:
-        n = networks[planning_horizons.index(year)]
-        incoming_lines = n.lines[
-            (n.lines.bus0.str[:2] != "DE") & (n.lines.bus1.str[:2] == "DE")
-        ].index
-        outgoing_lines = n.lines[
-            (n.lines.bus0.str[:2] == "DE") & (n.lines.bus1.str[:2] != "DE")
-        ].index
-        incoming_links = n.links[
-            (n.links.carrier == "DC")
-            & (n.links.bus0.str[:2] != "DE")
-            & (n.links.bus1.str[:2] == "DE")
-        ].index
-        outgoing_links = n.links[
-            (n.links.carrier == "DC")
-            & (n.links.bus0.str[:2] == "DE")
-            & (n.links.bus1.str[:2] != "DE")
-        ].index
-        # positive when withdrawing power from bus0/bus1
-        incoming = n.lines_t.p1[incoming_lines].sum(axis=1).mul(
-            n.snapshot_weightings.generators, axis=0
-        ) + n.links_t.p1[incoming_links].sum(axis=1).mul(
-            n.snapshot_weightings.generators, axis=0
-        )
-        outgoing = n.lines_t.p0[outgoing_lines].sum(axis=1).mul(
-            n.snapshot_weightings.generators, axis=0
-        ) + n.links_t.p0[outgoing_links].sum(axis=1).mul(
-            n.snapshot_weightings.generators, axis=0
-        )
-        incoming_elec.append(
-            incoming[incoming < 0].abs().sum() + outgoing[outgoing > 0].sum()
-        )
-        outgoing_elec.append(
-            incoming[incoming > 0].sum() + outgoing[outgoing < 0].abs().sum()
-        )
-    elec_import = np.array(incoming_elec) / 1e6
-    elec_export = -np.array(outgoing_elec) / 1e6
-    net = elec_import + elec_export
-    x = np.arange(len(planning_horizons))
-
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.bar(x, elec_import, color=tech_colors["AC"], label="Import")
-    ax.bar(x, elec_export, color="#3f630f", label="Export")
-    ax.scatter(x, net, color="black", marker="x", label="Netto")
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(planning_horizons)
-    ax.axhline(0, color="black", linewidth=0.5)
-    ax.set_ylabel("Strom [TWh]")
-    ax.set_title("Strom Import/Export Deutschland")
-    ax.legend()
-
-    plt.tight_layout()
-    fig.savefig(savepath, bbox_inches="tight")
-
-
-def plot_h2_trade(
-    networks,
-    planning_horizons,
-    tech_colors,
-    savepath,
-):
-    incoming_h2 = []
-    outgoing_h2 = []
-    for year in planning_horizons:
-        n = networks[planning_horizons.index(year)]
-        incoming_links = n.links[
-            (n.links.carrier.str.contains("H2 pipeline"))
-            & (n.links.bus0.str[:2] != "DE")
-            & (n.links.bus1.str[:2] == "DE")
-        ].index
-        outgoing_links = n.links[
-            (n.links.carrier.str.contains("H2 pipeline"))
-            & (n.links.bus0.str[:2] == "DE")
-            & (n.links.bus1.str[:2] != "DE")
-        ].index
-        # positive when withdrawing power from bus0/bus1
-        incoming = (
-            n.links_t.p1[incoming_links]
-            .sum(axis=1)
-            .mul(n.snapshot_weightings.generators, axis=0)
-        )
-        outgoing = (
-            n.links_t.p0[outgoing_links]
-            .sum(axis=1)
-            .mul(n.snapshot_weightings.generators, axis=0)
-        )
-        incoming_h2.append(
-            incoming[incoming < 0].abs().sum() + outgoing[outgoing > 0].sum()
-        )
-        outgoing_h2.append(
-            incoming[incoming > 0].sum() + outgoing[outgoing < 0].abs().sum()
-        )
-    h2_import = np.array(incoming_h2) / 1e6
-    h2_export = -np.array(outgoing_h2) / 1e6
-    net = h2_import + h2_export
-    x = np.arange(len(planning_horizons))
-
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.bar(x, h2_import, color=tech_colors["H2 pipeline"], label="Import")
-    ax.bar(x, h2_export, color=tech_colors["H2 pipeline (Kernnetz)"], label="Export")
-    ax.scatter(x, net, color="black", marker="x", label="Netto")
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(planning_horizons)
-    ax.axhline(0, color="black", linewidth=0.5)
-    ax.set_ylabel("H2 [TWh]")
-    ax.set_title("Wasserstoff Import/Export Deutschland")
-    ax.legend()
-
-    plt.tight_layout()
-    fig.savefig(savepath, bbox_inches="tight")
-
-
 # electricity capacity map
 def plot_cap_map_de(
     network,
@@ -2581,13 +2459,6 @@ if __name__ == "__main__":
             )
             del network
 
-    plot_h2_trade(
-        networks,
-        planning_horizons,
-        tech_colors,
-        savepath=f"{snakemake.output.h2_transmission}/h2-trade-DE.png",
-    )
-
     ## electricity transmission
     logger.info("Plotting electricity transmission")
     for year in planning_horizons:
@@ -2607,13 +2478,7 @@ if __name__ == "__main__":
             regions_de,
             savepath=f"{snakemake.output.elec_transmission}/elec-cap-DE-{year}.png",
         )
-
-    plot_elec_trade(
-        networks,
-        planning_horizons,
-        tech_colors,
-        savepath=f"{snakemake.output.elec_transmission}/elec-trade-DE.png",
-    )
+        
 
     ## nodal balances general (might not be very robust)
     logger.info("Plotting nodal balances")
