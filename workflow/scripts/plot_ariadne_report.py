@@ -1159,17 +1159,26 @@ def plot_elec_prices_spatial(
     df["elec_price"] = n.buses_t.marginal_price[buses].mean()
 
     # Netzentgelte, Annuität NEP 2045 - Annuität PyPSA 2045 / Stromverbrauch Pypsa 2045
-    average_netzentgelt = (15.82 - 6.52) / 1.234
+    average_netzentgelt = (15.82 - 6.53) / 1.237
 
     mean_with_netzentgelt = df["elec_price"][df.index.str.contains("DE")].mean() + average_netzentgelt
     # Calculate the difference from the mean_with_netzentgelt
     df["elec_price_diff"] = mean_with_netzentgelt - df["elec_price"]
 
+    crs = ccrs.PlateCarree()
+
+    # Calculate aspect ratio based on geographic extent
+    extent = [5, 16, 47, 56]  # Germany bounds
+    aspect_ratio = (extent[1] - extent[0]) / (extent[3] - extent[2])
+
+    # Set figure size dynamically based on aspect ratio
+    fig_width = 16  # You can adjust this value
+    fig_height = fig_width / aspect_ratio
+
     # Create figure with two subplots
     fig, (ax1, ax2) = plt.subplots(
-        1, 2, subplot_kw={"projection": ccrs.PlateCarree()}, figsize=(18, 6)
+        1, 2, subplot_kw={"projection": crs},  figsize=(fig_width, 0.5 * fig_height)
     )
-    crs = ccrs.PlateCarree()
 
     # First subplot: elec_price
     mvs = df["elec_price"][df.index.str.contains("DE")]
@@ -1198,11 +1207,11 @@ def plot_elec_prices_spatial(
     )
 
     # Set geographic extent for Germany
-    ax1.set_extent([5, 16, 47, 56], ccrs.PlateCarree())  # Germany bounds
+    ax1.set_extent(extent, crs)  # Germany bounds
+    ax1.set_aspect(aspect_ratio)
 
     # Second subplot: elec_price_diff
     mvs_diff = df["elec_price_diff"][df.index.str.contains("DE")]
-
 
     ax2.add_feature(cartopy.feature.BORDERS, edgecolor="black", linewidth=0.5)
     ax2.coastlines(edgecolor="black", linewidth=0.5)
@@ -1225,12 +1234,20 @@ def plot_elec_prices_spatial(
     )
 
     # Set geographic extent for Germany
-    ax2.set_extent([5, 16, 47, 56], ccrs.PlateCarree())  # Germany bounds
+    ax2.set_extent(extent, crs)  # Germany bounds
+    ax2.set_aspect(aspect_ratio)
 
     # Adjust layout to place legends on the right
-    fig.tight_layout()
-    plt.subplots_adjust(right=0.85)
 
+    plt.suptitle(
+        "Nodale Strompreise und durchschnittliche Preisreduktion", 
+        ha="center",
+        fontsize=16,
+        y=0.98,
+        x=0.5
+    )
+    plt.subplots_adjust(right=0.85)
+    fig.tight_layout()
     plt.show()
 
     fig.savefig(savepath, bbox_inches="tight")
