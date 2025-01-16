@@ -1726,30 +1726,29 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
         n_cols = 2
         title = ""
     elif specify_buses == "production":
-        sizes = [50,25,5]
+        sizes = [50, 25, 5]
         labels = [f"{s} TWh" for s in sizes]
         sizes = [s / bus_size_factor * 1e6 for s in sizes]
         n_cols = 2
         title = "Wasserstoffinfrastruktur (Produktion)"
-        loc_patches = (0.8, -0.09)  
+        loc_patches = (0.8, -0.09)
     elif specify_buses == "consumption":
-        sizes = [50,25,5]
+        sizes = [50, 25, 5]
         labels = [f"{s} TWh" for s in sizes]
         sizes = [s / bus_size_factor * 1e6 for s in sizes]
         n_cols = 2
         title = "Wasserstoffinfrastruktur (Verbrauch)"
-        loc_patches = (0.75, -0.16) 
-
+        loc_patches = (0.75, -0.16)
 
     legend_kw_circles = dict(
-    loc="lower center",
-    bbox_to_anchor=(0.1, -0.15),
-    labelspacing=1.5,
-    handletextpad=0.5,
-    frameon=True,
-    facecolor="white",
-    fontsize=10,
-    ncol=1
+        loc="lower center",
+        bbox_to_anchor=(0.1, -0.15),
+        labelspacing=1.5,
+        handletextpad=0.5,
+        frameon=True,
+        facecolor="white",
+        fontsize=10,
+        ncol=1,
     )
 
     add_legend_circles(
@@ -1768,16 +1767,15 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
     scale = 1e3 / linewidth_factor
     sizes = [s * scale for s in sizes]
 
-
     legend_kw_lines = dict(
-    loc="lower center",
-    bbox_to_anchor=(0.3, -0.07),
-    frameon=True,
-    labelspacing=0.5,
-    handletextpad=1,
-    fontsize=10,
-    ncol=1,
-    facecolor="white",
+        loc="lower center",
+        bbox_to_anchor=(0.3, -0.07),
+        frameon=True,
+        labelspacing=0.5,
+        handletextpad=1,
+        fontsize=10,
+        ncol=1,
+        facecolor="white",
     )
 
     add_legend_lines(
@@ -1804,20 +1802,15 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
     labels = [carriers_in_german.get(c, c) for c in labels]
 
     legend_kw_patches = dict(
-    loc="lower center",
-    bbox_to_anchor=loc_patches,
-    ncol=n_cols,
-    frameon=True,
-    facecolor="white",
-    fontsize=10,
+        loc="lower center",
+        bbox_to_anchor=loc_patches,
+        ncol=n_cols,
+        frameon=True,
+        facecolor="white",
+        fontsize=10,
     )
 
-    add_legend_patches(
-        ax, 
-        colors, 
-        labels,
-        legend_kw=legend_kw_patches
-        )
+    add_legend_patches(ax, colors, labels, legend_kw=legend_kw_patches)
 
     ax.set_facecolor("white")
     ax.set_title(title, fontsize=16, pad=20)
@@ -1956,14 +1949,14 @@ def plot_elec_map_de(
     sizes = [s / bus_size_factor * 1e3 for s in sizes]
 
     legend_kw_circles = dict(
-    loc="lower center",
-    bbox_to_anchor=(0.15, -0.2),
-    labelspacing=0.8,
-    handletextpad=0.5,
-    frameon=True,
-    facecolor="white",
-    fontsize=14,
-    ncol=1
+        loc="lower center",
+        bbox_to_anchor=(0.15, -0.2),
+        labelspacing=0.8,
+        handletextpad=0.5,
+        frameon=True,
+        facecolor="white",
+        fontsize=14,
+        ncol=1,
     )
 
     add_legend_circles(
@@ -1995,41 +1988,31 @@ def plot_elec_map_de(
     colors = [tech_colors["AC"]] * len(sizes_ac) + [tech_colors["DC"]] * len(sizes_dc)
 
     legend_kw_lines = dict(
-    loc="lower center",
-    bbox_to_anchor=(0.65, -0.12), # 0.7
-    frameon=True,
-    labelspacing=0.5,
-    handletextpad=1,
-    fontsize=14,
-    ncol=2,
-    facecolor="white",
+        loc="lower center",
+        bbox_to_anchor=(0.65, -0.12),  # 0.7
+        frameon=True,
+        labelspacing=0.5,
+        handletextpad=1,
+        fontsize=14,
+        ncol=2,
+        facecolor="white",
     )
 
-    add_legend_lines(
-        ax, 
-        sizes, 
-        labels, 
-        colors=colors, 
-        legend_kw=legend_kw_lines
-        )
+    add_legend_lines(ax, sizes, labels, colors=colors, legend_kw=legend_kw_lines)
 
     colors = [tech_colors[c] for c in carriers]
     labels = carriers
-    
-    legend_kw_patches = dict(
-    loc="lower center",
-    bbox_to_anchor=(0.66, -0.24),
-    ncol=2,
-    frameon=True,
-    facecolor="white",
-    fontsize=14,
-)
 
-    add_legend_patches(
-        ax, 
-        colors, 
-        labels, 
-        legend_kw=legend_kw_patches)
+    legend_kw_patches = dict(
+        loc="lower center",
+        bbox_to_anchor=(0.66, -0.24),
+        ncol=2,
+        frameon=True,
+        facecolor="white",
+        fontsize=14,
+    )
+
+    add_legend_patches(ax, colors, labels, legend_kw=legend_kw_patches)
 
     ax.set_title(title, fontsize=16, pad=20)
 
@@ -2419,7 +2402,7 @@ if __name__ == "__main__":
     tech_colors["urban decentral oil boiler"] = tech_colors["oil boiler"]
     tech_colors["rural oil boiler"] = tech_colors["oil boiler"]
     tech_colors["rural ground heat pump"] = tech_colors["ground heat pump"]
-    tech_colors["H2 OCGT"] =    "#3b4cc0"
+    tech_colors["H2 OCGT"] = "#3b4cc0"
     tech_colors["H2 retrofit OCGT"] = "#9abbff"
     tech_colors["urban central H2 CHP"] = "#c9d7f0"
     tech_colors["urban central H2 retrofit CHP"] = "#edd1c2"
