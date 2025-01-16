@@ -74,7 +74,7 @@ def plot_elec_trade(
     ax.axhline(0, color="black", linewidth=0.5)
     ax.set_ylabel("Twh")
     ax.set_title("Strom Import/Export Deutschland")
-    ax.legend(loc="lower left")
+    ax.legend(loc="upper left")
 
     plt.tight_layout()
     fig.savefig(savepath, bbox_inches="tight")
