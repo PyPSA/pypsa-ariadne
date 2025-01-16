@@ -17,7 +17,7 @@ def plot_h2_trade(
         df.loc["Trade|Secondary Energy|Hydrogen|Volume"] / TWh2PJ
     )  # exports-imports
     h2_import = df.loc["Trade|Secondary Energy|Hydrogen|Gross Import|Volume"] / TWh2PJ
-    h2_export = h2_balance - h2_import
+    h2_export = h2_balance + h2_import
 
     fig, ax = plt.subplots(figsize=(6, 4))
     ax.bar(h2_import.columns, h2_import.loc["PJ/yr"], color="#f081dc", label="Import")
@@ -52,7 +52,7 @@ def plot_elec_trade(
     elec_import = (
         df.loc["Trade|Secondary Energy|Electricity|Gross Import|Volume"] / TWh2PJ
     )
-    elec_export = elec_balance - elec_import
+    elec_export = elec_balance + elec_import
 
     fig, ax = plt.subplots(figsize=(6, 4))
     ax.bar(
