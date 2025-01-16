@@ -2478,7 +2478,6 @@ if __name__ == "__main__":
             regions_de,
             savepath=f"{snakemake.output.elec_transmission}/elec-cap-DE-{year}.png",
         )
-        
 
     ## nodal balances general (might not be very robust)
     logger.info("Plotting nodal balances")

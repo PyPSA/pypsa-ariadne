@@ -4348,13 +4348,13 @@ def get_trade(n, region):
             n.links_t.p0.loc[:, outgoing]
             .clip(lower=0)
             .multiply(n.snapshot_weightings.generators, axis=0)
-            .values.sum() +
-            # if p1 > 0 system is withdrawing from bus1 (DE) and feeding into bus0 (non-DE) -> export 
+            .values.sum()
+            +
+            # if p1 > 0 system is withdrawing from bus1 (DE) and feeding into bus0 (non-DE) -> export
             n.links_t.p1.loc[:, incoming]
             .clip(lower=0)
             .multiply(n.snapshot_weightings.generators, axis=0)
             .values.sum()
-
         )
 
         importing_p = (
@@ -4362,12 +4362,15 @@ def get_trade(n, region):
             n.links_t.p1.loc[:, incoming]
             .clip(upper=0)
             .multiply(n.snapshot_weightings.generators, axis=0)
-            .values.sum() *-1 + 
+            .values.sum()
+            * -1
+            +
             # if p0 < 0 (=clip(upper=0)) system is feeding into bus0 (DE) and withdrawing from bus1 (non-DE) -> import (with negative sign here)
             n.links_t.p0.loc[:, outgoing]
             .clip(upper=0)
             .multiply(n.snapshot_weightings.generators, axis=0)
-            .values.sum() *-1
+            .values.sum()
+            * -1
         )
 
         return exporting_p, importing_p
@@ -4390,26 +4393,29 @@ def get_trade(n, region):
         n.lines_t.p0.loc[:, outgoing_ac]
         .clip(lower=0)
         .multiply(n.snapshot_weightings.generators, axis=0)
-        .values.sum() +
-        # if p1 > 0 system is withdrawing from bus1 (DE) and feeding into bus0 (non-DE) -> export 
+        .values.sum()
+        +
+        # if p1 > 0 system is withdrawing from bus1 (DE) and feeding into bus0 (non-DE) -> export
         n.lines_t.p1.loc[:, incoming_ac]
         .clip(lower=0)
         .multiply(n.snapshot_weightings.generators, axis=0)
         .values.sum()
-
     )
-    
+
     importing_p_ac = (
         # if p1 < 0 (=clip(upper=0)) system is feeding into bus1 (DE) and withdrawing from bus0 (non-DE) -> import (with negative sign here)
         n.lines_t.p1.loc[:, incoming_ac]
         .clip(upper=0)
         .multiply(n.snapshot_weightings.generators, axis=0)
-        .values.sum() *-1 + 
+        .values.sum()
+        * -1
+        +
         # if p0 < 0 (=clip(upper=0)) system is feeding into bus0 (DE) and withdrawing from bus1 (non-DE) -> import (with negative sign here)
         n.lines_t.p0.loc[:, outgoing_ac]
         .clip(upper=0)
         .multiply(n.snapshot_weightings.generators, axis=0)
-        .values.sum() *-1
+        .values.sum()
+        * -1
     )
 
     exports_dc, imports_dc = get_export_import_links(n, region, ["DC"])
