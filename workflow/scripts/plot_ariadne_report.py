@@ -1161,7 +1161,9 @@ def plot_elec_prices_spatial(
     # Netzentgelte, Annuität NEP 2045 - Annuität PyPSA 2045 / Stromverbrauch Pypsa 2045
     average_netzentgelt = (15.82 - 6.53) / 1.237
 
-    mean_with_netzentgelt = df["elec_price"][df.index.str.contains("DE")].mean() + average_netzentgelt
+    mean_with_netzentgelt = (
+        df["elec_price"][df.index.str.contains("DE")].mean() + average_netzentgelt
+    )
     # Calculate the difference from the mean_with_netzentgelt
     df["elec_price_diff"] = mean_with_netzentgelt - df["elec_price"]
 
