@@ -47,7 +47,7 @@ def plot_elec_trade(
 ):
     # load data and convert to TWh
     elec_balance = (
-        df.loc["Trade|Secondary Energy|Electricity|Volume"] / TWh2PJ *-1
+        df.loc["Trade|Secondary Energy|Electricity|Volume"] / TWh2PJ * -1
     )  # exports-imports
     elec_import = (
         df.loc["Trade|Secondary Energy|Electricity|Gross Import|Volume"] / TWh2PJ
