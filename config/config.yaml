@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20250116-correct-elec-trade
+  prefix: 20241203-force-onwind-south
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
