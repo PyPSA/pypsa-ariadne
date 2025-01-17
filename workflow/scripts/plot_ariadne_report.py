@@ -1163,9 +1163,7 @@ def plot_elec_prices_spatial(
     elec_price_de = df["elec_price"][df.index.str.contains("DE")]
     max_above_mean = elec_price_de.max() - elec_price_de.mean()
 
-    mean_with_netzentgelt = (
-        elec_price_de.mean() + pypsa_netzentgelt
-    )
+    mean_with_netzentgelt = elec_price_de.mean() + pypsa_netzentgelt
     # Calculate the difference from the mean_with_netzentgelt
     df["elec_price_diff"] = mean_with_netzentgelt - df["elec_price"]
 
@@ -1181,7 +1179,7 @@ def plot_elec_prices_spatial(
 
     # Create figure with two subplots
     fig, (ax1, ax2) = plt.subplots(
-        1, 2, subplot_kw={"projection": crs},  figsize=(fig_width, 0.5 * fig_height)
+        1, 2, subplot_kw={"projection": crs}, figsize=(fig_width, 0.5 * fig_height)
     )
 
     # First subplot: elec_price
@@ -1245,18 +1243,17 @@ def plot_elec_prices_spatial(
     # Adjust layout to place legends on the right
 
     plt.suptitle(
-        "Nodale Strompreise und durchschnittliche Preisreduktion", 
+        "Nodale Strompreise und durchschnittliche Preisreduktion",
         ha="center",
         fontsize=16,
         y=0.98,
-        x=0.5
+        x=0.5,
     )
     plt.subplots_adjust(right=0.85)
     fig.tight_layout()
     plt.show()
 
     fig.savefig(savepath, bbox_inches="tight")
-
 
 
 def plot_elec_prices_spatial_new(
@@ -1273,13 +1270,12 @@ def plot_elec_prices_spatial_new(
     df["elec_price"] = n.buses_t.marginal_price[buses].mean()
 
     # Netzentgelte, Annuität NEP 2045 - Annuität PyPSA 2045 / Stromverbrauch Pypsa 2045
-    pypsa_netzentgelt = (6.53 +  27.51) / 1.237
-    nep_netzentgelt = (15.82 +  27.51) / 1.237
+    pypsa_netzentgelt = (6.53 + 27.51) / 1.237
+    nep_netzentgelt = (15.82 + 27.51) / 1.237
     elec_price_de = df["elec_price"][df.index.str.contains("DE")]
     max_above_mean = elec_price_de.max() - elec_price_de.mean()
 
     # Calculate the difference from the mean_with_netzentgelt
-
 
     df["elec_price_nep"] = elec_price_de.mean() + nep_netzentgelt
     df["elec_price_pypsa"] = df["elec_price"] + pypsa_netzentgelt
@@ -1297,7 +1293,7 @@ def plot_elec_prices_spatial_new(
 
     # Create figure with two subplots
     fig, (ax1, ax2) = plt.subplots(
-        1, 2, subplot_kw={"projection": crs},  figsize=(fig_width, 0.55 * fig_height)
+        1, 2, subplot_kw={"projection": crs}, figsize=(fig_width, 0.55 * fig_height)
     )
 
     # First subplot: elec_price
@@ -1310,15 +1306,19 @@ def plot_elec_prices_spatial_new(
     ax1.set_facecolor("white")
     ax1.add_feature(cartopy.feature.OCEAN, color="azure")
     ax1.set_title("Durchschnittspreis, NEP Ausbau", pad=15)
-    img1 = df[df.index.str.contains("DE")].to_crs(crs.proj4_init).plot(
-        column="elec_price_nep",
-        ax=ax1,
-        linewidth=0.05,
-        edgecolor="grey",
-        legend=False,
-        vmin=vmin,
-        vmax=vmax,
-        cmap="viridis_r",
+    img1 = (
+        df[df.index.str.contains("DE")]
+        .to_crs(crs.proj4_init)
+        .plot(
+            column="elec_price_nep",
+            ax=ax1,
+            linewidth=0.05,
+            edgecolor="grey",
+            legend=False,
+            vmin=vmin,
+            vmax=vmax,
+            cmap="viridis_r",
+        )
     )
 
     # Set geographic extent for Germany
@@ -1332,15 +1332,19 @@ def plot_elec_prices_spatial_new(
     ax2.add_feature(cartopy.feature.OCEAN, color="azure")
     ax2.set_title("Nodale Preise, $PyPSA$-$DE$ Ausbau", pad=15)
 
-    img2 = df[df.index.str.contains("DE")].to_crs(crs.proj4_init).plot(
-        column="elec_price_diff",
-        ax=ax2,
-        cmap="viridis",
-        linewidth=0.05,
-        edgecolor="grey",
-        vmax=vmax-vmin,
-        vmin=0,
-        legend=False,
+    img2 = (
+        df[df.index.str.contains("DE")]
+        .to_crs(crs.proj4_init)
+        .plot(
+            column="elec_price_diff",
+            ax=ax2,
+            cmap="viridis",
+            linewidth=0.05,
+            edgecolor="grey",
+            vmax=vmax - vmin,
+            vmin=0,
+            legend=False,
+        )
     )
 
     # Set geographic extent for Germany
@@ -1354,21 +1358,26 @@ def plot_elec_prices_spatial_new(
     # Add colorbar to the new axis
     cbar1 = fig.colorbar(
         img1.get_figure().get_axes()[0].collections[0],
-        cax=cax1, 
-        orientation='horizontal',
+        cax=cax1,
+        orientation="horizontal",
     )
     cbar1.set_label("Börsenstrompreis zzgl. durchschnittlichem Netzentgelt [$€/MWh$]")
-    cbar1.set_ticklabels(np.linspace(vmax,vmin,6).round(1))
+    cbar1.set_ticklabels(np.linspace(vmax, vmin, 6).round(1))
     cbar1.ax.invert_xaxis()
 
-    cbar2 = fig.colorbar(img2.get_figure().get_axes()[0].collections[0], cax=cax2, orientation='horizontal')
+    cbar2 = fig.colorbar(
+        img2.get_figure().get_axes()[0].collections[0],
+        cax=cax2,
+        orientation="horizontal",
+    )
     cbar2.set_label("Durchschnittliche Preisreduktion für Endkunden [$€/MWh$]")
-    cbar2.set_ticklabels(np.linspace(0,vmax-vmin,6).round(1))
+    cbar2.set_ticklabels(np.linspace(0, vmax - vmin, 6).round(1))
 
     plt.subplots_adjust(right=0.75, bottom=0.22)
     # plt.show()
 
     fig.savefig(savepath, bbox_inches="tight")
+
 
 def assign_location(n):
     for c in n.iterate_components(n.one_port_components | n.branch_components):
