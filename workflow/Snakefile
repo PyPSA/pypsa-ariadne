@@ -570,6 +570,8 @@ rule plot_ariadne_variables:
         transmission_investment_csv=RESULTS + "ariadne/transmission_investment.csv",
         trassenlaenge_csv=RESULTS + "ariadne/trassenlaenge.csv",
         Kernnetz_Investment_plot=RESULTS + "ariadne/Kernnetz_Investment_plot.png",
+        elec_trade=RESULTS + "ariadne/elec-trade-DE.png",
+        h2_trade=RESULTS + "ariadne/h2-trade-DE.png",
     log:
         RESULTS + "logs/plot_ariadne_variables.log",
     script:
