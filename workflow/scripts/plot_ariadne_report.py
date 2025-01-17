@@ -1366,7 +1366,7 @@ def plot_elec_prices_spatial_new(
     cbar2.set_ticklabels(np.linspace(0,vmax-vmin,6).round(1))
 
     plt.subplots_adjust(right=0.75, bottom=0.22)
-    plt.show()
+    # plt.show()
 
     fig.savefig(savepath, bbox_inches="tight")
 
@@ -2704,7 +2704,7 @@ if __name__ == "__main__":
     regions = gpd.read_file(snakemake.input.regions_onshore_clustered).set_index("name")
 
     year = 2045
-    plot_elec_prices_spatial(
+    plot_elec_prices_spatial_new(
         network=networks[planning_horizons.index(year)].copy(),
         tech_colors=tech_colors,
         onshore_regions=regions,
