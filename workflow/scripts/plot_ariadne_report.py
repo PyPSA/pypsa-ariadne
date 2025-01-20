@@ -4,6 +4,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+import locale
 from datetime import datetime
 from itertools import compress, islice
 from multiprocessing import Pool
@@ -17,6 +18,8 @@ import numpy as np
 import pandas as pd
 import pypsa
 from matplotlib.lines import Line2D
+from matplotlib.patches import Patch
+from matplotlib.ticker import FuncFormatter
 from pypsa.plot import add_legend_lines
 
 path = "../submodules/pypsa-eur/scripts"
@@ -317,12 +320,12 @@ carriers_in_german = {
     "urban central coal CHP": "Steinkohle-KWK",
     "Electricity trade": "Stromhandel",
     "urban central gas CHP": "Gas-KWK",
-    "urban central biomass CHP": " Biomasse-KWK",
+    "urban central biomass CHP": "Biomasse-KWK",
     "biomass CHP": "Biomasse-KWK",
     "air heat pump": "Luftwärmepumpe",
-    "Electricity load": "Elektrizitätslast",
+    "Electricity load": "Stromlast",
     "methanolisation": "Methanolisierung",
-    "resistive heater": "Widerstandsheizer",
+    "resistive heater": "Widerstandsheizung",
     "gas boiler": "Gaskessel",
     "H2 Electrolysis": "Elektrolyse",
     "H2 Fuel Cell": "Brennstoffzelle (Strom)",
@@ -373,7 +376,316 @@ def get_condense_sum(df, groups, groups_name, return_original=False):
     return result
 
 
-def plot_nodal_balance(
+def plot_nodal_elec_balance(
+    network,
+    nodal_balance,
+    tech_colors,
+    savepath,
+    carriers=["AC", "low voltage"],
+    start_date="2019-01-01 00:00:00",
+    end_date="2019-12-31 00:00:00",
+    regions=["DE"],
+    model_run="Model run",
+    c1_groups=c1_groups,
+    c1_groups_name=c1_groups_name,
+    loads=["electricity", "industry electricity", "agriculture electricity"],
+    plot_lmps=True,
+    plot_loads=True,
+    resample=None,
+    nice_names=False,
+    german_carriers=False,
+    threshold=1e-3,  # in GWh
+    condense_groups=None,
+    condense_names=None,
+    ylabel="total electricity balance [GW]",
+    title="Electricity balance",
+):
+
+    if resample == "D" and network.snapshots.size < 365:
+        # code is not working at low resolution!
+        logger.error(
+            "Temporal resolution does not allow for daily resampling! Please use hihger resolution results or change the 'resample' flag."
+        )
+        return
+
+    carriers = carriers
+    loads = loads
+    start_date = start_date
+    end_date = end_date
+    regions = regions
+    period = network.generators_t.p.index[
+        (network.generators_t.p.index >= start_date)
+        & (network.generators_t.p.index <= end_date)
+    ]
+    # ToDo find out why this is overwriting itself
+    rename = {}
+
+    mask = nodal_balance.index.get_level_values("bus_carrier").isin(carriers)
+    nb = balance[mask].groupby("carrier").sum().div(1e3).T.loc[period]
+    if plot_loads:
+        df_loads = abs(nb[loads].sum(axis=1))
+    # condense groups (summarise carriers to groups)
+    nb = get_condense_sum(nb, c1_groups, c1_groups_name)
+    # rename unhandy column names
+    nb.rename(columns=carrier_renaming, inplace=True)
+    # summarise some carriers if specified
+    if condense_groups is not None:
+        nb = get_condense_sum(nb, condense_groups, condense_names)
+
+    ## summaris low contributing carriers acccording to their sum over the period (threshold in GWh)
+    techs_below_threshold = nb.columns[nb.abs().sum() < threshold].tolist()
+    if techs_below_threshold:
+        other = {tech: "other" for tech in techs_below_threshold}
+        rename.update(other)
+        tech_colors["other"] = "grey"
+
+    if rename:
+        nb = nb.T.groupby(nb.columns.map(lambda a: rename.get(a, a))).sum().T
+
+    if resample is not None:
+        nb = nb.resample(resample).mean()
+
+    # plot positive values
+    preferred_order_pos = [
+        "solar",
+        "onwind",
+        "offwind-ac",
+        "offwind-dc",
+        "ror",
+        "H2 OCGT",
+        "H2 CHP",
+        "urban central H2 retrofit CHP",
+        "CCGT",
+        "gas CHP",
+        "waste CHP CC",
+        "urban central biomass CHP",
+        "hydro",
+        "PHS",
+        "battery discharger",
+        "Stromimport",
+        "other",
+    ]
+    preferred_order_neg = [
+        "Electricity load",
+        "electricity distribution grid",
+        "BEV charger",
+        "air heat pump",
+        "rural ground heat pump",
+        "resistive heater",
+        "battery charger",
+        "Stromexport",
+        "H2 Electrolysis",
+        "methanolisation",
+        "Sonstige",
+    ]
+    pos_c = {
+        "solar": "#f9d002",
+        "onwind": "#235ebc",
+        "offwind-ac": "#6895dd",
+        "offwind-dc": "#74c6f2",
+        "ror": "#81a3de",
+        "H2 OCGT": "#ff0000",
+        "H2 CHP": "#bf3737",
+        "urban central H2 retrofit CHP": "#ff8282",
+        "CCGT": "#edc566",
+        "gas CHP": "#e67c12",
+        "waste CHP CC": "#a85522",
+        "urban central biomass CHP": "#9d9042",
+        "hydro": "#5379ad",
+        "PHS": "#6999db",
+        "battery discharger": "#76e388",
+        "Stromimport": "#97ad8c",
+        "other": "#8f9c9a",
+    }
+    neg_c = {
+        "Electricity load": "#110d63",
+        "electricity distribution grid": "#baf238",
+        "air heat pump": "#e3d3ff",
+        "rural ground heat pump": "#9f6df7",
+        "resistive heater": "#493173",
+        "BEV charger": "#81a3de",
+        "battery charger": "#76e388",
+        "Stromexport": "#97ad8c",
+        "H2 Electrolysis": "#ff8282",
+        "methanolisation": "#872f2f",
+        "Sonstige": "#8f9c9a",
+    }
+
+    df = nb
+    # split into df with positive and negative values
+    df_neg, df_pos = df.clip(upper=0), df.clip(lower=0)
+
+    df_pos["solar"] = (
+        df_pos.get("solar", 0)
+        + df_pos.get("Solar", 0)
+        + df_pos.get("solar-hsat", 0)
+        + df_pos.get("solar rooftop", 0)
+        + df_pos.get("solar thermal", 0)
+    )
+
+    columns_to_drop = ["solar-hsat", "Solar", "solar rooftop", "solar thermal"]
+    df_pos = df_pos.drop(
+        columns=[col for col in columns_to_drop if col in df_pos.columns]
+    )
+
+    df_neg = df_neg[df_neg.sum().sort_values().index]
+
+    fig, ax = plt.subplots(figsize=(14, 12))
+    # Reorder the DataFrame columns based on the preferred order
+    df_pos["Stromimport"] = (
+        df["Electricity trade"].where(df["Electricity trade"] > 0).fillna(0)
+    )
+    df_pos = df_pos.drop(columns=["Electricity trade"], errors="ignore")
+    df_pos = df_pos.rename(columns={"urban central H2 CHP": "H2 CHP"})
+    df_pos["other"] = df_pos.drop(columns=preferred_order_pos, errors="ignore").sum(
+        axis=1
+    )
+
+    df_pos = df_pos.reindex(columns=preferred_order_pos)
+    ax = df_pos.plot.area(ax=ax, stacked=True, color=pos_c, linewidth=0.0)
+
+    # rename negative values that are also present on positive side, so that they are not shown and plot negative values
+    f = lambda c: "out_" + c
+    cols = [f(c) if (c in df_pos.columns) else c for c in df_neg.columns]
+    cols_map = dict(zip(df_neg.columns, cols))
+    df_neg["Stromexport"] = (
+        df["Electricity trade"].where(df["Electricity trade"] < 0).fillna(0)
+    )
+    df_neg = df_neg.drop(columns=["Electricity trade"], errors="ignore")
+    df_neg["Sonstige"] = df_neg.drop(columns=preferred_order_neg, errors="ignore").sum(
+        axis=1
+    )
+    df_neg = df_neg.reindex(columns=preferred_order_neg)
+    ax = df_neg.plot.area(ax=ax, stacked=True, color=neg_c, linewidth=0.0)
+
+    # plot lmps
+    if plot_lmps:
+        lmps = network.buses_t.marginal_price[
+            network.buses[network.buses.carrier.isin(carriers)].index
+        ].mean(axis=1)[period]
+        ax2 = lmps.plot(
+            style="--",
+            color="black",
+            label="Knotenpreise (gemittelt)",
+            secondary_y=True,
+        )
+        ax2.grid(False)
+
+        # Manually remove "(right)" from the legend
+        handles, labels = ax2.get_legend_handles_labels()
+        # Remove '(right)' from the labels, if present
+        labels = [label.replace(" (right)", "") for label in labels]
+
+        # Update the legend with the cleaned labels
+        ax2.legend(handles, labels, loc="upper left")
+
+        # set limits of secondary y-axis
+        ax2.set_ylim(
+            [
+                -1.5
+                * lmps.max()
+                * abs(df_neg.sum(axis=1).min())
+                / df_pos.sum(axis=1).max(),
+                1.5 * lmps.max(),
+            ]
+        )
+        ax2.legend(loc="upper right")
+        ax2.set_ylabel("Knotenpreise [€/MWh]")
+
+    # explicitly filter out duplicate labels
+    handles, labels = ax.get_legend_handles_labels()
+    filtered_handles_labels = [
+        (h, l) for h, l in zip(handles, labels) if not l.startswith("out_")
+    ]
+    handles, labels = zip(*filtered_handles_labels)
+
+    if nice_names & (not german_carriers):
+        nice_names_dict = network.carriers.nice_name.to_dict()
+        labels = [nice_names_dict.get(l, l) for l in labels]
+
+    # rescale the y-axis
+    ax.set_ylim([1.05 * df_neg.sum(axis=1).min(), 1.05 * df_pos.sum(axis=1).max()])
+
+    # Get all handles and labels
+    handles, labels = ax.get_legend_handles_labels()
+    if german_carriers:
+        labels = [carriers_in_german.get(l, l) for l in labels]
+
+    # Split into "Erzeugung" and "Verbrauch"
+    erzeugung_handles = handles[:17]
+    erzeugung_labels = labels[:17]
+    verbrauch_handles = handles[17:]
+    verbrauch_labels = labels[17:]
+    subtitle_erzeugung = Patch(color="none", label="Erzeugung")
+    subtitle_verbrauch = Patch(color="none", label="Verbrauch")
+
+    # Combine all handles and labels
+    combined_handles = (
+        [subtitle_erzeugung]
+        + erzeugung_handles
+        + [subtitle_verbrauch]
+        + verbrauch_handles
+    )
+    combined_labels = (
+        ["Erzeugung"] + erzeugung_labels + ["Verbrauch"] + verbrauch_labels
+    )
+
+    legend = ax.legend(
+        combined_handles,
+        combined_labels,
+        ncol=5,
+        loc="lower center",
+        bbox_to_anchor=(0.5, -0.2),
+    )
+    for text in legend.get_texts():
+        text.set_fontsize(10)  # Adjust font size (e.g., 14)
+    for patch in legend.legend_handles:
+        patch.set_width(20)  # Adjust rectangle width
+        patch.set_height(10)
+
+    ax.set_ylabel(ylabel)
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%B"))
+
+    german_months = [
+        "Jan",
+        "Feb",
+        "März",
+        "Apr",
+        "Mai",
+        "Juni",
+        "Juli",
+        "Aug",
+        "Sept",
+        "Okt",
+        "Nov",
+        "Dez",
+    ]
+
+    # Custom formatter function
+    def format_month(x, pos):
+        month = mdates.num2date(x).month  # Extract the month as an integer (1-12)
+        return german_months[month - 1]  # Get the German month name
+
+    # Apply custom formatter
+    ax.xaxis.set_major_formatter(FuncFormatter(format_month))
+
+    # Manually set ticks to avoid duplicating December
+    ticks = ax.get_xticks()
+    ax.set_xticks(ticks[:-1])
+    ax.set_xlabel("")
+    ax.set_title(
+        f"{title} {model_run}",
+        fontsize=16,
+        pad=15,
+    )
+    ax.grid(True)
+    fig.savefig(savepath, bbox_inches="tight")
+    plt.close()
+
+    return fig
+
+
+def plot_nodal_heat_balance(
     network,
     nodal_balance,
     tech_colors,
@@ -758,9 +1070,9 @@ def plot_storage(
             stor_res.loc[c, "gen_charge_cap_ratio"] = gen_sum / max_stor_cap
             stor_res.loc[c, "gen_sum"] = gen_sum
 
-        if c in ["battery", "EV battery", "Li ion", "PHS"]:
+        if c in ["battery", "EV battery", "Li ion", "PHS", "hydro"]:
             ax1.plot(
-                charge / max_stor_cap,
+                charge / 1e6,  # max_stor_cap,
                 label=c,
                 color=tech_colors[c],
                 marker=markers[i],
@@ -771,7 +1083,7 @@ def plot_storage(
 
         else:
             ax2.plot(
-                charge / max_stor_cap,
+                charge / 1e6,  # max_stor_cap,
                 label=ger[c],
                 color=tech_colors[c],
                 marker=markers[i],
@@ -785,9 +1097,11 @@ def plot_storage(
         f"State of charge of mid- and long-term storage technologies({model_run})"
     )
     ax1.set_ylabel("State of charge [per unit of max storage capacity]")
-    ax2.set_ylabel("Speicherstand [-]")
+    # ax2.set_ylabel("Speicherstad [-]")
+    ax2.set_ylabel("TWh")
     ax1.legend(loc="lower right")
     ax2.legend(loc="lower right")
+    ax2.set_xticklabels(["Jan", "Mrz", "Mai", "Jul", "Sept", "Nov", "Jan"])
 
     fig.tight_layout(pad=3)
     fig.savefig(savepath, bbox_inches="tight")
@@ -2302,14 +2616,15 @@ def plot_cap_map_de(
     # Set geographic extent for Germany
     ax.set_extent([5.5, 15.5, 47, 56], crs=ccrs.PlateCarree())
 
-    sizes = [10, 5]
-    labels = [f"{s} GW" for s in sizes]
+    sizes = [50, 15, 5]
+    labels = [f"  {s} GW" for s in sizes]
     sizes = [s / bus_size_factor * 1e3 for s in sizes]
 
     legend_kw = dict(
         loc="upper left",
         bbox_to_anchor=(0, 1),
-        labelspacing=0.8,
+        borderaxespad=0.5,
+        labelspacing=1.2,
         handletextpad=0,
         frameon=True,
         facecolor="white",
@@ -2323,6 +2638,8 @@ def plot_cap_map_de(
         patch_kw=dict(facecolor="lightgrey"),
         legend_kw=legend_kw,
     )
+    legend = ax.get_legend()
+    legend.get_frame().set_boxstyle("square, pad=0.7")
 
     legend_kw = dict(
         loc=[0.2, 0.9],
@@ -2345,6 +2662,7 @@ def plot_cap_map_de(
     )
 
     add_legend_patches(ax, colors, labels, legend_kw=legend_kw)
+    ax.set_title(f"Installierte Leistung Stromsektor {year}")
     fig.savefig(savepath, bbox_inches="tight")
     plt.close()
 
@@ -2472,7 +2790,7 @@ if __name__ == "__main__":
 
         # electricity supply and demand
         logger.info("Plotting electricity supply and demand for year %s", year)
-        plot_nodal_balance(
+        plot_nodal_elec_balance(
             network=network,
             nodal_balance=balance,
             tech_colors=tech_colors,
@@ -2491,7 +2809,7 @@ if __name__ == "__main__":
             ylabel="Stromerzeugung/ -verbrauch [GW]",
         )
 
-        plot_nodal_balance(
+        plot_nodal_elec_balance(
             network=network,
             nodal_balance=balance,
             tech_colors=tech_colors,
@@ -2507,7 +2825,7 @@ if __name__ == "__main__":
             ylabel="Stromerzeugung/ -verbrauch [GW]",
         )
 
-        plot_nodal_balance(
+        plot_nodal_elec_balance(
             network=network,
             nodal_balance=balance,
             tech_colors=tech_colors,
@@ -2526,7 +2844,7 @@ if __name__ == "__main__":
         # heat supply and demand
         logger.info("Plotting heat supply and demand")
         for carriers in ["urban central heat", "urban decentral heat", "rural heat"]:
-            plot_nodal_balance(
+            plot_nodal_heat_balance(
                 network=network,
                 nodal_balance=balance,
                 tech_colors=tech_colors,
@@ -2546,7 +2864,7 @@ if __name__ == "__main__":
                 title=f"{carriers} balance",
             )
 
-            plot_nodal_balance(
+            plot_nodal_heat_balance(
                 network=network,
                 nodal_balance=balance,
                 tech_colors=tech_colors,
@@ -2563,7 +2881,7 @@ if __name__ == "__main__":
                 title=f"{carriers} balance",
             )
 
-            plot_nodal_balance(
+            plot_nodal_heat_balance(
                 network=network,
                 nodal_balance=balance,
                 tech_colors=tech_colors,
