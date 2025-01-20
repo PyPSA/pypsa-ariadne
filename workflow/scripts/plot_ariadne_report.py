@@ -402,6 +402,11 @@ def plot_nodal_elec_balance(
     title="Electricity balance",
 ):
 
+    if resample=="D" and network.snapshots.size < 365:
+        # code is not working at low resolution!
+        logger.error("Temporal resolution does not allow for daily resampling! Please use hihger resolution results or change the 'resample' flag.")
+        return
+
     carriers = carriers
     loads = loads
     start_date = start_date
@@ -508,13 +513,17 @@ def plot_nodal_elec_balance(
     df = nb
     # split into df with positive and negative values
     df_neg, df_pos = df.clip(upper=0), df.clip(lower=0)
-    if "Solar" in df_pos.columns:
-        df_pos["solar"] = df["Solar"] # + df["solar-hsat"] + df["solar rooftop"]
-        df_pos.drop(columns=["Solar"], inplace=True)
-    elif "solar-hsat" in df_pos.columns:
-        df_pos["solar"] = df["solar"] + df["solar-hsat"] + df["solar rooftop"]
-        df_pos = df_pos.drop(columns=["solar-hsat"], errors="ignore")
-        df_pos = df_pos.drop(columns=["solar rooftop"], errors="ignore")
+    
+    df_pos["solar"] = (
+        df_pos.get("solar", 0) + 
+        df_pos.get("Solar", 0) + 
+        df_pos.get("solar-hsat", 0) + 
+        df_pos.get("solar rooftop", 0) +
+        df_pos.get("solar thermal", 0))
+
+    columns_to_drop = ["solar-hsat", "Solar", "solar rooftop", "solar thermal"]
+    df_pos = df_pos.drop(columns=[col for col in columns_to_drop if col in df_pos.columns])
+
     df_neg = df_neg[df_neg.sum().sort_values().index]
 
     fig, ax = plt.subplots(figsize=(14, 12))
@@ -638,7 +647,7 @@ def plot_nodal_elec_balance(
     ax.set_xticks(ticks[:-1]) 
     ax.set_xlabel("")
     ax.set_title(
-        f"{title} 2045 Technologiemix",
+        f"{title} {model_run}",
         fontsize=16,
         pad=15,
     )
