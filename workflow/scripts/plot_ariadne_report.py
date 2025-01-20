@@ -66,7 +66,7 @@ backup_techs = {
         "urban central gas CHP",
         "urban central gas CHP CC",
     ],
-    "Öl": ["oil", "urban central oil CHP"],
+    # "Öl": ["oil", "urban central oil CHP"],
     "Kohle": ["lignite", "coal", "urban central coal CHP", "urban central lignite CHP"],
     "Wasserkraft": ["PHS", "hydro"],
     "Batterie": ["battery discharger", "home battery discharger"],
@@ -76,7 +76,7 @@ backup_techs = {
         "urban central H2 CHP",
         "urban central H2 retrofit CHP",
     ],
-    "Müllverbrennung": ["waste CHP", "waste CHP CC"],
+    # "Müllverbrennung": ["waste CHP", "waste CHP CC"],
     "Biomasse": [
         "solid biomass",
         "urban central solid biomass CHP",
@@ -1134,9 +1134,9 @@ def plot_price_duration_curve(
         )
         ax.set_title(
             (
-                f"Strompreisdauerlinien (Modell: {model_run})"
+                f"Strompreisdauerlinien"
                 if languange == "german"
-                else f"Electricity price duration curves {model_run}"
+                else f"Electricity price duration curves"
             ),
             fontsize=16,
         )
@@ -1162,6 +1162,10 @@ def plot_price_duration_hist(
     x_lim_values=[-50, 300],
 ):
 
+    # only plot 2030 onwards
+    years = years[2:]
+    networks = dict(islice(networks.items(), 2, None))
+    year_colors = year_colors[2:]
     fig, axes = plt.subplots(ncols=1, nrows=len(years), figsize=(8, 3 * len(years)))
     axes = axes.flatten()
 
@@ -1187,8 +1191,8 @@ def plot_price_duration_hist(
         )
         axes[i].legend()
 
-    axes[i].set_xlabel("Electricity Price [$€/MWh_{el}$")
-    plt.suptitle(f"Electricity prices ({model_run})", fontsize=16, y=0.99)
+    axes[i].set_xlabel("Strompreis [$€/MWh_{el}$]")
+    plt.suptitle(f"Strompreise", fontsize=16, y=0.99)
     fig.tight_layout()
     fig.savefig(savepath, bbox_inches="tight")
     plt.close()
@@ -1234,7 +1238,7 @@ def plot_backup_capacity(
     tech_colors["coal"] = "black"
 
     # Create figure
-    plt.figure(figsize=(20, 5))
+    plt.figure(figsize=(18, 5))
 
     # Track x-axis positions
     x_positions = []
@@ -1277,8 +1281,8 @@ def plot_backup_capacity(
     plt.ylim(0, 100)
 
     # Customize the plot
-    plt.title("Kapazität Backup-Kraftwerke (Strom)", fontsize=16)
-    plt.ylabel("MW", fontsize=12)
+    plt.title("Kapazität Backup-Kraftwerke (Strom)", fontsize=22)
+    plt.ylabel("GW", fontsize=16)
 
     # Create custom x-tick labels with group names below years
     x_ticks = np.concatenate(
@@ -1300,6 +1304,7 @@ def plot_backup_capacity(
             horizontalalignment="center",
             verticalalignment="top",
             fontweight="bold",
+            fontsize=16,
         )
 
     plt.grid(axis="y")
@@ -1351,7 +1356,7 @@ def plot_backup_generation(
     df_all.columns = np.arange(2020, 2050, 5)
 
     # Create figure
-    plt.figure(figsize=(20, 5))
+    plt.figure(figsize=(18, 5))
 
     # Track x-axis positions
     x_positions = []
@@ -1394,8 +1399,8 @@ def plot_backup_generation(
     plt.ylim(0, 200)
 
     # Customize the plot
-    plt.title("Versorgung Backup-Kraftwerke (Strom)", fontsize=16)
-    plt.ylabel("TWh", fontsize=12)
+    plt.title("Versorgung Backup-Kraftwerke (Strom)", fontsize=22)
+    plt.ylabel("TWh", fontsize=16)
 
     # Create custom x-tick labels with group names below years
     x_ticks = np.concatenate(
@@ -1417,6 +1422,7 @@ def plot_backup_generation(
             horizontalalignment="center",
             verticalalignment="top",
             fontweight="bold",
+            fontsize=16,
         )
 
     plt.grid(axis="y")
@@ -1446,26 +1452,42 @@ def plot_elec_prices_spatial(
     df["elec_price"] = n.buses_t.marginal_price[buses].mean()
 
     # Netzentgelte, Annuität NEP 2045 - Annuität PyPSA 2045 / Stromverbrauch Pypsa 2045
-    # (19.38 - 12.56 ) / 1.234
+    pypsa_netzentgelt = (15.82 - 6.53) / 1.237
+    elec_price_de = df["elec_price"][df.index.str.contains("DE")]
+    max_above_mean = elec_price_de.max() - elec_price_de.mean()
 
-    # Create figure
-    fig, ax = plt.subplots(
-        1, 1, subplot_kw={"projection": ccrs.PlateCarree()}, figsize=(9, 6)
-    )
+    mean_with_netzentgelt = elec_price_de.mean() + pypsa_netzentgelt
+    # Calculate the difference from the mean_with_netzentgelt
+    df["elec_price_diff"] = mean_with_netzentgelt - df["elec_price"]
+
     crs = ccrs.PlateCarree()
 
+    # Calculate aspect ratio based on geographic extent
+    extent = [5, 16, 47, 56]  # Germany bounds
+    aspect_ratio = (extent[1] - extent[0]) / (extent[3] - extent[2])
+
+    # Set figure size dynamically based on aspect ratio
+    fig_width = 16  # You can adjust this value
+    fig_height = fig_width / aspect_ratio
+
+    # Create figure with two subplots
+    fig, (ax1, ax2) = plt.subplots(
+        1, 2, subplot_kw={"projection": crs}, figsize=(fig_width, 0.5 * fig_height)
+    )
+
+    # First subplot: elec_price
     mvs = df["elec_price"][df.index.str.contains("DE")]
     vmin = np.nanmin(mvs)
     vmax = np.nanmax(mvs)
 
-    ax.add_feature(cartopy.feature.BORDERS, edgecolor="black", linewidth=0.5)
-    ax.coastlines(edgecolor="black", linewidth=0.5)
-    ax.set_facecolor("white")
-    ax.add_feature(cartopy.feature.OCEAN, color="azure")
+    ax1.add_feature(cartopy.feature.BORDERS, edgecolor="black", linewidth=0.5)
+    ax1.coastlines(edgecolor="black", linewidth=0.5)
+    ax1.set_facecolor("white")
+    ax1.add_feature(cartopy.feature.OCEAN, color="azure")
 
     df[df.index.str.contains("DE")].to_crs(crs.proj4_init).plot(
-        column=f"elec_price",
-        ax=ax,
+        column="elec_price",
+        ax=ax1,
         cmap=plt.get_cmap("cividis_r"),
         linewidth=0.05,
         edgecolor="grey",
@@ -1479,19 +1501,173 @@ def plot_elec_prices_spatial(
         },
     )
 
-    # max_size = df[f"{carriers[i]}_gen"].max()
-    # df.to_crs(crs.proj4_init).centroid.plot(ax=ax, sizes=df[f"{carriers[i]}_gen"] / max_size *300,  color="black", edgecolor="white")
-    # pypsa.plot.add_legend_circles(ax=ax, sizes=[0.6], labels=["Generation magnitude"], patch_kw={'color': 'black', 'edgecolor': 'white'}, legend_kw={'loc': 'upper left'})
+    # Set geographic extent for Germany
+    ax1.set_extent(extent, crs)  # Germany bounds
+    ax1.set_aspect(aspect_ratio)
+
+    # Second subplot: elec_price_diff
+    mvs_diff = df["elec_price_diff"][df.index.str.contains("DE")]
+
+    ax2.add_feature(cartopy.feature.BORDERS, edgecolor="black", linewidth=0.5)
+    ax2.coastlines(edgecolor="black", linewidth=0.5)
+    ax2.set_facecolor("white")
+    ax2.add_feature(cartopy.feature.OCEAN, color="azure")
+
+    df[df.index.str.contains("DE")].to_crs(crs.proj4_init).plot(
+        column="elec_price_diff",
+        ax=ax2,
+        cmap=plt.get_cmap("Greens"),
+        linewidth=0.05,
+        edgecolor="grey",
+        vmax=np.nanmax(mvs_diff) + np.nanmin(mvs_diff),
+        vmin=0,
+        legend=True,
+        legend_kwds={
+            "label": "Durchschnittliche Preisreduktion für Endkunden($€/MWh$)",
+            "orientation": "vertical",
+            "shrink": 0.9,
+        },
+    )
 
     # Set geographic extent for Germany
-    ax.set_extent([5, 16, 47, 56], ccrs.PlateCarree())  # Germany bounds
-    # ax.set_title(f"{carriers[i]}", fontsize=16, **font1)
+    ax2.set_extent(extent, crs)  # Germany bounds
+    ax2.set_aspect(aspect_ratio)
 
-    # fig.suptitle(f"Spatial Differences in the electricity generation of the VRE technologies ({model})", fontsize=16, **font1)
+    # Adjust layout to place legends on the right
+
+    plt.suptitle(
+        "Nodale Strompreise und durchschnittliche Preisreduktion",
+        ha="center",
+        fontsize=16,
+        y=0.98,
+        x=0.5,
+    )
+    plt.subplots_adjust(right=0.85)
     fig.tight_layout()
-
-    # plt.close()
     plt.show()
+
+    fig.savefig(savepath, bbox_inches="tight")
+
+
+def plot_elec_prices_spatial_new(
+    network, tech_colors, savepath, onshore_regions, year="2045", region="DE"
+):
+
+    # onshore_regions = gpd.read_file("/home/julian-geis/repos/pypsa-ariadne-1/resources/20241203-force-onwind-south-49cl-disc/KN2045_Bal_v4/regions_onshore_base_s_49.geojson")
+    # onshore_regions = onshore_regions.set_index('name')
+
+    n = network
+    buses = n.buses[n.buses.carrier == "AC"].index
+
+    df = onshore_regions
+    df["elec_price"] = n.buses_t.marginal_price[buses].mean()
+
+    # Netzentgelte, Annuität NEP 2045 - Annuität PyPSA 2045 / Stromverbrauch Pypsa 2045
+    pypsa_netzentgelt = (6.53 + 27.51) / 1.237
+    nep_netzentgelt = (15.82 + 27.51) / 1.237
+    elec_price_de = df["elec_price"][df.index.str.contains("DE")]
+    max_above_mean = elec_price_de.max() - elec_price_de.mean()
+
+    # Calculate the difference from the mean_with_netzentgelt
+
+    df["elec_price_nep"] = elec_price_de.mean() + nep_netzentgelt
+    df["elec_price_pypsa"] = df["elec_price"] + pypsa_netzentgelt
+    df["elec_price_diff"] = df["elec_price_nep"] - df["elec_price_pypsa"]
+
+    crs = ccrs.PlateCarree()
+
+    # Calculate aspect ratio based on geographic extent
+    extent = [5, 16, 47, 56]  # Germany bounds
+    aspect_ratio = (extent[1] - extent[0]) / (extent[3] - extent[2])
+
+    # Set figure size dynamically based on aspect ratio
+    fig_width = 14  # You can adjust this value
+    fig_height = fig_width / aspect_ratio
+
+    # Create figure with two subplots
+    fig, (ax1, ax2) = plt.subplots(
+        1, 2, subplot_kw={"projection": crs}, figsize=(fig_width, 0.55 * fig_height)
+    )
+
+    # First subplot: elec_price
+    mvs = df["elec_price_pypsa"][df.index.str.contains("DE")]
+    vmin = np.nanmin(mvs)
+    vmax = max(np.nanmax(mvs), df["elec_price_nep"].unique().item())
+
+    ax1.add_feature(cartopy.feature.BORDERS, edgecolor="black", linewidth=0.5)
+    ax1.coastlines(edgecolor="black", linewidth=0.5)
+    ax1.set_facecolor("white")
+    ax1.add_feature(cartopy.feature.OCEAN, color="azure")
+    ax1.set_title("Durchschnittspreis, NEP Ausbau", pad=15)
+    img1 = (
+        df[df.index.str.contains("DE")]
+        .to_crs(crs.proj4_init)
+        .plot(
+            column="elec_price_nep",
+            ax=ax1,
+            linewidth=0.05,
+            edgecolor="grey",
+            legend=False,
+            vmin=vmin,
+            vmax=vmax,
+            cmap="viridis_r",
+        )
+    )
+
+    # Set geographic extent for Germany
+    ax1.set_extent(extent, crs)  # Germany bounds
+    ax1.set_aspect(aspect_ratio)
+
+    # Second subplot: elec_price_diff
+    ax2.add_feature(cartopy.feature.BORDERS, edgecolor="black", linewidth=0.5)
+    ax2.coastlines(edgecolor="black", linewidth=0.5)
+    ax2.set_facecolor("white")
+    ax2.add_feature(cartopy.feature.OCEAN, color="azure")
+    ax2.set_title("Nodale Preise, $PyPSA$-$DE$ Ausbau", pad=15)
+
+    img2 = (
+        df[df.index.str.contains("DE")]
+        .to_crs(crs.proj4_init)
+        .plot(
+            column="elec_price_diff",
+            ax=ax2,
+            cmap="viridis",
+            linewidth=0.05,
+            edgecolor="grey",
+            vmax=vmax - vmin,
+            vmin=0,
+            legend=False,
+        )
+    )
+
+    # Set geographic extent for Germany
+    ax2.set_extent(extent, crs)  # Germany bounds
+    ax2.set_aspect(aspect_ratio)
+
+    # Create a new axis for the colorbar at the bottom
+    cax2 = fig.add_axes([0.15, 0.14, 0.6, 0.03])  # [left, bottom, width, height]
+    cax1 = fig.add_axes([0.15, 0.00, 0.6, 0.03])  # [left, bottom, width, height]
+
+    # Add colorbar to the new axis
+    cbar1 = fig.colorbar(
+        img1.get_figure().get_axes()[0].collections[0],
+        cax=cax1,
+        orientation="horizontal",
+    )
+    cbar1.set_label("Börsenstrompreis zzgl. durchschnittlichem Netzentgelt [$€/MWh$]")
+    cbar1.set_ticklabels(np.linspace(vmax, vmin, 6).round(1))
+    cbar1.ax.invert_xaxis()
+
+    cbar2 = fig.colorbar(
+        img2.get_figure().get_axes()[0].collections[0],
+        cax=cax2,
+        orientation="horizontal",
+    )
+    cbar2.set_label("Durchschnittliche Preisreduktion für Endkunden [$€/MWh$]")
+    cbar2.set_ticklabels(np.linspace(0, vmax - vmin, 6).round(1))
+
+    plt.subplots_adjust(right=0.75, bottom=0.22)
+    # plt.show()
 
     fig.savefig(savepath, bbox_inches="tight")
 
@@ -1784,7 +1960,7 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
             / bus_size_factor
         )
     if specify_buses == "production":
-        bus_size_factor = 2e8
+        bus_size_factor = 4e8
         h2_producers = n.links.index[
             n.links.index.str.startswith("DE")
             & (n.links.bus1.map(n.buses.carrier) == "H2")
@@ -1806,7 +1982,7 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
         )
 
     if specify_buses == "consumption":
-        bus_size_factor = 2e8
+        bus_size_factor = 4e8
         # links
         h2_consumers_links = n.links.index[
             n.links.index.str.startswith("DE")
@@ -1998,30 +2174,38 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
     )
 
     # Set geographic extent for Germany
-    ax.set_extent([5.5, 15.5, 48.0, 56], crs=ccrs.PlateCarree())  # Germany bounds
+    ax.set_extent([5.5, 15.5, 47, 56], crs=ccrs.PlateCarree())
 
     if specify_buses is None:
         sizes = [5, 1]
         labels = [f"{s} GW" for s in sizes]
         sizes = [s / bus_size_factor * 1e3 for s in sizes]
         n_cols = 2
+        title = ""
     elif specify_buses == "production":
-        sizes = [10, 1]
+        sizes = [50, 25, 5]
         labels = [f"{s} TWh" for s in sizes]
         sizes = [s / bus_size_factor * 1e6 for s in sizes]
         n_cols = 2
+        title = "Wasserstoffinfrastruktur (Produktion)"
+        loc_patches = (0.8, -0.09)
     elif specify_buses == "consumption":
-        sizes = [10, 1]
+        sizes = [50, 25, 5]
         labels = [f"{s} TWh" for s in sizes]
         sizes = [s / bus_size_factor * 1e6 for s in sizes]
-        n_cols = 3
+        n_cols = 2
+        title = "Wasserstoffinfrastruktur (Verbrauch)"
+        loc_patches = (0.75, -0.16)
 
-    legend_kw = dict(
-        loc="upper left",
-        bbox_to_anchor=(0, 1),
-        labelspacing=0.8,
-        handletextpad=0,
-        frameon=False,
+    legend_kw_circles = dict(
+        loc="lower center",
+        bbox_to_anchor=(0.1, -0.15),
+        labelspacing=1.5,
+        handletextpad=0.5,
+        frameon=True,
+        facecolor="white",
+        fontsize=10,
+        ncol=1,
     )
 
     add_legend_circles(
@@ -2030,20 +2214,25 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
         labels,
         srid=n.srid,
         patch_kw=dict(facecolor="lightgrey"),
-        legend_kw=legend_kw,
+        legend_kw=legend_kw_circles,
     )
+    legend = ax.get_legend()
+    legend.get_frame().set_boxstyle("square, pad=0.7")
 
     sizes = [30, 10]
     labels = [f"{s} GW" for s in sizes]
     scale = 1e3 / linewidth_factor
     sizes = [s * scale for s in sizes]
 
-    legend_kw = dict(
-        loc="upper left",
-        bbox_to_anchor=(0.23, 1),
-        frameon=False,
-        labelspacing=0.8,
+    legend_kw_lines = dict(
+        loc="lower center",
+        bbox_to_anchor=(0.3, -0.07),
+        frameon=True,
+        labelspacing=0.5,
         handletextpad=1,
+        fontsize=10,
+        ncol=1,
+        facecolor="white",
     )
 
     add_legend_lines(
@@ -2051,8 +2240,10 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
         sizes,
         labels,
         patch_kw=dict(color="lightgrey"),
-        legend_kw=legend_kw,
+        legend_kw=legend_kw_lines,
     )
+    legend = ax.get_legend()
+    legend.get_frame().set_boxstyle("square, pad=0.7")
 
     colors = [tech_colors[c] for c in carriers] + [
         color_h2_pipe,
@@ -2067,16 +2258,19 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
 
     labels = [carriers_in_german.get(c, c) for c in labels]
 
-    legend_kw = dict(
-        loc="upper left",
-        bbox_to_anchor=(0, 1.13),
+    legend_kw_patches = dict(
+        loc="lower center",
+        bbox_to_anchor=loc_patches,
         ncol=n_cols,
-        frameon=False,
+        frameon=True,
+        facecolor="white",
+        fontsize=10,
     )
 
-    add_legend_patches(ax, colors, labels, legend_kw=legend_kw)
+    add_legend_patches(ax, colors, labels, legend_kw=legend_kw_patches)
 
     ax.set_facecolor("white")
+    ax.set_title(title, fontsize=16, pad=20)
     fig.savefig(savepath, bbox_inches="tight")
     plt.close()
 
@@ -2164,12 +2358,15 @@ def plot_elec_map_de(
     if expansion_case == "total-expansion":
         line_widths = total_exp_linew / linew_factor
         link_widths = total_exp_linkw / linkw_factor
+        title = "Stromnetzausbau (gesamt)"
     elif expansion_case == "startnetz":
         line_widths = startnetz_linew / linew_factor
         link_widths = startnetz_linkw / linkw_factor
+        title = "Stromnetzausbau (Startnetz)"
     elif expansion_case == "pypsa":
         line_widths = total_exp_noStart_linew / linew_factor
         link_widths = total_exp_noStart_linkw / linkw_factor
+        title = "Stromnetzausbau (nur modellseitig)"
     else:
         line_widths = None
         link_widths = None
@@ -2204,17 +2401,19 @@ def plot_elec_map_de(
     # Set geographic extent for Germany
     ax.set_extent([5.5, 15.5, 47, 56], crs=ccrs.PlateCarree())
 
-    sizes = [10, 5]
+    sizes = [40, 20, 10]
     labels = [f"{s} GW" for s in sizes]
     sizes = [s / bus_size_factor * 1e3 for s in sizes]
 
-    legend_kw = dict(
-        loc="upper left",
-        bbox_to_anchor=(0, 1),
+    legend_kw_circles = dict(
+        loc="lower center",
+        bbox_to_anchor=(0.15, -0.2),
         labelspacing=0.8,
-        handletextpad=0,
+        handletextpad=0.5,
         frameon=True,
         facecolor="white",
+        fontsize=14,
+        ncol=1,
     )
 
     add_legend_circles(
@@ -2223,8 +2422,11 @@ def plot_elec_map_de(
         labels,
         srid=m.srid,
         patch_kw=dict(facecolor="lightgrey"),
-        legend_kw=legend_kw,
+        legend_kw=legend_kw_circles,
     )
+    # ensure cirlce is not outside the box
+    legend = ax.get_legend()
+    legend.get_frame().set_boxstyle("square, pad=0.7")
 
     # AC
     sizes_ac = [10, 5]
@@ -2242,153 +2444,37 @@ def plot_elec_map_de(
     labels = labels_ac + labels_dc
     colors = [tech_colors["AC"]] * len(sizes_ac) + [tech_colors["DC"]] * len(sizes_dc)
 
-    legend_kw = dict(
-        loc=[0.2, 0.9],
+    legend_kw_lines = dict(
+        loc="lower center",
+        bbox_to_anchor=(0.65, -0.12),  # 0.7
         frameon=True,
         labelspacing=0.5,
         handletextpad=1,
-        fontsize=13,
+        fontsize=14,
         ncol=2,
         facecolor="white",
     )
 
-    add_legend_lines(ax, sizes, labels, colors=colors, legend_kw=legend_kw)
+    add_legend_lines(ax, sizes, labels, colors=colors, legend_kw=legend_kw_lines)
 
     colors = [tech_colors[c] for c in carriers]
     labels = carriers
-    legend_kw = dict(
-        loc="upper left",
-        bbox_to_anchor=(0, 0.9),
+
+    legend_kw_patches = dict(
+        loc="lower center",
+        bbox_to_anchor=(0.66, -0.24),
         ncol=2,
         frameon=True,
         facecolor="white",
+        fontsize=14,
     )
 
-    add_legend_patches(ax, colors, labels, legend_kw=legend_kw)
+    add_legend_patches(ax, colors, labels, legend_kw=legend_kw_patches)
+
+    ax.set_title(title, fontsize=16, pad=20)
+
     fig.savefig(savepath, bbox_inches="tight")
     plt.close()
-
-
-def plot_elec_trade(
-    networks,
-    planning_horizons,
-    tech_colors,
-    savepath,
-):
-    incoming_elec = []
-    outgoing_elec = []
-    for year in planning_horizons:
-        n = networks[planning_horizons.index(year)]
-        incoming_lines = n.lines[
-            (n.lines.bus0.str[:2] != "DE") & (n.lines.bus1.str[:2] == "DE")
-        ].index
-        outgoing_lines = n.lines[
-            (n.lines.bus0.str[:2] == "DE") & (n.lines.bus1.str[:2] != "DE")
-        ].index
-        incoming_links = n.links[
-            (n.links.carrier == "DC")
-            & (n.links.bus0.str[:2] != "DE")
-            & (n.links.bus1.str[:2] == "DE")
-        ].index
-        outgoing_links = n.links[
-            (n.links.carrier == "DC")
-            & (n.links.bus0.str[:2] == "DE")
-            & (n.links.bus1.str[:2] != "DE")
-        ].index
-        # positive when withdrawing power from bus0/bus1
-        incoming = n.lines_t.p1[incoming_lines].sum(axis=1).mul(
-            n.snapshot_weightings.generators, axis=0
-        ) + n.links_t.p1[incoming_links].sum(axis=1).mul(
-            n.snapshot_weightings.generators, axis=0
-        )
-        outgoing = n.lines_t.p0[outgoing_lines].sum(axis=1).mul(
-            n.snapshot_weightings.generators, axis=0
-        ) + n.links_t.p0[outgoing_links].sum(axis=1).mul(
-            n.snapshot_weightings.generators, axis=0
-        )
-        incoming_elec.append(
-            incoming[incoming < 0].abs().sum() + outgoing[outgoing > 0].sum()
-        )
-        outgoing_elec.append(
-            incoming[incoming > 0].sum() + outgoing[outgoing < 0].abs().sum()
-        )
-    elec_import = np.array(incoming_elec) / 1e6
-    elec_export = -np.array(outgoing_elec) / 1e6
-    net = elec_import + elec_export
-    x = np.arange(len(planning_horizons))
-
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.bar(x, elec_import, color=tech_colors["AC"], label="Import")
-    ax.bar(x, elec_export, color="#3f630f", label="Export")
-    ax.scatter(x, net, color="black", marker="x", label="Netto")
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(planning_horizons)
-    ax.axhline(0, color="black", linewidth=0.5)
-    ax.set_ylabel("Strom [TWh]")
-    ax.set_title("Strom Import/Export Deutschland")
-    ax.legend()
-
-    plt.tight_layout()
-    fig.savefig(savepath, bbox_inches="tight")
-
-
-def plot_h2_trade(
-    networks,
-    planning_horizons,
-    tech_colors,
-    savepath,
-):
-    incoming_h2 = []
-    outgoing_h2 = []
-    for year in planning_horizons:
-        n = networks[planning_horizons.index(year)]
-        incoming_links = n.links[
-            (n.links.carrier.str.contains("H2 pipeline"))
-            & (n.links.bus0.str[:2] != "DE")
-            & (n.links.bus1.str[:2] == "DE")
-        ].index
-        outgoing_links = n.links[
-            (n.links.carrier.str.contains("H2 pipeline"))
-            & (n.links.bus0.str[:2] == "DE")
-            & (n.links.bus1.str[:2] != "DE")
-        ].index
-        # positive when withdrawing power from bus0/bus1
-        incoming = (
-            n.links_t.p1[incoming_links]
-            .sum(axis=1)
-            .mul(n.snapshot_weightings.generators, axis=0)
-        )
-        outgoing = (
-            n.links_t.p0[outgoing_links]
-            .sum(axis=1)
-            .mul(n.snapshot_weightings.generators, axis=0)
-        )
-        incoming_h2.append(
-            incoming[incoming < 0].abs().sum() + outgoing[outgoing > 0].sum()
-        )
-        outgoing_h2.append(
-            incoming[incoming > 0].sum() + outgoing[outgoing < 0].abs().sum()
-        )
-    h2_import = np.array(incoming_h2) / 1e6
-    h2_export = -np.array(outgoing_h2) / 1e6
-    net = h2_import + h2_export
-    x = np.arange(len(planning_horizons))
-
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.bar(x, h2_import, color=tech_colors["H2 pipeline"], label="Import")
-    ax.bar(x, h2_export, color=tech_colors["H2 pipeline (Kernnetz)"], label="Export")
-    ax.scatter(x, net, color="black", marker="x", label="Netto")
-
-    ax.set_xticks(x)
-    ax.set_xticklabels(planning_horizons)
-    ax.axhline(0, color="black", linewidth=0.5)
-    ax.set_ylabel("H2 [TWh]")
-    ax.set_title("Wasserstoff Import/Export Deutschland")
-    ax.legend()
-
-    plt.tight_layout()
-    fig.savefig(savepath, bbox_inches="tight")
 
 
 # electricity capacity map
@@ -2655,6 +2741,10 @@ if __name__ == "__main__":
     tech_colors["urban decentral oil boiler"] = tech_colors["oil boiler"]
     tech_colors["rural oil boiler"] = tech_colors["oil boiler"]
     tech_colors["rural ground heat pump"] = tech_colors["ground heat pump"]
+    tech_colors["H2 OCGT"] = "#3b4cc0"
+    tech_colors["H2 retrofit OCGT"] = "#9abbff"
+    tech_colors["urban central H2 CHP"] = "#c9d7f0"
+    tech_colors["urban central H2 retrofit CHP"] = "#edd1c2"
 
     ### plotting
     for year in planning_horizons:
@@ -2834,7 +2924,7 @@ if __name__ == "__main__":
     regions = gpd.read_file(snakemake.input.regions_onshore_clustered).set_index("name")
 
     year = 2045
-    plot_elec_prices_spatial(
+    plot_elec_prices_spatial_new(
         network=networks[planning_horizons.index(year)].copy(),
         tech_colors=tech_colors,
         onshore_regions=regions,
@@ -2872,13 +2962,6 @@ if __name__ == "__main__":
             )
             del network
 
-    plot_h2_trade(
-        networks,
-        planning_horizons,
-        tech_colors,
-        savepath=f"{snakemake.output.h2_transmission}/h2-trade-DE.png",
-    )
-
     ## electricity transmission
     logger.info("Plotting electricity transmission")
     for year in planning_horizons:
@@ -2898,13 +2981,6 @@ if __name__ == "__main__":
             regions_de,
             savepath=f"{snakemake.output.elec_transmission}/elec-cap-DE-{year}.png",
         )
-
-    plot_elec_trade(
-        networks,
-        planning_horizons,
-        tech_colors,
-        savepath=f"{snakemake.output.elec_transmission}/elec-trade-DE.png",
-    )
 
     ## nodal balances general (might not be very robust)
     logger.info("Plotting nodal balances")
