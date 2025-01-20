@@ -4,6 +4,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+import locale
 from datetime import datetime
 from itertools import compress, islice
 from multiprocessing import Pool
@@ -19,8 +20,6 @@ import pypsa
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from matplotlib.ticker import FuncFormatter
-import locale
-import matplotlib.dates as mdates
 from pypsa.plot import add_legend_lines
 
 path = "../submodules/pypsa-eur/scripts"
@@ -402,9 +401,11 @@ def plot_nodal_elec_balance(
     title="Electricity balance",
 ):
 
-    if resample=="D" and network.snapshots.size < 365:
+    if resample == "D" and network.snapshots.size < 365:
         # code is not working at low resolution!
-        logger.error("Temporal resolution does not allow for daily resampling! Please use hihger resolution results or change the 'resample' flag.")
+        logger.error(
+            "Temporal resolution does not allow for daily resampling! Please use hihger resolution results or change the 'resample' flag."
+        )
         return
 
     carriers = carriers
@@ -513,25 +514,32 @@ def plot_nodal_elec_balance(
     df = nb
     # split into df with positive and negative values
     df_neg, df_pos = df.clip(upper=0), df.clip(lower=0)
-    
+
     df_pos["solar"] = (
-        df_pos.get("solar", 0) + 
-        df_pos.get("Solar", 0) + 
-        df_pos.get("solar-hsat", 0) + 
-        df_pos.get("solar rooftop", 0) +
-        df_pos.get("solar thermal", 0))
+        df_pos.get("solar", 0)
+        + df_pos.get("Solar", 0)
+        + df_pos.get("solar-hsat", 0)
+        + df_pos.get("solar rooftop", 0)
+        + df_pos.get("solar thermal", 0)
+    )
 
     columns_to_drop = ["solar-hsat", "Solar", "solar rooftop", "solar thermal"]
-    df_pos = df_pos.drop(columns=[col for col in columns_to_drop if col in df_pos.columns])
+    df_pos = df_pos.drop(
+        columns=[col for col in columns_to_drop if col in df_pos.columns]
+    )
 
     df_neg = df_neg[df_neg.sum().sort_values().index]
 
     fig, ax = plt.subplots(figsize=(14, 12))
     # Reorder the DataFrame columns based on the preferred order
-    df_pos["Stromimport"] = df["Electricity trade"].where(df["Electricity trade"] > 0).fillna(0)
+    df_pos["Stromimport"] = (
+        df["Electricity trade"].where(df["Electricity trade"] > 0).fillna(0)
+    )
     df_pos = df_pos.drop(columns=["Electricity trade"], errors="ignore")
     df_pos = df_pos.rename(columns={"urban central H2 CHP": "H2 CHP"})
-    df_pos['other'] = df_pos.drop(columns=preferred_order_pos, errors="ignore").sum(axis=1)
+    df_pos["other"] = df_pos.drop(columns=preferred_order_pos, errors="ignore").sum(
+        axis=1
+    )
 
     df_pos = df_pos.reindex(columns=preferred_order_pos)
     ax = df_pos.plot.area(ax=ax, stacked=True, color=pos_c, linewidth=0.0)
@@ -540,13 +548,15 @@ def plot_nodal_elec_balance(
     f = lambda c: "out_" + c
     cols = [f(c) if (c in df_pos.columns) else c for c in df_neg.columns]
     cols_map = dict(zip(df_neg.columns, cols))
-    df_neg["Stromexport"] = df["Electricity trade"].where(df["Electricity trade"] < 0).fillna(0)
-    df_neg = df_neg.drop(columns=["Electricity trade"], errors="ignore")
-    df_neg['Sonstige'] = df_neg.drop(columns=preferred_order_neg, errors="ignore").sum(axis=1)
-    df_neg = df_neg.reindex(columns=preferred_order_neg)
-    ax = df_neg.plot.area(
-        ax=ax, stacked=True, color=neg_c, linewidth=0.0
+    df_neg["Stromexport"] = (
+        df["Electricity trade"].where(df["Electricity trade"] < 0).fillna(0)
     )
+    df_neg = df_neg.drop(columns=["Electricity trade"], errors="ignore")
+    df_neg["Sonstige"] = df_neg.drop(columns=preferred_order_neg, errors="ignore").sum(
+        axis=1
+    )
+    df_neg = df_neg.reindex(columns=preferred_order_neg)
+    ax = df_neg.plot.area(ax=ax, stacked=True, color=neg_c, linewidth=0.0)
 
     # plot lmps
     if plot_lmps:
@@ -600,18 +610,25 @@ def plot_nodal_elec_balance(
     handles, labels = ax.get_legend_handles_labels()
     if german_carriers:
         labels = [carriers_in_german.get(l, l) for l in labels]
-    
+
     # Split into "Erzeugung" and "Verbrauch"
     erzeugung_handles = handles[:17]
     erzeugung_labels = labels[:17]
     verbrauch_handles = handles[17:]
     verbrauch_labels = labels[17:]
-    subtitle_erzeugung = Patch(color='none', label='Erzeugung')
-    subtitle_verbrauch = Patch(color='none', label='Verbrauch') 
+    subtitle_erzeugung = Patch(color="none", label="Erzeugung")
+    subtitle_verbrauch = Patch(color="none", label="Verbrauch")
 
     # Combine all handles and labels
-    combined_handles = [subtitle_erzeugung] + erzeugung_handles + [subtitle_verbrauch] + verbrauch_handles
-    combined_labels = ['Erzeugung'] + erzeugung_labels + ['Verbrauch'] + verbrauch_labels
+    combined_handles = (
+        [subtitle_erzeugung]
+        + erzeugung_handles
+        + [subtitle_verbrauch]
+        + verbrauch_handles
+    )
+    combined_labels = (
+        ["Erzeugung"] + erzeugung_labels + ["Verbrauch"] + verbrauch_labels
+    )
 
     legend = ax.legend(
         combined_handles,
@@ -627,11 +644,21 @@ def plot_nodal_elec_balance(
         patch.set_height(10)
 
     ax.set_ylabel(ylabel)
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%B'))
-    
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%B"))
+
     german_months = [
-        "Jan", "Feb", "März", "Apr", "Mai", "Juni",
-        "Juli", "Aug", "Sept", "Okt", "Nov", "Dez"
+        "Jan",
+        "Feb",
+        "März",
+        "Apr",
+        "Mai",
+        "Juni",
+        "Juli",
+        "Aug",
+        "Sept",
+        "Okt",
+        "Nov",
+        "Dez",
     ]
 
     # Custom formatter function
@@ -644,7 +671,7 @@ def plot_nodal_elec_balance(
 
     # Manually set ticks to avoid duplicating December
     ticks = ax.get_xticks()
-    ax.set_xticks(ticks[:-1]) 
+    ax.set_xticks(ticks[:-1])
     ax.set_xlabel("")
     ax.set_title(
         f"{title} {model_run}",
@@ -1045,7 +1072,7 @@ def plot_storage(
 
         if c in ["battery", "EV battery", "Li ion", "PHS", "hydro"]:
             ax1.plot(
-                charge / 1e6, # max_stor_cap,
+                charge / 1e6,  # max_stor_cap,
                 label=c,
                 color=tech_colors[c],
                 marker=markers[i],
@@ -1056,7 +1083,7 @@ def plot_storage(
 
         else:
             ax2.plot(
-                charge / 1e6, # max_stor_cap,
+                charge / 1e6,  # max_stor_cap,
                 label=ger[c],
                 color=tech_colors[c],
                 marker=markers[i],
