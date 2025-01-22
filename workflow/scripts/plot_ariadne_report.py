@@ -1650,7 +1650,7 @@ def plot_elec_prices_spatial_new(
     ax2.coastlines(edgecolor="black", linewidth=0.5)
     ax2.set_facecolor("white")
     ax2.add_feature(cartopy.feature.OCEAN, color="azure")
-    ax2.set_title("Nodale Preise, $PyPSA$-$DE$ Ausbau", pad=15)
+    ax2.set_title("Regionale Preiszonen, $PyPSA$-$DE$ Ausbau", pad=15)
 
     img2 = (
         df[df.index.str.contains("DE")]
