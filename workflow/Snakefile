@@ -572,6 +572,7 @@ rule plot_ariadne_variables:
         Kernnetz_Investment_plot=RESULTS + "ariadne/Kernnetz_Investment_plot.png",
         elec_trade=RESULTS + "ariadne/elec-trade-DE.png",
         h2_trade=RESULTS + "ariadne/h2-trade-DE.png",
+        trade_balance=RESULTS + "ariadne/trade-balance-DE.png",
     log:
         RESULTS + "logs/plot_ariadne_variables.log",
     script:

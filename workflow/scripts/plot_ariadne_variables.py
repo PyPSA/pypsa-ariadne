@@ -8,6 +8,71 @@ import pandas as pd
 TWh2PJ = 3.6
 
 
+def plot_trade(
+    df,
+    savepath,
+):  
+    # WARNING CODE DUPLICATION
+    # WARNING i just asked COPILOT to reformat the two plots below
+    # load data and convert to TWh
+    h2_balance = (
+        df.loc["Trade|Secondary Energy|Hydrogen|Volume"] / TWh2PJ * -1
+    )  # exports-imports
+    h2_import = df.loc["Trade|Secondary Energy|Hydrogen|Gross Import|Volume"] / TWh2PJ
+    h2_export = h2_balance - h2_import
+
+    elec_balance = (
+        df.loc["Trade|Secondary Energy|Electricity|Volume"] / TWh2PJ * -1
+    )  # exports-imports
+    elec_import = (
+        df.loc["Trade|Secondary Energy|Electricity|Gross Import|Volume"] / TWh2PJ
+    )
+    elec_export = elec_balance - elec_import
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
+
+    # Plot Electricity Trade
+    ax1.bar(
+        elec_import.columns, elec_import.loc["PJ/yr"], color="#70af1d", label="Import"
+    )
+    ax1.bar(
+        elec_export.columns, elec_export.loc["PJ/yr"], color="#3f630f", label="Export"
+    )
+    ax1.scatter(
+        elec_balance.columns,
+        elec_balance.loc["PJ/yr"],
+        color="black",
+        marker="x",
+        label="Netto",
+    )
+    ax1.set_xticks(elec_balance.columns)
+    ax1.set_xticklabels(elec_balance.columns)
+    ax1.axhline(0, color="black", linewidth=0.5)
+    ax1.set_ylabel("TWh")
+    ax1.set_title("Stromaustausch")
+    ax1.legend(loc="upper left")
+
+    # Plot Hydrogen Trade
+    ax2.bar(h2_import.columns, h2_import.loc["PJ/yr"], color="#f081dc", label="Import")
+    ax2.bar(h2_export.columns, h2_export.loc["PJ/yr"], color="#6b3161", label="Export")
+    ax2.scatter(
+        h2_balance.columns,
+        h2_balance.loc["PJ/yr"],
+        color="black",
+        marker="x",
+        label="Netto",
+    )
+    ax2.set_xticks(h2_balance.columns)
+    ax2.set_xticklabels(h2_balance.columns)
+    ax2.axhline(0, color="black", linewidth=0.5)
+    ax2.set_ylabel("TWh")
+    ax2.set_title("Wasserstoffaustausch")
+    ax2.legend()
+
+    plt.tight_layout()
+    fig.savefig(savepath, bbox_inches="tight")
+
+
 def plot_h2_trade(
     df,
     savepath,
@@ -1014,4 +1079,9 @@ if __name__ == "__main__":
     plot_h2_trade(
         df,
         savepath=snakemake.output.h2_trade,
+    )
+
+    plot_trade(
+        df,
+        savepath=snakemake.output.trade_balance,
     )
