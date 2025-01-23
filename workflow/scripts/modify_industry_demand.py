@@ -62,7 +62,7 @@ if __name__ == "__main__":
         )
         .loc[
             leitmodell,
-            snakemake.config["iiasa_database"]["reference_scenario"],
+            snakemake.params.reference_scenario,
             "Deutschland",
             :,
             "Mt/yr",
