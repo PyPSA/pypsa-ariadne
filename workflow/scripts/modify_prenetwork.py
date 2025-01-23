@@ -1296,7 +1296,7 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "modify_prenetwork",
             simpl="",
-            clusters=49,
+            clusters=27,
             opts="",
             ll="vopt",
             sector_opts="none",
