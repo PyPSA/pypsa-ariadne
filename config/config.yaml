@@ -4,7 +4,7 @@
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#run
 run:
-  prefix: 20250122-force-onwind-south
+  prefix: 20250122-demand-scenarios
   name:
   # - CurrentPolicies
   - KN2045_Bal_v4
@@ -14,8 +14,8 @@ run:
   # - KN2045plus_LowDemand
   # - KN2045minus_WorstCase
   # - KN2045minus_SupplyFocus
-  - KN2045_Bal_LowDemand
-  - KN2045_Bal_HighDemand
+  # - KN2045_Bal_LowDemand
+  # - KN2045_Bal_HighDemand
   scenarios:
     enable: true
     manual_file: config/scenarios.manual.yaml
@@ -350,9 +350,6 @@ sector:
 
 # docs in https://pypsa-eur.readthedocs.io/en/latest/configuration.html#industry
 industry:
-  steam_biomass_fraction: 0.4
-  steam_hydrogen_fraction: 0.3
-  steam_electricity_fraction: 0.3
   ammonia: false
   St_primary_fraction:
     2020: 0.6
