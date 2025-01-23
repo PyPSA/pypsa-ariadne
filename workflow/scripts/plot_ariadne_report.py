@@ -2714,9 +2714,7 @@ if __name__ == "__main__":
 
     # Hack the transmission projects
     networks = [
-        process_postnetworks(
-            n.copy(), _networks[0], int(my), snakemake, c, modelyears
-        )
+        process_postnetworks(n.copy(), _networks[0], int(my), snakemake, c, modelyears)
         for n, my, c in zip(_networks, modelyears, costs)
     ]
     del _networks
