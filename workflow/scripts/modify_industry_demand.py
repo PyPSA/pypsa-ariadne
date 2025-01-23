@@ -131,8 +131,7 @@ if __name__ == "__main__":
         "DE", ["Electric arc", "Integrated steelworks", "DRI + Electric arc"]
     ] = (ratio * ariadne.loc["Production|Steel", year])
 
-    logger.info(
-        "German demand after modification")
+    logger.info("German demand after modification")
     logger.info(
         existing_industry.loc[
             "DE",
