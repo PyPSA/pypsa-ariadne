@@ -5483,9 +5483,7 @@ if __name__ == "__main__":
     modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
     # Hack the transmission projects
     networks = [
-        process_postnetworks(
-            n.copy(), _networks[0], int(my), snakemake, c
-        )
+        process_postnetworks(n.copy(), _networks[0], int(my), snakemake, c)
         for n, my, c in zip(_networks, modelyears, costs)
     ]
 
