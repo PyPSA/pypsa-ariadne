@@ -185,7 +185,8 @@ def write_to_scenario_yaml(input, output, scenarios, df):
             co2_budget_source,
         )
 
-        config[scenario]["sector"] = {}
+        if not config[scenario].get("sector"):
+            config[scenario]["sector"] = {}
 
         config[scenario]["sector"]["aviation_demand_factor"] = {}
         for year in planning_horizons:
