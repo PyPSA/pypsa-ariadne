@@ -5179,7 +5179,7 @@ def hack_AC_projects(n, s_nom_start, model_year, snakemake):
     return n
 
 
-def process_postnetworks(n, n_start, model_year, snakemake, costs, modelyears):
+def process_postnetworks(n, n_start, model_year, snakemake, costs):
     post_discretization = snakemake.params.post_discretization
 
     # logger.info("Post-Discretizing H2 pipeline")
@@ -5211,15 +5211,14 @@ def process_postnetworks(n, n_start, model_year, snakemake, costs, modelyears):
     n.links.loc[h2_links_kern, "overnight_cost"] = overnight_costs
 
     logger.info("Assing average Kernnetz cost to carrier H2 pipeline (Kernnetz)")
-    current_costs = costs[modelyears.index(str(model_year))]
     h2_links_kern = n.links.query("carrier == 'H2 pipeline (Kernnetz))'").index
     capital_costs = (
-        0.7 * current_costs.at["H2 (g) pipeline", "fixed"]
-        + 0.3 * current_costs.at["H2 (g) pipeline repurposed", "fixed"]
+        0.7 * costs.at["H2 (g) pipeline", "fixed"]
+        + 0.3 * costs.at["H2 (g) pipeline repurposed", "fixed"]
     ) * n.links.loc[h2_links_kern, "length"]
     overnight_costs = (
-        0.7 * current_costs.at["H2 (g) pipeline", "investment"]
-        + 0.3 * current_costs.at["H2 (g) pipeline repurposed", "investment"]
+        0.7 * costs.at["H2 (g) pipeline", "investment"]
+        + 0.3 * costs.at["H2 (g) pipeline repurposed", "investment"]
     ) * n.links.loc[h2_links_kern, "length"]
     n.links.loc[h2_links_kern, "capital_cost"] = capital_costs
     n.links.loc[h2_links_kern, "overnight_cost"] = overnight_costs
@@ -5484,7 +5483,9 @@ if __name__ == "__main__":
     modelyears = [fn[-7:-3] for fn in snakemake.input.networks]
     # Hack the transmission projects
     networks = [
-        process_postnetworks(n.copy(), _networks[0], int(my), snakemake, c, modelyears)
+        process_postnetworks(
+            n.copy(), _networks[0], int(my), snakemake, c
+        )
         for n, my, c in zip(_networks, modelyears, costs)
     ]
 
