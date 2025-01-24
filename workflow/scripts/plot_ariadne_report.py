@@ -2316,7 +2316,6 @@ def plot_elec_map_de(
 
     m = network.copy()
     m.remove("Bus", m.buses[m.buses.x == 0].index)
-    m.remove("Bus", m.buses[m.buses.x == 0].index)
     m.buses.drop(m.buses.index[m.buses.carrier != "AC"], inplace=True)
 
     m_base = base_network.copy()
