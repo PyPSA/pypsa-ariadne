@@ -256,7 +256,7 @@ wasserstoff_kernnetz:
   enable: true
   reload_locations: false
   divide_pipes: true
-  pipes_segment_length: 10
+  pipes_segment_length: 50
   border_crossing: true
   aggregate_build_years: "mean"
   recalculate_length: true
