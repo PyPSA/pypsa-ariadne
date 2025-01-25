@@ -206,18 +206,31 @@ def add_wasserstoff_kernnetz(n, wkn, costs):
 
         names = wkn_new.index + f"-kernnetz-{investment_year}"
 
-        capital_costs = np.where(
-            wkn_new.retrofitted == False,
-            costs.at["H2 (g) pipeline", "fixed"] * wkn_new.length.values,
-            costs.at["H2 (g) pipeline repurposed", "fixed"] * wkn_new.length.values,
-        )
+        # capital_costs = np.where(
+        #     wkn_new.retrofitted == False,
+        #     costs.at["H2 (g) pipeline", "fixed"] * wkn_new.length.values,
+        #     costs.at["H2 (g) pipeline repurposed", "fixed"] * wkn_new.length.values,
+        # )
 
-        overnight_costs = np.where(
-            wkn_new.retrofitted == False,
-            costs.at["H2 (g) pipeline", "investment"] * wkn_new.length.values,
-            costs.at["H2 (g) pipeline repurposed", "investment"]
-            * wkn_new.length.values,
-        )
+        # overnight_costs = np.where(
+        #     wkn_new.retrofitted == False,
+        #     costs.at["H2 (g) pipeline", "investment"] * wkn_new.length.values,
+        #     costs.at["H2 (g) pipeline repurposed", "investment"]
+        #     * wkn_new.length.values,
+        # )
+
+        # fix: pipes from Kernnetz data in the model are over-proportinally many retrofitted projects as they are longer
+        # do not use own cost data for retrofitted and new build pipes as this would underestimate the investment cost
+        # reconstruct average Kernnetz invest (250€/MW*km) from our costs data
+
+        capital_costs = (
+            0.7 * costs.at["H2 (g) pipeline", "fixed"]
+            + 0.3 * costs.at["H2 (g) pipeline repurposed", "fixed"]
+        ) * wkn_new.length.values
+        overnight_costs = (
+            0.7 * costs.at["H2 (g) pipeline", "investment"]
+            + 0.3 * costs.at["H2 (g) pipeline repurposed", "investment"]
+        ) * wkn_new.length.values
 
         lifetime = np.where(
             wkn_new.retrofitted == False,
