@@ -4049,11 +4049,11 @@ def get_grid_investments(
 
     dg_capacity = distribution_grid.p_nom_opt.sum()
     if scope == "expanded":
-        dg_capacity -= -distribution_grid[
+        dg_capacity -= distribution_grid[
             distribution_grid.build_year <= year_pre
         ].p_nom_opt.sum()
     elif scope == "baseyear":
-        dg_capacity -= -distribution_grid[
+        dg_capacity -= distribution_grid[
             distribution_grid.build_year <= 2020
         ].p_nom_opt.sum()
 
