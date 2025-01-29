@@ -1576,9 +1576,7 @@ def plot_elec_prices_spatial(
     fig.savefig(savepath, bbox_inches="tight")
 
 
-def plot_elec_prices_spatial_new(
-    network, savepath, onshore_regions, lang="ger"
-):
+def plot_elec_prices_spatial_new(network, savepath, onshore_regions, lang="ger"):
     if lang == "ger":
         title1 = "Durchschnittspreis, NEP Ausbau"
         cbar1_label = "Börsenstrompreis zzgl. durchschnittlichem Netzentgelt [$€/MWh$]"
@@ -2979,7 +2977,6 @@ if __name__ == "__main__":
         lang="eng",
     )
 
-
     ## hydrogen transmission
     logger.info("Plotting hydrogen transmission")
     map_opts = snakemake.params.plotting["map"]
@@ -3024,14 +3021,14 @@ if __name__ == "__main__":
             )
         s = "total-expansion"
         plot_elec_map_de(
-                networks[planning_horizons.index(year)],
-                networks[planning_horizons.index(2020)],
-                tech_colors,
-                regions_de,
-                savepath=f"{snakemake.output.elec_transmission}/elec-transmission-DE-{s}-{year}_eng.png",
-                expansion_case=s,
-                lang="eng",
-            )
+            networks[planning_horizons.index(year)],
+            networks[planning_horizons.index(2020)],
+            tech_colors,
+            regions_de,
+            savepath=f"{snakemake.output.elec_transmission}/elec-transmission-DE-{s}-{year}_eng.png",
+            expansion_case=s,
+            lang="eng",
+        )
         plot_cap_map_de(
             networks[planning_horizons.index(year)],
             tech_colors,

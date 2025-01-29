@@ -680,7 +680,8 @@ rule plot_ariadne_report:
         backup_capacity=RESULTS + "ariadne/report/backup_capacity.png",
         backup_generation=RESULTS + "ariadne/report/backup_generation.png",
         elec_prices_spatial_de_ger=RESULTS + "ariadne/report/elec_prices_spatial_de.png",
-        elec_prices_spatial_de_eng=RESULTS + "ariadne/report/elec_prices_spatial_de_eng.png",
+        elec_prices_spatial_de_eng=RESULTS
+        + "ariadne/report/elec_prices_spatial_de_eng.png",
         results=directory(RESULTS + "ariadne/report"),
         elec_transmission=directory(RESULTS + "ariadne/report/elec_transmission"),
         h2_transmission=directory(RESULTS + "ariadne/report/h2_transmission"),
