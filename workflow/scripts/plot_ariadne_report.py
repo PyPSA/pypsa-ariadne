@@ -1577,12 +1577,20 @@ def plot_elec_prices_spatial(
 
 
 def plot_elec_prices_spatial_new(
-    network, tech_colors, savepath, onshore_regions, year="2045", region="DE"
+    network, savepath, onshore_regions, lang="ger"
 ):
-
-    # onshore_regions = gpd.read_file("/home/julian-geis/repos/pypsa-ariadne-1/resources/20241203-force-onwind-south-49cl-disc/KN2045_Bal_v4/regions_onshore_base_s_49.geojson")
-    # onshore_regions = onshore_regions.set_index('name')
-
+    if lang == "ger":
+        title1 = "Durchschnittspreis, NEP Ausbau"
+        cbar1_label = "Börsenstrompreis zzgl. durchschnittlichem Netzentgelt [$€/MWh$]"
+        title2 = "Regionale Preiszonen, $PyPSA$-$DE$ Ausbau"
+        cbar2_label = "Durchschnittliche Preisreduktion für Endkunden [$€/MWh$]"
+    elif lang == "eng":
+        title1 = "Average price, NEP expansion"
+        cbar1_label = "Wholesale price plus average grid tariff [$€/MWh$]"
+        title2 = "Regional price zones, $PyPSA$-$DE$ expansion"
+        cbar2_label = "Average price reduction for end customers [$€/MWh$]"
+    else:
+        raise ValueError("lang must be 'ger' or 'eng'")
     n = network
     buses = n.buses[n.buses.carrier == "AC"].index
 
@@ -1625,7 +1633,8 @@ def plot_elec_prices_spatial_new(
     ax1.coastlines(edgecolor="black", linewidth=0.5)
     ax1.set_facecolor("white")
     ax1.add_feature(cartopy.feature.OCEAN, color="azure")
-    ax1.set_title("Durchschnittspreis, NEP Ausbau", pad=15)
+
+    ax1.set_title(title1, pad=15)
     img1 = (
         df[df.index.str.contains("DE")]
         .to_crs(crs.proj4_init)
@@ -1650,7 +1659,7 @@ def plot_elec_prices_spatial_new(
     ax2.coastlines(edgecolor="black", linewidth=0.5)
     ax2.set_facecolor("white")
     ax2.add_feature(cartopy.feature.OCEAN, color="azure")
-    ax2.set_title("Regionale Preiszonen, $PyPSA$-$DE$ Ausbau", pad=15)
+    ax2.set_title(title2, pad=15)
 
     img2 = (
         df[df.index.str.contains("DE")]
@@ -1681,7 +1690,7 @@ def plot_elec_prices_spatial_new(
         cax=cax1,
         orientation="horizontal",
     )
-    cbar1.set_label("Börsenstrompreis zzgl. durchschnittlichem Netzentgelt [$€/MWh$]")
+    cbar1.set_label(cbar1_label)
     cbar1.set_ticklabels(np.linspace(vmax, vmin, 6).round(1))
     cbar1.ax.invert_xaxis()
 
@@ -1690,7 +1699,7 @@ def plot_elec_prices_spatial_new(
         cax=cax2,
         orientation="horizontal",
     )
-    cbar2.set_label("Durchschnittliche Preisreduktion für Endkunden [$€/MWh$]")
+    cbar2.set_label(cbar2_label)
     cbar2.set_ticklabels(np.linspace(0, vmax - vmin, 6).round(1))
 
     plt.subplots_adjust(right=0.75, bottom=0.22)
@@ -2312,6 +2321,7 @@ def plot_elec_map_de(
     regions_de,
     savepath,
     expansion_case="total-expansion",
+    lang="ger",
 ):
 
     m = network.copy()
@@ -2385,7 +2395,10 @@ def plot_elec_map_de(
     if expansion_case == "total-expansion":
         line_widths = total_exp_linew / linew_factor
         link_widths = total_exp_linkw / linkw_factor
-        title = "Stromnetzausbau (gesamt)"
+        if lang == "ger":
+            title = "Stromnetzausbau (gesamt)"
+        else:
+            title = "Electricity grid expansion (total)"
     elif expansion_case == "startnetz":
         line_widths = startnetz_linew / linew_factor
         link_widths = startnetz_linkw / linkw_factor
@@ -2411,7 +2424,10 @@ def plot_elec_map_de(
         link_widths=link_widths.clip(0),
         link_colors=tech_colors["DC"],
     )
-
+    if lang == "ger":
+        label = "Batteriespeicher [GWh]"
+    else:
+        label = "Battery storage [GWh]"
     regions_de.plot(
         ax=ax,
         column="battery",
@@ -2419,7 +2435,7 @@ def plot_elec_map_de(
         linewidths=0,
         legend=True,
         legend_kwds={
-            "label": "Batteriespeicher [GWh]",
+            "label": label,
             "shrink": 0.7,
             "extend": "max",
         },
@@ -2953,12 +2969,16 @@ if __name__ == "__main__":
     year = 2045
     plot_elec_prices_spatial_new(
         network=networks[planning_horizons.index(year)].copy(),
-        tech_colors=tech_colors,
         onshore_regions=regions,
-        savepath=snakemake.output.elec_prices_spatial_de,
-        region="DE",
-        year=year,
+        savepath=snakemake.output.elec_prices_spatial_de_ger,
     )
+    plot_elec_prices_spatial_new(
+        network=networks[planning_horizons.index(year)].copy(),
+        onshore_regions=regions,
+        savepath=snakemake.output.elec_prices_spatial_de_eng,
+        lang="eng",
+    )
+
 
     ## hydrogen transmission
     logger.info("Plotting hydrogen transmission")
@@ -3001,6 +3021,16 @@ if __name__ == "__main__":
                 regions_de,
                 savepath=f"{snakemake.output.elec_transmission}/elec-transmission-DE-{s}-{year}.png",
                 expansion_case=s,
+            )
+        s = "total-expansion"
+        plot_elec_map_de(
+                networks[planning_horizons.index(year)],
+                networks[planning_horizons.index(2020)],
+                tech_colors,
+                regions_de,
+                savepath=f"{snakemake.output.elec_transmission}/elec-transmission-DE-{s}-{year}_eng.png",
+                expansion_case=s,
+                lang="eng",
             )
         plot_cap_map_de(
             networks[planning_horizons.index(year)],
