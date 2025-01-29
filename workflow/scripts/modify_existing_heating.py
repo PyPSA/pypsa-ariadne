@@ -41,7 +41,7 @@ if __name__ == "__main__":
         "million",
     ]
 
-    logger.info("Heating demand before modification:{existing_heating.loc['Germany']}")
+    logger.info(f"Heating demand before modification:{existing_heating.loc['Germany']}")
 
     mapping = {
         "gas boiler": "Gas Boiler",
@@ -50,6 +50,8 @@ if __name__ == "__main__":
         "ground heat pump": "Heat Pump|Electrical|Ground",
         "biomass boiler": "Biomass Boiler",
     }
+
+    new_values = pd.Series()
 
     year = "2020"
     for tech in mapping:
@@ -63,10 +65,32 @@ if __name__ == "__main__":
             * existing_heating.loc["Germany"].sum()
             / ariadne.at[f"Stock|Space Heating", year]
         )
+        new_values[tech] = peak
+
+    if any(new_values.isna()):
+        logger.warning(
+            f"Missing values for {new_values[new_values.isna()].index.to_list()}. Switching to hard coded values from a previous REMod run."
+        )
+
+        total_stock = 23.28  # million
+        existing_factor = existing_heating.loc["Germany"].sum() / total_stock
+
+        new_values["gas boiler"] = 11.44
+        new_values["oil boiler"] = 5.99
+        new_values["air heat pump"] = 0.38
+        new_values["ground heat pump"] = 0.38
+        new_values["biomass boiler"] = 2.8
+
+        logger.info(new_values)
+        logger.warning(f"Total stock: {total_stock}, New stock: {new_values.sum()}")
+        logger.warning(f"District heating is not correctly accounted for in the new stock.")
+        new_values *= existing_factor
+
+    for tech, peak in new_values.items():
         existing_heating.at["Germany", tech] = peak
 
     logger.info(
-        f"Heating demand after modification with {leitmodell}: {existing_heating.loc['Germany']}"
+        f"Heating demand after modification: {existing_heating.loc['Germany']}"
     )
 
     existing_heating.to_csv(snakemake.output.existing_heating)
