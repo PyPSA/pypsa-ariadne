@@ -1996,7 +1996,7 @@ def plot_h2_map(n, regions, savepath, only_de=False):
     plt.close()
 
 
-def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
+def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None, german_carriers=True):
 
     assign_location(n)
 
@@ -2224,6 +2224,9 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
         ax=ax,
         **map_opts,
     )
+    legend_label = "hydrogen storage [TWh]"
+    if german_carriers:
+        legend_label = "Wasserstoffspeicher [TWh]"
 
     regions.plot(
         ax=ax,
@@ -2234,7 +2237,7 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
         vmax=6,
         vmin=0,
         legend_kwds={
-            "label": "Wasserstoffspeicher [TWh]",
+            "label": legend_label,
             "shrink": 0.7,
             "extend": "max",
         },
@@ -2243,6 +2246,13 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
     # Set geographic extent for Germany
     ax.set_extent([5.5, 15.5, 47, 56], crs=ccrs.PlateCarree())
 
+
+    production_title = "hydrogen infrastructure (production)"
+    consumption_title = "hydrogen infrastructure (consumption)"
+    if german_carriers:
+        production_title = "Wasserstoffinfrastruktur (Produktion)"
+        consumption_title = "Wasserstoffinfrastruktur (Verbrauch)"
+        
     if specify_buses is None:
         sizes = [5, 1]
         labels = [f"{s} GW" for s in sizes]
@@ -2254,14 +2264,14 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
         labels = [f"{s} TWh" for s in sizes]
         sizes = [s / bus_size_factor * 1e6 for s in sizes]
         n_cols = 2
-        title = "Wasserstoffinfrastruktur (Produktion)"
+        title = production_title
         loc_patches = (0.8, -0.09)
     elif specify_buses == "consumption":
         sizes = [50, 25, 5]
         labels = [f"{s} TWh" for s in sizes]
         sizes = [s / bus_size_factor * 1e6 for s in sizes]
         n_cols = 2
-        title = "Wasserstoffinfrastruktur (Verbrauch)"
+        title = consumption_title
         loc_patches = (0.75, -0.16)
 
     legend_kw_circles = dict(
@@ -2322,8 +2332,8 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
         "H2 pipeline (repurposed)",
         "H2 pipeline (Kernnetz)",
     ]
-
-    labels = [carriers_in_german.get(c, c) for c in labels]
+    if german_carriers:
+        labels = [carriers_in_german.get(c, c) for c in labels]
 
     legend_kw_patches = dict(
         loc="lower center",
@@ -2878,7 +2888,7 @@ if __name__ == "__main__":
             tech_colors=tech_colors,
             start_date="2019-01-01 00:00:00",
             end_date="2019-01-31 00:00:00",
-            savepath=f"{snakemake.output.elec_balances}/elec-Jan-DE-{year}-eng.png",
+            savepath=f"{snakemake.output.elec_balances}/elec-Jan-DE-{year}_eng.png",
             model_run=snakemake.wildcards.run,
             german_carriers=False,
             threshold=1e2,
@@ -3052,6 +3062,17 @@ if __name__ == "__main__":
                 tech_colors=tech_colors,
                 specify_buses=sb,
                 savepath=f"{snakemake.output.h2_transmission}/h2_transmission_DE_{sb}_{year}.png",
+                german_carriers=True,
+            )
+            del network
+            network = networks[planning_horizons.index(year)].copy()
+            plot_h2_map_de(
+                network,
+                regions_de,
+                tech_colors=tech_colors,
+                specify_buses=sb,
+                savepath=f"{snakemake.output.h2_transmission}/h2_transmission_DE_{sb}_{year}_eng.png",
+                german_carriers=False,
             )
             del network
 
