@@ -400,6 +400,18 @@ def plot_nodal_elec_balance(
     ylabel="total electricity balance [GW]",
     title="Electricity balance",
 ):
+    if german_carriers:
+        import_label = "Stromimport"
+        export_label = "Stromexport"
+        nodal_prices_label = "Knotenpreise (gemittelt)"
+        other_label = "Sonstige"
+        nodal_prices_ylabel = "Knotenpreise [€/MWh]"
+    else:
+        import_label = "Electricity import"
+        export_label = "Electricity export"
+        nodal_prices_label = "Nodal prices (mean)"
+        other_label = "other"
+        nodal_prices_ylabel = "Nodal prices [€/MWh]"
 
     if resample == "D" and network.snapshots.size < 365:
         # code is not working at low resolution!
@@ -462,7 +474,7 @@ def plot_nodal_elec_balance(
         "hydro",
         "PHS",
         "battery discharger",
-        "Stromimport",
+        import_label,
         "other",
     ]
     preferred_order_neg = [
@@ -473,10 +485,10 @@ def plot_nodal_elec_balance(
         "rural ground heat pump",
         "resistive heater",
         "battery charger",
-        "Stromexport",
+        export_label,
         "H2 Electrolysis",
         "methanolisation",
-        "Sonstige",
+        other_label,
     ]
     pos_c = {
         "solar": "#f9d002",
@@ -494,7 +506,7 @@ def plot_nodal_elec_balance(
         "hydro": "#5379ad",
         "PHS": "#6999db",
         "battery discharger": "#76e388",
-        "Stromimport": "#97ad8c",
+        import_label: "#97ad8c",
         "other": "#8f9c9a",
     }
     neg_c = {
@@ -505,10 +517,10 @@ def plot_nodal_elec_balance(
         "resistive heater": "#493173",
         "BEV charger": "#81a3de",
         "battery charger": "#76e388",
-        "Stromexport": "#97ad8c",
+        export_label: "#97ad8c",
         "H2 Electrolysis": "#ff8282",
         "methanolisation": "#872f2f",
-        "Sonstige": "#8f9c9a",
+        other_label: "#8f9c9a",
     }
 
     df = nb
@@ -532,7 +544,7 @@ def plot_nodal_elec_balance(
 
     fig, ax = plt.subplots(figsize=(14, 12))
     # Reorder the DataFrame columns based on the preferred order
-    df_pos["Stromimport"] = (
+    df_pos[import_label] = (
         df["Electricity trade"].where(df["Electricity trade"] > 0).fillna(0)
     )
     df_pos = df_pos.drop(columns=["Electricity trade"], errors="ignore")
@@ -548,11 +560,11 @@ def plot_nodal_elec_balance(
     f = lambda c: "out_" + c
     cols = [f(c) if (c in df_pos.columns) else c for c in df_neg.columns]
     cols_map = dict(zip(df_neg.columns, cols))
-    df_neg["Stromexport"] = (
+    df_neg[export_label] = (
         df["Electricity trade"].where(df["Electricity trade"] < 0).fillna(0)
     )
     df_neg = df_neg.drop(columns=["Electricity trade"], errors="ignore")
-    df_neg["Sonstige"] = df_neg.drop(columns=preferred_order_neg, errors="ignore").sum(
+    df_neg[other_label] = df_neg.drop(columns=preferred_order_neg, errors="ignore").sum(
         axis=1
     )
     df_neg = df_neg.reindex(columns=preferred_order_neg)
@@ -566,7 +578,7 @@ def plot_nodal_elec_balance(
         ax2 = lmps.plot(
             style="--",
             color="black",
-            label="Knotenpreise (gemittelt)",
+            label=nodal_prices_label,
             secondary_y=True,
         )
         ax2.grid(False)
@@ -590,7 +602,7 @@ def plot_nodal_elec_balance(
             ]
         )
         ax2.legend(loc="upper right")
-        ax2.set_ylabel("Knotenpreise [€/MWh]")
+        ax2.set_ylabel(nodal_prices_ylabel)
 
     # explicitly filter out duplicate labels
     handles, labels = ax.get_legend_handles_labels()
@@ -626,9 +638,14 @@ def plot_nodal_elec_balance(
         + [subtitle_verbrauch]
         + verbrauch_handles
     )
-    combined_labels = (
-        ["Erzeugung"] + erzeugung_labels + ["Verbrauch"] + verbrauch_labels
-    )
+    if german_carriers:
+        combined_labels = (
+            ["Erzeugung"] + erzeugung_labels + ["Verbrauch"] + verbrauch_labels
+        )
+    else:
+        combined_labels = (
+            ["Generation"] + erzeugung_labels + ["Demand"] + verbrauch_labels
+        )
 
     legend = ax.legend(
         combined_handles,
@@ -646,20 +663,36 @@ def plot_nodal_elec_balance(
     ax.set_ylabel(ylabel)
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%B"))
 
-    german_months = [
-        "Jan",
-        "Feb",
-        "März",
-        "Apr",
-        "Mai",
-        "Juni",
-        "Juli",
-        "Aug",
-        "Sept",
-        "Okt",
-        "Nov",
-        "Dez",
-    ]
+    if german_carriers:
+        german_months = [
+            "Jan",
+            "Feb",
+            "März",
+            "Apr",
+            "Mai",
+            "Juni",
+            "Juli",
+            "Aug",
+            "Sept",
+            "Okt",
+            "Nov",
+            "Dez",
+        ]
+    else:
+        german_months = [
+            "Jan",
+            "Feb",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+        ]
 
     # Custom formatter function
     def format_month(x, pos):
@@ -674,7 +707,7 @@ def plot_nodal_elec_balance(
     ax.set_xticks(ticks[:-1])
     ax.set_xlabel("")
     ax.set_title(
-        f"{title} {model_run}",
+        f"{title}",
         fontsize=16,
         pad=15,
     )
@@ -1576,13 +1609,19 @@ def plot_elec_prices_spatial(
     fig.savefig(savepath, bbox_inches="tight")
 
 
-def plot_elec_prices_spatial_new(
-    network, tech_colors, savepath, onshore_regions, year="2045", region="DE"
-):
-
-    # onshore_regions = gpd.read_file("/home/julian-geis/repos/pypsa-ariadne-1/resources/20241203-force-onwind-south-49cl-disc/KN2045_Bal_v4/regions_onshore_base_s_49.geojson")
-    # onshore_regions = onshore_regions.set_index('name')
-
+def plot_elec_prices_spatial_new(network, savepath, onshore_regions, lang="ger"):
+    if lang == "ger":
+        title1 = "Durchschnittspreis, NEP Ausbau"
+        cbar1_label = "Börsenstrompreis zzgl. durchschnittlichem Netzentgelt [$€/MWh$]"
+        title2 = "Regionale Preiszonen, $PyPSA$-$DE$ Ausbau"
+        cbar2_label = "Durchschnittliche Preisreduktion für Endkunden [$€/MWh$]"
+    elif lang == "eng":
+        title1 = "Average price, NEP expansion"
+        cbar1_label = "Wholesale price plus average grid tariff [$€/MWh$]"
+        title2 = "Regional price zones, $PyPSA$-$DE$ expansion"
+        cbar2_label = "Average price reduction for end customers [$€/MWh$]"
+    else:
+        raise ValueError("lang must be 'ger' or 'eng'")
     n = network
     buses = n.buses[n.buses.carrier == "AC"].index
 
@@ -1625,7 +1664,8 @@ def plot_elec_prices_spatial_new(
     ax1.coastlines(edgecolor="black", linewidth=0.5)
     ax1.set_facecolor("white")
     ax1.add_feature(cartopy.feature.OCEAN, color="azure")
-    ax1.set_title("Durchschnittspreis, NEP Ausbau", pad=15)
+
+    ax1.set_title(title1, pad=15)
     img1 = (
         df[df.index.str.contains("DE")]
         .to_crs(crs.proj4_init)
@@ -1650,7 +1690,7 @@ def plot_elec_prices_spatial_new(
     ax2.coastlines(edgecolor="black", linewidth=0.5)
     ax2.set_facecolor("white")
     ax2.add_feature(cartopy.feature.OCEAN, color="azure")
-    ax2.set_title("Regionale Preiszonen, $PyPSA$-$DE$ Ausbau", pad=15)
+    ax2.set_title(title2, pad=15)
 
     img2 = (
         df[df.index.str.contains("DE")]
@@ -1681,7 +1721,7 @@ def plot_elec_prices_spatial_new(
         cax=cax1,
         orientation="horizontal",
     )
-    cbar1.set_label("Börsenstrompreis zzgl. durchschnittlichem Netzentgelt [$€/MWh$]")
+    cbar1.set_label(cbar1_label)
     cbar1.set_ticklabels(np.linspace(vmax, vmin, 6).round(1))
     cbar1.ax.invert_xaxis()
 
@@ -1690,7 +1730,7 @@ def plot_elec_prices_spatial_new(
         cax=cax2,
         orientation="horizontal",
     )
-    cbar2.set_label("Durchschnittliche Preisreduktion für Endkunden [$€/MWh$]")
+    cbar2.set_label(cbar2_label)
     cbar2.set_ticklabels(np.linspace(0, vmax - vmin, 6).round(1))
 
     plt.subplots_adjust(right=0.75, bottom=0.22)
@@ -1956,7 +1996,9 @@ def plot_h2_map(n, regions, savepath, only_de=False):
     plt.close()
 
 
-def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
+def plot_h2_map_de(
+    n, regions, tech_colors, savepath, specify_buses=None, german_carriers=True
+):
 
     assign_location(n)
 
@@ -2184,6 +2226,9 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
         ax=ax,
         **map_opts,
     )
+    legend_label = "hydrogen storage [TWh]"
+    if german_carriers:
+        legend_label = "Wasserstoffspeicher [TWh]"
 
     regions.plot(
         ax=ax,
@@ -2194,7 +2239,7 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
         vmax=6,
         vmin=0,
         legend_kwds={
-            "label": "Wasserstoffspeicher [TWh]",
+            "label": legend_label,
             "shrink": 0.7,
             "extend": "max",
         },
@@ -2202,6 +2247,12 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
 
     # Set geographic extent for Germany
     ax.set_extent([5.5, 15.5, 47, 56], crs=ccrs.PlateCarree())
+
+    production_title = "Hydrogen infrastructure (production)"
+    consumption_title = "Hydrogen infrastructure (consumption)"
+    if german_carriers:
+        production_title = "Wasserstoffinfrastruktur (Produktion)"
+        consumption_title = "Wasserstoffinfrastruktur (Verbrauch)"
 
     if specify_buses is None:
         sizes = [5, 1]
@@ -2214,14 +2265,14 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
         labels = [f"{s} TWh" for s in sizes]
         sizes = [s / bus_size_factor * 1e6 for s in sizes]
         n_cols = 2
-        title = "Wasserstoffinfrastruktur (Produktion)"
+        title = production_title
         loc_patches = (0.8, -0.09)
     elif specify_buses == "consumption":
         sizes = [50, 25, 5]
         labels = [f"{s} TWh" for s in sizes]
         sizes = [s / bus_size_factor * 1e6 for s in sizes]
         n_cols = 2
-        title = "Wasserstoffinfrastruktur (Verbrauch)"
+        title = consumption_title
         loc_patches = (0.75, -0.16)
 
     legend_kw_circles = dict(
@@ -2282,8 +2333,8 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
         "H2 pipeline (repurposed)",
         "H2 pipeline (Kernnetz)",
     ]
-
-    labels = [carriers_in_german.get(c, c) for c in labels]
+    if german_carriers:
+        labels = [carriers_in_german.get(c, c) for c in labels]
 
     legend_kw_patches = dict(
         loc="lower center",
@@ -2312,6 +2363,7 @@ def plot_elec_map_de(
     regions_de,
     savepath,
     expansion_case="total-expansion",
+    lang="ger",
 ):
 
     m = network.copy()
@@ -2385,7 +2437,10 @@ def plot_elec_map_de(
     if expansion_case == "total-expansion":
         line_widths = total_exp_linew / linew_factor
         link_widths = total_exp_linkw / linkw_factor
-        title = "Stromnetzausbau (gesamt)"
+        if lang == "ger":
+            title = "Stromnetzausbau (gesamt)"
+        else:
+            title = "Electricity grid expansion (total)"
     elif expansion_case == "startnetz":
         line_widths = startnetz_linew / linew_factor
         link_widths = startnetz_linkw / linkw_factor
@@ -2411,7 +2466,10 @@ def plot_elec_map_de(
         link_widths=link_widths.clip(0),
         link_colors=tech_colors["DC"],
     )
-
+    if lang == "ger":
+        label = "Batteriespeicher [GWh]"
+    else:
+        label = "Battery storage [GWh]"
     regions_de.plot(
         ax=ax,
         column="battery",
@@ -2419,7 +2477,7 @@ def plot_elec_map_de(
         linewidths=0,
         legend=True,
         legend_kwds={
-            "label": "Batteriespeicher [GWh]",
+            "label": label,
             "shrink": 0.7,
             "extend": "max",
         },
@@ -2829,6 +2887,22 @@ if __name__ == "__main__":
             network=network,
             nodal_balance=balance,
             tech_colors=tech_colors,
+            start_date="2019-01-01 00:00:00",
+            end_date="2019-01-31 00:00:00",
+            savepath=f"{snakemake.output.elec_balances}/elec-Jan-DE-{year}_eng.png",
+            model_run=snakemake.wildcards.run,
+            german_carriers=False,
+            threshold=1e2,
+            condense_groups=[electricity_load, electricity_imports],
+            condense_names=["Electricity load", "Electricity trade"],
+            title="Electricity balance",
+            ylabel="Electricity generation/demand [GW]",
+        )
+
+        plot_nodal_elec_balance(
+            network=network,
+            nodal_balance=balance,
+            tech_colors=tech_colors,
             start_date="2019-05-01 00:00:00",
             end_date="2019-05-31 00:00:00",
             savepath=f"{snakemake.output.elec_balances}/elec-May-DE-{year}.png",
@@ -2953,11 +3027,14 @@ if __name__ == "__main__":
     year = 2045
     plot_elec_prices_spatial_new(
         network=networks[planning_horizons.index(year)].copy(),
-        tech_colors=tech_colors,
         onshore_regions=regions,
-        savepath=snakemake.output.elec_prices_spatial_de,
-        region="DE",
-        year=year,
+        savepath=snakemake.output.elec_prices_spatial_de_ger,
+    )
+    plot_elec_prices_spatial_new(
+        network=networks[planning_horizons.index(year)].copy(),
+        onshore_regions=regions,
+        savepath=snakemake.output.elec_prices_spatial_de_eng,
+        lang="eng",
     )
 
     ## hydrogen transmission
@@ -2986,6 +3063,17 @@ if __name__ == "__main__":
                 tech_colors=tech_colors,
                 specify_buses=sb,
                 savepath=f"{snakemake.output.h2_transmission}/h2_transmission_DE_{sb}_{year}.png",
+                german_carriers=True,
+            )
+            del network
+            network = networks[planning_horizons.index(year)].copy()
+            plot_h2_map_de(
+                network,
+                regions_de,
+                tech_colors=tech_colors,
+                specify_buses=sb,
+                savepath=f"{snakemake.output.h2_transmission}/h2_transmission_DE_{sb}_{year}_eng.png",
+                german_carriers=False,
             )
             del network
 
@@ -3002,6 +3090,16 @@ if __name__ == "__main__":
                 savepath=f"{snakemake.output.elec_transmission}/elec-transmission-DE-{s}-{year}.png",
                 expansion_case=s,
             )
+        s = "total-expansion"
+        plot_elec_map_de(
+            networks[planning_horizons.index(year)],
+            networks[planning_horizons.index(2020)],
+            tech_colors,
+            regions_de,
+            savepath=f"{snakemake.output.elec_transmission}/elec-transmission-DE-{s}-{year}_eng.png",
+            expansion_case=s,
+            lang="eng",
+        )
         plot_cap_map_de(
             networks[planning_horizons.index(year)],
             tech_colors,
