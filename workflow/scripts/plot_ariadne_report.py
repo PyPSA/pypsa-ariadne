@@ -707,7 +707,7 @@ def plot_nodal_elec_balance(
     ax.set_xticks(ticks[:-1])
     ax.set_xlabel("")
     ax.set_title(
-        f"{title} {model_run}",
+        f"{title}",
         fontsize=16,
         pad=15,
     )
@@ -2248,8 +2248,8 @@ def plot_h2_map_de(
     # Set geographic extent for Germany
     ax.set_extent([5.5, 15.5, 47, 56], crs=ccrs.PlateCarree())
 
-    production_title = "hydrogen infrastructure (production)"
-    consumption_title = "hydrogen infrastructure (consumption)"
+    production_title = "Hydrogen infrastructure (production)"
+    consumption_title = "Hydrogen infrastructure (consumption)"
     if german_carriers:
         production_title = "Wasserstoffinfrastruktur (Produktion)"
         consumption_title = "Wasserstoffinfrastruktur (Verbrauch)"
