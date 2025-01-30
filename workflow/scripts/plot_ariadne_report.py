@@ -400,6 +400,18 @@ def plot_nodal_elec_balance(
     ylabel="total electricity balance [GW]",
     title="Electricity balance",
 ):
+    if german_carriers:
+        import_label = "Stromimport"
+        export_label = "Stromexport"
+        nodal_prices_label = "Knotenpreise (gemittelt)"
+        other_label = "Sonstige"
+        nodal_prices_ylabel = "Knotenpreise [€/MWh]"
+    else:
+        import_label = "Electricity import"
+        export_label = "Electricity export"
+        nodal_prices_label = "Nodal prices (mean)"
+        other_label = "other"
+        nodal_prices_ylabel = "Nodal prices [€/MWh]"
 
     if resample == "D" and network.snapshots.size < 365:
         # code is not working at low resolution!
@@ -462,7 +474,7 @@ def plot_nodal_elec_balance(
         "hydro",
         "PHS",
         "battery discharger",
-        "Stromimport",
+        import_label,
         "other",
     ]
     preferred_order_neg = [
@@ -473,10 +485,10 @@ def plot_nodal_elec_balance(
         "rural ground heat pump",
         "resistive heater",
         "battery charger",
-        "Stromexport",
+        export_label,
         "H2 Electrolysis",
         "methanolisation",
-        "Sonstige",
+        other_label,
     ]
     pos_c = {
         "solar": "#f9d002",
@@ -494,7 +506,7 @@ def plot_nodal_elec_balance(
         "hydro": "#5379ad",
         "PHS": "#6999db",
         "battery discharger": "#76e388",
-        "Stromimport": "#97ad8c",
+        import_label: "#97ad8c",
         "other": "#8f9c9a",
     }
     neg_c = {
@@ -505,10 +517,10 @@ def plot_nodal_elec_balance(
         "resistive heater": "#493173",
         "BEV charger": "#81a3de",
         "battery charger": "#76e388",
-        "Stromexport": "#97ad8c",
+        export_label: "#97ad8c",
         "H2 Electrolysis": "#ff8282",
         "methanolisation": "#872f2f",
-        "Sonstige": "#8f9c9a",
+        other_label: "#8f9c9a",
     }
 
     df = nb
@@ -532,7 +544,7 @@ def plot_nodal_elec_balance(
 
     fig, ax = plt.subplots(figsize=(14, 12))
     # Reorder the DataFrame columns based on the preferred order
-    df_pos["Stromimport"] = (
+    df_pos[import_label] = (
         df["Electricity trade"].where(df["Electricity trade"] > 0).fillna(0)
     )
     df_pos = df_pos.drop(columns=["Electricity trade"], errors="ignore")
@@ -548,11 +560,11 @@ def plot_nodal_elec_balance(
     f = lambda c: "out_" + c
     cols = [f(c) if (c in df_pos.columns) else c for c in df_neg.columns]
     cols_map = dict(zip(df_neg.columns, cols))
-    df_neg["Stromexport"] = (
+    df_neg[export_label] = (
         df["Electricity trade"].where(df["Electricity trade"] < 0).fillna(0)
     )
     df_neg = df_neg.drop(columns=["Electricity trade"], errors="ignore")
-    df_neg["Sonstige"] = df_neg.drop(columns=preferred_order_neg, errors="ignore").sum(
+    df_neg[other_label] = df_neg.drop(columns=preferred_order_neg, errors="ignore").sum(
         axis=1
     )
     df_neg = df_neg.reindex(columns=preferred_order_neg)
@@ -566,7 +578,7 @@ def plot_nodal_elec_balance(
         ax2 = lmps.plot(
             style="--",
             color="black",
-            label="Knotenpreise (gemittelt)",
+            label=nodal_prices_label,
             secondary_y=True,
         )
         ax2.grid(False)
@@ -590,7 +602,7 @@ def plot_nodal_elec_balance(
             ]
         )
         ax2.legend(loc="upper right")
-        ax2.set_ylabel("Knotenpreise [€/MWh]")
+        ax2.set_ylabel(nodal_prices_ylabel)
 
     # explicitly filter out duplicate labels
     handles, labels = ax.get_legend_handles_labels()
@@ -626,9 +638,14 @@ def plot_nodal_elec_balance(
         + [subtitle_verbrauch]
         + verbrauch_handles
     )
-    combined_labels = (
-        ["Erzeugung"] + erzeugung_labels + ["Verbrauch"] + verbrauch_labels
-    )
+    if german_carriers:
+        combined_labels = (
+            ["Erzeugung"] + erzeugung_labels + ["Verbrauch"] + verbrauch_labels
+        )
+    else:
+        combined_labels = (
+            ["Generation"] + erzeugung_labels + ["Demand"] + verbrauch_labels
+        )
 
     legend = ax.legend(
         combined_handles,
@@ -646,20 +663,36 @@ def plot_nodal_elec_balance(
     ax.set_ylabel(ylabel)
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%B"))
 
-    german_months = [
-        "Jan",
-        "Feb",
-        "März",
-        "Apr",
-        "Mai",
-        "Juni",
-        "Juli",
-        "Aug",
-        "Sept",
-        "Okt",
-        "Nov",
-        "Dez",
-    ]
+    if german_carriers:
+        german_months = [
+            "Jan",
+            "Feb",
+            "März",
+            "Apr",
+            "Mai",
+            "Juni",
+            "Juli",
+            "Aug",
+            "Sept",
+            "Okt",
+            "Nov",
+            "Dez",
+        ]
+    else:
+        german_months = [
+            "Jan",
+            "Feb",
+            "March",
+            "April",
+            "May",
+            "June",
+            "July",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+        ]
 
     # Custom formatter function
     def format_month(x, pos):
@@ -2837,6 +2870,22 @@ if __name__ == "__main__":
             condense_names=["Electricity load", "Electricity trade"],
             title="Strombilanz",
             ylabel="Stromerzeugung/ -verbrauch [GW]",
+        )
+
+        plot_nodal_elec_balance(
+            network=network,
+            nodal_balance=balance,
+            tech_colors=tech_colors,
+            start_date="2019-01-01 00:00:00",
+            end_date="2019-01-31 00:00:00",
+            savepath=f"{snakemake.output.elec_balances}/elec-Jan-DE-{year}-eng.png",
+            model_run=snakemake.wildcards.run,
+            german_carriers=False,
+            threshold=1e2,
+            condense_groups=[electricity_load, electricity_imports],
+            condense_names=["Electricity load", "Electricity trade"],
+            title="Electricity balance",
+            ylabel="Electricity generation/demand [GW]",
         )
 
         plot_nodal_elec_balance(
