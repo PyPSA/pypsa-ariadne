@@ -1996,7 +1996,9 @@ def plot_h2_map(n, regions, savepath, only_de=False):
     plt.close()
 
 
-def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None, german_carriers=True):
+def plot_h2_map_de(
+    n, regions, tech_colors, savepath, specify_buses=None, german_carriers=True
+):
 
     assign_location(n)
 
@@ -2246,13 +2248,12 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None, german
     # Set geographic extent for Germany
     ax.set_extent([5.5, 15.5, 47, 56], crs=ccrs.PlateCarree())
 
-
     production_title = "hydrogen infrastructure (production)"
     consumption_title = "hydrogen infrastructure (consumption)"
     if german_carriers:
         production_title = "Wasserstoffinfrastruktur (Produktion)"
         consumption_title = "Wasserstoffinfrastruktur (Verbrauch)"
-        
+
     if specify_buses is None:
         sizes = [5, 1]
         labels = [f"{s} GW" for s in sizes]
