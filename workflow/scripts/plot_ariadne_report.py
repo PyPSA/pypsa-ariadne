@@ -1503,7 +1503,10 @@ def plot_elec_prices_spatial(
 
     # Create figure with two subplots
     fig, (ax1, ax2) = plt.subplots(
-        1, 2, subplot_kw={"projection": display_projection}, figsize=(fig_width, 0.55 * fig_height)
+        1,
+        2,
+        subplot_kw={"projection": display_projection},
+        figsize=(fig_width, 0.55 * fig_height),
     )
 
     # First subplot: elec_price
@@ -1517,7 +1520,8 @@ def plot_elec_prices_spatial(
     ax1.add_feature(cartopy.feature.OCEAN, color="azure")
     ax1.set_title("Durchschnittspreis, NEP Ausbau [$€/MWh$]", pad=15)
     img1 = (
-        df[df.index.str.contains("DE")].to_crs(display_projection.proj4_init)
+        df[df.index.str.contains("DE")]
+        .to_crs(display_projection.proj4_init)
         .plot(
             column="elec_price_nep",
             ax=ax1,
@@ -1542,7 +1546,8 @@ def plot_elec_prices_spatial(
     ax2.set_title("Nodale Preise, $PyPSA$-$DE$ Ausbau [$€/MWh$]", pad=15)
 
     img2 = (
-        df[df.index.str.contains("DE")].to_crs(display_projection.proj4_init)
+        df[df.index.str.contains("DE")]
+        .to_crs(display_projection.proj4_init)
         .plot(
             column="elec_price_diff",
             ax=ax2,
@@ -1719,7 +1724,9 @@ def plot_h2_map(n, regions, savepath, only_de=False):
 
     logger.info("Plotting map")
     display_projection = ccrs.EqualEarth()
-    fig, ax = plt.subplots(figsize=(10, 8), subplot_kw={"projection": display_projection})
+    fig, ax = plt.subplots(
+        figsize=(10, 8), subplot_kw={"projection": display_projection}
+    )
 
     color_h2_pipe = "#b3f3f4"
     color_retrofit = "#499a9c"
@@ -2038,7 +2045,9 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
     n.links.bus1 = n.links.bus1.str.replace(" H2", "")
 
     display_projection = ccrs.EqualEarth()
-    fig, ax = plt.subplots(figsize=(10, 10), subplot_kw={"projection": display_projection})
+    fig, ax = plt.subplots(
+        figsize=(10, 10), subplot_kw={"projection": display_projection}
+    )
 
     color_h2_pipe = "#b3f3f4"
     color_retrofit = "#499a9c"
@@ -2107,14 +2116,14 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
         sizes = [s / bus_size_factor * 1e6 for s in sizes]
         n_cols = 2
         title = "Wasserstoffinfrastruktur (Produktion)"
-        loc_patches = (0.8, -0.11) # -0.15
+        loc_patches = (0.8, -0.11)  # -0.15
     elif specify_buses == "consumption":
         sizes = [50, 25, 5]
         labels = [f"{s} TWh" for s in sizes]
         sizes = [s / bus_size_factor * 1e6 for s in sizes]
         n_cols = 2
         title = "Wasserstoffinfrastruktur (Verbrauch)"
-        loc_patches = (0.78, -0.17) # -0.2
+        loc_patches = (0.78, -0.17)  # -0.2
 
     legend_kw_circles = dict(
         loc="lower center",
@@ -2195,6 +2204,7 @@ def plot_h2_map_de(n, regions, tech_colors, savepath, specify_buses=None):
 
 
 ### electricity transmission
+
 
 def plot_elec_map_de(
     network,
@@ -2290,7 +2300,9 @@ def plot_elec_map_de(
         link_widths = None
 
     display_projection = ccrs.EqualEarth()
-    fig, ax = plt.subplots(figsize=(10, 10), subplot_kw={"projection": display_projection})
+    fig, ax = plt.subplots(
+        figsize=(10, 10), subplot_kw={"projection": display_projection}
+    )
 
     m.plot(
         ax=ax,
@@ -2366,7 +2378,7 @@ def plot_elec_map_de(
 
     legend_kw_lines = dict(
         loc="lower center",
-        bbox_to_anchor=(0.65, -0.12), 
+        bbox_to_anchor=(0.65, -0.12),
         frameon=True,
         labelspacing=0.5,
         handletextpad=1,
@@ -2382,7 +2394,7 @@ def plot_elec_map_de(
 
     legend_kw_patches = dict(
         loc="lower center",
-        bbox_to_anchor=(0.65, -0.23), # 0.58 -> 0.65
+        bbox_to_anchor=(0.65, -0.23),  # 0.58 -> 0.65
         ncol=2,
         frameon=True,
         facecolor="white",
@@ -2482,7 +2494,9 @@ def plot_cap_map_de(
     carriers = bus_sizes.index.get_level_values(1).unique().tolist()
 
     display_projection = ccrs.EqualEarth()
-    fig, ax = plt.subplots(figsize=(8, 8), subplot_kw={"projection": display_projection})
+    fig, ax = plt.subplots(
+        figsize=(8, 8), subplot_kw={"projection": display_projection}
+    )
 
     m.plot(
         ax=ax,
