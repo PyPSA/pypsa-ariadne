@@ -83,14 +83,14 @@ if __name__ == "__main__":
 
         logger.info(new_values)
         logger.warning(f"Total stock: {total_stock}, New stock: {new_values.sum()}")
-        logger.warning(f"District heating is not correctly accounted for in the new stock.")
+        logger.warning(
+            f"District heating is not correctly accounted for in the new stock."
+        )
         new_values *= existing_factor
 
     for tech, peak in new_values.items():
         existing_heating.at["Germany", tech] = peak
 
-    logger.info(
-        f"Heating demand after modification: {existing_heating.loc['Germany']}"
-    )
+    logger.info(f"Heating demand after modification: {existing_heating.loc['Germany']}")
 
     existing_heating.to_csv(snakemake.output.existing_heating)
