@@ -1518,7 +1518,7 @@ def plot_elec_prices_spatial(
     ax1.coastlines(edgecolor="black", linewidth=0.5)
     ax1.set_facecolor("white")
     ax1.add_feature(cartopy.feature.OCEAN, color="azure")
-    ax1.set_title("Durchschnittspreis, NEP Ausbau [$EUR/MWh$]", pad=15)
+    ax1.set_title("Durchschnittspreis, NEP Ausbau [EUR/MWh]", pad=15)
     img1 = (
         df[df.index.str.contains("DE")]
         .to_crs(display_projection.proj4_init)
@@ -1543,7 +1543,7 @@ def plot_elec_prices_spatial(
     ax2.coastlines(edgecolor="black", linewidth=0.5)
     ax2.set_facecolor("white")
     ax2.add_feature(cartopy.feature.OCEAN, color="azure")
-    ax2.set_title("Regionale Preise, $PyPSA$-$DE$ Ausbau [$EUR/MWh$]", pad=15)
+    ax2.set_title("Regionale Preise, $PyPSA$-$DE$ Ausbau [EUR/MWh]", pad=15)
 
     img2 = (
         df[df.index.str.contains("DE")]
@@ -1575,7 +1575,7 @@ def plot_elec_prices_spatial(
         orientation="horizontal",
         ticklocation="top",
     )
-    cbar1.set_label("Börsenstrompreis zzgl. durchschnittlichem Netzentgelt [$EUR/MWh$]")
+    cbar1.set_label("Börsenstrompreis zzgl. durchschnittlichem Netzentgelt [EUR/MWh]")
     cbar1.set_ticklabels(np.linspace(vmax, vmin, 6).round(1))
 
     cbar2 = fig.colorbar(
@@ -1583,7 +1583,7 @@ def plot_elec_prices_spatial(
         cax=cax2,
         orientation="horizontal",
     )
-    cbar2.set_label("Durchschnittliche Preisreduktion für Endkunden [$EUR/MWh$]")
+    cbar2.set_label("Durchschnittliche Preisreduktion für Endkunden [EUR/MWh]")
     cbar2.set_ticklabels(np.linspace(0, vmax - vmin, 6).round(1))
 
     plt.subplots_adjust(right=0.75, bottom=0.22)
