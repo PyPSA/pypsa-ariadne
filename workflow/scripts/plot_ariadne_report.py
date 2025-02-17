@@ -593,7 +593,7 @@ def plot_nodal_elec_balance(
             ]
         )
         ax2.legend(loc="upper right")
-        ax2.set_ylabel("Knotenpreise [€/MWh]")
+        ax2.set_ylabel("Knotenpreise [EUR/MWh]")
 
     # explicitly filter out duplicate labels
     handles, labels = ax.get_legend_handles_labels()
@@ -796,7 +796,7 @@ def plot_nodal_heat_balance(
             ]
         )
         ax2.legend(title="Legende für y-Ache (rechts)", loc="upper right")
-        ax2.set_ylabel("Knotenpreise [€/MWh]")
+        ax2.set_ylabel("Knotenpreise [EUR/MWh]")
 
     # plot loads
     if plot_loads:
@@ -1155,9 +1155,9 @@ def plot_price_duration_curve(
         # ax.hlines(df["lmp"].loc[df["lmp"][df["gen_cumsum_norm"] > 0.875].index[0]], 0, 1,  color=year_colors[i], ls="--", lw =1)
 
         ax.set_ylabel(
-            "Strompreis [$€/MWh_{el}$]"
+            "Strompreis [$EUR/MWh_{el}$]"
             if languange == "german"
-            else "Electricity Price [$€/MWh_{el}$]"
+            else "Electricity Price [$EUR/MWh_{el}$]"
         )
         ax.set_xlabel(
             "Zeitanteil [%]" if languange == "german" else "Fraction of time [%]"
@@ -1221,7 +1221,7 @@ def plot_price_duration_hist(
         )
         axes[i].legend()
 
-    axes[i].set_xlabel("Strompreis [$€/MWh_{el}$]")
+    axes[i].set_xlabel("Strompreis [$EUR/MWh_{el}$]")
     plt.suptitle(f"Strompreise", fontsize=16, y=0.99)
     fig.tight_layout()
     fig.savefig(savepath, bbox_inches="tight")
@@ -1518,7 +1518,7 @@ def plot_elec_prices_spatial(
     ax1.coastlines(edgecolor="black", linewidth=0.5)
     ax1.set_facecolor("white")
     ax1.add_feature(cartopy.feature.OCEAN, color="azure")
-    ax1.set_title("Durchschnittspreis, NEP Ausbau [$€/MWh$]", pad=15)
+    ax1.set_title("Durchschnittspreis, NEP Ausbau [$EUR/MWh$]", pad=15)
     img1 = (
         df[df.index.str.contains("DE")]
         .to_crs(display_projection.proj4_init)
@@ -1543,7 +1543,7 @@ def plot_elec_prices_spatial(
     ax2.coastlines(edgecolor="black", linewidth=0.5)
     ax2.set_facecolor("white")
     ax2.add_feature(cartopy.feature.OCEAN, color="azure")
-    ax2.set_title("Nodale Preise, $PyPSA$-$DE$ Ausbau [$€/MWh$]", pad=15)
+    ax2.set_title("Regionale Preise, $PyPSA$-$DE$ Ausbau [$EUR/MWh$]", pad=15)
 
     img2 = (
         df[df.index.str.contains("DE")]
@@ -1565,25 +1565,25 @@ def plot_elec_prices_spatial(
     ax2.set_aspect(aspect_ratio)
 
     # Create a new axis for the colorbar at the bottom
-    cax2 = fig.add_axes([0.15, 0.14, 0.6, 0.03])  # [left, bottom, width, height]
-    cax1 = fig.add_axes([0.15, 0.00, 0.6, 0.03])  # [left, bottom, width, height]
+    cax2 = fig.add_axes([0.15, 0.06, 0.6, 0.03])  # [left, bottom, width, height]
+    cax1 = fig.add_axes([0.15, 0.06, 0.6, 0.03])  # [left, bottom, width, height]
 
     # Add colorbar to the new axis
     cbar1 = fig.colorbar(
         img1.get_figure().get_axes()[0].collections[0],
         cax=cax1,
         orientation="horizontal",
+        ticklocation="top",
     )
-    cbar1.set_label("Börsenstrompreis zzgl. durchschnittlichem Netzentgelt [$€/MWh$]")
+    cbar1.set_label("Börsenstrompreis zzgl. durchschnittlichem Netzentgelt [$EUR/MWh$]")
     cbar1.set_ticklabels(np.linspace(vmax, vmin, 6).round(1))
-    cbar1.ax.invert_xaxis()
 
     cbar2 = fig.colorbar(
         img2.get_figure().get_axes()[0].collections[0],
         cax=cax2,
         orientation="horizontal",
     )
-    cbar2.set_label("Durchschnittliche Preisreduktion für Endkunden [$€/MWh$]")
+    cbar2.set_label("Durchschnittliche Preisreduktion für Endkunden [$EUR/MWh$]")
     cbar2.set_ticklabels(np.linspace(0, vmax - vmin, 6).round(1))
 
     plt.subplots_adjust(right=0.75, bottom=0.22)
@@ -2611,7 +2611,7 @@ if __name__ == "__main__":
                 nyears,
             ).multiply(
                 1e-9
-            ),  # in bn €
+            ),  # in bn EUR
             snakemake.input.costs,
         )
     )
