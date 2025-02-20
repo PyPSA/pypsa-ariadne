@@ -1,3 +1,5 @@
+# 🛑 This repostiory is deprecated - 🟢 Development continues at [PyPSA-DE](https://github.com/PyPSA/pypsa-ariadne)
+
 # Kopernikus-Projekt Ariadne - Gesamtsystemmodell PyPSA-DE
 
 Dieses Repository enthält das Gesamtsystemmodell PyPSA-DE für das Kopernikus-Projekt Ariadne, basierend auf der Toolbox PyPSA und dem Datensatz PyPSA-Eur. Das Modell bildet Deutschland mit hoher geographischer Auflösung, mit voller Sektorenkopplung und mit Integration in das europäische Energiesystem ab.
