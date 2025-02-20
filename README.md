@@ -1,4 +1,5 @@
-# 🛑 This repostiory is deprecated - 🟢 Development continues at [PyPSA-DE](https://github.com/PyPSA/pypsa-ariadne)
+# 🟢 Development continues at [PyPSA-DE](https://github.com/PyPSA/pypsa-ariadne)
+# 🛑 This repostiory is deprecated 
 
 # Kopernikus-Projekt Ariadne - Gesamtsystemmodell PyPSA-DE
 
